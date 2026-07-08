@@ -1,0 +1,54 @@
+# Vikunja TUI MVP — Session Snapshot
+
+## Core Laws (MUST NOT BREAK)
+1. **Never break the interface to the original app.** The TUI must remain compatible with the existing Vikunja ecosystem.
+2. **The SQLite schema is Law.** Do not attempt to modify the schema. Treat it as an immutable, authoritative source of truth.
+
+## Workspace contents (created/changed)
+- `/workspace/vikunja-tui/`
+  - `TUI_IDEA.md` — MVP & Vim-motions + pane split concept
+  - `cmd/vikunja-tui/main.go` — app entry, reads credentials, starts Bubble Tea model
+  - `internal/tui/model.go` — Bubble Tea state machine + Vim-like split focus (`Ctrl+W ...`)
+  - `internal/tui/panes.go` — rendering: Projects left, Tasks right
+  - `internal/vikunja/store.go` — Store abstraction (read/write)
+  - `internal/vikunja/client.go` — REST fallback store (SQLite is default for MVP)
+  - `internal/vikunja/sqlite_store.go` — SQLiteStore implementation (reads/writes tasks)
+  - `internal/db/vikunja.db` — hardcoded MVP DB path (provided by user)
+
+## Build/run
+Preferred MVP start (SQLite file):
+- `cd /workspace/vikunja-tui`
+- `go run ./cmd/vikunja-tui --db internal/db/vikunja.db`
+
+If `--db` does not exist, the program falls back to REST mode (requires `--server` + `--token`).
+
+## UI / Keybindings (MVP)
+- Pane focus is Vim-like:
+  - `Ctrl+W + Ctrl+W` toggles/cycles focus
+  - `Ctrl+W + h/l` moves focus left/right
+  - `Ctrl+W + j/k` currently maps to neighbor focus (no vertical neighbor in MVP)
+- In Projects pane:
+  - `j/k` select project (reloads views + tasks)
+  - `r` refresh projects/tasks
+  - `q` quit
+- In Tasks pane:
+  - `j/k` select task
+  - `r` refresh current task list
+  - `x` toggles task done (SQLite write)
+  - `q` quit
+
+## MVP feature scope
+- Uses `ProjectViewKind = "list"` only.
+- Tasks are shown in a flat list (no Kanban buckets yet).
+- Ordering is based on `task_positions.position` when present.
+
+## Notes / Fixes made during the session
+- Switched imports to `charm.land/bubbletea/v2` + `charm.land/lipgloss/v2` to resolve build incompatibilities.
+- Implemented Bubble Tea v2 `View() tea.View` using `tea.NewView(m.Render())`.
+- Removed invalid SQL filter on `deleted_at` (some DB exports do not have the column).
+- Improved Projects pane display: if `identifier` is empty, fall back to `title`.
+
+## Current observed behavior (last user report)
+- App starts in Docker.
+- Earlier SQL error (`no such column: deleted_at`) was encountered; the SQLiteStore was updated to avoid using that column.
+- After updates, projects pane should show titles instead of only numeric identifiers when `identifier` is missing.
