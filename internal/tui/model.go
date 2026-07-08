@@ -37,8 +37,12 @@ type model struct {
 	store vikunja.Store
 	perPage int
 
+	width  int
+	height int
+
 	focus paneID
 	ctrlWArmed bool
+	gArmed bool
 	neighbors map[paneID]paneNeighbors
 
 	lastErr string
@@ -187,6 +191,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if kLower == "ctrl+w" {
 			m.ctrlWArmed = true
+			m.gArmed = false
 			return m, nil
 		}
 
@@ -203,6 +208,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch typed := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = typed.Width
+		m.height = typed.Height
+		return m, nil
+
 	case projectsLoadedMsg:
 		m.projectLoading = false
 		if typed.err != nil {
@@ -306,18 +316,47 @@ func (m *model) focusNeighborDownOrStay() paneID {
 }
 
 func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch k.String() {
+	s := normalizeArrow(k.String())
+
+	// `gg` prefix: first g arms, second g jumps to top.
+	if m.gArmed {
+		m.gArmed = false
+		if s == "g" {
+			m.projectSelected = 0
+			return m, m.onProjectSelectionChanged()
+		}
+		// otherwise fall through with the resolved key
+	}
+
+	last := max(0, len(m.projects)-1)
+	switch s {
 	case "q":
 		return m, tea.Quit
+	case "enter":
+		// Confirm current project selection and jump to the tasks pane.
+		m.focus = paneTasks
+		return m, nil
 	case "r":
 		m.lastErr = ""
 		m.projectLoading = true
 		return m, m.loadProjects(1)
+	case "g":
+		m.gArmed = true
+		return m, nil
+	case "G":
+		m.projectSelected = last
+		return m, m.onProjectSelectionChanged()
+	case "ctrl+d":
+		m.projectSelected = clamp(m.projectSelected+m.pageStep(), 0, last)
+		return m, m.onProjectSelectionChanged()
+	case "ctrl+u":
+		m.projectSelected = clamp(m.projectSelected-m.pageStep(), 0, last)
+		return m, m.onProjectSelectionChanged()
 	case "j":
-		m.projectSelected = clamp(m.projectSelected+1, 0, max(0, len(m.projects)-1))
+		m.projectSelected = clamp(m.projectSelected+1, 0, last)
 		return m, m.onProjectSelectionChanged()
 	case "k":
-		m.projectSelected = clamp(m.projectSelected-1, 0, max(0, len(m.projects)-1))
+		m.projectSelected = clamp(m.projectSelected-1, 0, last)
 		return m, m.onProjectSelectionChanged()
 	}
 
@@ -325,7 +364,19 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch k.String() {
+	s := normalizeArrow(k.String())
+
+	// `gg` prefix: first g arms, second g jumps to top.
+	if m.gArmed {
+		m.gArmed = false
+		if s == "g" {
+			m.taskSelected = 0
+			return m, nil
+		}
+	}
+
+	last := max(0, len(m.tasks)-1)
+	switch s {
 	case "q":
 		return m, tea.Quit
 	case "enter":
@@ -340,14 +391,24 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.taskLoading = true
 			return m, m.loadTasks(m.currentProjectID, m.currentViewID)
 		}
-	}
-
-	switch k.String() {
+		return m, nil
+	case "g":
+		m.gArmed = true
+		return m, nil
+	case "G":
+		m.taskSelected = last
+		return m, nil
+	case "ctrl+d":
+		m.taskSelected = clamp(m.taskSelected+m.pageStep(), 0, last)
+		return m, nil
+	case "ctrl+u":
+		m.taskSelected = clamp(m.taskSelected-m.pageStep(), 0, last)
+		return m, nil
 	case "j":
-		m.taskSelected = clamp(m.taskSelected+1, 0, max(0, len(m.tasks)-1))
+		m.taskSelected = clamp(m.taskSelected+1, 0, last)
 		return m, nil
 	case "k":
-		m.taskSelected = clamp(m.taskSelected-1, 0, max(0, len(m.tasks)-1))
+		m.taskSelected = clamp(m.taskSelected-1, 0, last)
 		return m, nil
 	case "x":
 		// Toggle done (MVP write-support for SQLite mode).
@@ -423,27 +484,90 @@ func (m *model) View() tea.View {
 }
 
 func (m *model) Render() string {
-	left := renderProjects(m)
-	right := renderTasks(m)
+	w, h := m.width, m.height
+	if w < 40 {
+		w = 80
+	}
+	if h < 10 {
+		h = 24
+	}
+
+	// chrome: border(1 each side) + padding(0,1) -> 4 cols horizontal, 2 rows vertical
+	const chromeX = 4
+	const chromeY = 2
+
+	statusBarH := 3 // border(2) + 1 content row
+	contentH := h - statusBarH
+	if contentH < 4 {
+		contentH = 4
+	}
+
+	// Split top row (panes) and optional detail row.
+	topH := contentH
+	detailH := 0
+	if m.showDetail {
+		topH = contentH / 2
+		if topH < 4 {
+			topH = 4
+		}
+		detailH = contentH - topH
+		if detailH < 4 {
+			detailH = 4
+		}
+	}
+
+	// Horizontal split: projects pane fixed-ish, tasks pane fills the rest.
+	projectsOuter := 30
+	if projectsOuter > w/3 {
+		projectsOuter = w / 3
+	}
+	if projectsOuter < 16 {
+		projectsOuter = 16
+	}
+	tasksOuter := w - projectsOuter
+	if tasksOuter < 16 {
+		tasksOuter = 16
+	}
+
+	leftTextW := projectsOuter - chromeX
+	rightTextW := tasksOuter - chromeX
+	topTextH := topH - chromeY
+
+	left := renderProjects(m, leftTextW, topTextH)
+	right := renderTasks(m, rightTextW, topTextH)
+
+	leftStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		Padding(0, 1).
+		Height(topH - 2)
+	rightStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		Padding(0, 1).
+		Height(topH - 2)
 
 	panes := lipgloss.JoinHorizontal(lipgloss.Top,
-		lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1).Render(left),
-		lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1).Render(right),
+		leftStyle.Render(left),
+		rightStyle.Render(right),
 	)
 
 	content := panes
 	if m.showDetail {
-		detail := renderTaskDetail(m)
+		detail := renderTaskDetail(m, w-chromeX, detailH-chromeY)
+		detailStyle := lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder()).
+			Padding(0, 1).
+			Height(detailH - 2)
 		content = lipgloss.JoinVertical(lipgloss.Top,
 			panes,
-			lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1).Width(lipgloss.Width(panes)-2).Render(detail),
+			detailStyle.Render(detail),
 		)
 	}
 
-	return lipgloss.JoinVertical(lipgloss.Top, content, m.renderStatusBar())
+	status := m.renderStatusBar(w)
+	return lipgloss.JoinVertical(lipgloss.Top, content, status)
 }
 
-func (m *model) renderStatusBar() string {
+func (m *model) renderStatusBar(w int) string {
 	info := ""
 	switch m.focus {
 	case paneProjects:
@@ -462,9 +586,11 @@ func (m *model) renderStatusBar() string {
 		hint = fmt.Sprintf("Error: %s", m.lastErr)
 	}
 
-	return lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1).Render(
-		fmt.Sprintf("%s   %s", info, hint),
-	)
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		Padding(0, 1).
+		Width(w - 2).
+		Render(fmt.Sprintf("%s   %s", info, hint))
 }
 
 func clamp(v, lo, hi int) int {
@@ -475,4 +601,41 @@ func clamp(v, lo, hi int) int {
 		return hi
 	}
 	return v
+}
+
+// normalizeArrow maps arrow-key strings to their Vim-style hjkl synonyms so both
+// work identically within list panes (without advertising the arrows anywhere).
+func normalizeArrow(s string) string {
+	switch s {
+	case "up":
+		return "k"
+	case "down":
+		return "j"
+	case "left":
+		return "h"
+	case "right":
+		return "l"
+	}
+	return s
+}
+
+// pageStep returns roughly half the visible rows of a list pane, used for
+// Vim-style Ctrl-D / Ctrl-U half-page jumps.
+func (m *model) pageStep() int {
+	h := m.height
+	if h < 10 {
+		h = 24
+	}
+	contentH := h - 3 // status bar
+	if contentH < 4 {
+		contentH = 4
+	}
+	if m.showDetail {
+		contentH /= 2
+	}
+	step := (contentH - 2) / 2 // minus border; half a page
+	if step < 1 {
+		step = 1
+	}
+	return step
 }
