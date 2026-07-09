@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Kanban Keyboard Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ──────────────────────────────────────────── */
+    #header {
+      padding: 12px 20px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    #header h1 { font-size: 1rem; color: #e94560; }
+
+    .mode-tabs {
+      display: flex;
+      gap: 6px;
+    }
+
+    .mode-tab {
+      padding: 4px 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      background: #1a1a2e;
+      color: #888;
+      transition: all 0.15s;
+    }
+
+    .mode-tab.active {
+      border-color: #e94560;
+      color: #e94560;
+      background: #2a0a15;
+    }
+
+    /* ── Board ───────────────────────────────────────────── */
+    #board {
+      display: flex;
+      flex: 1;
+      gap: 12px;
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    .bucket {
+      flex: 1;
+      min-width: 180px;
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.15s;
+    }
+
+    .bucket.drop-target {
+      border-color: #f5a623;
+      background: #1e2a1a;
+    }
+
+    .bucket-title {
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #a0a0c0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #0f3460;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .bucket-num {
+      color: #e94560;
+      font-size: 0.75rem;
+    }
+
+    .ticket {
+      background: #0f3460;
+      border: 2px solid transparent;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 0.85rem;
+      cursor: default;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .ticket:hover { border-color: #444; }
+
+    .ticket.focused {
+      border-color: #e94560;
+      background: #1a4a7a;
+      box-shadow: 0 0 8px rgba(233, 69, 96, 0.4);
+    }
+
+    .ticket.moving {
+      border-color: #f5a623;
+      background: #2a2010;
+      box-shadow: 0 0 12px rgba(245, 166, 35, 0.5);
+      animation: pulse 0.8s infinite alternate;
+    }
+
+    .ticket.preview {
+      opacity: 0.5;
+      border-color: #f5a623;
+      border-style: dashed;
+    }
+
+    @keyframes pulse {
+      from { box-shadow: 0 0 6px rgba(245, 166, 35, 0.4); }
+      to   { box-shadow: 0 0 16px rgba(245, 166, 35, 0.8); }
+    }
+
+    .ticket-title { font-weight: bold; margin-bottom: 2px; }
+    .ticket-sub   { font-size: 0.72rem; color: #888; }
+
+    /* ── Footer ──────────────────────────────────────────── */
+    #footer {
+      padding: 8px 20px;
+      background: #16213e;
+      border-top: 1px solid #0f3460;
+      font-size: 0.78rem;
+      color: #888;
+      min-height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #footer .hint  { color: #a0c0a0; }
+    #footer .label { color: #e94560; margin-right: 4px; }
+
+    .key {
+      display: inline-block;
+      background: #0f3460;
+      border: 1px solid #4a6a90;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 0.72rem;
+      color: #c0d8f0;
+    }
+
+    /* ── Move-Num Prompt ─────────────────────────────────── */
+    #move-prompt {
+      display: none;
+      position: fixed;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #16213e;
+      border: 2px solid #e94560;
+      border-radius: 8px;
+      padding: 14px 24px;
+      font-size: 0.9rem;
+      z-index: 100;
+      text-align: center;
+    }
+
+    #move-prompt.visible { display: block; }
+    #move-prompt .targets { margin-top: 8px; display: flex; gap: 12px; justify-content: center; }
+    #move-prompt .t-btn {
+      padding: 6px 14px;
+      border: 1px solid #4a6a90;
+      border-radius: 4px;
+      background: #0f3460;
+      cursor: pointer;
+    }
+    #move-prompt .t-btn:hover,
+    #move-prompt .t-btn.highlighted { border-color: #e94560; color: #e94560; }
+
+    /* ── Log ─────────────────────────────────────────────── */
+    #log {
+      padding: 4px 20px 6px;
+      background: #111;
+      font-size: 0.72rem;
+      color: #555;
+      border-top: 1px solid #1a1a2e;
+    }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1>⌨ Kanban Demo</h1>
+  <div class="mode-tabs">
+    <div class="mode-tab active" data-mode="C" title="Shift+H/L direct move">C — Shift+H/L</div>
+    <div class="mode-tab"       data-mode="A" title="m + number">A — m+Num</div>
+    <div class="mode-tab"       data-mode="B" title="m then h/l + Enter">B — m+h/l</div>
+    <div class="mode-tab"       data-mode="CA" title="Combined C+A">C+A — Combined</div>
+  </div>
+</div>
+
+<div id="board"></div>
+
+<div id="move-prompt">
+  <div>Move to bucket:</div>
+  <div class="targets" id="prompt-targets"></div>
+</div>
+
+<div id="footer"></div>
+<div id="log">Last action: —</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+const buckets = [
+  { id: 'backlog', label: 'Backlog',     tickets: [] },
+  { id: 'todo',    label: 'Todo',        tickets: [] },
+  { id: 'doing',   label: 'Doing',       tickets: [] },
+  { id: 'done',    label: 'Done',        tickets: [] },
+];
+
+const tickets = [
+  { id: 't1', title: '#1 — Auth Flow',    sub: 'implement login page',   bucket: 'todo'  },
+  { id: 't2', title: '#2 — API Client',   sub: 'setup fetch wrapper',    bucket: 'todo'  },
+  { id: 't3', title: '#3 — Unit Tests',   sub: 'jest config + fixtures',  bucket: 'doing' },
+  { id: 't4', title: '#4 — CI Pipeline',  sub: 'github actions yaml',    bucket: 'backlog'},
+];
+
+// assign tickets to buckets
+tickets.forEach(t => {
+  const b = buckets.find(b => b.id === t.bucket);
+  if (b) b.tickets.push(t);
+});
+
+let mode         = 'C';    // active mode
+let focusedId    = 't1';   // focused ticket id
+let moveState    = null;   // { ticketId, previewBucketIdx } | null  (mode B)
+let awaitingNum  = false;  // mode A: waiting for digit
+
+// ── Helpers ────────────────────────────────────────────────
+function bucketIdxOf(ticketId) {
+  return buckets.findIndex(b => b.tickets.some(t => t.id === ticketId));
+}
+
+function getTicket(id) {
+  return tickets.find(t => t.id === id);
+}
+
+function ticketsInBucket(bIdx) {
+  return buckets[bIdx].tickets;
+}
+
+function moveTicket(ticketId, targetBucketIdx) {
+  const t        = getTicket(ticketId);
+  const srcIdx   = bucketIdxOf(ticketId);
+  const src      = buckets[srcIdx];
+  const tgt      = buckets[targetBucketIdx];
+  if (srcIdx === targetBucketIdx) return;
+  src.tickets = src.tickets.filter(x => x.id !== ticketId);
+  tgt.tickets.push(t);
+  t.bucket = tgt.id;
+  log(`Moved "${t.title}" → ${tgt.label}`);
+}
+
+/** Move focus within / across buckets */
+function moveFocus(dir /* 'up'|'down'|'left'|'right' */) {
+  const bIdx = bucketIdxOf(focusedId);
+  const col  = buckets[bIdx].tickets;
+  const tIdx = col.findIndex(t => t.id === focusedId);
+
+  if (dir === 'up') {
+    if (tIdx > 0) focusedId = col[tIdx - 1].id;
+  } else if (dir === 'down') {
+    if (tIdx < col.length - 1) focusedId = col[tIdx + 1].id;
+  } else if (dir === 'left') {
+    for (let b = bIdx - 1; b >= 0; b--) {
+      if (buckets[b].tickets.length > 0) {
+        focusedId = buckets[b].tickets[0].id;
+        break;
+      }
+    }
+  } else if (dir === 'right') {
+    for (let b = bIdx + 1; b < buckets.length; b++) {
+      if (buckets[b].tickets.length > 0) {
+        focusedId = buckets[b].tickets[0].id;
+        break;
+      }
+    }
+  }
+}
+
+function log(msg) {
+  document.getElementById('log').textContent = 'Last action: ' + msg;
+}
+
+// ── Render ─────────────────────────────────────────────────
+function render() {
+  renderBoard();
+  renderFooter();
+  renderModetabs();
+  renderMovePrompt();
+}
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  buckets.forEach((bucket, bIdx) => {
+    const col = document.createElement('div');
+    col.className = 'bucket';
+
+    // preview drop-target highlight (mode B)
+    if (moveState && moveState.previewBucketIdx === bIdx) {
+      col.classList.add('drop-target');
+    }
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'bucket-title';
+    titleRow.innerHTML =
+      `<span>${bucket.label}</span><span class="bucket-num">[${bIdx + 1}]</span>`;
+    col.appendChild(titleRow);
+
+    bucket.tickets.forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'ticket';
+
+      if (t.id === focusedId)                                         card.classList.add('focused');
+      if (moveState && moveState.ticketId === t.id)                   card.classList.add('moving');
+      if (moveState && moveState.previewBucketIdx === bIdx &&
+          moveState.ticketId !== t.id)                                card.classList.add('preview');
+
+      card.innerHTML =
+        `<div class="ticket-title">${t.title}</div>` +
+        `<div class="ticket-sub">${t.sub}</div>`;
+
+      card.addEventListener('click', () => { focusedId = t.id; render(); });
+      col.appendChild(card);
+    });
+
+    board.appendChild(col);
+  });
+}
+
+function renderModePromptTargets() {
+  const container = document.getElementById('prompt-targets');
+  container.innerHTML = '';
+  buckets.forEach((b, i) => {
+    const btn = document.createElement('div');
+    btn.className = 't-btn';
+    btn.textContent = `[${i + 1}] ${b.label}`;
+    if (bucketIdxOf(focusedId) === i) btn.style.opacity = '0.4';
+    btn.addEventListener('click', () => {
+      moveTicket(focusedId, i);
+      awaitingNum = false;
+      document.getElementById('move-prompt').classList.remove('visible');
+      render();
+    });
+    container.appendChild(btn);
+  });
+}
+
+function renderMovePrompt() {
+  const el = document.getElementById('move-prompt');
+  if (awaitingNum) {
+    renderModePromptTargets();
+    el.classList.add('visible');
+  } else {
+    el.classList.remove('visible');
+  }
+}
+
+function renderModetabs() {
+  document.querySelectorAll('.mode-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.mode === mode);
+  });
+}
+
+function renderFooter() {
+  const footer = document.getElementById('footer');
+  const t = getTicket(focusedId);
+  const bIdx = bucketIdxOf(focusedId);
+  const bLabel = buckets[bIdx].label;
+
+  let hint = '';
+
+  if (moveState) {
+    // mode B: moving
+    const pb = buckets[moveState.previewBucketIdx].label;
+    hint = `<span class="hint">MOVE MODE — preview: <b>${pb}</b></span>  ` +
+           `<span class="key">h</span> left  ` +
+           `<span class="key">l</span> right  ` +
+           `<span class="key">Enter</span> commit  ` +
+           `<span class="key">Esc</span> cancel`;
+  } else if (awaitingNum) {
+    const nums = buckets.map((b, i) => `<span class="key">${i+1}</span>=${b.label}`).join('  ');
+    hint = `<span class="label">Move to:</span>${nums}  <span class="key">Esc</span> cancel`;
+  } else {
+    const focused = `<span class="hint">Focus: <b>${t ? t.title : '—'}</b> in <b>${bLabel}</b></span>`;
+
+    if (mode === 'C') {
+      hint = `${focused}  |  ` +
+             `<span class="key">Shift+H</span> move ← ` +
+             `<span class="key">Shift+L</span> move → ` +
+             `<span class="key">h/j/k/l</span> navigate`;
+    } else if (mode === 'A') {
+      hint = `${focused}  |  ` +
+             `<span class="key">m</span> move  ` +
+             `<span class="key">h/j/k/l</span> navigate`;
+    } else if (mode === 'B') {
+      hint = `${focused}  |  ` +
+             `<span class="key">m</span> enter move-mode  ` +
+             `<span class="key">h/j/k/l</span> navigate`;
+    } else if (mode === 'CA') {
+      hint = `${focused}  |  ` +
+             `<span class="key">Shift+H/L</span> move ±1  ` +
+             `<span class="key">m</span> move to num  ` +
+             `<span class="key">h/j/k/l</span> navigate`;
+    }
+  }
+
+  footer.innerHTML = hint;
+}
+
+// ── Keyboard Handler ───────────────────────────────────────
+document.addEventListener('keydown', e => {
+  // Tab: cycle modes
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const order = ['C', 'A', 'B', 'CA'];
+    const next  = order[(order.indexOf(mode) + 1) % order.length];
+    setMode(next);
+    return;
+  }
+
+  // Escape: cancel any pending action
+  if (e.key === 'Escape') {
+    awaitingNum = false;
+    moveState   = null;
+    render();
+    return;
+  }
+
+  // ── Mode B: move-mode active ─────────────────────────────
+  if (moveState) {
+    if (e.key === 'h') {
+      e.preventDefault();
+      moveState.previewBucketIdx = Math.max(0, moveState.previewBucketIdx - 1);
+      render();
+    } else if (e.key === 'l') {
+      e.preventDefault();
+      moveState.previewBucketIdx = Math.min(buckets.length - 1, moveState.previewBucketIdx + 1);
+      render();
+    } else if (e.key === 'Enter') {
+      moveTicket(moveState.ticketId, moveState.previewBucketIdx);
+      moveState = null;
+      render();
+    }
+    return;
+  }
+
+  // ── Mode A / CA: awaiting digit ──────────────────────────
+  if (awaitingNum) {
+    const digit = parseInt(e.key, 10);
+    if (!isNaN(digit) && digit >= 1 && digit <= buckets.length) {
+      moveTicket(focusedId, digit - 1);
+    }
+    awaitingNum = false;
+    render();
+    return;
+  }
+
+  // ── Navigation (all modes) ───────────────────────────────
+  const nav = { h: 'left', l: 'right', j: 'down', k: 'up' };
+  if (!e.shiftKey && nav[e.key]) {
+    e.preventDefault();
+    moveFocus(nav[e.key]);
+    render();
+    return;
+  }
+
+  // ── Mode-specific actions ────────────────────────────────
+
+  // Mode C: Shift+H / Shift+L
+  if ((mode === 'C' || mode === 'CA') && e.shiftKey) {
+    if (e.key === 'H') {
+      e.preventDefault();
+      const bIdx = bucketIdxOf(focusedId);
+      if (bIdx > 0) moveTicket(focusedId, bIdx - 1);
+      render();
+      return;
+    }
+    if (e.key === 'L') {
+      e.preventDefault();
+      const bIdx = bucketIdxOf(focusedId);
+      if (bIdx < buckets.length - 1) moveTicket(focusedId, bIdx + 1);
+      render();
+      return;
+    }
+  }
+
+  // Mode A / CA: m triggers number prompt
+  if ((mode === 'A' || mode === 'CA') && e.key === 'm') {
+    e.preventDefault();
+    awaitingNum = true;
+    render();
+    return;
+  }
+
+  // Mode B: m triggers move-mode with preview
+  if (mode === 'B' && e.key === 'm') {
+    e.preventDefault();
+    const bIdx = bucketIdxOf(focusedId);
+    moveState = { ticketId: focusedId, previewBucketIdx: bIdx };
+    render();
+    return;
+  }
+});
+
+// ── Mode Switch ────────────────────────────────────────────
+function setMode(m) {
+  mode        = m;
+  moveState   = null;
+  awaitingNum = false;
+  log(`Switched to mode ${m}`);
+  render();
+}
+
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => setMode(tab.dataset.mode));
+});
+
+// ── Init ───────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>

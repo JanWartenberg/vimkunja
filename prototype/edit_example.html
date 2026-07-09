@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TUI Task Edit — Mode Tester</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top Bar ─────────────────────────────────────────── */
+    #topbar {
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+      padding: 6px 12px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    #topbar span { color: #888; font-size: 12px; }
+    .mode-btn {
+      background: #0f3460;
+      border: 1px solid #444;
+      color: #aaa;
+      padding: 3px 10px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 12px;
+      border-radius: 3px;
+    }
+    .mode-btn.active {
+      background: #e94560;
+      border-color: #e94560;
+      color: #fff;
+    }
+
+    /* ── Status Bar ──────────────────────────────────────── */
+    #statusbar {
+      background: #0f3460;
+      padding: 3px 12px;
+      font-size: 12px;
+      color: #aaa;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+    }
+    #statusbar .vim-mode {
+      color: #e94560;
+      font-weight: bold;
+    }
+
+    /* ── Main Layout ─────────────────────────────────────── */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Task List Pane ──────────────────────────────────── */
+    #list-pane {
+      width: 55%;
+      border-right: 1px solid #0f3460;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #list-header {
+      background: #16213e;
+      padding: 4px 12px;
+      border-bottom: 1px solid #0f3460;
+      color: #888;
+      font-size: 12px;
+    }
+    #task-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+
+    .task-row {
+      padding: 6px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      border-left: 3px solid transparent;
+      line-height: 1.4;
+    }
+    .task-row:hover { background: #16213e; }
+    .task-row.focused {
+      background: #1a2a4a;
+      border-left-color: #e94560;
+    }
+    .task-row.focused .task-title { color: #fff; }
+
+    .task-checkbox { color: #555; flex-shrink: 0; margin-top: 1px; }
+    .task-checkbox.done { color: #4caf50; }
+    .task-body { flex: 1; min-width: 0; }
+    .task-title { color: #ccc; }
+    .task-title.done { text-decoration: line-through; color: #555; }
+    .task-meta { font-size: 11px; color: #555; margin-top: 2px; }
+    .priority-high { color: #e94560; }
+    .priority-med  { color: #f5a623; }
+    .priority-low  { color: #4caf50; }
+
+    /* Inline edit input */
+    .task-row .inline-input {
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid #e94560;
+      color: #fff;
+      font-family: monospace;
+      font-size: 14px;
+      width: 100%;
+      outline: none;
+      padding: 0;
+    }
+
+    /* ── Detail Pane ─────────────────────────────────────── */
+    #detail-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #detail-header {
+      background: #16213e;
+      padding: 4px 12px;
+      border-bottom: 1px solid #0f3460;
+      color: #888;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+    #detail-content {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+    }
+
+    .detail-field { margin-bottom: 14px; }
+    .detail-label {
+      font-size: 11px;
+      color: #555;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .detail-value {
+      color: #ccc;
+      padding: 4px 6px;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      min-height: 24px;
+      line-height: 1.5;
+    }
+    .detail-value.editable {
+      border-color: #0f3460;
+      cursor: text;
+    }
+    .detail-value.focused-field {
+      border-color: #e94560;
+      background: #1a2a4a;
+    }
+
+    /* Actual inputs in detail pane */
+    .detail-input {
+      background: #1a2a4a;
+      border: 1px solid #e94560;
+      color: #fff;
+      font-family: monospace;
+      font-size: 14px;
+      padding: 4px 6px;
+      width: 100%;
+      outline: none;
+      border-radius: 3px;
+    }
+    textarea.detail-input {
+      resize: vertical;
+      min-height: 80px;
+    }
+    select.detail-input {
+      cursor: pointer;
+    }
+
+    .detail-hint {
+      font-size: 11px;
+      color: #444;
+      margin-top: 16px;
+      line-height: 1.8;
+    }
+
+    /* ── Empty Detail ────────────────────────────────────── */
+    #detail-empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #333;
+      font-size: 13px;
+    }
+
+    /* ── Mode Description ────────────────────────────────── */
+    #mode-desc {
+      background: #16213e;
+      border-top: 1px solid #0f3460;
+      padding: 6px 12px;
+      font-size: 11px;
+      color: #666;
+      flex-shrink: 0;
+    }
+    #mode-desc strong { color: #e94560; }
+
+    /* ── Notification Toast ──────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #e94560;
+      color: white;
+      padding: 6px 16px;
+      border-radius: 4px;
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+<div id="topbar">
+  <span>Mode:</span>
+  <button class="mode-btn active" data-mode="A">A — Detail Pane</button>
+  <button class="mode-btn" data-mode="B">B — Inline</button>
+  <button class="mode-btn" data-mode="C">C — Hybrid</button>
+  <button class="mode-btn" data-mode="D">D — Detail (1-key)</button>
+  <span style="margin-left:auto">Click task or use j/k to navigate</span>
+</div>
+
+<div id="main">
+  <div id="list-pane">
+    <div id="list-header">Tasks — NORMAL</div>
+    <div id="task-list"></div>
+  </div>
+  <div id="detail-pane">
+    <div id="detail-header">
+      <span>Detail</span>
+      <span id="detail-mode-label"></span>
+    </div>
+    <div id="detail-content">
+      <div id="detail-empty">Press Enter on a task to open detail</div>
+    </div>
+  </div>
+</div>
+
+<div id="statusbar">
+  <span id="status-left">-- NORMAL --</span>
+  <span id="status-right">j/k navigate · Enter open · i edit · Esc back · :q close</span>
+</div>
+
+<div id="mode-desc"></div>
+<div id="toast"></div>
+
+<script>
+  // ── Data ─────────────────────────────────────────────────
+  const tasks = [
+    { id: 1, title: "Set up CI pipeline",       desc: "Configure GitHub Actions for build and test.", priority: "high", due: "2026-07-15", done: false },
+    { id: 2, title: "Write unit tests for auth", desc: "Cover login, logout, token refresh.",           priority: "high", due: "2026-07-12", done: false },
+    { id: 3, title: "Refactor database layer",   desc: "Extract repository pattern.",                   priority: "med",  due: "2026-07-20", done: false },
+    { id: 4, title: "Update README",             desc: "Add setup instructions and screenshots.",       priority: "low",  due: "2026-07-25", done: false },
+    { id: 5, title: "Code review PR #42",        desc: "Review authentication changes.",                priority: "med",  due: "2026-07-10", done: true  },
+    { id: 6, title: "Fix login redirect bug",    desc: "User gets redirected to /404 after OAuth.",    priority: "high", due: "2026-07-09", done: false },
+    { id: 7, title: "Bump lodash dependency",    desc: "Security advisory CVE-2026-xxxx.",              priority: "med",  due: "2026-07-11", done: false },
+  ];
+
+  const MODE_DESCRIPTIONS = {
+    A: '<strong>A</strong>: Enter → opens Detail Pane (NORMAL). Then <strong>i</strong> → INSERT mode to edit fields. <strong>Esc</strong> → back to NORMAL. <strong>:q</strong> → close pane.',
+    B: '<strong>B</strong>: <strong>i</strong> on focused task → inline title edit in list. <strong>Enter</strong> commits. <strong>d</strong> → edit due date. <strong>p</strong> → cycle priority. No detail pane for description.',
+    C: '<strong>C</strong>: <strong>i</strong> → inline title edit (fast). <strong>Enter</strong> → Detail Pane for all fields. Hybrid of A+B.',
+    D: '<strong>D</strong>: <strong>i</strong> on focused task → opens Detail Pane AND enters INSERT mode in one keystroke. Faster than A.',
+  };
+
+  // ── State ─────────────────────────────────────────────────
+  let currentMode = 'A';
+  let focusedIdx = 0;
+  let detailOpen = false;
+  let vimMode = 'NORMAL'; // NORMAL | INSERT | COMMAND
+  let editingInline = false;
+  let editingDetailField = null; // null or field name
+  let commandBuffer = '';
+  let taskData = tasks.map(t => ({ ...t })); // mutable copy
+
+  // ── DOM refs ──────────────────────────────────────────────
+  const listEl       = document.getElementById('task-list');
+  const listHeader   = document.getElementById('list-header');
+  const detailContent= document.getElementById('detail-content');
+  const detailModeLabel = document.getElementById('detail-mode-label');
+  const statusLeft   = document.getElementById('status-left');
+  const statusRight  = document.getElementById('status-right');
+  const modeDesc     = document.getElementById('mode-desc');
+  const toast        = document.getElementById('toast');
+
+  // ── Render task list ──────────────────────────────────────
+  function renderList() {
+    listEl.innerHTML = '';
+    taskData.forEach((t, idx) => {
+      const row = document.createElement('div');
+      row.className = 'task-row' + (idx === focusedIdx ? ' focused' : '');
+      row.dataset.idx = idx;
+
+      const check = document.createElement('span');
+      check.className = 'task-checkbox' + (t.done ? ' done' : '');
+      check.textContent = t.done ? '✓' : '○';
+
+      const body = document.createElement('div');
+      body.className = 'task-body';
+
+      if (editingInline && idx === focusedIdx) {
+        // Inline edit input
+        const inp = document.createElement('input');
+        inp.className = 'inline-input';
+        inp.value = t.title;
+        inp.id = 'inline-input';
+        body.appendChild(inp);
+        row.appendChild(check);
+        row.appendChild(body);
+        listEl.appendChild(row);
+        inp.focus();
+        inp.select();
+        return;
+      }
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'task-title' + (t.done ? ' done' : '');
+      titleEl.textContent = t.title;
+
+      const metaEl = document.createElement('div');
+      metaEl.className = 'task-meta';
+      const pClass = t.priority === 'high' ? 'priority-high' : t.priority === 'med' ? 'priority-med' : 'priority-low';
+      metaEl.innerHTML = `<span class="${pClass}">[${t.priority.toUpperCase()}]</span>  📅 ${t.due}`;
+
+      body.appendChild(titleEl);
+      body.appendChild(metaEl);
+      row.appendChild(check);
+      row.appendChild(body);
+
+      row.addEventListener('click', () => {
+        focusedIdx = idx;
+        renderList();
+        if (!detailOpen) openDetail();
+      });
+
+      listEl.appendChild(row);
+    });
+
+    // Scroll focused into view
+    const focusedEl = listEl.querySelector('.focused');
+    if (focusedEl) focusedEl.scrollIntoView({ block: 'nearest' });
+
+    listHeader.textContent = `Tasks — ${vimMode}${commandBuffer}`;
+  }
+
+  // ── Render detail pane ────────────────────────────────────
+  function renderDetail() {
+    if (!detailOpen) {
+      detailContent.innerHTML = '<div id="detail-empty">Press Enter on a task to open detail</div>';
+      detailModeLabel.textContent = '';
+      return;
+    }
+
+    const t = taskData[focusedIdx];
+    const inInsert = vimMode === 'INSERT';
+
+    detailModeLabel.textContent = inInsert ? 'INSERT' : 'NORMAL';
+    detailModeLabel.style.color = inInsert ? '#e94560' : '#888';
+
+    detailContent.innerHTML = '';
+
+    const fields = [
+      { key: 'title',    label: 'Title',       type: 'text'     },
+      { key: 'desc',     label: 'Description', type: 'textarea' },
+      { key: 'priority', label: 'Priority',    type: 'select', options: ['high','med','low'] },
+      { key: 'due',      label: 'Due Date',    type: 'date'     },
+      { key: 'done',     label: 'Done',        type: 'checkbox' },
+    ];
+
+    fields.forEach(f => {
+      const wrap = document.createElement('div');
+      wrap.className = 'detail-field';
+
+      const label = document.createElement('div');
+      label.className = 'detail-label';
+      label.textContent = f.label;
+
+      wrap.appendChild(label);
+
+      if (inInsert) {
+        // Render as actual inputs
+        let inp;
+        if (f.type === 'textarea') {
+          inp = document.createElement('textarea');
+          inp.className = 'detail-input';
+          inp.value = t[f.key];
+        } else if (f.type === 'select') {
+          inp = document.createElement('select');
+          inp.className = 'detail-input';
+          f.options.forEach(o => {
+            const opt = document.createElement('option');
+            opt.value = o; opt.textContent = o.toUpperCase();
+            if (o === t[f.key]) opt.selected = true;
+            inp.appendChild(opt);
+          });
+        } else if (f.type === 'checkbox') {
+          const cbWrap = document.createElement('div');
+          cbWrap.style.display = 'flex'; cbWrap.style.alignItems = 'center'; cbWrap.style.gap = '8px';
+          inp = document.createElement('input');
+          inp.type = 'checkbox';
+          inp.checked = t[f.key];
+          inp.style.width = 'auto';
+          inp.style.accentColor = '#e94560';
+          const cbLabel = document.createElement('span');
+          cbLabel.textContent = t[f.key] ? 'Completed' : 'Open';
+          cbLabel.style.color = '#ccc';
+          inp.addEventListener('change', () => {
+            taskData[focusedIdx][f.key] = inp.checked;
+            cbLabel.textContent = inp.checked ? 'Completed' : 'Open';
+          });
+          cbWrap.appendChild(inp);
+          cbWrap.appendChild(cbLabel);
+          wrap.appendChild(cbWrap);
+          detailContent.appendChild(wrap);
+          return;
+        } else {
+          inp = document.createElement('input');
+          inp.type = f.type;
+          inp.className = 'detail-input';
+          inp.value = t[f.key];
+        }
+
+        if (f.key === 'title') inp.id = 'detail-title-input';
+        inp.addEventListener('input', () => { taskData[focusedIdx][f.key] = inp.value; });
+        inp.addEventListener('change', () => { taskData[focusedIdx][f.key] = inp.value; });
+        wrap.appendChild(inp);
+      } else {
+        // Read-only view
+        const val = document.createElement('div');
+        val.className = 'detail-value';
+        if (f.key === 'done') {
+          val.textContent = t[f.key] ? '✓ Completed' : '○ Open';
+          val.style.color = t[f.key] ? '#4caf50' : '#ccc';
+        } else if (f.key === 'priority') {
+          val.textContent = t[f.key].toUpperCase();
+          val.className += ' ' + (t.priority === 'high' ? 'priority-high' : t.priority === 'med' ? 'priority-med' : 'priority-low');
+        } else {
+          val.textContent = t[f.key] || '—';
+        }
+        wrap.appendChild(val);
+      }
+
+      detailContent.appendChild(wrap);
+    });
+
+    // Hints
+    const hint = document.createElement('div');
+    hint.className = 'detail-hint';
+    if (inInsert) {
+      hint.innerHTML = 'Esc → back to NORMAL &nbsp;|&nbsp; changes auto-saved';
+    } else {
+      hint.innerHTML = 'i → INSERT mode &nbsp;|&nbsp; Esc/:q → close pane';
+    }
+    detailContent.appendChild(hint);
+
+    // Focus first input if entering insert
+    if (inInsert) {
+      setTimeout(() => {
+        const first = detailContent.querySelector('input, textarea, select');
+        if (first) first.focus();
+      }, 0);
+    }
+  }
+
+  // ── Open / close detail ───────────────────────────────────
+  function openDetail(andInsert = false) {
+    detailOpen = true;
+    if (andInsert) vimMode = 'INSERT';
+    renderDetail();
+    renderList();
+    updateStatus();
+  }
+
+  function closeDetail() {
+    detailOpen = false;
+    editingDetailField = null;
+    if (vimMode === 'INSERT') vimMode = 'NORMAL';
+    renderDetail();
+    renderList();
+    updateStatus();
+  }
+
+  // ── Inline edit helpers ───────────────────────────────────
+  function startInlineEdit() {
+    editingInline = true;
+    vimMode = 'INSERT';
+    renderList();
+    updateStatus();
+  }
+
+  function commitInlineEdit() {
+    const inp = document.getElementById('inline-input');
+    if (inp) taskData[focusedIdx].title = inp.value;
+    editingInline = false;
+    vimMode = 'NORMAL';
+    renderList();
+    renderDetail();
+    updateStatus();
+    showToast('Title saved');
+  }
+
+  function cancelInlineEdit() {
+    editingInline = false;
+    vimMode = 'NORMAL';
+    renderList();
+    updateStatus();
+  }
+
+  // ── Due-date prompt (mode B quick keys) ──────────────────
+  function promptDueDate() {
+    const current = taskData[focusedIdx].due;
+    const val = window.prompt(`Due date for "${taskData[focusedIdx].title}" (YYYY-MM-DD):`, current);
+    if (val !== null && val.trim()) {
+      taskData[focusedIdx].due = val.trim();
+      renderList();
+      showToast('Due date updated');
+    }
+  }
+
+  function cyclePriority() {
+    const cycle = { high: 'med', med: 'low', low: 'high' };
+    taskData[focusedIdx].priority = cycle[taskData[focusedIdx].priority];
+    renderList();
+    showToast(`Priority → ${taskData[focusedIdx].priority.toUpperCase()}`);
+  }
+
+  // ── Status bar ────────────────────────────────────────────
+  function updateStatus() {
+    const modeLabel = vimMode === 'INSERT' ? '-- INSERT --' : vimMode === 'COMMAND' ? `:${commandBuffer}` : '-- NORMAL --';
+    statusLeft.textContent = modeLabel;
+
+    let hints = '';
+    if (editingInline) {
+      hints = 'Enter → commit · Esc → cancel';
+    } else if (vimMode === 'INSERT' && detailOpen) {
+      hints = 'Tab/click between fields · Esc → NORMAL';
+    } else if (detailOpen) {
+      hints = 'i → INSERT · Esc/:q → close';
+    } else {
+      if (currentMode === 'A') hints = 'j/k navigate · Enter → detail · i (in detail) → edit';
+      if (currentMode === 'B') hints = 'j/k navigate · i → inline edit · d → due · p → priority';
+      if (currentMode === 'C') hints = 'j/k navigate · i → inline title · Enter → full detail';
+      if (currentMode === 'D') hints = 'j/k navigate · i → open detail+edit · Enter → detail (read)';
+    }
+    statusRight.textContent = hints;
+  }
+
+  // ── Toast ─────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+  }
+
+  // ── Keyboard handler ──────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    // Let browser handle input elements — but intercept Escape always
+    const tag = document.activeElement.tagName;
+    const inInput = (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT');
+
+    // ── Escape: always intercept ─────────────────────────
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      commandBuffer = '';
+      if (editingInline) { cancelInlineEdit(); return; }
+      if (vimMode === 'INSERT') {
+        vimMode = 'NORMAL';
+        renderDetail();
+        renderList();
+        updateStatus();
+        // Re-focus body so keyboard nav works
+        document.activeElement.blur();
+        return;
+      }
+      if (vimMode === 'COMMAND') { vimMode = 'NORMAL'; updateStatus(); return; }
+      if (detailOpen) { closeDetail(); return; }
+      return;
+    }
+
+    // ── If in an actual input (INSERT mode, detail pane) ──
+    if (inInput && vimMode === 'INSERT') {
+      // Allow normal typing; only intercept Esc (handled above)
+      return;
+    }
+
+    // ── Inline edit: Enter commits ─────────────────────────
+    if (editingInline) {
+      if (e.key === 'Enter') { e.preventDefault(); commitInlineEdit(); }
+      return;
+    }
+
+    // ── NORMAL mode keys ──────────────────────────────────
+    if (vimMode === 'NORMAL' || vimMode === 'COMMAND') {
+      e.preventDefault();
+
+      // Command mode buffer
+      if (vimMode === 'COMMAND') {
+        if (e.key === 'Enter') {
+          if (commandBuffer === 'q' || commandBuffer === 'q!') closeDetail();
+          commandBuffer = '';
+          vimMode = 'NORMAL';
+          updateStatus();
+        } else if (e.key === 'Backspace') {
+          commandBuffer = commandBuffer.slice(0, -1);
+          if (!commandBuffer) vimMode = 'NORMAL';
+          updateStatus();
+        } else {
+          commandBuffer += e.key;
+          updateStatus();
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case ':':
+          if (detailOpen || currentMode === 'A') {
+            vimMode = 'COMMAND';
+            commandBuffer = '';
+            updateStatus();
+          }
+          break;
+
+        case 'j': // move down
+          focusedIdx = Math.min(focusedIdx + 1, taskData.length - 1);
+          if (detailOpen) renderDetail();
+          renderList();
+          break;
+
+        case 'k': // move up
+          focusedIdx = Math.max(focusedIdx - 1, 0);
+          if (detailOpen) renderDetail();
+          renderList();
+          break;
+
+        case 'g': // top
+          focusedIdx = 0;
+          if (detailOpen) renderDetail();
+          renderList();
+          break;
+
+        case 'G': // bottom
+          focusedIdx = taskData.length - 1;
+          if (detailOpen) renderDetail();
+          renderList();
+          break;
+
+        case 'Enter':
+          // Mode A, C, D: open detail
+          if (currentMode === 'A' || currentMode === 'C') {
+            openDetail(false);
+          } else if (currentMode === 'D') {
+            openDetail(false); // Enter = open in NORMAL (i opens in INSERT)
+          } else if (currentMode === 'B') {
+            // B has no detail for most things
+            showToast('Mode B: use i/d/p for editing');
+          }
+          break;
+
+        case 'i':
+          if (currentMode === 'A') {
+            if (detailOpen) {
+              vimMode = 'INSERT';
+              renderDetail();
+              updateStatus();
+            } else {
+              showToast('Open detail first (Enter)');
+            }
+          } else if (currentMode === 'B') {
+            startInlineEdit();
+          } else if (currentMode === 'C') {
+            startInlineEdit();
+          } else if (currentMode === 'D') {
+            openDetail(true); // opens AND enters INSERT
+          }
+          break;
+
+        // Mode B: quick field edits
+        case 'd':
+          if (currentMode === 'B') promptDueDate();
+          break;
+        case 'p':
+          if (currentMode === 'B') cyclePriority();
+          break;
+
+        // Toggle done with space
+        case ' ':
+          taskData[focusedIdx].done = !taskData[focusedIdx].done;
+          renderList();
+          if (detailOpen) renderDetail();
+          showToast(taskData[focusedIdx].done ? '✓ Done' : '○ Reopened');
+          break;
+      }
+    }
+  });
+
+  // ── Mode switcher buttons ─────────────────────────────────
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentMode = btn.dataset.mode;
+      // Reset state
+      detailOpen = false;
+      vimMode = 'NORMAL';
+      editingInline = false;
+      commandBuffer = '';
+
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      modeDesc.innerHTML = MODE_DESCRIPTIONS[currentMode];
+      renderList();
+      renderDetail();
+      updateStatus();
+    });
+  });
+
+  // ── Init ──────────────────────────────────────────────────
+  modeDesc.innerHTML = MODE_DESCRIPTIONS['A'];
+  renderList();
+  renderDetail();
+  updateStatus();
+</script>
+</body>
+</html>

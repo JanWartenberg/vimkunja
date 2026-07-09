@@ -52,3 +52,7 @@ If `--db` does not exist, the program falls back to REST mode (requires `--serve
 - App starts in Docker.
 - Earlier SQL error (`no such column: deleted_at`) was encountered; the SQLiteStore was updated to avoid using that column.
 - After updates, projects pane should show titles instead of only numeric identifiers when `identifier` is missing.
+
+## TODO / Backlog (not yet implemented — only noted for later)
+- Do another `/grilling` session to stress-test the plan/design before larger features.
+- Vim-style command-line: pressing `:` opens a footer input line with autocomplete. Start with `:h` and `:help` as synonyms. Later: further Ex-commands (`:q`, `:refresh`, `:goto <project>`, …). Needs a command dispatcher, a footer input mode, and an autocomplete source (static command list + dynamic objects like project names).
