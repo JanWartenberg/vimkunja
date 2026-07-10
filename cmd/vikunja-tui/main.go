@@ -12,32 +12,18 @@ import (
 )
 
 func main() {
-	serverFlag := flag.String("server", "", "Vikunja base URL, e.g. https://vikunja.example.com")
-	tokenFlag := flag.String("token", "", "Vikunja API token (sent as Authorization: Bearer <token>)")
 	dbPathFlag := flag.String("db", "internal/db/vikunja.db", "Path to Vikunja SQLite database file")
 	projectIDFlag := flag.Int64("project-id", 0, "Optional: start with this project")
 	viewIDFlag := flag.Int64("view-id", 0, "Optional: start with this view")
 	perPageFlag := flag.Int("per-page", 100, "Tasks per page for list view")
 	flag.Parse()
 
-	// MVP default: use the local SQLite file.
-	var store vikunja.Store
-	if st, err := os.Stat(*dbPathFlag); err == nil && !st.IsDir() {
-		ss, err := vikunja.NewSQLiteStore(*dbPathFlag)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Failed to open sqlite db:", err)
-			os.Exit(1)
-		}
-		store = ss
-	} else {
-		server := firstNonEmpty(*serverFlag, os.Getenv("VIKUNJA_SERVER"))
-		token := firstNonEmpty(*tokenFlag, os.Getenv("VIKUNJA_TOKEN"))
-
-		if server == "" || token == "" {
-			fmt.Fprintln(os.Stderr, "Missing credentials. Provide --db (preferred) or --server/--token (REST mode).")
-			os.Exit(2)
-		}
-		store = vikunja.NewClient(server, token)
+	// SQLite-only: always use local database file
+	store, err := vikunja.NewSQLiteStore(*dbPathFlag)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open SQLite database at %s: %v\n", *dbPathFlag, err)
+		fmt.Fprintln(os.Stderr, "Please ensure the database file exists and is accessible.")
+		os.Exit(1)
 	}
 
 	m := tui.NewModel(tui.Config{
@@ -54,12 +40,5 @@ func main() {
 	}
 }
 
-func firstNonEmpty(v, fallback string) string {
-	if v != "" {
-		return v
-	}
-	return fallback
-}
-
-// Ensure go vet / linters don’t complain about time import if we expand later.
+// Ensure go vet / linters don't complain about time import if we expand later.
 var _ = time.Second

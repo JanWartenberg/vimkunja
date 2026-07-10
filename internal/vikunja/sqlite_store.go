@@ -213,8 +213,9 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 }
 
 func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done bool) error {
-	// MVP: best-effort update of 'done' + 'done_at'.
-	// This doesn't implement all side effects the server has (bucket moves etc.).
+	// Update done status, done_at timestamp, and ALWAYS bump 'updated' timestamp.
+	// This ensures server-fidelity: webhooks, sync, and external tools see the change.
+	// Note: Bucket moves (to done_bucket_id) are deferred to Phase 6.2.
 	var doneAt any
 	if done {
 		doneAt = time.Now()
@@ -222,8 +223,9 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 		doneAt = nil
 	}
 
-	q := `UPDATE tasks SET done = ?, done_at = ? WHERE id = ?`
-	if _, err := s.db.ExecContext(ctx, q, boolToInt(done), doneAt, taskID); err != nil {
+	// CRITICAL: Always bump 'updated' timestamp (Decision #2, SPEC_FUNDAMENT.md)
+	q := `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`
+	if _, err := s.db.ExecContext(ctx, q, boolToInt(done), doneAt, time.Now(), taskID); err != nil {
 		return fmt.Errorf("toggle task done: %w", err)
 	}
 	return nil

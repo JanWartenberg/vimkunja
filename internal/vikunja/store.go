@@ -2,8 +2,8 @@ package vikunja
 
 import "context"
 
-// Store abstracts where the data comes from (SQLite file vs REST API).
-// MVP primarily uses the local SQLite file.
+// Store abstracts data access to the Vikunja database.
+// This TUI uses SQLite-only (no REST API).
 //
 // All pagination parameters are 1-based.
 type Store interface {
