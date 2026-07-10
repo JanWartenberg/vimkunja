@@ -1,165 +1,175 @@
-# Vikunja TUI - Implementation Status
+# Vikunja TUI - Status
 
-**Last Updated:** 2026-07-10  
-**Current Commit:** `280202c` - Phase 1 + 6.1 completed
-
----
-
-## ✅ Completed (Option 1: Critical Blockers)
-
-### Phase 1: REST Client Removal ✅
-**Duration:** ~5 min  
-**Commit:** `280202c`
-
-- ✅ Deleted `internal/vikunja/client.go`
-- ✅ Simplified `cmd/vikunja-tui/main.go` to SQLite-only
-- ✅ Updated `Store` interface comments
-- ✅ No compile errors (verified syntax)
-
-**Result:** Codebase is now **SQLite-only**, no REST API complexity.
+**Aktualisiert:** 2026-07-10  
+**Branch:** main (`53efec1`)  
+**Phase:** Fundament (2/10 Kriterien ✅)
 
 ---
 
-### Phase 6.1: Updated Timestamp Fix ✅
-**Duration:** ~10 min  
-**Commit:** `280202c`
+## 🎯 Aktueller Stand
 
-**Problem:** `ToggleTaskDone()` did NOT bump the `updated` timestamp.  
-**Impact:** Server webhooks, sync features would break!
+### ✅ Was funktioniert:
+- Projekte-Liste anzeigen
+- Tasks pro Projekt anzeigen
+- Task-Details (Enter auf Task)
+- Vim-Navigation (hjkl, gg, G, Ctrl+D/U)
+- Pane-Wechsel (Ctrl+W, Ctrl+W h/l/j/k)
+- Task done togglen (`x`)
+- Farbige Priority-Anzeige (rot=urgent, grün=low)
+- SQLite-only (kein REST Client mehr)
+- **`updated` timestamp wird gebumpt** ✅
 
-**Solution:**
-```go
-// OLD (BROKEN):
-q := `UPDATE tasks SET done = ?, done_at = ? WHERE id = ?`
-s.db.ExecContext(ctx, q, boolToInt(done), doneAt, taskID)
-
-// NEW (FIXED):
-q := `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`
-s.db.ExecContext(ctx, q, boolToInt(done), doneAt, time.Now(), taskID)
-```
-
-**Result:** Every task write now bumps `updated` = server-fidelity maintained! ✅
-
----
-
-## 📋 Next Steps (Documented)
-
-### Phase 6.2: Done-Bucket Move (HIGH PRIORITY)
-**Status:** Ready for implementation (see `TODO_PHASE_6.2.md`)  
-**Effort:** ~1-2 hours
-
-**Problem:** Tasks don't move to `done_bucket_id` when toggled done.  
-**Impact:** Kanban boards show tasks in wrong buckets.
-
-**TODO:**
-- Query `done_bucket_id` from `project_views`
-- Update `task_buckets.bucket_id` when `done=1`
-- Write 3 test cases (see TODO_PHASE_6.2.md)
+### ❌ Was fehlt noch:
+- `:q`, `:qa`, `:h` Commands
+- Error-Log System
+- Help-Pane (`?`)
+- Leader-Key (`Space+o` für Pane-Collapse)
+- Done-Bucket Move (Task → done_bucket_id)
+- Auto-Refresh nach Writes
+- Tests (Store + TUI Model)
 
 ---
 
-### Remaining Phases (see NEXT_STEPS.md)
-All documented with code examples and time estimates:
+## 📋 Nächste Schritte
 
-- **Phase 2:** Error Infrastructure (1-2h)
-- **Phase 3:** Command System (`:q`, `:qa`, `:h`) (2-3h)
-- **Phase 4:** Help-Pane (1-2h)
-- **Phase 5:** Leader-Key (`Space+o`) (1-2h)
-- **Phase 6.2:** Done-Bucket Move (1-2h)
-- **Phase 6.3:** Auto-Refresh (30 min)
-- **Phase 7:** Tests (3-4h)
+### Option A: Write-Semantik fertigstellen (Empfohlen)
+**Phase 6.2 - Done-Bucket Move** (1-2h)
+- Tasks beim Toggle in `done_bucket_id` verschieben
+- Verhindert: Kanban-Boards zeigen Tasks im falschen Bucket
+- Siehe: `.archive/TODO_PHASE_6.2.md` für Details
 
-**Total remaining:** ~11-16 hours
-
----
-
-## 🎯 Success Criteria Progress
-
-From SPEC_FUNDAMENT.md:
-
-- ✅ `client.go` deleted, codebase compiles
-- ⏳ `:q`, `:qa`, `:h` commands work (Phase 3)
-- ⏳ `?` opens help-pane (Phase 4)
-- ⏳ `Space+o` collapses projects-pane (Phase 5)
-- ✅ `x` on task bumps `updated` timestamp
-- ⏳ `x` moves task to `done_bucket_id` (Phase 6.2)
-- ⏳ Auto-refresh after successful `x` (Phase 6.3)
-- ⏳ Red footer on write errors (Phase 2)
-- ⏳ All Store tests pass (Phase 7)
-- ⏳ All TUI model tests pass (Phase 7)
-
-**Progress:** 2/10 criteria met (20%)
+**Phase 7.1 - Store Tests** (1-2h)
+- Testet: Timestamp bump, Bucket move, Queries
+- Sichert Korrektheit ab
 
 ---
 
-## 🔥 Critical Blockers Status
+### Option B: User-Facing Features (Schneller Fortschritt)
+**Phase 2 - Error Handling** (1-2h)
+- Roter Footer bei Fehlern
+- Error-Log (`:errors` Command)
+- Verhindert: Fehler verschwinden nach 2 Sek
 
-| Blocker | Status | Notes |
-|---------|--------|-------|
-| REST client present | ✅ **FIXED** | Deleted in Phase 1 |
-| `updated` timestamp not bumped | ✅ **FIXED** | Fixed in Phase 6.1 |
-| No `done_bucket_id` move | 🟡 **DOCUMENTED** | See TODO_PHASE_6.2.md |
-| No tests | 🟡 **DOCUMENTED** | See NEXT_STEPS.md Phase 7 |
-| No error handling | 🟡 **DOCUMENTED** | See NEXT_STEPS.md Phase 2 |
+**Phase 3 - Command System** (2-3h)
+- `:q` / `:qa` / `:h` implementieren
+- Command Registry für Erweiterbarkeit
 
----
+**Phase 4 - Help-Pane** (1-2h)
+- `?` oder `:h` zeigt Keybindings
+- Macht UI discoverable
 
-## 📂 Documentation Files
-
-- **SPEC_FUNDAMENT.md** - Complete specification (ready for impl)
-- **NEXT_STEPS.md** - Implementation plan with code examples
-- **TODO_PHASE_6.2.md** - Bucket move logic (next high-priority task)
-- **TUI_IDEA.md** - Design decisions (#1-11)
-- **STATUS.md** (this file) - Current progress tracker
+**Phase 5 - Leader-Key** (1-2h)
+- `Space+o` collapsed Projects-Pane
+- Vorbereitung für mehr Shortcuts
 
 ---
 
-## 🚀 Recommended Next Action
+## 📊 Fortschritt (SPEC_FUNDAMENT.md)
 
-**Option 1 (Finish Write Semantics):**  
-→ Implement Phase 6.2 (done-bucket move) now  
-→ Then write Store tests (Phase 7.1) to verify  
-→ Result: Complete, tested write semantics
+| Kriterium | Status |
+|-----------|--------|
+| `client.go` gelöscht | ✅ |
+| `updated` timestamp bump | ✅ |
+| Commands (`:q`, `:qa`, `:h`) | ⏳ Phase 3 |
+| Help-Pane (`?`) | ⏳ Phase 4 |
+| Leader-Key (`Space+o`) | ⏳ Phase 5 |
+| Done-Bucket Move | ⏳ Phase 6.2 |
+| Auto-Refresh | ⏳ Phase 6.3 |
+| Error Footer | ⏳ Phase 2 |
+| Store Tests | ⏳ Phase 7 |
+| TUI Model Tests | ⏳ Phase 7 |
 
-**Option 2 (Build User-Facing Features):**  
-→ Implement Phase 2-5 (Error handling, Commands, Help, Leader)  
-→ Result: Improved UX, discoverable UI  
-→ Then circle back to Phase 6.2 + 7
-
-**Option 3 (Test-Driven):**  
-→ Write Store tests first (Phase 7.1)  
-→ Fail Phase 6.2 tests (no bucket move)  
-→ Implement Phase 6.2 to make tests pass  
-→ Result: TDD-style, guaranteed correctness
-
-**Recommendation:** Option 1 or 3 (finish write semantics completely before moving on)
+**Progress:** 2/10 (20%)
 
 ---
 
-## 🎉 Quick Wins Achieved
+## 📝 TODOs & Offene Fragen
 
-1. **Cleaner Codebase:** 170 lines of unused REST client code removed
-2. **Server Compatibility:** `updated` timestamp now correct for webhooks/sync
-3. **Clear Roadmap:** All remaining work documented with time estimates
-4. **Spec-Driven:** Every decision traced back to SPEC_FUNDAMENT.md
+### TODO: Description Rendering (Later)
+**Problem:** Task-Descriptions sind HTML (`<p>`, `<strong>`, etc.)  
+**Optionen:**
+- Strip HTML (einfach, verliert Formatierung)
+- HTML→Markdown (Dependency, behält Bold/Lists)
+- Custom TUI Renderer (komplex, beste UX)
+
+**Entscheidung:** Für später, erstmal wichtigere Sachen
+
+**Details:** `.archive/TODO_UX.md`
 
 ---
 
-**Git Log:**
-```
-280202c (HEAD -> main) refactor: SQLite-only, bump updated timestamp (Phase 1 + 6.1)
-7c2e912 spec added
-2f6bdd7 Update design decisions after grilling sessions
-```
+### TODO: Weitere UX-Verbesserungen
+- Datumsformat (relative Anzeige "in 2 days")
+- Lange Titel (Truncate vs. Wrap)
+- Empty Description Placeholder
+- Task Identifier anzeigen
 
-**Next Commit Preview:**
-```
-feat: move tasks to done_bucket_id on toggle (Phase 6.2)
+**Priorität:** P3-P5 (nach Fundament)
 
-- Query done_bucket_id from project_views
-- Update task_buckets.bucket_id when done=1
-- Add Store tests: bucket move, no-move, timestamp
-- Fixes: Kanban boards now show tasks in correct buckets
+---
 
-Closes: SPEC_FUNDAMENT.md Decision #2 (Write Semantics)
-```
+## 🗂️ Dokumentation
+
+### Aktive Docs:
+- **STATUS.md** ← Diese Datei (ALLES WICHTIGE HIER!)
+- **SPEC_FUNDAMENT.md** - Komplette Spec (Referenz)
+
+### Archiv:
+- `.archive/NEXT_STEPS.md` - Detaillierte Implementierungsanleitung
+- `.archive/TODO_PHASE_6.2.md` - Bucket Move Implementierung
+- `.archive/TODO_UX.md` - UX-Verbesserungen
+- `.archive/TUI_IDEA.md` - Design-Entscheidungen
+- `.archive/2026-07-10/` - Fix-Berichte von heute
+
+---
+
+## 🔥 Letzte Änderungen
+
+### Commit `53efec1` (Fix)
+- Added `internal/vikunja/types.go` (fehlende Types)
+- Fixed: Compilation errors nach REST Client Removal
+
+### Commit `280202c` (Phase 1 + 6.1)
+- Removed REST client (`client.go`)
+- Fixed `updated` timestamp bump
+- SQLite-only
+
+---
+
+## 🚀 Wie weiter?
+
+**Empfehlung:** 
+1. **Phase 6.2** (Bucket Move) - 1-2h - Komplettiert Write-Semantik
+2. **Phase 7.1** (Store Tests) - 1-2h - Sichert Korrektheit
+3. **Phase 2-5** (Commands, Help, etc.) - 6-10h - User-Facing Features
+
+Oder alternativ:
+- Direkt zu Phase 2-5 springen für schnellere UX-Verbesserungen
+- Phase 6.2 + 7 später nachholen
+
+**Was möchtest du als nächstes angehen?**
+
+---
+
+## 📐 Pattern für dieses Projekt
+
+### Regel #1: Ein zentrales File
+**STATUS.md** ist DIE zentrale Datei.  
+Alles andere → `.archive/`
+
+### Regel #2: Archivierung
+Erledigte Berichte, alte TODOs → `.archive/YYYY-MM-DD/`  
+Design-Docs → `.archive/`
+
+### Regel #3: Commits
+**Vor jedem Commit:**
+1. `go build` testen
+2. Diff zeigen
+3. **User fragen: "Soll ich committen?"**
+4. Auf Bestätigung warten
+5. Dann committen
+
+---
+
+**Fragen? → Schau in STATUS.md (diese Datei)**  
+**Details? → `.archive/` oder SPEC_FUNDAMENT.md**
