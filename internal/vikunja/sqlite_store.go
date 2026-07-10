@@ -215,7 +215,6 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done bool) error {
 	// Update done status, done_at timestamp, and ALWAYS bump 'updated' timestamp.
 	// This ensures server-fidelity: webhooks, sync, and external tools see the change.
-	// Note: Bucket moves (to done_bucket_id) are deferred to Phase 6.2.
 	var doneAt any
 	if done {
 		doneAt = time.Now()
@@ -228,6 +227,39 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 	if _, err := s.db.ExecContext(ctx, q, boolToInt(done), doneAt, time.Now(), taskID); err != nil {
 		return fmt.Errorf("toggle task done: %w", err)
 	}
+
+	// Phase 6.2: Move task to done_bucket_id when marking done (if configured)
+	if done {
+		// Query done_bucket_id for this task's project view
+		qDoneBucket := `
+			SELECT pv.done_bucket_id
+			FROM project_views pv
+			JOIN tasks t ON t.project_id = pv.project_id
+			WHERE t.id = ?
+			LIMIT 1
+		`
+		var doneBucketID sql.NullInt64
+		err := s.db.QueryRowContext(ctx, qDoneBucket, taskID).Scan(&doneBucketID)
+		if err != nil && err != sql.ErrNoRows {
+			// Real error (not just "no view configured")
+			return fmt.Errorf("query done_bucket_id: %w", err)
+		}
+
+		// If done_bucket_id is configured, move the task
+		if doneBucketID.Valid {
+			qMoveBucket := `
+				UPDATE task_buckets
+				SET bucket_id = ?
+				WHERE task_id = ?
+			`
+			if _, err := s.db.ExecContext(ctx, qMoveBucket, doneBucketID.Int64, taskID); err != nil {
+				return fmt.Errorf("move task to done bucket: %w", err)
+			}
+		}
+	}
+	// Note: When toggling to done=false, we leave task in current bucket
+	// (user can manually move it if needed)
+
 	return nil
 }
 

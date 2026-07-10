@@ -18,13 +18,13 @@
 - Farbige Priority-Anzeige (rot=urgent, grün=low)
 - SQLite-only (kein REST Client mehr)
 - **`updated` timestamp wird gebumpt** ✅
+- **Task-Bucket Move bei Toggle** ✅ (Phase 6.2)
 
 ### ❌ Was fehlt noch:
 - `:q`, `:qa`, `:h` Commands
 - Error-Log System
 - Help-Pane (`?`)
 - Leader-Key (`Space+o` für Pane-Collapse)
-- Done-Bucket Move (Task → done_bucket_id)
 - Auto-Refresh nach Writes
 - Tests (Store + TUI Model)
 
@@ -32,15 +32,10 @@
 
 ## 📋 Nächste Schritte
 
-### Option A: Write-Semantik fertigstellen (Empfohlen)
-**Phase 6.2 - Done-Bucket Move** (1-2h)
-- Tasks beim Toggle in `done_bucket_id` verschieben
-- Verhindert: Kanban-Boards zeigen Tasks im falschen Bucket
-- Siehe: `.archive/TODO_PHASE_6.2.md` für Details
-
-**Phase 7.1 - Store Tests** (1-2h)
+### Phase 7.1 - Store Tests (Empfohlen) (~1-2h)
 - Testet: Timestamp bump, Bucket move, Queries
 - Sichert Korrektheit ab
+- TDD: Erst Tests, dann weitere Features
 
 ---
 
@@ -73,13 +68,13 @@
 | Commands (`:q`, `:qa`, `:h`) | ⏳ Phase 3 |
 | Help-Pane (`?`) | ⏳ Phase 4 |
 | Leader-Key (`Space+o`) | ⏳ Phase 5 |
-| Done-Bucket Move | ⏳ Phase 6.2 |
+| Done-Bucket Move | ✅ |
 | Auto-Refresh | ⏳ Phase 6.3 |
 | Error Footer | ⏳ Phase 2 |
 | Store Tests | ⏳ Phase 7 |
 | TUI Model Tests | ⏳ Phase 7 |
 
-**Progress:** 2/10 (20%)
+**Progress:** 3/10 (30%)
 
 ---
 
