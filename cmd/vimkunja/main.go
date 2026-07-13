@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/vikunja-tui/vikunja-tui/internal/tui"
-	"github.com/vikunja-tui/vikunja-tui/internal/vikunja"
 	tea "charm.land/bubbletea/v2"
+	"github.com/vimkunja/vimkunja/internal/tui"
+	"github.com/vimkunja/vimkunja/internal/vimkunja"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	// SQLite-only: always use local database file
-	store, err := vikunja.NewSQLiteStore(*dbPathFlag)
+	store, err := vimkunja.NewSQLiteStore(*dbPathFlag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to open SQLite database at %s: %v\n", *dbPathFlag, err)
 		fmt.Fprintln(os.Stderr, "Please ensure the database file exists and is accessible.")

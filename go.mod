@@ -1,4 +1,4 @@
-module github.com/vikunja-tui/vikunja-tui
+module github.com/vimkunja/vimkunja
 
 go 1.25.0
 

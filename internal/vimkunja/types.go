@@ -1,4 +1,4 @@
-package vikunja
+package vimkunja
 
 // Project represents a Vikunja project (formerly called "list" in older versions).
 type Project struct {

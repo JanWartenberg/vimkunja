@@ -1,4 +1,4 @@
-package vikunja
+package vimkunja
 
 import (
 	"context"

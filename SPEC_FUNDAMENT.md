@@ -1,14 +1,14 @@
-# Spec: Vikunja TUI — Fundament (MVP Core)
+# Spec: Vimkunja — Fundament (MVP Core)
 
 **Status:** Ready for Implementation  
-**Related:** `TUI_IDEA.md` (Decisions #1-11)  
+**Related:** [`.archive/TUI_IDEA.md`](.archive/TUI_IDEA.md) (historische Decisions #1-11)  
 **Priority:** P0 (Blocks all features)
 
 ---
 
 ## Problem Statement
 
-Users need a stable, Vim-style foundation for the Vikunja TUI that handles:
+Users need a stable, Vim-style foundation for Vimkunja that handles:
 - Data persistence (SQLite-only, no REST API complexity)
 - Error visibility (writes can fail, DB locks can occur)
 - Navigation patterns (Vim-splits, command-line, pane focus)
@@ -28,9 +28,6 @@ The current PoC has:
 ## Solution
 
 Build a **production-ready foundation** that:
-0. **⚠️ NAMING DECISION** — Decide: `Vikunja TUI` vs. `Vimkunja`  
-   → **Vimkunja** is closer to original + expresses Vim-focus  
-   → Must be applied consistently: repo name, go.mod, README, branding
 1. **Removes REST client** — SQLite-only data access (Decision #1)
 2. **Adds command-line infrastructure** — `:q`, `:qa`, `:h`, `:errors` as Ex-commands (Decision #6)
 3. **Implements robust error handling** — Red footer + persistent error log + auto-refresh (Decision #9)
@@ -44,37 +41,37 @@ Build a **production-ready foundation** that:
 
 ## User Stories
 
-1. As a Vikunja user, I want to see all my projects in the left pane, so that I can choose which project to work on.
-2. As a Vikunja user, I want to navigate between projects using `j/k`, so that I can quickly browse my project list.
-3. As a Vikunja user, I want to jump to the top of the project list with `gg`, so that I can get back to the first project fast.
-4. As a Vikunja user, I want to jump to the bottom of the project list with `G`, so that I can see my last projects.
-5. As a Vikunja user, I want to scroll half-pages with `Ctrl+D` and `Ctrl+U`, so that I can navigate large lists efficiently.
-6. As a Vikunja user, I want to press `Enter` on a project to see its tasks, so that I can focus on work items.
-7. As a Vikunja user, I want to switch focus between panes with `Ctrl+W`, so that I can navigate like in Vim.
-8. As a Vikunja user, I want to press `Ctrl+W h/l/j/k` to move focus directionally, so that I can jump to specific panes.
-9. As a Vikunja user, I want to see tasks in the right pane when I select a project, so that I can view my work items.
-10. As a Vikunja user, I want to see task priority colored (green=low, red=urgent), so that I can identify important tasks at a glance.
-11. As a Vikunja user, I want to see done tasks grayed out, so that I can distinguish completed work.
-12. As a Vikunja user, I want to press `x` on a task to toggle its done status, so that I can mark tasks complete.
-13. As a Vikunja user, I want done tasks to automatically move to the "Done" bucket in Kanban views, so that my board stays organized.
-14. As a Vikunja user, I want the `updated` timestamp bumped when I mark a task done, so that Vikunja's server features (webhooks, sync) work correctly.
-15. As a Vikunja user, I want the task list to auto-refresh after I toggle done, so that I always see the current state.
-16. As a Vikunja user, I want to press `r` to manually refresh the current view, so that I can reload data if the DB changed externally.
-17. As a Vikunja user, I want to type `:q` to close the current pane, so that I can exit like in Vim.
-18. As a Vikunja user, I want to type `:qa` to quit the entire app, so that I can exit all panes at once.
-19. As a Vikunja user, I want to type `:h` or press `?` to see help, so that I can learn keybindings without leaving the app.
-20. As a Vikunja user, I want to type `:errors` to see a log of all errors in this session, so that I can debug issues.
-21. As a Vikunja user, I want to see errors in a red footer immediately, so that I know when a write failed.
-22. As a Vikunja user, I want trivial errors (DB locks that auto-retry successfully) to show green feedback briefly, so that I'm not alarmed.
-23. As a Vikunja user, I want persistent errors to stay visible until I press a key, so that I don't miss critical failures.
-24. As a Vikunja user, I want errors to be logged even if I dismiss the footer, so that I can review them later via `:errors`.
-25. As a Vikunja user, I want to press `Enter` on a task to open a detail pane, so that I can see full task information.
-26. As a Vikunja user, I want the detail pane to be a full pane (not a modal), so that I can navigate between detail and task list with `Ctrl+W`.
-27. As a Vikunja user, I want to press `Esc` or `:q` in the detail pane to close it, so that I can return to the task list.
-28. As a Vikunja user, I want focus to return to the task list when I close detail, so that I can continue navigating tasks.
-29. As a Vikunja user, I want to press `Space` followed by a command key (within 500ms), so that I can use leader-key shortcuts.
-30. As a Vikunja user, I want to press `Space+o` or `Ctrl+W o` to collapse the projects pane, so that I can maximize space for task/kanban views.
-31. As a Vikunja user, I want the collapsed projects pane to toggle back when I press `Space+o` again, so that I can restore the layout.
+1. As a Vimkunja user, I want to see all my projects in the left pane, so that I can choose which project to work on.
+2. As a Vimkunja user, I want to navigate between projects using `j/k`, so that I can quickly browse my project list.
+3. As a Vimkunja user, I want to jump to the top of the project list with `gg`, so that I can get back to the first project fast.
+4. As a Vimkunja user, I want to jump to the bottom of the project list with `G`, so that I can see my last projects.
+5. As a Vimkunja user, I want to scroll half-pages with `Ctrl+D` and `Ctrl+U`, so that I can navigate large lists efficiently.
+6. As a Vimkunja user, I want to press `Enter` on a project to see its tasks, so that I can focus on work items.
+7. As a Vimkunja user, I want to switch focus between panes with `Ctrl+W`, so that I can navigate like in Vim.
+8. As a Vimkunja user, I want to press `Ctrl+W h/l/j/k` to move focus directionally, so that I can jump to specific panes.
+9. As a Vimkunja user, I want to see tasks in the right pane when I select a project, so that I can view my work items.
+10. As a Vimkunja user, I want to see task priority colored (green=low, red=urgent), so that I can identify important tasks at a glance.
+11. As a Vimkunja user, I want to see done tasks grayed out, so that I can distinguish completed work.
+12. As a Vimkunja user, I want to press `x` on a task to toggle its done status, so that I can mark tasks complete.
+13. As a Vimkunja user, I want done tasks to automatically move to the "Done" bucket in Kanban views, so that my board stays organized.
+14. As a Vimkunja user, I want the `updated` timestamp bumped when I mark a task done, so that Vikunja's server features (webhooks, sync) work correctly.
+15. As a Vimkunja user, I want the task list to auto-refresh after I toggle done, so that I always see the current state.
+16. As a Vimkunja user, I want to press `r` to manually refresh the current view, so that I can reload data if the DB changed externally.
+17. As a Vimkunja user, I want to type `:q` to close the current pane, so that I can exit like in Vim.
+18. As a Vimkunja user, I want to type `:qa` to quit the entire app, so that I can exit all panes at once.
+19. As a Vimkunja user, I want to type `:h` or press `?` to see help, so that I can learn keybindings without leaving the app.
+20. As a Vimkunja user, I want to type `:errors` to see a log of all errors in this session, so that I can debug issues.
+21. As a Vimkunja user, I want to see errors in a red footer immediately, so that I know when a write failed.
+22. As a Vimkunja user, I want trivial errors (DB locks that auto-retry successfully) to show green feedback briefly, so that I'm not alarmed.
+23. As a Vimkunja user, I want persistent errors to stay visible until I press a key, so that I don't miss critical failures.
+24. As a Vimkunja user, I want errors to be logged even if I dismiss the footer, so that I can review them later via `:errors`.
+25. As a Vimkunja user, I want to press `Enter` on a task to open a detail pane, so that I can see full task information.
+26. As a Vimkunja user, I want the detail pane to be a full pane (not a modal), so that I can navigate between detail and task list with `Ctrl+W`.
+27. As a Vimkunja user, I want to press `Esc` or `:q` in the detail pane to close it, so that I can return to the task list.
+28. As a Vimkunja user, I want focus to return to the task list when I close detail, so that I can continue navigating tasks.
+29. As a Vimkunja user, I want to press `Space` followed by a command key (within 500ms), so that I can use leader-key shortcuts.
+30. As a Vimkunja user, I want to press `Space+o` or `Ctrl+W o` to collapse the projects pane, so that I can maximize space for task/kanban views.
+31. As a Vimkunja user, I want the collapsed projects pane to toggle back when I press `Space+o` again, so that I can restore the layout.
 32. As a developer, I want a command registry/dispatcher pattern, so that adding new commands (`:goto`, `/search`) is trivial.
 33. As a developer, I want a `FakeStore` test implementation, so that I can test TUI logic without a real DB.
 34. As a developer, I want Store tests to use real SQLite tempfiles, so that DB side-effects (bucket moves, timestamps) are validated.
@@ -85,7 +82,7 @@ Build a **production-ready foundation** that:
 ## Implementation Decisions
 
 ### 1. Remove REST Client (Decision #1)
-- **Action:** Delete `/internal/vikunja/client.go` entirely.
+- **Action:** Delete `/internal/vimkunja/client.go` entirely.
 - **Rationale:** 1-user setup, always local SQLite access, no need for HTTP abstraction.
 - **Impact:** `Store` interface remains, but only `SQLiteStore` implementation exists.
 
@@ -186,7 +183,7 @@ Build a **production-ready foundation** that:
 - **Rationale:** Prepares for future edit-mode (Decision #18-19) — user needs to switch focus between Detail fields and Task list.
 
 ### 10. Architecture: Packages
-- **`internal/vikunja/`**
+- **`internal/vimkunja/`**
   - `store.go` — `Store` interface (unchanged)
   - `sqlite_store.go` — `SQLiteStore` (enhanced: bump `updated`, bucket moves)
   - `types.go` — `Project`, `Task`, `ProjectView` structs (unchanged)
@@ -202,7 +199,7 @@ Build a **production-ready foundation** that:
 - **`internal/errors/`** (new package)
   - `log.go` — Error log (in-memory slice, `Log(msg)` + `GetAll()`)
 
-- **`internal/vikunja/sqlite_store_test.go`** (new)
+- **`internal/vimkunja/sqlite_store_test.go`** (new)
   - Store tests with real SQLite tempfiles
 
 ### 11. Testing Strategy
@@ -221,7 +218,7 @@ See "Testing Decisions" section below.
 - **Tests should be isolated** (each test gets fresh DB, no shared state).
 
 ### Test Seam 1: Store Interface (Highest Priority)
-- **Module:** `internal/vikunja/sqlite_store_test.go`
+- **Module:** `internal/vimkunja/sqlite_store_test.go`
 - **Seam:** `Store` interface methods
 - **Setup:** Real SQLite with `:memory:` or temp file
 - **Fixtures:** Helper functions to seed test data:
@@ -246,12 +243,12 @@ See "Testing Decisions" section below.
 - **Setup:** Mock Store via `FakeStore` struct:
   ```go
   type FakeStore struct {
-      projects []vikunja.Project
-      tasks    []vikunja.Task
+      projects []vimkunja.Project
+      tasks    []vimkunja.Task
       toggleDoneErr error // for testing error paths
   }
   
-  func (f *FakeStore) ListProjects(...) ([]vikunja.Project, int, error) {
+  func (f *FakeStore) ListProjects(...) ([]vimkunja.Project, int, error) {
       return f.projects, 1, nil
   }
   // ... implement all Store methods

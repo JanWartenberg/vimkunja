@@ -1,4 +1,4 @@
-# Vikunja TUI - Status
+# Vimkunja - Status
 
 **Stand:** 2026-07-13 | **Branch:** main | **Progress:** 4/10 (40%)
 
@@ -49,9 +49,6 @@
 ---
 
 ## 📝 TODO (Later):
-- **Projektname entscheiden:** `Vikunja TUI` vs. `Vimkunja`
-  → **Vimkunja** wäre näher am Original + drückt Vim-Fokus aus
-  → Konsequent durchziehen: Repo, go.mod, README, Branding
 - Description Rendering (HTML → Text/Markdown)
 - Datumsformat, Truncation, etc.
 

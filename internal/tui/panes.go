@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/vikunja-tui/vikunja-tui/internal/vikunja"
+	"github.com/vimkunja/vimkunja/internal/vimkunja"
 
 	"charm.land/lipgloss/v2"
 )
@@ -209,7 +209,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 }
 
 // compile-time assertion (in case we evolve Task struct)
-var _ vikunja.Task
+var _ vimkunja.Task
 
 // priorityColor maps a Vikunja priority to a terminal colour code string:
 // 0 = unset/gray, low = green, climbing through yellow/orange to red for urgent.

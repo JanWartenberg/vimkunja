@@ -1,7 +1,7 @@
-# AGENTS.md – Vikunja TUI
+# AGENTS.md – Vimkunja
 
 **Für:** AI Coding Agents  
-**Projekt:** Terminal UI für Vikunja (OpenSource Todo/Kanban-System)
+**Projekt:** Vimkunja – Terminal UI für Vikunja (OpenSource Todo/Kanban-System)
 
 ---
 

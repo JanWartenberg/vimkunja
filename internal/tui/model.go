@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vikunja-tui/vikunja-tui/internal/vikunja"
+	"github.com/vimkunja/vimkunja/internal/vimkunja"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -25,7 +25,7 @@ type paneNeighbors struct {
 }
 
 type Config struct {
-	Store vikunja.Store
+	Store vimkunja.Store
 
 	PerPage int
 
@@ -34,35 +34,35 @@ type Config struct {
 }
 
 type model struct {
-	store vikunja.Store
+	store   vimkunja.Store
 	perPage int
 
 	width  int
 	height int
 
-	focus paneID
+	focus      paneID
 	ctrlWArmed bool
-	gArmed bool
-	neighbors map[paneID]paneNeighbors
+	gArmed     bool
+	neighbors  map[paneID]paneNeighbors
 
 	lastErr string
-	toast string
+	toast   string
 
 	// Projects pane
-	projects []vikunja.Project
+	projects        []vimkunja.Project
 	projectSelected int
-	projectLoading bool
+	projectLoading  bool
 
 	// Views (derived from selected project)
-	projectViews []vikunja.ProjectView
-	viewSelected int
-	viewLoading bool
+	projectViews  []vimkunja.ProjectView
+	viewSelected  int
+	viewLoading   bool
 	currentViewID int64
 
 	// Tasks pane
-	tasks []vikunja.Task
+	tasks        []vimkunja.Task
 	taskSelected int
-	taskLoading bool
+	taskLoading  bool
 
 	// Detail pane
 	showDetail bool
@@ -70,21 +70,21 @@ type model struct {
 	currentProjectID int64
 
 	initialProjectID int64
-	initialViewID int64
+	initialViewID    int64
 }
 
 func NewModel(cfg Config) tea.Model {
 	m := &model{
-		store: cfg.Store,
-		perPage: max(1, cfg.PerPage),
+		store:            cfg.Store,
+		perPage:          max(1, cfg.PerPage),
 		initialProjectID: cfg.InitialProjectID,
-		initialViewID: cfg.InitialViewID,
-		projectSelected: 0,
-		currentViewID: cfg.InitialViewID,
+		initialViewID:    cfg.InitialViewID,
+		projectSelected:  0,
+		currentViewID:    cfg.InitialViewID,
 		neighbors: map[paneID]paneNeighbors{
 			paneProjects: {left: nil, right: ptr(paneTasks), down: ptr(paneDetail)},
-			paneTasks:     {left: ptr(paneProjects), right: nil, down: ptr(paneDetail)},
-			paneDetail:    {up: ptr(paneTasks)},
+			paneTasks:    {left: ptr(paneProjects), right: nil, down: ptr(paneDetail)},
+			paneDetail:   {up: ptr(paneTasks)},
 		},
 		focus: paneProjects,
 	}
@@ -105,16 +105,16 @@ func max(a, b int) int {
 
 type (
 	projectsLoadedMsg struct {
-		projects []vikunja.Project
-		err error
+		projects []vimkunja.Project
+		err      error
 	}
 	viewsLoadedMsg struct {
-		views []vikunja.ProjectView
-		err error
+		views []vimkunja.ProjectView
+		err   error
 	}
 	tasksLoadedMsg struct {
-		tasks []vikunja.Task
-		err error
+		tasks []vimkunja.Task
+		err   error
 	}
 )
 
@@ -424,7 +424,7 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 				// Reload current view tasks.
 				if m.currentProjectID == 0 || m.currentViewID == 0 {
-						return tasksLoadedMsg{tasks: nil, err: nil}
+					return tasksLoadedMsg{tasks: nil, err: nil}
 				}
 				items, _, err := m.store.ListTasksInView(ctx, m.currentProjectID, m.currentViewID, 1, m.perPage)
 				return tasksLoadedMsg{tasks: items, err: err}

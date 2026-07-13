@@ -1,4 +1,4 @@
-package vikunja
+package vimkunja
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 	t.Helper()
 
-	tmpFile, err := os.CreateTemp("", "vikunja-test-*.db")
+	tmpFile, err := os.CreateTemp("", "vimkunja-test-*.db")
 	if err != nil {
 		t.Fatalf("create temp db: %v", err)
 	}

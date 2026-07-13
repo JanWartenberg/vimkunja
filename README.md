@@ -1,4 +1,4 @@
-# Vikunja TUI
+# Vimkunja
 
 Terminal User Interface für [Vikunja](https://vikunja.io/) – Todo/Kanban-System für Vim-Nutzer.
 
@@ -7,8 +7,8 @@ Terminal User Interface für [Vikunja](https://vikunja.io/) – Todo/Kanban-Syst
 ## 🚀 Quick Start
 
 ```bash
-cd /workspace/vikunja-tui
-go run ./cmd/vikunja-tui --db internal/db/vikunja.db
+cd /workspace/vimkunja
+go run ./cmd/vimkunja --db internal/db/vikunja.db
 ```
 
 Die Anwendung arbeitet ausschließlich mit einer lokalen Vikunja-SQLite-Datenbank. Der angegebene Pfad muss existieren und lesbar sein.

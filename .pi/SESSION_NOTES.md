@@ -1,4 +1,4 @@
-# Session Notes – Vikunja TUI
+# Session Notes – Vimkunja
 
 **Für:** Nächste Agent-Session  
 **Letzte Änderung:** 2026-07-13
@@ -11,7 +11,7 @@
 - Go 1.25.0 ist unter `/usr/local/go/bin/go` installiert.
 - `go.mod` ist auf Go 1.25.0 ausgerichtet.
 - `go test -v ./...` und `go vet ./...` sind grün.
-- 7 Store-Tests in `internal/vikunja/sqlite_store_test.go` decken Timestamp-Updates (`updated`), Bucket-Move bei `done=true`, `done_at`, Pagination, Position-Sortierung und archivierte Projekte ab.
+- 7 Store-Tests in `internal/vimkunja/sqlite_store_test.go` decken Timestamp-Updates (`updated`), Bucket-Move bei `done=true`, `done_at`, Pagination, Position-Sortierung und archivierte Projekte ab.
 - Der Store behandelt nullable `projects.identifier`, `projects.description` und `tasks.index` robust.
 
 ---
@@ -20,7 +20,7 @@
 
 ### 1. Tests ausführen
 ```bash
-cd /workspace/vikunja-tui
+cd /workspace/vimkunja
 go test -v ./...
 go vet ./...
 ```
@@ -56,7 +56,7 @@ go vet ./...
 - `STATUS.md` - Aktueller Fortschritt (gerade updated)
 - `SPEC_FUNDAMENT.md` - Komplette Spec
 - `AGENTS.md` - Arbeitsregeln für Agents
-- `internal/vikunja/sqlite_store_test.go` - **NEU!**
+- `internal/vimkunja/sqlite_store_test.go` - **NEU!**
 
 ---
 
