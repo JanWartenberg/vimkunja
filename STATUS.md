@@ -1,6 +1,6 @@
 # Vikunja TUI - Status
 
-**Stand:** 2026-07-12 | **Branch:** main | **Progress:** 4/10 (40%)
+**Stand:** 2026-07-13 | **Branch:** main | **Progress:** 4/10 (40%)
 
 ---
 
@@ -10,7 +10,7 @@
 - Vim-Navigation (hjkl, gg, G, Ctrl+D/U, Ctrl+W)
 - Task Toggle (`x`) → `done` + **updated timestamp** + **Bucket-Move** ✅
 - Priority-Farben (rot=urgent, grün=low)
-- **Store Tests** (Phase 7.1) ✅
+- **Store Tests** (Phase 7.1): 7 Tests grün ✅
 
 ## ❌ Was fehlt:
 - Commands (`:q`, `:qa`, `:h`)
@@ -23,9 +23,10 @@
 
 ## 🎯 Nächster Schritt:
 
-**Tests ausführen** (Go installieren)
-- `go test -v ./internal/vikunja/` ausführen
-- 8 Tests sollten grün sein
+**Nächste Implementierungsphase wählen**
+- Go 1.25.0 ist installiert und in `go.mod` festgelegt.
+- `go test -v ./...` und `go vet ./...` sind grün.
+- Die 7 Store-Tests prüfen Timestamp, Bucket-Move, `done_at`, Pagination, Sortierung und archivierte Projekte.
 
 **Dann:** Phase 2 (Error-Handling) oder Phase 3 (Commands)
 
@@ -43,11 +44,14 @@
 | Leader-Key | ⏳ Phase 5 |
 | Auto-Refresh | ⏳ Phase 6.3 |
 | Error Footer | ⏳ Phase 2 |
-| Tests | ✅ Phase 7.1 |
+| Tests | ✅ Phase 7.1 (7 Store-Tests) |
 
 ---
 
 ## 📝 TODO (Later):
+- **Projektname entscheiden:** `Vikunja TUI` vs. `Vimkunja`
+  → **Vimkunja** wäre näher am Original + drückt Vim-Fokus aus
+  → Konsequent durchziehen: Repo, go.mod, README, Branding
 - Description Rendering (HTML → Text/Markdown)
 - Datumsformat, Truncation, etc.
 

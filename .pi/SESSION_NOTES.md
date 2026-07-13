@@ -1,45 +1,33 @@
 # Session Notes – Vikunja TUI
 
 **Für:** Nächste Agent-Session  
-**Letzte Änderung:** 2026-07-12
+**Letzte Änderung:** 2026-07-13
 
 ---
 
-## 🎯 Phase 7.1 - ERLEDIGT (aber Tests nicht ausgeführt!)
+## 🎯 Phase 7.1 - ERLEDIGT
 
-**Was passiert ist:**
-- Store-Tests erstellt: `internal/vikunja/sqlite_store_test.go`
-- 8 Tests decken ab:
-  - ✅ Timestamp-Updates (`updated`)
-  - ✅ Bucket-Move bei `done=true`
-  - ✅ `done_at` setzen/clearen
-  - ✅ Pagination
-  - ✅ Position-Ordering
-  - ✅ Archivierte Projekte ausblenden
-
-**Problem:** Go ist in dieser Session nicht installiert!
+**Ergebnis:**
+- Go 1.25.0 ist unter `/usr/local/go/bin/go` installiert.
+- `go.mod` ist auf Go 1.25.0 ausgerichtet.
+- `go test -v ./...` und `go vet ./...` sind grün.
+- 7 Store-Tests in `internal/vikunja/sqlite_store_test.go` decken Timestamp-Updates (`updated`), Bucket-Move bei `done=true`, `done_at`, Pagination, Position-Sortierung und archivierte Projekte ab.
+- Der Store behandelt nullable `projects.identifier`, `projects.description` und `tasks.index` robust.
 
 ---
 
 ## 🚀 Nächste Session: START HERE
 
-### 1. Go installieren (falls nötig)
-```bash
-# Check ob Go verfügbar
-go version
-
-# Falls nicht: Installation anstoßen
-```
-
-### 2. Tests ausführen
+### 1. Tests ausführen
 ```bash
 cd /workspace/vikunja-tui
-go test -v ./internal/vikunja/
+go test -v ./...
+go vet ./...
 ```
 
-**Erwartung:** Alle 8 Tests grün ✅
+**Erwartung:** Alle 7 Store-Tests grün ✅
 
-### 3. Falls Tests grün → Nächste Phase wählen
+### 2. Nächste Phase wählen
 
 **Option A:** Phase 2 (Error-Handling)
 - Error-Footer (rot)
@@ -59,7 +47,7 @@ go test -v ./internal/vikunja/
 - **Fortschritt:** 4/10 (40%)
 - **Branch:** main
 - **Letzte Phase:** 7.1 (Store Tests)
-- **Code:** Funktioniert, aber Tests ungeprüft
+- **Code:** Store-Test-Suite und Vet grün
 
 ---
 

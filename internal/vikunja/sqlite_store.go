@@ -27,9 +27,9 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 }
 
 const (
-	viewKindList  = 0
-	viewKindGantt = 1
-	viewKindTable = 2
+	viewKindList   = 0
+	viewKindGantt  = 1
+	viewKindTable  = 2
 	viewKindKanban = 3
 )
 
@@ -83,8 +83,15 @@ func (s *SQLiteStore) ListProjects(ctx context.Context, page, perPage int) ([]Pr
 	var out []Project
 	for rows.Next() {
 		var p Project
-		if err := rows.Scan(&p.ID, &p.Identifier, &p.Title, &p.Description); err != nil {
+		var identifier, description sql.NullString
+		if err := rows.Scan(&p.ID, &identifier, &p.Title, &description); err != nil {
 			return nil, 0, fmt.Errorf("scan project: %w", err)
+		}
+		if identifier.Valid {
+			p.Identifier = identifier.String
+		}
+		if description.Valid {
+			p.Description = description.String
 		}
 		out = append(out, p)
 	}
@@ -191,14 +198,18 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 	for rows.Next() {
 		var t Task
 		var dueNull sql.NullTime
+		var indexNull sql.NullInt64
 		var descNull sql.NullString
 		// Scanner order must match SELECT.
-		if err := rows.Scan(&t.ID, &t.Title, &t.Done, &dueNull, &t.Priority, &t.Index, &descNull); err != nil {
+		if err := rows.Scan(&t.ID, &t.Title, &t.Done, &dueNull, &t.Priority, &indexNull, &descNull); err != nil {
 			return nil, 0, fmt.Errorf("scan task: %w", err)
 		}
 		t.Identifier = ""
 		if dueNull.Valid {
 			t.DueDate = dueNull.Time.Format("2006-01-02")
+		}
+		if indexNull.Valid {
+			t.Index = indexNull.Int64
 		}
 		if descNull.Valid {
 			t.Description = descNull.String

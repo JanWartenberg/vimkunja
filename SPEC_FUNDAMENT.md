@@ -28,6 +28,9 @@ The current PoC has:
 ## Solution
 
 Build a **production-ready foundation** that:
+0. **⚠️ NAMING DECISION** — Decide: `Vikunja TUI` vs. `Vimkunja`  
+   → **Vimkunja** is closer to original + expresses Vim-focus  
+   → Must be applied consistently: repo name, go.mod, README, branding
 1. **Removes REST client** — SQLite-only data access (Decision #1)
 2. **Adds command-line infrastructure** — `:q`, `:qa`, `:h`, `:errors` as Ex-commands (Decision #6)
 3. **Implements robust error handling** — Red footer + persistent error log + auto-refresh (Decision #9)
