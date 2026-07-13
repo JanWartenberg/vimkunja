@@ -145,6 +145,8 @@ Build a **production-ready foundation** that:
 
 - **Extensibility:** Later commands (`:goto <project>`, `/search`) register into same system.
 
+- **Autocomplete:** Later commands need autocomplete system (with `Tab`, same as in Vim)
+
 ### 6. Help-Pane (Decision #10)
 - **Module:** `internal/tui/help.go` (new)
 - **Content:** Static markdown-style text, scrollable with `j/k`
@@ -282,14 +284,21 @@ See "Testing Decisions" section below.
 
 This spec focuses on **Fundament only** (Decisions #1-11). The following are explicitly deferred to later specs:
 
-### Deferred to "Feature: Kanban View" (Prio 1)
+### Deferred to "Feature: OverviewView" (Prio 1)
+- Next to the existing List View of the MVP: another view_kind
+- should list all tickets, regardless the project
+- done tickets should not be shown (at least per default filtered out)
+- tickets should be sorted by DueDate first, then by Priority (at least per default)
+- later extension: sorting/filtering could be chosen/selected by user
+
+### Deferred to "Feature: Kanban View" (Prio 2)
 - Rendering `view_kind=kanban` (Decisions #12-17)
 - Bucket columns (horizontal layout, dynamic width)
 - 2D navigation (`h/l` for buckets, `j/k` for tasks within bucket)
 - Task movement between buckets (`Shift+H/L`, `m+digit`)
 - Kanban-specific toggle-done behavior (auto-move + visual feedback)
 
-### Deferred to "Feature: Edit Mode" (Prio 2)
+### Deferred to "Feature: Edit Mode" (Prio 3)
 - Title edit inline (`i` in List/Kanban-pane) (Decision #18)
 - Detail-pane multi-field edit (`hjkl` field navigation, `i` insert mode) (Decision #18-19)
 - Auto-commit on pane-switch (Decision #19)
@@ -301,6 +310,8 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 - Undo (`u` keybinding)
 - Table/Gantt views
 - Autocomplete for commands with arguments (`:goto <project>`)
+- Project View should reflect the hierarchy of projects (via indentation)
+
 
 ---
 

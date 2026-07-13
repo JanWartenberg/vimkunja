@@ -1,6 +1,6 @@
 # Vikunja TUI - Status
 
-**Stand:** 2026-07-10 | **Branch:** main (`ad90e1d`) | **Progress:** 3/10 (30%)
+**Stand:** 2026-07-12 | **Branch:** main | **Progress:** 4/10 (40%)
 
 ---
 
@@ -10,6 +10,7 @@
 - Vim-Navigation (hjkl, gg, G, Ctrl+D/U, Ctrl+W)
 - Task Toggle (`x`) → `done` + **updated timestamp** + **Bucket-Move** ✅
 - Priority-Farben (rot=urgent, grün=low)
+- **Store Tests** (Phase 7.1) ✅
 
 ## ❌ Was fehlt:
 - Commands (`:q`, `:qa`, `:h`)
@@ -17,17 +18,16 @@
 - Help-Pane (`?`)
 - Leader-Key (`Space+o`)
 - Auto-Refresh
-- Tests
 
 ---
 
 ## 🎯 Nächster Schritt:
 
-**Phase 7.1 - Store Tests** (~1-2h)
-- Testet: Timestamp, Bucket-Move, Queries
-- Sichert Korrektheit ab
+**Tests ausführen** (Go installieren)
+- `go test -v ./internal/vikunja/` ausführen
+- 8 Tests sollten grün sein
 
-**Alternativ:** Phase 2 (Error-Handling) für schnellere UX-Verbesserung
+**Dann:** Phase 2 (Error-Handling) oder Phase 3 (Commands)
 
 ---
 
@@ -43,7 +43,7 @@
 | Leader-Key | ⏳ Phase 5 |
 | Auto-Refresh | ⏳ Phase 6.3 |
 | Error Footer | ⏳ Phase 2 |
-| Tests | ⏳ Phase 7 |
+| Tests | ✅ Phase 7.1 |
 
 ---
 

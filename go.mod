@@ -1,6 +1,6 @@
 module github.com/vikunja-tui/vikunja-tui
 
-go 1.26.5
+go 1.25.0
 
 require (
 	charm.land/bubbletea/v2 v2.0.8
