@@ -67,7 +67,7 @@ Build a **production-ready foundation** that:
 24. As a Vimkunja user, I want errors to be logged even if I dismiss the footer, so that I can review them later via `:errors`.
 25. As a Vimkunja user, I want to press `Enter` on a task to open a detail pane, so that I can see full task information.
 26. As a Vimkunja user, I want the detail pane to be a full pane (not a modal), so that I can navigate between detail and task list with `Ctrl+W`.
-27. As a Vimkunja user, I want to press `Esc` or `:q` in the detail pane to close it, so that I can return to the task list.
+27. As a Vimkunja user, I want to type `:q` in the detail pane to close it, so that I can return to the task list.
 28. As a Vimkunja user, I want focus to return to the task list when I close detail, so that I can continue navigating tasks.
 29. As a Vimkunja user, I want to press `Space` followed by a command key (within 500ms), so that I can use leader-key shortcuts.
 30. As a Vimkunja user, I want to press `Space+o` or `Ctrl+W o` to collapse the projects pane, so that I can maximize space for task/kanban views.
@@ -77,6 +77,8 @@ Build a **production-ready foundation** that:
 34. As a developer, I want Store tests to use real SQLite tempfiles, so that DB side-effects (bucket moves, timestamps) are validated.
 35. As a developer, I want TUI model tests to mock the Store, so that pane navigation logic is testable independently.
 36. As a Vimkunja user, I want to create a task within the TUI for the current project or in the current view, and optionally set its due date, priority, and description.
+37. As a Vimkunja user, I want the Detail-pane to use the same editor for new and existing tasks, so that creation and editing behave consistently.
+38. As a Vimkunja user, I want explicit Vim-style save and discard commands, so that I do not lose unsaved task changes.
 
 ---
 
@@ -148,13 +150,47 @@ Build a **production-ready foundation** that:
 
 - **Autocomplete:** Later commands need autocomplete system (with `Tab`, same as in Vim)
 
-### 6. Create Task (Phase 4 — short grilling required)
-Before implementation, make these product decisions in a short grilling session:
-- **Target:** Create in the current view, the selected project, or require an explicit project/view choice?
-- **Keybinding:** Use `o` (Vim-style open below), `%` (netrw-style new item), or another binding?
-- **Command:** Add `:new`, and if so, which arguments are accepted?
+### 6. Create and Edit Task (Phase 4)
 
-No create-task UI or Store API is specified until these decisions are recorded.
+#### Scope and context
+- The existing Detail-pane is the single editor for both new and existing tasks.
+- `o` opens a new draft in Project-, Tasks-, and later Overview-pane; this shortcut is provisional and will be evaluated after the prototype. `%` remains unbound.
+- `:new` opens the same draft editor and accepts no arguments initially.
+- A selected project supplies the draft project and puts focus on Title. Without a project context, focus starts on Project.
+- The Project field is editable for both new and existing tasks. Saving a project change switches the TUI to the target project, reloads its list view, and selects the task.
+
+#### Form and modes
+- Form layout: `Project | Title`, then `Priority | Due Date`, then full-width `Description`; Done is visible read-only metadata outside the focus graph.
+- No navigation wrap-around. `j/k` moves vertically and `h/l` horizontally; `k` from Description always selects Priority; `h/l` in Description are no-ops.
+- The focused field has a subtle pink border. The pink selection accent is defined once in `internal/tui/theme.go` for future theming.
+- Footer always shows `[NORMAL]`, `[INSERT]`, or `[COMMAND]`; dirty detail panes also show `[+]`.
+- `i` enters Insert-mode for the focused field; `Esc` leaves Insert-mode. In Insert-mode, `:` is literal field text.
+- Description is multi-line (`Enter` inserts a newline). In Title and Due Date, `Enter` leaves Insert-mode without saving. Cursor-style Normal-mode text navigation inside Description is deferred.
+
+#### Field values and validation
+- Required before save: Project and non-empty Title. All other fields are optional for now.
+- Project uses a filterable TUI picker: type to filter, `j/k` or arrows select, `Enter` confirms, `Esc` preserves the previous value.
+- Priority picker values are None (0), Low (1), Medium (2), High (3), Urgent (4), and Do now / Jetzt erledigen (5); it uses `i`, `j/k` or arrows, `Enter`, and `Esc` like the project picker.
+- Due Date accepts only `YYYY-MM-DD`; empty is stored as `NULL`, a date as `00:00`. Invalid dates fail before any DB write, log an error, show the red footer, focus Due Date, and retain Insert-mode.
+- New-draft defaults: selected project when available, otherwise empty; empty Title/Due Date/Description; Priority None.
+
+#### Save and discard
+- `:w` and `:write` save and keep the Detail-pane open; `:wq` saves and closes it.
+- `:q` and `:quit` are synonyms in every context. With unsaved changes they refuse to close and instruct the user to use `:w` or `:q!` / `:quit!`.
+- `:q!` and `:quit!` discard changes and close the Detail-pane.
+- Successful writes use original-Vikunja-compatible default task position and default Kanban buckets. Failed DB writes retain the editor state, log the error, show the red footer, and do not reload.
+- Done remains read-only in Detail; `x` is the only toggle for now.
+
+#### Deferred work
+- Flexible due-date picker/modal alongside direct entry (tomorrow, day after tomorrow, next weekday, next week).
+- Cursor-style Normal-mode navigation and extended Vim editing shortcuts (`o`/`Shift+o`, `i`/`a`, `Shift+i`/`Shift+a`) inside text fields.
+- Editable workflow statuses (Todo, Doing, Done, etc.) in Detail.
+- HTML-description parsing and TUI rendering strategy.
+
+#### Open questions before implementation
+- In Detail Normal-mode, should `Esc` retain the current behavior of closing the pane, or be a no-op like Vim Normal-mode? (In Insert-mode it already leaves Insert-mode.)
+- Exact minimal text-editing behavior for Backspace/Delete and cursor placement inside Title, Due Date, and Description.
+- Project-picker ordering, empty-filter/no-match presentation, and whether Description needs scrolling in the first prototype.
 
 ### 7. Help-Pane (Decision #10)
 - **Module:** `internal/tui/help.go` (new)
@@ -201,6 +237,7 @@ No create-task UI or Store API is specified until these decisions are recorded.
 - **`internal/tui/`**
   - `model.go` — Bubbletea model (enhanced: command mode, leader-key, error states)
   - `panes.go` — Rendering functions (unchanged for now)
+  - `theme.go` — Shared UI palette; selection accent is pink and defined once for all focus states, so themes can later replace it centrally
   - `commands.go` — Command registry + handlers (new)
   - `help.go` — Help-pane content + rendering (new)
   - `model_test.go` — TUI model tests with `FakeStore` (new)
@@ -312,6 +349,7 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 ### Deferred to "Feature: Edit Mode" (Prio 3)
 - Title edit inline (`i` in List/Kanban-pane) (Decision #18)
 - Detail-pane multi-field edit (`hjkl` field navigation, `i` insert mode) (Decision #18-19)
+- Vim-style text editing extensions: `o` / `Shift+o`, `i` / `a`, `Shift+i` / `Shift+a`, and related motions
 - Auto-commit on pane-switch (Decision #19)
 - Date-picker, priority +/- keybindings
 

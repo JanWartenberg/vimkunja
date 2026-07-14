@@ -10,26 +10,24 @@
 - Vim-Navigation (hjkl, gg, G, Ctrl+D/U, Ctrl+W)
 - Task Toggle (`x`) → `done` + **updated timestamp** + Sync in jeden konfigurierten Done-Bucket ✅
 - Priority-Farben (rot=urgent, grün=low)
-- **Tests:** 11 Store-Tests + 2 Error-Log-Tests + 2 TUI-Tests grün ✅
+- **Tests:** 11 Store-Tests + 2 Error-Log-Tests + 15 TUI-Tests grün ✅
 
 ## ❌ Was fehlt:
-- Commands (`:q`, `:qa`, `:h`)
-- Error-Log
-- Help-Pane (`?`)
-- Leader-Key (`Space+o`)
-- Auto-Refresh
+- Create-/Edit-Task-Editor (Phase 4)
+- Vollständige Help-Pane inklusive `?` (Phase 5)
+- Leader-Key (`Space+o`) (Phase 6)
+- Auto-Refresh für weitere Writes (nach Create/Edit)
+- Weitere TUI-Modelltests
 
 ---
 
 ## 🎯 Nächster Schritt:
 
-**Vor Phase 4: Create-Task-Grilling durchführen**
-- Phase 3 ist umgesetzt: Command-Registry, Command-Mode, `:q`, `:qa`, `:quitall`, `:h`/`:help` und `:errors`.
+**Phase 4: Create-/Edit-Editor vorbereiten**
+- Die Produktentscheidungen für Create/Edit sind in `SPEC_FUNDAMENT.md`, Abschnitt 6, dokumentiert.
+- Noch offen vor der Umsetzung: Verhalten von `Esc` im Detail-Normal-Mode; minimale Textbearbeitung (Backspace/Delete/Cursor); Projektpicker-No-Match/Sortierung und Description-Scrolling.
+- Phase 3 ist umgesetzt: Command-Registry, Command-Mode, `:q`/`:quit`, `:qa`/`:quitall`, `:h`/`:help` und `:errors`.
 - `:h` öffnet bis zur Help-Phase einen Platzhalter als normale Pane (`Ctrl+W j/k`, schließen nur mit `:q`); `:errors` zeigt den bestehenden Session-Error-Log.
-- Die zwei internen Schritte von Phase 2 sind umgesetzt: thread-sicherer In-Memory-Error-Log, zentrale Erfassung von Lade- und Schreibfehlern sowie roter Fehler-Footer.
-- Footer-Fehler werden bei der nächsten Taste ausgeblendet; der Eintrag bleibt im Session-Log.
-- Erfolgreiches Task-Toggle und anschließender Reload sind getrennte Nachrichten; ein fehlgeschlagener Write löst keinen Reload aus.
-- Als Nächstes: Zielkontext, Keybinding und `:new`-Semantik für Create Task festlegen.
 
 ---
 
@@ -41,7 +39,7 @@
 | `updated` timestamp bump | ✅ |
 | Done-Bucket Move | ✅ |
 | Commands | ✅ Phase 3 |
-| Create Task | ⏳ Phase 4 (kurzes Grilling vor der Spec) |
+| Create/Edit Task | 🟡 Phase 4: Entscheidungen dokumentiert, technische Fragen offen |
 | Help-Pane | ⏳ Phase 5 |
 | Leader-Key | ⏳ Phase 6 |
 | Auto-Refresh | ⏳ Phase 7.3 |
@@ -52,7 +50,9 @@
 ---
 
 ## 📝 TODO (Later):
-- Description Rendering (HTML → Text/Markdown)
+- Description Rendering (Original-Vikunja-HTML → TUI-Text/Markdown): Parsing- und Formatierungsstrategie diskutieren
+- Erweiterte Vim-Edit-Shortcuts (`o`/`Shift+o`, `i`/`a`, `Shift+i`/`Shift+a`)
+- Editierbare Workflow-Status im Detail-Pane (z. B. Todo, Doing, Done) statt nur Done-Toggle
 - Datumsformat, Truncation, etc.
 
 **Details:** `.archive/TODO_UX.md`
@@ -68,4 +68,4 @@
 ---
 
 **Letzter Commit:**  
-`ad90e1d` - feat: move tasks to done_bucket_id on toggle (Phase 6.2)
+`a873797` - Phase 3.3 help/error commands / Panes
