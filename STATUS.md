@@ -10,7 +10,7 @@
 - Vim-Navigation (hjkl, gg, G, Ctrl+D/U, Ctrl+W)
 - Task Toggle (`x`) → `done` + **updated timestamp** + **Bucket-Move** ✅
 - Priority-Farben (rot=urgent, grün=low)
-- **Store Tests** (Phase 7.1): 7 Tests grün ✅
+- **Tests:** 7 Store-Tests + 2 Error-Log-Tests grün ✅
 
 ## ❌ Was fehlt:
 - Commands (`:q`, `:qa`, `:h`)
@@ -23,12 +23,11 @@
 
 ## 🎯 Nächster Schritt:
 
-**Nächste Implementierungsphase wählen**
-- Go 1.25.0 ist installiert und in `go.mod` festgelegt.
-- `go test -v ./...` und `go vet ./...` sind grün.
-- Die 7 Store-Tests prüfen Timestamp, Bucket-Move, `done_at`, Pagination, Sortierung und archivierte Projekte.
-
-**Dann:** Phase 2 (Error-Handling) oder Phase 3 (Commands)
+**Phase 2 fortsetzen – Schritt 2 (sichtbares Error-Feedback)**
+- Schritt 1 ist umgesetzt: thread-sicherer In-Memory-Error-Log und zentrale Erfassung von Lade- und Schreibfehlern.
+- Erfolgreiches Task-Toggle und anschließender Reload sind nun getrennte Nachrichten; ein fehlgeschlagener Write löst keinen Reload aus.
+- Als Nächstes: Fehler-Footer rot rendern und erst bei der nächsten Taste ausblenden.
+- `:errors` bleibt bewusst offen für Phase 3 (Command-Infrastruktur).
 
 ---
 
@@ -43,8 +42,9 @@
 | Help-Pane | ⏳ Phase 4 |
 | Leader-Key | ⏳ Phase 5 |
 | Auto-Refresh | ⏳ Phase 6.3 |
-| Error Footer | ⏳ Phase 2 |
-| Tests | ✅ Phase 7.1 (7 Store-Tests) |
+| Error-Log-Infrastruktur | 🟡 Phase 2, Schritt 1 erledigt |
+| Error Footer | ⏳ Phase 2, Schritt 2 |
+| Tests | 🟡 7 Store-Tests + 2 Error-Log-Tests; TUI-Tests offen |
 
 ---
 

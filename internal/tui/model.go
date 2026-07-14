@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	apperrors "github.com/vimkunja/vimkunja/internal/errors"
 	"github.com/vimkunja/vimkunja/internal/vimkunja"
 
 	tea "charm.land/bubbletea/v2"
@@ -116,6 +117,9 @@ type (
 		tasks []vimkunja.Task
 		err   error
 	}
+	taskToggledMsg struct {
+		err error
+	}
 )
 
 func (m *model) Init() tea.Cmd {
@@ -216,7 +220,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case projectsLoadedMsg:
 		m.projectLoading = false
 		if typed.err != nil {
-			m.lastErr = typed.err.Error()
+			m.recordError(typed.err)
 			return m, nil
 		}
 
@@ -248,7 +252,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case viewsLoadedMsg:
 		m.viewLoading = false
 		if typed.err != nil {
-			m.lastErr = typed.err.Error()
+			m.recordError(typed.err)
 			return m, nil
 		}
 		m.projectViews = typed.views
@@ -262,10 +266,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.taskLoading = true
 		return m, m.loadTasks(m.currentProjectID, m.currentViewID)
 
+	case taskToggledMsg:
+		if typed.err != nil {
+			m.taskLoading = false
+			m.recordError(typed.err)
+			return m, nil
+		}
+		if m.currentProjectID == 0 || m.currentViewID == 0 {
+			m.taskLoading = false
+			return m, nil
+		}
+		return m, m.loadTasks(m.currentProjectID, m.currentViewID)
+
 	case tasksLoadedMsg:
 		m.taskLoading = false
 		if typed.err != nil {
-			m.lastErr = typed.err.Error()
+			m.recordError(typed.err)
 			return m, nil
 		}
 		m.tasks = typed.tasks
@@ -274,6 +290,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// recordError makes errors visible in the current session and preserves them
+// for the future :errors pane.
+func (m *model) recordError(err error) {
+	if err == nil {
+		return
+	}
+	m.lastErr = err.Error()
+	apperrors.Log(m.lastErr)
 }
 
 func (m *model) nextFocus() paneID {
@@ -419,15 +445,7 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 				defer cancel()
-				if err := m.store.ToggleTaskDone(ctx, t.ID, !t.Done); err != nil {
-					return tasksLoadedMsg{err: err}
-				}
-				// Reload current view tasks.
-				if m.currentProjectID == 0 || m.currentViewID == 0 {
-					return tasksLoadedMsg{tasks: nil, err: nil}
-				}
-				items, _, err := m.store.ListTasksInView(ctx, m.currentProjectID, m.currentViewID, 1, m.perPage)
-				return tasksLoadedMsg{tasks: items, err: err}
+				return taskToggledMsg{err: m.store.ToggleTaskDone(ctx, t.ID, !t.Done)}
 			}
 		}
 	}
