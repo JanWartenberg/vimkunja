@@ -150,6 +150,34 @@ func TestToggleTaskDone_MovesBucketWhenDone(t *testing.T) {
 	}
 }
 
+func TestToggleTaskDone_LeavesBucketWithoutDoneBucket(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title) VALUES (1, 'Test Project');
+		INSERT INTO project_views (id, project_id, title, view_kind) VALUES (1, 1, 'Kanban', 3);
+		INSERT INTO tasks (id, project_id, title) VALUES (1, 1, 'Task 1');
+		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES (1, 1, 10, 1);
+	`)
+	if err != nil {
+		t.Fatalf("insert test data: %v", err)
+	}
+
+	if err := store.ToggleTaskDone(ctx, 1, true); err != nil {
+		t.Fatalf("toggle task done: %v", err)
+	}
+
+	var bucketID int64
+	if err := store.db.QueryRow(`SELECT bucket_id FROM task_buckets WHERE task_id = 1`).Scan(&bucketID); err != nil {
+		t.Fatalf("query bucket_id: %v", err)
+	}
+	if bucketID != 10 {
+		t.Errorf("bucket changed without a done bucket: got %d, want 10", bucketID)
+	}
+}
+
 func TestToggleTaskDone_MovesTaskToEachViewsDoneBucket(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
@@ -283,6 +311,70 @@ func TestListProjects_Pagination(t *testing.T) {
 
 	if len(projects) != 2 {
 		t.Errorf("expected 2 projects on page 2, got %d", len(projects))
+	}
+}
+
+func TestListViews_OrdersAndMapsKinds(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title) VALUES (1, 'Test Project');
+		INSERT INTO project_views (id, project_id, title, view_kind, position) VALUES
+			(1, 1, 'Kanban', 3, 30),
+			(2, 1, 'List', 0, 10),
+			(3, 1, 'Table', 2, 20);
+	`)
+	if err != nil {
+		t.Fatalf("insert test data: %v", err)
+	}
+
+	views, _, err := store.ListViews(context.Background(), 1, 1, 50)
+	if err != nil {
+		t.Fatalf("list views: %v", err)
+	}
+
+	want := []struct {
+		id   int64
+		kind string
+	}{{2, "list"}, {3, "table"}, {1, "kanban"}}
+	if len(views) != len(want) {
+		t.Fatalf("got %d views, want %d", len(views), len(want))
+	}
+	for i, expected := range want {
+		if views[i].ID != expected.id || views[i].ViewKind != expected.kind {
+			t.Errorf("view %d = {ID: %d, ViewKind: %q}, want {ID: %d, ViewKind: %q}", i, views[i].ID, views[i].ViewKind, expected.id, expected.kind)
+		}
+	}
+}
+
+func TestListProjectsAndTasks_HandleNullableFields(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, identifier, title, description) VALUES (1, NULL, 'Test Project', NULL);
+		INSERT INTO project_views (id, project_id, title, view_kind) VALUES (1, 1, 'List', 0);
+		INSERT INTO tasks (id, project_id, title, due_date, "index", description) VALUES (1, 1, 'Task 1', NULL, NULL, NULL);
+	`)
+	if err != nil {
+		t.Fatalf("insert test data: %v", err)
+	}
+
+	projects, _, err := store.ListProjects(context.Background(), 1, 50)
+	if err != nil {
+		t.Fatalf("list projects with NULL fields: %v", err)
+	}
+	if len(projects) != 1 || projects[0].Identifier != "" || projects[0].Description != "" {
+		t.Errorf("projects = %#v, want one project with empty nullable fields", projects)
+	}
+
+	tasks, _, err := store.ListTasksInView(context.Background(), 1, 1, 1, 50)
+	if err != nil {
+		t.Fatalf("list tasks with NULL fields: %v", err)
+	}
+	if len(tasks) != 1 || tasks[0].DueDate != "" || tasks[0].Index != 0 || tasks[0].Description != "" {
+		t.Errorf("tasks = %#v, want one task with empty nullable fields", tasks)
 	}
 }
 
