@@ -40,9 +40,10 @@
 | `updated` timestamp bump | ✅ |
 | Done-Bucket Move | ✅ |
 | Commands | 🟡 Phase 3, Registry (Schritt 3.1) erledigt |
-| Help-Pane | ⏳ Phase 4 |
-| Leader-Key | ⏳ Phase 5 |
-| Auto-Refresh | ⏳ Phase 6.3 |
+| Create Task | ⏳ Phase 4 (kurzes Grilling vor der Spec) |
+| Help-Pane | ⏳ Phase 5 |
+| Leader-Key | ⏳ Phase 6 |
+| Auto-Refresh | ⏳ Phase 7.3 |
 | Error-Log-Infrastruktur | ✅ intern in Phase 2 (Anzeige per `:errors` folgt in Phase 3) |
 | Error Footer | ✅ Phase-2-Schritt 2 |
 | Tests | 🟡 11 Store-Tests + 2 Error-Log-Tests + 5 TUI-Tests; weitere TUI-Tests offen |

@@ -19,7 +19,7 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 - **Nur Tastatur:** Wer Vim kennt, soll nicht überrascht werden
 - **Vim-Navigation:** `hjkl`, `gg/G`, `Ctrl+D/U`, `Ctrl+W` (Panes)
 - **Commands:** `:q`, `:qa`, `:h` (analog Vim)
-- **Leader-Key:** `Space` + Action (z.B. `Space+o` = neuer Task)
+- **Leader-Key:** `Space` + Action
 
 ---
 

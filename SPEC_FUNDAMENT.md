@@ -76,6 +76,7 @@ Build a **production-ready foundation** that:
 33. As a developer, I want a `FakeStore` test implementation, so that I can test TUI logic without a real DB.
 34. As a developer, I want Store tests to use real SQLite tempfiles, so that DB side-effects (bucket moves, timestamps) are validated.
 35. As a developer, I want TUI model tests to mock the Store, so that pane navigation logic is testable independently.
+36. As a Vimkunja user, I want to create a task within the TUI for the current project or in the current view, and optionally set its due date, priority, and description.
 
 ---
 
@@ -147,7 +148,15 @@ Build a **production-ready foundation** that:
 
 - **Autocomplete:** Later commands need autocomplete system (with `Tab`, same as in Vim)
 
-### 6. Help-Pane (Decision #10)
+### 6. Create Task (Phase 4 — short grilling required)
+Before implementation, make these product decisions in a short grilling session:
+- **Target:** Create in the current view, the selected project, or require an explicit project/view choice?
+- **Keybinding:** Use `o` (Vim-style open below), `%` (netrw-style new item), or another binding?
+- **Command:** Add `:new`, and if so, which arguments are accepted?
+
+No create-task UI or Store API is specified until these decisions are recorded.
+
+### 7. Help-Pane (Decision #10)
 - **Module:** `internal/tui/help.go` (new)
 - **Content:** Static markdown-style text, scrollable with `j/k`
 - **Structure:**
@@ -156,7 +165,7 @@ Build a **production-ready foundation** that:
 - **Rendering:** Re-use pane-rendering logic (border, padding, fit-block)
 - **Lifecycle:** Help-pane is a special pane (like Detail-pane). Opens via `:h` or `?`, closes via `:q` or `Esc`.
 
-### 7. Leader-Key Support (Decision #13)
+### 8. Leader-Key Support (Decision #13)
 - **Module:** `model.Update()` — add `leaderArmed` state + timeout
 - **Config:**
   - Leader key = **Space**
@@ -169,7 +178,7 @@ Build a **production-ready foundation** that:
   - `Space+o` → Toggle projects pane collapse (see Decision #13)
   - Future: `Space+f` (filter), `Space+g` (goto), etc.
 
-### 8. Projects-Pane Collapse (Decision #13)
+### 9. Projects-Pane Collapse (Decision #13)
 - **Keybindings:** `Space+o` OR `Ctrl+W o`
 - **State:** `model.projectsPaneCollapsed` (bool)
 - **Layout Impact:**
@@ -177,12 +186,12 @@ Build a **production-ready foundation** that:
   - Expanded → Default 30% / 70% split
 - **Focus Impact:** When collapsed, `Ctrl+W h` from Tasks-pane is a no-op (can't focus invisible pane).
 
-### 9. Detail-Pane as Full Pane (Decision #4)
+### 10. Detail-Pane as Full Pane (Decision #4)
 - **Current state:** Already implemented (Decision #4 confirmed it's not a modal)
 - **Clarification:** Detail-pane is in `neighbors` graph, can be reached with `Ctrl+W j` from Tasks-pane.
 - **Rationale:** Prepares for future edit-mode (Decision #18-19) — user needs to switch focus between Detail fields and Task list.
 
-### 10. Architecture: Packages
+### 11. Architecture: Packages
 - **`internal/vimkunja/`**
   - `store.go` — `Store` interface (unchanged)
   - `sqlite_store.go` — `SQLiteStore` (enhanced: bump `updated`, bucket moves)
@@ -202,7 +211,7 @@ Build a **production-ready foundation** that:
 - **`internal/vimkunja/sqlite_store_test.go`** (new)
   - Store tests with real SQLite tempfiles
 
-### 11. Testing Strategy
+### 12. Testing Strategy
 See "Testing Decisions" section below.
 
 ---
@@ -323,10 +332,11 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 1. **Phase 1 (Cleanup):** Delete `client.go`, verify tests still pass (currently no tests, so just compile).
 2. **Phase 2 (Error Infra):** Add `internal/errors/log.go`, integrate into `model.Update()`.
 3. **Phase 3 (Commands):** Add `commands.go`, implement `:q/:qa/:h` handlers, wire into `model.Update()`.
-4. **Phase 4 (Help):** Add `help.go`, static help content, test with `:h` and `?`.
-5. **Phase 5 (Leader):** Add leader-key state machine to `model.Update()`, implement `Space+o` toggle.
-6. **Phase 6 (Write Semantics):** Enhance `SQLiteStore.ToggleTaskDone()` to bump `updated` + move buckets.
-7. **Phase 7 (Tests):** Write `sqlite_store_test.go` + `model_test.go`, verify all behaviors.
+4. **Phase 4 (Create Task):** Run the short grilling session, then specify and implement task creation.
+5. **Phase 5 (Help):** Add `help.go`, static help content, test with `:h` and `?`.
+6. **Phase 6 (Leader):** Add leader-key state machine to `model.Update()`, implement `Space+o` toggle.
+7. **Phase 7 (Write Semantics):** Enhance `SQLiteStore.ToggleTaskDone()` to bump `updated` + move buckets.
+8. **Phase 8 (Tests):** Write `sqlite_store_test.go` + `model_test.go`, verify all behaviors.
 
 ### Domain Glossary Alignment
 - **Pane:** A UI section (Projects, Tasks, Detail). Not "panel" or "view" (conflicts with ProjectView).
@@ -365,5 +375,5 @@ This spec is **done** when:
 **Next Steps:**
 1. Review this spec with team/stakeholders.
 2. Create implementation tasks (issues or TODO.md).
-3. Start with Phase 1 (cleanup), iterate through Phase 7.
+3. Start with Phase 1 (cleanup), iterate through Phase 8.
 4. After Fundament is stable → write "SPEC_KANBAN.md" for Prio 1 features.
