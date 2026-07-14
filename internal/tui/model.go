@@ -160,6 +160,10 @@ func (m *model) loadTasks(projectID, viewID int64) tea.Cmd {
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Vim-split style focus switching
 	if key, ok := msg.(tea.KeyMsg); ok {
+		// A footer error is transient feedback. The full error remains available
+		// in the session log for the future :errors pane.
+		m.lastErr = ""
+
 		k := key.String()
 		kLower := strings.ToLower(k)
 
@@ -600,15 +604,16 @@ func (m *model) renderStatusBar(w int) string {
 	if m.focus == paneDetail {
 		hint = "q/esc close detail  •  Ctrl+W cycle"
 	}
-	if m.lastErr != "" {
-		hint = fmt.Sprintf("Error: %s", m.lastErr)
-	}
-
-	return lipgloss.NewStyle().
+	statusStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		Padding(0, 1).
-		Width(w - 2).
-		Render(fmt.Sprintf("%s   %s", info, hint))
+		Width(w - 2)
+	if m.lastErr != "" {
+		hint = fmt.Sprintf("Error: %s", m.lastErr)
+		statusStyle = statusStyle.Foreground(lipgloss.Color("196")).BorderForeground(lipgloss.Color("196"))
+	}
+
+	return statusStyle.Render(fmt.Sprintf("%s   %s", info, hint))
 }
 
 func clamp(v, lo, hi int) int {

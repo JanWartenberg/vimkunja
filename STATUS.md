@@ -23,11 +23,11 @@
 
 ## 🎯 Nächster Schritt:
 
-**Phase 2 fortsetzen – Schritt 2 (sichtbares Error-Feedback)**
-- Schritt 1 ist umgesetzt: thread-sicherer In-Memory-Error-Log und zentrale Erfassung von Lade- und Schreibfehlern.
-- Erfolgreiches Task-Toggle und anschließender Reload sind nun getrennte Nachrichten; ein fehlgeschlagener Write löst keinen Reload aus.
-- Als Nächstes: Fehler-Footer rot rendern und erst bei der nächsten Taste ausblenden.
-- `:errors` bleibt bewusst offen für Phase 3 (Command-Infrastruktur).
+**Phase 3 beginnen – Command-Infrastruktur**
+- Die zwei internen Schritte von Phase 2 sind umgesetzt: thread-sicherer In-Memory-Error-Log, zentrale Erfassung von Lade- und Schreibfehlern sowie roter Fehler-Footer.
+- Footer-Fehler werden bei der nächsten Taste ausgeblendet; der Eintrag bleibt im Session-Log.
+- Erfolgreiches Task-Toggle und anschließender Reload sind getrennte Nachrichten; ein fehlgeschlagener Write löst keinen Reload aus.
+- Als Nächstes: Command-Mode und `:q`, `:qa`, `:h`; danach kann `:errors` den bestehenden Log sichtbar machen.
 
 ---
 
@@ -42,9 +42,9 @@
 | Help-Pane | ⏳ Phase 4 |
 | Leader-Key | ⏳ Phase 5 |
 | Auto-Refresh | ⏳ Phase 6.3 |
-| Error-Log-Infrastruktur | 🟡 Phase 2, Schritt 1 erledigt |
-| Error Footer | ⏳ Phase 2, Schritt 2 |
-| Tests | 🟡 7 Store-Tests + 2 Error-Log-Tests; TUI-Tests offen |
+| Error-Log-Infrastruktur | ✅ intern in Phase 2 (Anzeige per `:errors` folgt in Phase 3) |
+| Error Footer | ✅ Phase-2-Schritt 2 |
+| Tests | 🟡 7 Store-Tests + 2 Error-Log-Tests + 1 TUI-Test; weitere TUI-Tests offen |
 
 ---
 
