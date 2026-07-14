@@ -43,6 +43,22 @@ func TestErrorFooterClearsOnNextKey(t *testing.T) {
 	}
 }
 
+func testModel() *model {
+	return NewModel(Config{Store: &fakeStore{}}).(*model)
+}
+
+func typeCommand(t *testing.T, m *model, input string) (*model, tea.Cmd) {
+	t.Helper()
+	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: ':', Text: ":"}))
+	m = updated.(*model)
+	for _, r := range input {
+		updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: r, Text: string(r)}))
+		m = updated.(*model)
+	}
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	return updated.(*model), cmd
+}
+
 func TestToggleFailureDoesNotReloadTasks(t *testing.T) {
 	store := &fakeStore{toggleErr: errors.New("write failed")}
 	m := &model{
@@ -68,5 +84,70 @@ func TestToggleFailureDoesNotReloadTasks(t *testing.T) {
 	}
 	if store.listTasksCalls != 0 {
 		t.Fatalf("ListTasksInView called %d times, want 0", store.listTasksCalls)
+	}
+}
+
+func TestCommandModeEscapeCancelsInput(t *testing.T) {
+	m := testModel()
+	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: ':', Text: ":"}))
+	m = updated.(*model)
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'q', Text: "q"}))
+	m = updated.(*model)
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape}))
+	m = updated.(*model)
+
+	if m.commandMode || m.commandInput != "" {
+		t.Fatalf("command state = mode:%v input:%q, want cancelled", m.commandMode, m.commandInput)
+	}
+}
+
+func TestCommandQuitClosesDetailPane(t *testing.T) {
+	m := testModel()
+	m.showDetail = true
+	m.focus = paneDetail
+
+	m, cmd := typeCommand(t, m, "q")
+	if m.showDetail || m.focus != paneTasks {
+		t.Fatalf("detail state = visible:%v focus:%v, want closed task pane", m.showDetail, m.focus)
+	}
+	if cmd != nil {
+		t.Fatal(":q returned quit command while closing detail pane")
+	}
+}
+
+func TestCommandQuitQuitsWithoutClosablePane(t *testing.T) {
+	_, cmd := typeCommand(t, testModel(), "q")
+	if cmd == nil {
+		t.Fatal(":q returned no quit command in the main view")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatalf(":q command returned %T, want tea.QuitMsg", cmd())
+	}
+}
+
+func TestCommandQuitAllQuits(t *testing.T) {
+	for _, input := range []string{"qa", "quitall"} {
+		t.Run(input, func(t *testing.T) {
+			m, cmd := typeCommand(t, testModel(), input)
+			if m.commandMode {
+				t.Fatal("command mode remained active")
+			}
+			if cmd == nil {
+				t.Fatalf(":%s returned no quit command", input)
+			}
+			if _, ok := cmd().(tea.QuitMsg); !ok {
+				t.Fatalf(":%s command returned %T, want tea.QuitMsg", input, cmd())
+			}
+		})
+	}
+}
+
+func TestUnknownCommandRecordsError(t *testing.T) {
+	m, cmd := typeCommand(t, testModel(), "missing")
+	if cmd != nil {
+		t.Fatal("unknown command returned a command")
+	}
+	if m.lastErr != "unknown command: missing" {
+		t.Fatalf("lastErr = %q, want unknown-command error", m.lastErr)
 	}
 }

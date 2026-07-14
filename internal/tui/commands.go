@@ -50,6 +50,26 @@ func (r *CommandRegistry) Execute(m *model, input string) (tea.Model, tea.Cmd, e
 	return updated, cmd, nil
 }
 
+func newDefaultCommandRegistry() *CommandRegistry {
+	registry := NewCommandRegistry()
+	registry.Register("q", nil, quitCommand)
+	registry.Register("qa", []string{"quitall"}, quitAllCommand)
+	return registry
+}
+
+func quitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if m.showDetail && m.focus == paneDetail {
+		m.showDetail = false
+		m.focus = paneTasks
+		return m, nil
+	}
+	return m, tea.Quit
+}
+
+func quitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	return m, tea.Quit
+}
+
 func normalizeCommandName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }

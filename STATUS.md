@@ -23,12 +23,13 @@
 
 ## 🎯 Nächster Schritt:
 
-**Phase 3 fortsetzen – Schritt 3.2 (Command-Mode)**
+**Phase 3 fortsetzen – Schritt 3.3 (Pane-Commands)**
 - Schritt 3.1 ist umgesetzt: Command-Registry mit Alias-Auflösung, einfacher Argument-Parser und Fehlern für leere bzw. unbekannte Commands.
+- Schritt 3.2 ist umgesetzt: Command-Mode mit `:`, Eingabe, Backspace, `Esc`, `Enter`, `:q`, `:qa` und `:quitall`.
 - Die zwei internen Schritte von Phase 2 sind umgesetzt: thread-sicherer In-Memory-Error-Log, zentrale Erfassung von Lade- und Schreibfehlern sowie roter Fehler-Footer.
 - Footer-Fehler werden bei der nächsten Taste ausgeblendet; der Eintrag bleibt im Session-Log.
 - Erfolgreiches Task-Toggle und anschließender Reload sind getrennte Nachrichten; ein fehlgeschlagener Write löst keinen Reload aus.
-- Als Nächstes: Command-Mode und `:q`, `:qa`; anschließend `:h` und `:errors` verdrahten.
+- Als Nächstes: `:h` und `:errors` als Pane-Commands verdrahten.
 
 ---
 
@@ -39,14 +40,14 @@
 | REST Client entfernt | ✅ |
 | `updated` timestamp bump | ✅ |
 | Done-Bucket Move | ✅ |
-| Commands | 🟡 Phase 3, Registry (Schritt 3.1) erledigt |
+| Commands | 🟡 Phase 3, Registry + Command-Mode (Schritte 3.1–3.2) erledigt |
 | Create Task | ⏳ Phase 4 (kurzes Grilling vor der Spec) |
 | Help-Pane | ⏳ Phase 5 |
 | Leader-Key | ⏳ Phase 6 |
 | Auto-Refresh | ⏳ Phase 7.3 |
 | Error-Log-Infrastruktur | ✅ intern in Phase 2 (Anzeige per `:errors` folgt in Phase 3) |
 | Error Footer | ✅ Phase-2-Schritt 2 |
-| Tests | 🟡 11 Store-Tests + 2 Error-Log-Tests + 5 TUI-Tests; weitere TUI-Tests offen |
+| Tests | 🟡 11 Store-Tests + 2 Error-Log-Tests + 10 TUI-Tests; weitere TUI-Tests offen |
 
 ---
 

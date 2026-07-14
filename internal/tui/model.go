@@ -49,6 +49,10 @@ type model struct {
 	lastErr string
 	toast   string
 
+	commandMode  bool
+	commandInput string
+	commands     *CommandRegistry
+
 	// Projects pane
 	projects        []vimkunja.Project
 	projectSelected int
@@ -87,7 +91,8 @@ func NewModel(cfg Config) tea.Model {
 			paneTasks:    {left: ptr(paneProjects), right: nil, down: ptr(paneDetail)},
 			paneDetail:   {up: ptr(paneTasks)},
 		},
-		focus: paneProjects,
+		focus:    paneProjects,
+		commands: newDefaultCommandRegistry(),
 	}
 	if cfg.InitialProjectID != 0 {
 		m.focus = paneTasks
@@ -170,6 +175,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Quit
 		if kLower == "ctrl+c" {
 			return m, tea.Quit
+		}
+
+		if m.commandMode {
+			return m.updateCommandModeKey(key)
+		}
+		if k == ":" {
+			m.commandMode = true
+			m.commandInput = ""
+			return m, nil
 		}
 
 		// Ctrl+W leader
@@ -304,6 +318,37 @@ func (m *model) recordError(err error) {
 	}
 	m.lastErr = err.Error()
 	apperrors.Log(m.lastErr)
+}
+
+func (m *model) updateCommandModeKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch strings.ToLower(key.String()) {
+	case "esc":
+		m.commandMode = false
+		m.commandInput = ""
+		return m, nil
+	case "backspace":
+		input := []rune(m.commandInput)
+		if len(input) > 0 {
+			m.commandInput = string(input[:len(input)-1])
+		}
+		return m, nil
+	case "enter":
+		input := m.commandInput
+		m.commandMode = false
+		m.commandInput = ""
+
+		updated, cmd, err := m.commands.Execute(m, input)
+		if err != nil {
+			m.recordError(err)
+			return m, nil
+		}
+		return updated, cmd
+	}
+
+	if text := key.Key().Text; text != "" {
+		m.commandInput += text
+	}
+	return m, nil
 }
 
 func (m *model) nextFocus() paneID {
@@ -603,6 +648,9 @@ func (m *model) renderStatusBar(w int) string {
 	hint := "Ctrl+W cycles  •  Enter detail  •  q quit  •  r refresh  •  j/k navigate  •  x toggle"
 	if m.focus == paneDetail {
 		hint = "q/esc close detail  •  Ctrl+W cycle"
+	}
+	if m.commandMode {
+		hint = fmt.Sprintf(":%s_", m.commandInput)
 	}
 	statusStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
