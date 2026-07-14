@@ -163,7 +163,7 @@ No create-task UI or Store API is specified until these decisions are recorded.
   - **Top 10-20 lines (no scroll needed):** Most common commands (`hjkl`, `gg/G`, `Ctrl+W`, `:q`, `x`, `r`, `Enter`)
   - **Below (scrollable):** Full keybinding list, all commands, explanations
 - **Rendering:** Re-use pane-rendering logic (border, padding, fit-block)
-- **Lifecycle:** Help-pane is a special pane (like Detail-pane). Opens via `:h` or `?`, closes via `:q` or `Esc`.
+- **Lifecycle:** Help-pane is a normal pane. It opens via `:h` or `?`; use `Ctrl+W j/k` to move focus into and out of it, and close it only with `:q` while it has focus.
 
 ### 8. Leader-Key Support (Decision #13)
 - **Module:** `model.Update()` — add `leaderArmed` state + timeout
@@ -322,6 +322,7 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 - Table/Gantt views
 - Autocomplete for commands with arguments (`:goto <project>`)
 - Project View should reflect the hierarchy of projects (via indentation)
+- Commands (`:<xxx>`) should have a history, type in `:` and Arrows Up and Down should scroll through latest 100(?) entered commands
 
 
 ---

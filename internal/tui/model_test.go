@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	apperrors "github.com/vimkunja/vimkunja/internal/errors"
 	"github.com/vimkunja/vimkunja/internal/vimkunja"
 
 	tea "charm.land/bubbletea/v2"
@@ -116,12 +117,16 @@ func TestCommandQuitClosesDetailPane(t *testing.T) {
 }
 
 func TestCommandQuitQuitsWithoutClosablePane(t *testing.T) {
-	_, cmd := typeCommand(t, testModel(), "q")
-	if cmd == nil {
-		t.Fatal(":q returned no quit command in the main view")
-	}
-	if _, ok := cmd().(tea.QuitMsg); !ok {
-		t.Fatalf(":q command returned %T, want tea.QuitMsg", cmd())
+	for _, input := range []string{"q", "quit"} {
+		t.Run(input, func(t *testing.T) {
+			_, cmd := typeCommand(t, testModel(), input)
+			if cmd == nil {
+				t.Fatalf(":%s returned no quit command in the main view", input)
+			}
+			if _, ok := cmd().(tea.QuitMsg); !ok {
+				t.Fatalf(":%s command returned %T, want tea.QuitMsg", input, cmd())
+			}
+		})
 	}
 }
 
@@ -139,6 +144,100 @@ func TestCommandQuitAllQuits(t *testing.T) {
 				t.Fatalf(":%s command returned %T, want tea.QuitMsg", input, cmd())
 			}
 		})
+	}
+}
+
+func TestHelpCommandOpensHelpPane(t *testing.T) {
+	m, cmd := typeCommand(t, testModel(), "help")
+	if cmd != nil {
+		t.Fatal(":help returned an unexpected command")
+	}
+	if m.helpPane == nil || m.helpPane.title != "HELP" || m.focus != paneHelp {
+		t.Fatalf("help pane = %#v, focus = %v; want help pane with help focus", m.helpPane, m.focus)
+	}
+}
+
+func TestHelpPaneEscDoesNotClose(t *testing.T) {
+	m, _ := typeCommand(t, testModel(), "h")
+	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape}))
+	m = updated.(*model)
+
+	if m.helpPane == nil || m.focus != paneHelp {
+		t.Fatalf("help pane = %#v, focus = %v; want unchanged help pane", m.helpPane, m.focus)
+	}
+}
+
+func TestHelpPaneCtrlWNavigation(t *testing.T) {
+	m, _ := typeCommand(t, testModel(), "h")
+	ctrlW := tea.KeyPressMsg(tea.Key{Code: 'w', Mod: tea.ModCtrl})
+
+	updated, _ := m.Update(ctrlW)
+	m = updated.(*model)
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'k', Text: "k"}))
+	m = updated.(*model)
+	if m.focus != paneTasks {
+		t.Fatalf("focus after Ctrl+W k = %v, want tasks", m.focus)
+	}
+
+	updated, _ = m.Update(ctrlW)
+	m = updated.(*model)
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'j', Text: "j"}))
+	m = updated.(*model)
+	if m.focus != paneHelp {
+		t.Fatalf("focus after Ctrl+W j = %v, want help", m.focus)
+	}
+}
+
+func TestErrorsCommandShowsSessionLog(t *testing.T) {
+	const message = "test error shown by :errors"
+	apperrors.Log(message)
+
+	m, cmd := typeCommand(t, testModel(), "errors")
+	if cmd != nil {
+		t.Fatal(":errors returned an unexpected command")
+	}
+	if m.infoPane == nil || m.infoPane.title != "ERRORS" {
+		t.Fatalf("info pane = %#v, want errors pane", m.infoPane)
+	}
+	found := false
+	for _, line := range m.infoPane.lines {
+		if line == message {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("errors pane lines = %#v, missing %q", m.infoPane.lines, message)
+	}
+
+	m, cmd = typeCommand(t, m, "foo")
+	if cmd != nil {
+		t.Fatal("unknown command returned an unexpected command")
+	}
+	const wantError = "unknown command: foo"
+	if m.lastErr != wantError {
+		t.Fatalf("lastErr = %q, want %q", m.lastErr, wantError)
+	}
+	found = false
+	for _, line := range m.infoPane.lines {
+		if line == wantError {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("errors pane lines = %#v, missing newly logged error %q", m.infoPane.lines, wantError)
+	}
+}
+
+func TestCommandQuitClosesHelpPane(t *testing.T) {
+	m, _ := typeCommand(t, testModel(), "h")
+	m, cmd := typeCommand(t, m, "q")
+	if cmd != nil {
+		t.Fatal(":q returned quit command while closing help pane")
+	}
+	if m.helpPane != nil || m.focus != paneTasks {
+		t.Fatalf("help pane = %#v, focus = %v; want closed task pane", m.helpPane, m.focus)
 	}
 }
 

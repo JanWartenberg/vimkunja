@@ -177,6 +177,21 @@ func renderTasks(m *model, textW, textH int) string {
 	return fitBlock(lines, textW, textH)
 }
 
+type infoPane struct {
+	title    string
+	lines    []string
+	errorLog bool
+}
+
+func renderInfoPane(pane *infoPane, textW, textH int) string {
+	if pane == nil {
+		return fitBlock([]string{"No information available."}, textW, textH)
+	}
+
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).Render(" " + pane.title + " ")
+	return fitBlock(append([]string{title, ""}, pane.lines...), textW, textH)
+}
+
 func renderTaskDetail(m *model, textW, textH int) string {
 	lines := []string{}
 	if m.taskSelected < 0 || m.taskSelected >= len(m.tasks) {

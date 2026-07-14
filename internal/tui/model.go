@@ -19,6 +19,8 @@ const (
 	paneProjects paneID = iota
 	paneTasks
 	paneDetail
+	paneHelp
+	paneInfo
 )
 
 type paneNeighbors struct {
@@ -69,8 +71,10 @@ type model struct {
 	taskSelected int
 	taskLoading  bool
 
-	// Detail pane
+	// Detail and auxiliary panes
 	showDetail bool
+	helpPane   *infoPane
+	infoPane   *infoPane
 
 	currentProjectID int64
 
@@ -225,6 +229,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateTasksKeys(key)
 		case paneDetail:
 			return m.updateDetailKeys(key)
+		case paneHelp:
+			return m.updateHelpKeys(key)
+		case paneInfo:
+			return m.updateInfoKeys(key)
 		}
 		return m, nil
 	}
@@ -318,6 +326,9 @@ func (m *model) recordError(err error) {
 	}
 	m.lastErr = err.Error()
 	apperrors.Log(m.lastErr)
+	if m.infoPane != nil && m.infoPane.errorLog {
+		m.infoPane.lines = errorLogLines()
+	}
 }
 
 func (m *model) updateCommandModeKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -375,6 +386,9 @@ func (m *model) focusNeighborRightOrStay() paneID {
 }
 
 func (m *model) focusNeighborUpOrStay() paneID {
+	if m.focus == paneHelp || m.focus == paneInfo {
+		return paneTasks
+	}
 	n := m.neighbors[m.focus]
 	if n.up != nil {
 		return *n.up
@@ -383,6 +397,17 @@ func (m *model) focusNeighborUpOrStay() paneID {
 }
 
 func (m *model) focusNeighborDownOrStay() paneID {
+	if m.focus == paneProjects || m.focus == paneTasks {
+		if m.showDetail {
+			return paneDetail
+		}
+		if m.helpPane != nil {
+			return paneHelp
+		}
+		if m.infoPane != nil {
+			return paneInfo
+		}
+	}
 	n := m.neighbors[m.focus]
 	if n.down != nil {
 		return *n.down
@@ -512,6 +537,21 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateHelpKeys intentionally has no close shortcut. Help is a normal pane:
+// switch focus with Ctrl+W and close it explicitly with :q.
+func (m *model) updateHelpKeys(tea.KeyMsg) (tea.Model, tea.Cmd) {
+	return m, nil
+}
+
+func (m *model) updateInfoKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch k.String() {
+	case "q", "esc":
+		m.infoPane = nil
+		m.focus = paneTasks
+	}
+	return m, nil
+}
+
 func (m *model) onProjectSelectionChanged() tea.Cmd {
 	if len(m.projects) == 0 {
 		return nil
@@ -572,7 +612,7 @@ func (m *model) Render() string {
 	// Split top row (panes) and optional detail row.
 	topH := contentH
 	detailH := 0
-	if m.showDetail {
+	if m.showDetail || m.helpPane != nil || m.infoPane != nil {
 		topH = contentH / 2
 		if topH < 4 {
 			topH = 4
@@ -618,15 +658,23 @@ func (m *model) Render() string {
 	)
 
 	content := panes
-	if m.showDetail {
-		detail := renderTaskDetail(m, w-chromeX, detailH-chromeY)
-		detailStyle := lipgloss.NewStyle().
+	if m.showDetail || m.helpPane != nil || m.infoPane != nil {
+		var bottom string
+		switch {
+		case m.showDetail:
+			bottom = renderTaskDetail(m, w-chromeX, detailH-chromeY)
+		case m.helpPane != nil:
+			bottom = renderInfoPane(m.helpPane, w-chromeX, detailH-chromeY)
+		default:
+			bottom = renderInfoPane(m.infoPane, w-chromeX, detailH-chromeY)
+		}
+		bottomStyle := lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
 			Padding(0, 1).
 			Height(detailH - 2)
 		content = lipgloss.JoinVertical(lipgloss.Top,
 			panes,
-			detailStyle.Render(detail),
+			bottomStyle.Render(bottom),
 		)
 	}
 
@@ -643,11 +691,21 @@ func (m *model) renderStatusBar(w int) string {
 		info = "[Tasks]"
 	case paneDetail:
 		info = "[Detail]"
+	case paneHelp:
+		info = "[Help]"
+	case paneInfo:
+		info = "[Info]"
 	}
 
 	hint := "Ctrl+W cycles  •  Enter detail  •  q quit  •  r refresh  •  j/k navigate  •  x toggle"
 	if m.focus == paneDetail {
 		hint = "q/esc close detail  •  Ctrl+W cycle"
+	}
+	if m.focus == paneHelp {
+		hint = "Ctrl+W k tasks  •  :q close pane"
+	}
+	if m.focus == paneInfo {
+		hint = "q/esc close pane"
 	}
 	if m.commandMode {
 		hint = fmt.Sprintf(":%s_", m.commandInput)
@@ -701,7 +759,7 @@ func (m *model) pageStep() int {
 	if contentH < 4 {
 		contentH = 4
 	}
-	if m.showDetail {
+	if m.showDetail || m.helpPane != nil || m.infoPane != nil {
 		contentH /= 2
 	}
 	step := (contentH - 2) / 2 // minus border; half a page

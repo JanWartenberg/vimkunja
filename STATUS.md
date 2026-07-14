@@ -1,6 +1,6 @@
 # Vimkunja - Status
 
-**Stand:** 2026-07-13 | **Branch:** main | **Progress:** 4/10 (40%)
+**Stand:** 2026-07-14 | **Branch:** main | **Progress:** in Arbeit (siehe Matrix; Fundament nicht vollständig)
 
 ---
 
@@ -23,13 +23,13 @@
 
 ## 🎯 Nächster Schritt:
 
-**Phase 3 fortsetzen – Schritt 3.3 (Pane-Commands)**
-- Schritt 3.1 ist umgesetzt: Command-Registry mit Alias-Auflösung, einfacher Argument-Parser und Fehlern für leere bzw. unbekannte Commands.
-- Schritt 3.2 ist umgesetzt: Command-Mode mit `:`, Eingabe, Backspace, `Esc`, `Enter`, `:q`, `:qa` und `:quitall`.
+**Vor Phase 4: Create-Task-Grilling durchführen**
+- Phase 3 ist umgesetzt: Command-Registry, Command-Mode, `:q`, `:qa`, `:quitall`, `:h`/`:help` und `:errors`.
+- `:h` öffnet bis zur Help-Phase einen Platzhalter als normale Pane (`Ctrl+W j/k`, schließen nur mit `:q`); `:errors` zeigt den bestehenden Session-Error-Log.
 - Die zwei internen Schritte von Phase 2 sind umgesetzt: thread-sicherer In-Memory-Error-Log, zentrale Erfassung von Lade- und Schreibfehlern sowie roter Fehler-Footer.
 - Footer-Fehler werden bei der nächsten Taste ausgeblendet; der Eintrag bleibt im Session-Log.
 - Erfolgreiches Task-Toggle und anschließender Reload sind getrennte Nachrichten; ein fehlgeschlagener Write löst keinen Reload aus.
-- Als Nächstes: `:h` und `:errors` als Pane-Commands verdrahten.
+- Als Nächstes: Zielkontext, Keybinding und `:new`-Semantik für Create Task festlegen.
 
 ---
 
@@ -40,14 +40,14 @@
 | REST Client entfernt | ✅ |
 | `updated` timestamp bump | ✅ |
 | Done-Bucket Move | ✅ |
-| Commands | 🟡 Phase 3, Registry + Command-Mode (Schritte 3.1–3.2) erledigt |
+| Commands | ✅ Phase 3 |
 | Create Task | ⏳ Phase 4 (kurzes Grilling vor der Spec) |
 | Help-Pane | ⏳ Phase 5 |
 | Leader-Key | ⏳ Phase 6 |
 | Auto-Refresh | ⏳ Phase 7.3 |
-| Error-Log-Infrastruktur | ✅ intern in Phase 2 (Anzeige per `:errors` folgt in Phase 3) |
+| Error-Log-Infrastruktur | ✅ Phase 2 + Anzeige per `:errors` |
 | Error Footer | ✅ Phase-2-Schritt 2 |
-| Tests | 🟡 11 Store-Tests + 2 Error-Log-Tests + 10 TUI-Tests; weitere TUI-Tests offen |
+| Tests | 🟡 11 Store-Tests + 2 Error-Log-Tests + 15 TUI-Tests; weitere TUI-Tests offen |
 
 ---
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	apperrors "github.com/vimkunja/vimkunja/internal/errors"
+
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -52,8 +54,10 @@ func (r *CommandRegistry) Execute(m *model, input string) (tea.Model, tea.Cmd, e
 
 func newDefaultCommandRegistry() *CommandRegistry {
 	registry := NewCommandRegistry()
-	registry.Register("q", nil, quitCommand)
+	registry.Register("q", []string{"quit"}, quitCommand)
 	registry.Register("qa", []string{"quitall"}, quitAllCommand)
+	registry.Register("h", []string{"help"}, helpCommand)
+	registry.Register("err", []string{"errors"}, errorsCommand)
 	return registry
 }
 
@@ -63,11 +67,53 @@ func quitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 		m.focus = paneTasks
 		return m, nil
 	}
+	if m.helpPane != nil && m.focus == paneHelp {
+		m.helpPane = nil
+		m.focus = paneTasks
+		return m, nil
+	}
+	if m.infoPane != nil && m.focus == paneInfo {
+		m.infoPane = nil
+		m.focus = paneTasks
+		return m, nil
+	}
 	return m, tea.Quit
 }
 
 func quitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	return m, tea.Quit
+}
+
+func helpCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	m.showDetail = false
+	m.infoPane = nil
+	m.helpPane = &infoPane{
+		title: "HELP",
+		lines: []string{
+			"Welcome to Vimkunja, a vim-motion based Ticket-tool.",
+			"",
+			"Help content will be extended in Phase 5.",
+			"Use :q to close this pane.",
+		},
+	}
+	m.focus = paneHelp
+	return m, nil
+}
+
+func errorsCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	m.showDetail = false
+	m.helpPane = nil
+	m.infoPane = &infoPane{title: "ERRORS", lines: errorLogLines(), errorLog: true}
+	m.focus = paneInfo
+	return m, nil
+}
+
+func errorLogLines() []string {
+	lines := apperrors.GetAll()
+	if len(lines) == 0 {
+		return []string{"No errors recorded in this session."}
+	}
+	return lines
 }
 
 func normalizeCommandName(name string) string {
