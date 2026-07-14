@@ -90,9 +90,9 @@ Build a **production-ready foundation** that:
 - **Module:** `SQLiteStore.ToggleTaskDone()` (and future write methods)
 - **Side-effects to replicate:**
   - Bump `tasks.updated` to `NOW()` on every write
-  - Move task to `done_bucket_id` when toggling to `done=1` (if the project view has a `done_bucket_id`)
-  - Query: `SELECT done_bucket_id FROM project_views WHERE id = ?`
-  - Update: `UPDATE task_buckets SET bucket_id = ? WHERE task_id = ? AND project_view_id = ?`
+  - When toggling to `done=1`, sync the task into the `done_bucket_id` of every project view that has one.
+  - Query: `SELECT pv.id, pv.done_bucket_id FROM project_views pv JOIN tasks t ON t.project_id = pv.project_id WHERE t.id = ? AND pv.done_bucket_id IS NOT NULL`
+  - Update each view separately: `UPDATE task_buckets SET bucket_id = ? WHERE task_id = ? AND project_view_id = ?`
 - **Rationale:** Core Law #1 (schema compatibility) — DB state must match what the real Vikunja server produces.
 
 ### 3. Auto-Refresh After Write (Decision #3)
@@ -297,6 +297,8 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 - 2D navigation (`h/l` for buckets, `j/k` for tasks within bucket)
 - Task movement between buckets (`Shift+H/L`, `m+digit`)
 - Kanban-specific toggle-done behavior (auto-move + visual feedback)
+
+**Binding Kanban constraint:** Every manual Kanban view has exactly one configured `done_bucket_id`. Its bucket title remains user-configurable, but the UI must make its done semantics clear (for example `Done` or a visible `(Done)` suffix). When a task is marked done, its bucket assignment is synchronized to each Kanban view's own done bucket; `tasks.done` remains the single global source of truth.
 
 ### Deferred to "Feature: Edit Mode" (Prio 3)
 - Title edit inline (`i` in List/Kanban-pane) (Decision #18)

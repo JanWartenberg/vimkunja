@@ -8,9 +8,9 @@
 - Projekte + Tasks anzeigen
 - Details-View (Enter)
 - Vim-Navigation (hjkl, gg, G, Ctrl+D/U, Ctrl+W)
-- Task Toggle (`x`) → `done` + **updated timestamp** + **Bucket-Move** ✅
+- Task Toggle (`x`) → `done` + **updated timestamp** + Sync in jeden konfigurierten Done-Bucket ✅
 - Priority-Farben (rot=urgent, grün=low)
-- **Tests:** 7 Store-Tests + 2 Error-Log-Tests grün ✅
+- **Tests:** 8 Store-Tests + 2 Error-Log-Tests + 1 TUI-Test grün ✅
 
 ## ❌ Was fehlt:
 - Commands (`:q`, `:qa`, `:h`)
@@ -44,7 +44,7 @@
 | Auto-Refresh | ⏳ Phase 6.3 |
 | Error-Log-Infrastruktur | ✅ intern in Phase 2 (Anzeige per `:errors` folgt in Phase 3) |
 | Error Footer | ✅ Phase-2-Schritt 2 |
-| Tests | 🟡 7 Store-Tests + 2 Error-Log-Tests + 1 TUI-Test; weitere TUI-Tests offen |
+| Tests | 🟡 8 Store-Tests + 2 Error-Log-Tests + 1 TUI-Test; weitere TUI-Tests offen |
 
 ---
 

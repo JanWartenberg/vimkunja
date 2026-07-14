@@ -224,6 +224,12 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 }
 
 func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done bool) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin toggle task transaction: %w", err)
+	}
+	defer tx.Rollback()
+
 	// Update done status, done_at timestamp, and ALWAYS bump 'updated' timestamp.
 	// This ensures server-fidelity: webhooks, sync, and external tools see the change.
 	var doneAt any
@@ -235,42 +241,47 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 
 	// CRITICAL: Always bump 'updated' timestamp (Decision #2, SPEC_FUNDAMENT.md)
 	q := `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`
-	if _, err := s.db.ExecContext(ctx, q, boolToInt(done), doneAt, time.Now(), taskID); err != nil {
+	if _, err := tx.ExecContext(ctx, q, boolToInt(done), doneAt, time.Now(), taskID); err != nil {
 		return fmt.Errorf("toggle task done: %w", err)
 	}
 
-	// Phase 6.2: Move task to done_bucket_id when marking done (if configured)
+	// A task's done state is global. Mirror it in the configured done bucket of
+	// every view in its project, using each view's own bucket ID.
 	if done {
-		// Query done_bucket_id for this task's project view
-		qDoneBucket := `
-			SELECT pv.done_bucket_id
+		rows, err := tx.QueryContext(ctx, `
+			SELECT pv.id, pv.done_bucket_id
 			FROM project_views pv
 			JOIN tasks t ON t.project_id = pv.project_id
-			WHERE t.id = ?
-			LIMIT 1
-		`
-		var doneBucketID sql.NullInt64
-		err := s.db.QueryRowContext(ctx, qDoneBucket, taskID).Scan(&doneBucketID)
-		if err != nil && err != sql.ErrNoRows {
-			// Real error (not just "no view configured")
-			return fmt.Errorf("query done_bucket_id: %w", err)
+			WHERE t.id = ? AND pv.done_bucket_id IS NOT NULL
+		`, taskID)
+		if err != nil {
+			return fmt.Errorf("list done buckets: %w", err)
 		}
+		defer rows.Close()
 
-		// If done_bucket_id is configured, move the task
-		if doneBucketID.Valid {
-			qMoveBucket := `
+		for rows.Next() {
+			var viewID, doneBucketID int64
+			if err := rows.Scan(&viewID, &doneBucketID); err != nil {
+				return fmt.Errorf("scan done bucket: %w", err)
+			}
+			if _, err := tx.ExecContext(ctx, `
 				UPDATE task_buckets
 				SET bucket_id = ?
-				WHERE task_id = ?
-			`
-			if _, err := s.db.ExecContext(ctx, qMoveBucket, doneBucketID.Int64, taskID); err != nil {
+				WHERE task_id = ? AND project_view_id = ?
+			`, doneBucketID, taskID, viewID); err != nil {
 				return fmt.Errorf("move task to done bucket: %w", err)
 			}
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("iterate done buckets: %w", err)
 		}
 	}
 	// Note: When toggling to done=false, we leave task in current bucket
 	// (user can manually move it if needed)
 
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit toggle task transaction: %w", err)
+	}
 	return nil
 }
 

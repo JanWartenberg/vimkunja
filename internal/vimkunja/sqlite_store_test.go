@@ -150,6 +150,42 @@ func TestToggleTaskDone_MovesBucketWhenDone(t *testing.T) {
 	}
 }
 
+func TestToggleTaskDone_MovesTaskToEachViewsDoneBucket(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	ctx := context.Background()
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title) VALUES (1, 'Test Project');
+		INSERT INTO project_views (id, project_id, title, view_kind, done_bucket_id) VALUES
+			(1, 1, 'Team', 3, 99),
+			(2, 1, 'Personal', 3, 199);
+		INSERT INTO tasks (id, project_id, title) VALUES (1, 1, 'Task 1');
+		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES
+			(1, 1, 10, 1),
+			(2, 1, 20, 2);
+	`)
+	if err != nil {
+		t.Fatalf("insert test data: %v", err)
+	}
+
+	if err := store.ToggleTaskDone(ctx, 1, true); err != nil {
+		t.Fatalf("toggle task done: %v", err)
+	}
+
+	for viewID, wantBucketID := range map[int64]int64{1: 99, 2: 199} {
+		var gotBucketID int64
+		if err := store.db.QueryRow(`
+			SELECT bucket_id FROM task_buckets WHERE task_id = 1 AND project_view_id = ?
+		`, viewID).Scan(&gotBucketID); err != nil {
+			t.Fatalf("query bucket for view %d: %v", viewID, err)
+		}
+		if gotBucketID != wantBucketID {
+			t.Errorf("view %d bucket = %d, want %d", viewID, gotBucketID, wantBucketID)
+		}
+	}
+}
+
 func TestToggleTaskDone_LeavesInBucketWhenUndone(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
