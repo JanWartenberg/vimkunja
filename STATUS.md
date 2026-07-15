@@ -65,4 +65,4 @@
 ---
 
 **Arbeitsstand:**
-Phase 4 ist implementiert, getestet und manuell abgenommen, aber noch nicht committet. Letzter Commit: `2514119` - updates after halfway grilling for edit of Task Detail Pane
+Phase 4 bis 6 sind implementiert und committet. Arbeitsbaum ist sauber. Letzter Commit: `fb533a2` - Implement Phase 6 leader key and pane collapse
