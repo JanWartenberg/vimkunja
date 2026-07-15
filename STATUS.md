@@ -10,22 +10,21 @@
 - Vim-Navigation (hjkl, gg, G, Ctrl+D/U, Ctrl+W)
 - Task Toggle (`x`) → `done` + **updated timestamp** + Sync in jeden konfigurierten Done-Bucket ✅
 - Priority-Farben (rot=urgent, grün=low)
-- **Tests:** 11 Store-Tests + 2 Error-Log-Tests + 15 TUI-Tests grün ✅
+- Create-/Edit-Editor: Entwurf und bestehende Tasks, Projekt-/Prioritätspicker, Date-Maske, Dirty-Schutz sowie `:new`, `:w`, `:wq`, `:q!` ✅ Phase 4
+- **Tests:** 13 Store-Tests + 2 Error-Log-Tests + 19 TUI-Tests grün ✅
 
 ## ❌ Was fehlt:
-- Create-/Edit-Task-Editor (Phase 4)
 - Vollständige Help-Pane inklusive `?` (Phase 5)
 - Leader-Key (`Space+o`) (Phase 6)
-- Auto-Refresh für weitere Writes (nach Create/Edit)
 - Weitere TUI-Modelltests
 
 ---
 
 ## 🎯 Nächster Schritt:
 
-**Phase 4: Create-/Edit-Editor vorbereiten**
-- Die Produktentscheidungen für Create/Edit sind in `SPEC_FUNDAMENT.md`, Abschnitt 6, dokumentiert.
-- Die Produktentscheidungen sind vollständig: Projektpicker alphabetisch mit grauem `No match found`; Description unterstützt Vim-Scrolling (`j/k`, `Ctrl+D/U`, `PageDown/PageUp`, `gg/G`) im Normal-Mode.
+**Phase 5: Vollständige Help-Pane**
+- Phase 4 ist manuell abgenommen; die Produktregeln stehen in `SPEC_FUNDAMENT.md`, Abschnitt 6.
+- Als Nächstes: `help.go`, statischer und mit `j/k` scrollbarer Help-Text sowie `?` als Alias für `:help`.
 - Phase 3 ist umgesetzt: Command-Registry, Command-Mode, `:q`/`:quit`, `:qa`/`:quitall`, `:h`/`:help` und `:errors`.
 - `:h` öffnet bis zur Help-Phase einen Platzhalter als normale Pane (`Ctrl+W j/k`, schließen nur mit `:q`); `:errors` zeigt den bestehenden Session-Error-Log.
 
@@ -39,13 +38,13 @@
 | `updated` timestamp bump | ✅ |
 | Done-Bucket Move | ✅ |
 | Commands | ✅ Phase 3 |
-| Create/Edit Task | 🟡 Phase 4: Entscheidungen dokumentiert, technische Fragen offen |
+| Create/Edit Task | ✅ Phase 4: manuell abgenommen |
 | Help-Pane | ⏳ Phase 5 |
 | Leader-Key | ⏳ Phase 6 |
-| Auto-Refresh | ⏳ Phase 7.3 |
+| Auto-Refresh | ✅ nach Toggle sowie Create/Edit |
 | Error-Log-Infrastruktur | ✅ Phase 2 + Anzeige per `:errors` |
 | Error Footer | ✅ Phase-2-Schritt 2 |
-| Tests | 🟡 11 Store-Tests + 2 Error-Log-Tests + 15 TUI-Tests; weitere TUI-Tests offen |
+| Tests | 🟡 13 Store-Tests + 2 Error-Log-Tests + 19 TUI-Tests; weitere TUI-Tests offen |
 
 ---
 
@@ -66,5 +65,5 @@
 
 ---
 
-**Letzter Commit:**  
-`2514119` - updates after halfway grilling for edit of Task Detail Pane
+**Arbeitsstand:**
+Phase 4 ist implementiert, getestet und manuell abgenommen, aber noch nicht committet. Letzter Commit: `2514119` - updates after halfway grilling for edit of Task Detail Pane

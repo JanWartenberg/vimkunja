@@ -160,12 +160,12 @@ Build a **production-ready foundation** that:
 - The Project field is editable for both new and existing tasks. Saving a project change switches the TUI to the target project, reloads its list view, and selects the task.
 
 #### Form and modes
-- Form layout: `Project | Title`, then `Priority | Due Date`, then full-width `Description`; Done is visible read-only metadata outside the focus graph.
-- No navigation wrap-around. `j/k` moves vertically and `h/l` horizontally; `k` from Description always selects Priority; `h/l` in Description are no-ops.
+- Form layout is vertical: Project, Title, Priority, Due Date, then full-width Description; Done is visible read-only metadata outside the focus graph.
+- No navigation wrap-around. In the form, `j/k` or arrows move vertically between fields. In Description Normal-mode, `h/l` move the cursor; `k` or Up on its first line selects Due Date.
 - The focused field has a subtle pink border. The pink selection accent is defined once in `internal/tui/theme.go` for future theming.
 - Footer always shows `[NORMAL]`, `[INSERT]`, or `[COMMAND]`; dirty detail panes also show `[+]`.
 - `i` enters Insert-mode for the focused field; `Esc` leaves Insert-mode. In Insert-mode, `:` is literal field text.
-- Description is multi-line (`Enter` inserts a newline). In Title and Due Date, `Enter` leaves Insert-mode without saving. In Description Normal-mode, `j/k` move between lines and `h/l` move left/right; `Ctrl+D`/`Ctrl+U` and `PageDown`/`PageUp` scroll by pages; `gg`/`G` jump to the start/end. Arrow keys move in their respective direction in both modes.
+- Description is multi-line (`Enter` inserts a newline) and wraps to the pane width; it scrolls only when its wrapped content exceeds the pane. In Title and Due Date, `Enter` leaves Insert-mode without saving. In Description Normal-mode, `j/k` move between lines and `h/l` move left/right; `w`/`b` move by words; `Ctrl+D`/`Ctrl+U` and `PageDown`/`PageUp` scroll by pages; `gg`/`G` jump to the start/end; `Shift+I`/`Shift+A` enter Insert-mode at the current line's start/end. Arrow keys move in their respective direction in both modes. The Normal-mode cursor is a static white block; the Insert-mode cursor blinks without shifting text.
 - In Insert-mode, Backspace deletes the character left of the cursor, Delete deletes the character right of it, and arrow keys move the cursor. `h` and `l` insert literal characters.
 - `Esc` in Detail Normal-mode is a no-op; `Esc` in Insert-mode returns to Normal-mode. Detail panes are changed with `Ctrl+W hjkl` and closed with `:q`.
 
@@ -173,7 +173,7 @@ Build a **production-ready foundation** that:
 - Required before save: Project and non-empty Title. All other fields are optional for now.
 - Project uses a filterable, alphabetically sorted TUI picker: type to filter, `j/k` or arrows select, `Enter` confirms, `Esc` preserves the previous value. If the filter has no result, show gray `No match found`.
 - Priority picker values are None (0), Low (1), Medium (2), High (3), Urgent (4), and Do now / Jetzt erledigen (5); it uses `i`, `j/k` or arrows, `Enter`, and `Esc` like the project picker.
-- Due Date accepts only `YYYY-MM-DD`; empty is stored as `NULL`, a date as `00:00`. Invalid dates fail before any DB write, log an error, show the red footer, focus Due Date, and retain Insert-mode.
+- Due Date accepts only `YYYY-MM-DD`; the editor presents a `YYYY-MM-DD` mask and inserts separators while digits are typed. Empty is stored as `NULL`, a date as `00:00`. Invalid dates fail before any DB write, log an error, show the red footer, focus Due Date, and retain Insert-mode.
 - New-draft defaults: selected project when available, otherwise empty; empty Title/Due Date/Description; Priority None.
 
 #### Save and discard
@@ -185,7 +185,7 @@ Build a **production-ready foundation** that:
 
 #### Deferred work
 - Flexible due-date picker/modal alongside direct entry (tomorrow, day after tomorrow, next weekday, next week).
-- Cursor-style Normal-mode navigation and extended Vim editing shortcuts (`o`/`Shift+o`, `i`/`a`, `Shift+i`/`Shift+a`) inside text fields.
+- Further Vim editing shortcuts beyond Description (`o`/`Shift+o`, `i`/`a`, `Shift+i`/`Shift+a`) inside text fields.
 - Editable workflow statuses (Todo, Doing, Done, etc.) in Detail.
 - HTML-description parsing and TUI rendering strategy.
 
@@ -374,8 +374,8 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 4. **Phase 4 (Create Task):** Run the short grilling session, then specify and implement task creation.
 5. **Phase 5 (Help):** Add `help.go`, static help content, test with `:h` and `?`.
 6. **Phase 6 (Leader):** Add leader-key state machine to `model.Update()`, implement `Space+o` toggle.
-7. **Phase 7 (Write Semantics):** Enhance `SQLiteStore.ToggleTaskDone()` to bump `updated` + move buckets.
-8. **Phase 8 (Tests):** Write `sqlite_store_test.go` + `model_test.go`, verify all behaviors.
+7. **Phase 7 (Write Semantics):** Enhance `SQLiteStore.ToggleTaskDone()` to bump `updated` + move buckets. ✅ Completed ahead of Phase 4.
+8. **Phase 8 (Tests):** Write `sqlite_store_test.go` + `model_test.go`, verify all behaviors. In progress.
 
 ### Domain Glossary Alignment
 - **Pane:** A UI section (Projects, Tasks, Detail). Not "panel" or "view" (conflicts with ProjectView).
@@ -400,8 +400,8 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 This spec is **done** when:
 - ✅ `client.go` deleted, codebase compiles
 - ✅ `:q`, `:qa`, `:h` commands work
-- ✅ `?` opens help-pane
-- ✅ `Space+o` collapses projects-pane
+- ⏳ `?` opens help-pane (Phase 5)
+- ⏳ `Space+o` collapses projects-pane (Phase 6)
 - ✅ `x` on a task bumps `updated` + moves to done-bucket
 - ✅ Auto-refresh after successful `x`
 - ✅ Red footer on write errors, errors logged to `:errors`

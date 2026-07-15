@@ -15,6 +15,7 @@ import (
 type fakeStore struct {
 	toggleErr      error
 	listTasksCalls int
+	createdDraft   vimkunja.TaskDraft
 }
 
 func (f *fakeStore) ListProjects(context.Context, int, int) ([]vimkunja.Project, int, error) {
@@ -34,8 +35,9 @@ func (f *fakeStore) ToggleTaskDone(context.Context, int64, bool) error {
 	return f.toggleErr
 }
 
-func (f *fakeStore) CreateTask(context.Context, vimkunja.TaskDraft) (vimkunja.Task, error) {
-	return vimkunja.Task{}, nil
+func (f *fakeStore) CreateTask(_ context.Context, draft vimkunja.TaskDraft) (vimkunja.Task, error) {
+	f.createdDraft = draft
+	return vimkunja.Task{ID: 99, ProjectID: draft.ProjectID, Title: draft.Title}, nil
 }
 
 func (f *fakeStore) UpdateTask(context.Context, vimkunja.TaskDraft) (vimkunja.Task, error) {
@@ -265,6 +267,28 @@ func TestDetailEditorEscapeIsNoOpAndDirtyQuitRefuses(t *testing.T) {
 	m, cmd := typeCommand(t, m, "q")
 	if cmd != nil || !m.showDetail || m.lastErr != "unsaved changes; use :w or :q!" {
 		t.Fatalf(":q state = visible:%v error:%q, want dirty editor retained", m.showDetail, m.lastErr)
+	}
+}
+
+func TestWriteKeepsSavedEditorOpenAndReloadsTargetProject(t *testing.T) {
+	store := &fakeStore{}
+	m := NewModel(Config{Store: store}).(*model)
+	m.projects = []vimkunja.Project{{ID: 1, Title: "Project"}}
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "Saved task"
+
+	m, cmd := typeCommand(t, m, "w")
+	if cmd == nil {
+		t.Fatal(":w returned no save command")
+	}
+	updated, reloadCmd := m.Update(cmd())
+	m = updated.(*model)
+	if reloadCmd == nil || !m.showDetail || m.focus != paneDetail || m.editor == nil || m.editor.dirty() {
+		t.Fatalf(":w state = visible:%v focus:%v editor:%v dirty:%v, want clean open editor and reload", m.showDetail, m.focus, m.editor != nil, m.editor != nil && m.editor.dirty())
+	}
+	if store.createdDraft.Title != "Saved task" || m.editor.id != 99 {
+		t.Fatalf("saved draft/id = %#v/%d, want title and generated id", store.createdDraft, m.editor.id)
 	}
 }
 
