@@ -18,6 +18,7 @@ type ProjectView struct {
 // Task represents a single task within a project.
 type Task struct {
 	ID          int64  `json:"id"`
+	ProjectID   int64  `json:"project_id"`
 	Title       string `json:"title"`
 	Done        bool   `json:"done"`
 	DueDate     string `json:"due_date"`
@@ -26,4 +27,17 @@ type Task struct {
 	Description string `json:"description"`
 	// Identifier is present on some responses; we still can fall back to "#<index>".
 	Identifier string `json:"identifier"`
+}
+
+// TaskDraft contains the editable fields of a task. DueDate is either empty
+// (stored as NULL) or an ISO date in YYYY-MM-DD form. CreatedByID is optional:
+// SQLiteStore falls back to the target project's owner when it is zero.
+type TaskDraft struct {
+	ID          int64
+	ProjectID   int64
+	Title       string
+	Description string
+	Priority    int64
+	DueDate     string
+	CreatedByID int64
 }

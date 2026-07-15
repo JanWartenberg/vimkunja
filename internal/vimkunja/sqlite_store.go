@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -175,6 +176,7 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 	// We still use task_positions.position for stable ordering.
 	q := `SELECT
 			t.id,
+			t.project_id,
 			t.title,
 			t.done,
 			t.due_date,
@@ -201,7 +203,7 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 		var indexNull sql.NullInt64
 		var descNull sql.NullString
 		// Scanner order must match SELECT.
-		if err := rows.Scan(&t.ID, &t.Title, &t.Done, &dueNull, &t.Priority, &indexNull, &descNull); err != nil {
+		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Title, &t.Done, &dueNull, &t.Priority, &indexNull, &descNull); err != nil {
 			return nil, 0, fmt.Errorf("scan task: %w", err)
 		}
 		t.Identifier = ""
@@ -281,6 +283,173 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit toggle task transaction: %w", err)
+	}
+	return nil
+}
+
+// CreateTask persists a new task and creates the default per-view position and
+// bucket assignments expected by Vikunja's SQLite schema.
+func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, error) {
+	if err := validateDraft(draft); err != nil {
+		return Task{}, err
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Task{}, fmt.Errorf("begin create task transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var ownerID int64
+	if err := tx.QueryRowContext(ctx, `SELECT owner_id FROM projects WHERE id = ?`, draft.ProjectID).Scan(&ownerID); err != nil {
+		return Task{}, fmt.Errorf("get project owner: %w", err)
+	}
+	createdByID := draft.CreatedByID
+	if createdByID == 0 {
+		createdByID = ownerID
+	}
+	index, err := nextTaskIndex(ctx, tx, draft.ProjectID)
+	if err != nil {
+		return Task{}, err
+	}
+	dueDate, err := dueDateValue(draft.DueDate)
+	if err != nil {
+		return Task{}, err
+	}
+	now := time.Now()
+	result, err := tx.ExecContext(ctx, `
+		INSERT INTO tasks (title, description, done, due_date, project_id, priority, "index", created, updated, created_by_id)
+		VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
+	`, draft.Title, draft.Description, dueDate, draft.ProjectID, draft.Priority, index, now, now, createdByID)
+	if err != nil {
+		return Task{}, fmt.Errorf("insert task: %w", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return Task{}, fmt.Errorf("get created task id: %w", err)
+	}
+	if err := initializeViewAssignments(ctx, tx, id, draft.ProjectID); err != nil {
+		return Task{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Task{}, fmt.Errorf("commit create task: %w", err)
+	}
+	return Task{ID: id, ProjectID: draft.ProjectID, Title: draft.Title, Description: draft.Description, Priority: draft.Priority, DueDate: draft.DueDate, Index: index}, nil
+}
+
+// UpdateTask changes all editable fields. Moving a task also replaces its
+// per-view assignments with the target project's defaults.
+func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, error) {
+	if draft.ID == 0 {
+		return Task{}, fmt.Errorf("update task: missing task id")
+	}
+	if err := validateDraft(draft); err != nil {
+		return Task{}, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Task{}, fmt.Errorf("begin update task transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var oldProjectID int64
+	var done bool
+	if err := tx.QueryRowContext(ctx, `SELECT project_id, done FROM tasks WHERE id = ?`, draft.ID).Scan(&oldProjectID, &done); err != nil {
+		return Task{}, fmt.Errorf("get task for update: %w", err)
+	}
+	dueDate, err := dueDateValue(draft.DueDate)
+	if err != nil {
+		return Task{}, err
+	}
+	index := int64(0)
+	if oldProjectID != draft.ProjectID {
+		index, err = nextTaskIndex(ctx, tx, draft.ProjectID)
+		if err != nil {
+			return Task{}, err
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM task_positions WHERE task_id = ? AND project_view_id IN (SELECT id FROM project_views WHERE project_id = ?)`, draft.ID, oldProjectID); err != nil {
+			return Task{}, fmt.Errorf("remove old task positions: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM task_buckets WHERE task_id = ? AND project_view_id IN (SELECT id FROM project_views WHERE project_id = ?)`, draft.ID, oldProjectID); err != nil {
+			return Task{}, fmt.Errorf("remove old task buckets: %w", err)
+		}
+	} else if err := tx.QueryRowContext(ctx, `SELECT "index" FROM tasks WHERE id = ?`, draft.ID).Scan(&index); err != nil {
+		return Task{}, fmt.Errorf("get task index: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET title = ?, description = ?, due_date = ?, project_id = ?, priority = ?, "index" = ?, updated = ? WHERE id = ?`, draft.Title, draft.Description, dueDate, draft.ProjectID, draft.Priority, index, time.Now(), draft.ID); err != nil {
+		return Task{}, fmt.Errorf("update task: %w", err)
+	}
+	if oldProjectID != draft.ProjectID {
+		if err := initializeViewAssignments(ctx, tx, draft.ID, draft.ProjectID); err != nil {
+			return Task{}, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return Task{}, fmt.Errorf("commit update task: %w", err)
+	}
+	return Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title, Description: draft.Description, Priority: draft.Priority, DueDate: draft.DueDate, Index: index, Done: done}, nil
+}
+
+func validateDraft(draft TaskDraft) error {
+	if draft.ProjectID == 0 {
+		return fmt.Errorf("project is required")
+	}
+	if strings.TrimSpace(draft.Title) == "" {
+		return fmt.Errorf("title is required")
+	}
+	if draft.Priority < 0 || draft.Priority > 5 {
+		return fmt.Errorf("priority must be between 0 and 5")
+	}
+	_, err := dueDateValue(draft.DueDate)
+	return err
+}
+
+func dueDateValue(value string) (any, error) {
+	if value == "" {
+		return nil, nil
+	}
+	date, err := time.Parse("2006-01-02", value)
+	if err != nil || date.Format("2006-01-02") != value {
+		return nil, fmt.Errorf("due date must use YYYY-MM-DD")
+	}
+	return date, nil
+}
+
+func nextTaskIndex(ctx context.Context, tx *sql.Tx, projectID int64) (int64, error) {
+	var index int64
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX("index"), 0) + 1 FROM tasks WHERE project_id = ?`, projectID).Scan(&index); err != nil {
+		return 0, fmt.Errorf("next task index: %w", err)
+	}
+	return index, nil
+}
+
+func initializeViewAssignments(ctx context.Context, tx *sql.Tx, taskID, projectID int64) error {
+	rows, err := tx.QueryContext(ctx, `SELECT id, default_bucket_id FROM project_views WHERE project_id = ?`, projectID)
+	if err != nil {
+		return fmt.Errorf("list target project views: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var viewID int64
+		var defaultBucketID sql.NullInt64
+		if err := rows.Scan(&viewID, &defaultBucketID); err != nil {
+			return fmt.Errorf("scan target project view: %w", err)
+		}
+		var position float64
+		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(position), 0) + 1 FROM task_positions WHERE project_view_id = ?`, viewID).Scan(&position); err != nil {
+			return fmt.Errorf("next task position: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO task_positions (task_id, project_view_id, position) VALUES (?, ?, ?)`, taskID, viewID, position); err != nil {
+			return fmt.Errorf("insert task position: %w", err)
+		}
+		if defaultBucketID.Valid {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (?, ?, ?)`, taskID, defaultBucketID.Int64, viewID); err != nil {
+				return fmt.Errorf("insert default task bucket: %w", err)
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate target project views: %w", err)
 	}
 	return nil
 }

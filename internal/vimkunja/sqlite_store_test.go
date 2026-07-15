@@ -31,7 +31,8 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			identifier TEXT,
 			title TEXT,
 			description TEXT,
-			is_archived INTEGER DEFAULT 0
+			is_archived INTEGER DEFAULT 0,
+			owner_id INTEGER DEFAULT 1
 		);
 
 		CREATE TABLE project_views (
@@ -40,7 +41,8 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			title TEXT,
 			view_kind INTEGER,
 			position INTEGER,
-			done_bucket_id INTEGER
+			done_bucket_id INTEGER,
+			default_bucket_id INTEGER
 		);
 
 		CREATE TABLE tasks (
@@ -54,7 +56,8 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			"index" INTEGER,
 			due_date DATETIME,
 			created DATETIME DEFAULT CURRENT_TIMESTAMP,
-			updated DATETIME DEFAULT CURRENT_TIMESTAMP
+			updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+			created_by_id INTEGER DEFAULT 1
 		);
 
 		CREATE TABLE task_buckets (

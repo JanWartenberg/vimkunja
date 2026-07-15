@@ -193,34 +193,172 @@ func renderInfoPane(pane *infoPane, textW, textH int) string {
 }
 
 func renderTaskDetail(m *model, textW, textH int) string {
-	lines := []string{}
-	if m.taskSelected < 0 || m.taskSelected >= len(m.tasks) {
-		return fitBlock(append(lines, "No task selected."), textW, textH)
+	if m.editor == nil {
+		return fitBlock([]string{"No task editor available."}, textW, textH)
 	}
-	t := m.tasks[m.taskSelected]
-
-	headerStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
-	titleStyle := lipgloss.NewStyle().Bold(true).Underline(true)
-
-	lines = append(lines, headerStyle.Render(" TASK DETAIL "))
-	lines = append(lines, "")
-	lines = append(lines, titleStyle.Render(t.Title))
-	lines = append(lines, "")
-	lines = append(lines, fmt.Sprintf("ID:       #%d", t.Index))
-	lines = append(lines, fmt.Sprintf("Priority: P%d", t.Priority))
-	lines = append(lines, fmt.Sprintf("Due:      %s", t.DueDate))
-	lines = append(lines, fmt.Sprintf("Done:     %v", t.Done))
-	lines = append(lines, "")
-	lines = append(lines, "Description:")
-	if strings.TrimSpace(t.Description) == "" {
-		lines = append(lines, "  (no description)")
-	} else {
-		for _, ln := range strings.Split(t.Description, "\n") {
-			lines = append(lines, ln)
+	e := m.editor
+	header := " TASK EDITOR "
+	if e.id == 0 {
+		header = " NEW TASK "
+	}
+	lines := []string{lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(selectionAccent)).Render(header), ""}
+	projectName := "(none)"
+	for _, p := range m.projects {
+		if p.ID == e.draft.ProjectID {
+			projectName = p.Title
+			break
 		}
 	}
-
+	due := e.draft.DueDate
+	if due == "" {
+		due = placeholderText("-")
+	}
+	priority := priorityName(e.draft.Priority)
+	if e.draft.Priority == 0 {
+		priority = placeholderText(priority)
+	}
+	lines = append(lines,
+		focusedField("Project:  "+projectName, e.field == fieldProject),
+		focusedField("Title:    "+m.editorText(fieldTitle, e.draft.Title), e.field == fieldTitle),
+		focusedField(fmt.Sprintf("Priority: %s", priority), e.field == fieldPriority),
+		focusedField("Due Date: "+m.editorText(fieldDueDate, due), e.field == fieldDueDate),
+		fmt.Sprintf("Done:     %s (read-only)", doneLabel(m, e.id)),
+		"",
+		focusedField("Description:", e.field == fieldDescription),
+	)
+	if e.mode == editorProjectPicker {
+		lines = append(lines, "  Filter: "+e.projectFilter)
+		matches := m.filteredProjects(e.projectFilter)
+		if len(matches) == 0 {
+			lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Render("  No match found"))
+		} else {
+			for i, p := range matches {
+				prefix := "  "
+				if i == e.pickerIndex {
+					prefix = "▸ "
+				}
+				lines = append(lines, prefix+p.Title)
+			}
+		}
+	} else if e.mode == editorPriorityPicker {
+		for i := int64(0); i <= 5; i++ {
+			prefix := "  "
+			if int(i) == e.priorityIndex {
+				prefix = "▸ "
+			}
+			lines = append(lines, prefix+priorityName(i))
+		}
+	} else if e.draft.Description == "" {
+		lines = append(lines, placeholderText("  (no description)"))
+	} else {
+		desc := wrapDescription(e.draft.Description, textW)
+		start := 0
+		available := max(1, textH-len(lines))
+		if e.field == fieldDescription && len(desc) > available {
+			start = clamp(e.descScroll, 0, len(desc)-available)
+		}
+		for _, line := range desc[start:] {
+			lines = append(lines, m.editorDescriptionText(line))
+		}
+	}
 	return fitBlock(lines, textW, textH)
+}
+
+func placeholderText(value string) string {
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Faint(true).Render(value)
+}
+
+// editorText marks the character at the insertion point instead of inserting a
+// printable cursor glyph, so the text never shifts while the cursor blinks.
+func (m *model) editorText(field editorField, value string) string {
+	if m.editor == nil || m.editor.mode != editorInsert || m.editor.field != field || !m.cursorVisible {
+		return value
+	}
+	return cursorMarkedText(value, m.editor.cursor)
+}
+
+type descriptionLine struct {
+	text       string
+	start, end int
+}
+
+func wrapDescription(value string, width int) []descriptionLine {
+	width = max(1, width)
+	var out []descriptionLine
+	start := 0
+	for _, sourceLine := range strings.Split(value, "\n") {
+		r := []rune(sourceLine)
+		if len(r) == 0 {
+			out = append(out, descriptionLine{"", start, start})
+		}
+		for len(r) > 0 {
+			n := min(width, len(r))
+			out = append(out, descriptionLine{string(r[:n]), start, start + n})
+			start += n
+			r = r[n:]
+		}
+		start++ // original newline, including the final segment's boundary
+	}
+	return out
+}
+
+func (m *model) editorDescriptionText(line descriptionLine) string {
+	if m.editor == nil || m.focus != paneDetail || m.editor.field != fieldDescription {
+		return line.text
+	}
+	if m.editor.cursor < line.start || m.editor.cursor > line.end {
+		return line.text
+	}
+	cursor := m.editor.cursor - line.start
+	if m.editor.mode == editorNormal {
+		return normalCursorText(line.text, cursor)
+	}
+	if m.editor.mode == editorInsert && m.cursorVisible {
+		return cursorMarkedText(line.text, cursor)
+	}
+	return line.text
+}
+
+// normalCursorText is Vim's static block cursor: white background and black
+// glyph, without adding a printable character to the line.
+func normalCursorText(value string, cursor int) string {
+	r := []rune(value)
+	if len(r) == 0 {
+		return value
+	}
+	cursor = clamp(cursor, 0, len(r))
+	index := cursor
+	if index == len(r) {
+		index--
+	}
+	block := lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("255")).Render(string(r[index]))
+	return string(r[:index]) + block + string(r[index+1:])
+}
+
+func cursorMarkedText(value string, cursor int) string {
+	r := []rune(value)
+	if len(r) == 0 {
+		return value
+	}
+	cursor = clamp(cursor, 0, len(r))
+	index := cursor
+	if index == len(r) {
+		index--
+	}
+	return string(r[:index]) + lipgloss.NewStyle().Reverse(true).Render(string(r[index])) + string(r[index+1:])
+}
+
+func priorityName(priority int64) string {
+	return []string{"None", "Low", "Medium", "High", "Urgent", "Do now / Jetzt erledigen"}[clamp(int(priority), 0, 5)]
+}
+
+func doneLabel(m *model, taskID int64) string {
+	for _, task := range m.tasks {
+		if task.ID == taskID && task.Done {
+			return "done"
+		}
+	}
+	return "open"
 }
 
 // compile-time assertion (in case we evolve Task struct)

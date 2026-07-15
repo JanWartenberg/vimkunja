@@ -34,6 +34,7 @@ type Config struct {
 
 	InitialProjectID int64
 	InitialViewID    int64
+	ActorUserID      int64
 }
 
 type model struct {
@@ -77,6 +78,10 @@ type model struct {
 	infoPane   *infoPane
 
 	currentProjectID int64
+	actorUserID      int64
+	pendingTaskID    int64
+	editor           *taskEditor
+	cursorVisible    bool
 
 	initialProjectID int64
 	initialViewID    int64
@@ -87,6 +92,7 @@ func NewModel(cfg Config) tea.Model {
 		store:            cfg.Store,
 		perPage:          max(1, cfg.PerPage),
 		initialProjectID: cfg.InitialProjectID,
+		actorUserID:      cfg.ActorUserID,
 		initialViewID:    cfg.InitialViewID,
 		projectSelected:  0,
 		currentViewID:    cfg.InitialViewID,
@@ -95,8 +101,9 @@ func NewModel(cfg Config) tea.Model {
 			paneTasks:    {left: ptr(paneProjects), right: nil, down: ptr(paneDetail)},
 			paneDetail:   {up: ptr(paneTasks)},
 		},
-		focus:    paneProjects,
-		commands: newDefaultCommandRegistry(),
+		focus:         paneProjects,
+		commands:      newDefaultCommandRegistry(),
+		cursorVisible: true,
 	}
 	if cfg.InitialProjectID != 0 {
 		m.focus = paneTasks
@@ -129,6 +136,12 @@ type (
 	taskToggledMsg struct {
 		err error
 	}
+	taskSavedMsg struct {
+		task       vimkunja.Task
+		closeAfter bool
+		err        error
+	}
+	cursorBlinkMsg struct{}
 )
 
 func (m *model) Init() tea.Cmd {
@@ -183,6 +196,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.commandMode {
 			return m.updateCommandModeKey(key)
+		}
+		// In editor Insert/Picker modes ':' is field input. In Detail Normal-mode
+		// it still opens the shared Ex command line.
+		if m.focus == paneDetail && m.editor != nil && (m.editor.mode != editorNormal || k != ":") && kLower != "ctrl+w" {
+			return m.updateDetailKeys(key)
 		}
 		if k == ":" {
 			m.commandMode = true
@@ -292,6 +310,41 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.taskLoading = true
 		return m, m.loadTasks(m.currentProjectID, m.currentViewID)
 
+	case cursorBlinkMsg:
+		if m.focus == paneDetail && m.editor != nil && m.editor.mode == editorInsert {
+			m.cursorVisible = !m.cursorVisible
+			return m, cursorBlinkCmd()
+		}
+		return m, nil
+
+	case taskSavedMsg:
+		m.taskLoading = false
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		m.pendingTaskID = typed.task.ID
+		if typed.closeAfter {
+			m.editor = nil
+		} else if m.editor != nil {
+			m.editor.id = typed.task.ID
+			m.editor.draft.ID = typed.task.ID
+			m.editor.original = m.editor.draft
+			m.editor.mode = editorNormal
+		}
+		m.showDetail = !typed.closeAfter
+		m.focus = paneDetail
+		if typed.closeAfter {
+			m.focus = paneTasks
+		}
+		if idx := m.findProjectIndex(typed.task.ProjectID); idx >= 0 {
+			m.projectSelected = idx
+		}
+		m.currentProjectID = typed.task.ProjectID
+		m.currentViewID = 0
+		m.viewLoading = true
+		return m, m.loadViews(typed.task.ProjectID)
+
 	case taskToggledMsg:
 		if typed.err != nil {
 			m.taskLoading = false
@@ -312,6 +365,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.tasks = typed.tasks
 		m.taskSelected = clamp(m.taskSelected, 0, max(0, len(m.tasks)-1))
+		if m.pendingTaskID != 0 {
+			for i, task := range m.tasks {
+				if task.ID == m.pendingTaskID {
+					m.taskSelected = i
+					break
+				}
+			}
+			m.pendingTaskID = 0
+		}
 		return m, nil
 	}
 
@@ -436,6 +498,9 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Confirm current project selection and jump to the tasks pane.
 		m.focus = paneTasks
 		return m, nil
+	case "o":
+		m.openNewEditor()
+		return m, nil
 	case "r":
 		m.lastErr = ""
 		m.projectLoading = true
@@ -480,10 +545,12 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q":
 		return m, tea.Quit
 	case "enter":
-		if len(m.tasks) > 0 {
-			m.showDetail = true
-			m.focus = paneDetail
+		if m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
+			m.openExistingEditor(m.tasks[m.taskSelected])
 		}
+		return m, nil
+	case "o":
+		m.openNewEditor()
 		return m, nil
 	case "r":
 		m.lastErr = ""
@@ -524,16 +591,6 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	return m, nil
-}
-
-func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
-	switch k.String() {
-	case "q", "esc":
-		m.showDetail = false
-		m.focus = paneTasks
-		return m, nil
-	}
 	return m, nil
 }
 
@@ -698,8 +755,23 @@ func (m *model) renderStatusBar(w int) string {
 	}
 
 	hint := "Ctrl+W cycles  •  Enter detail  •  q quit  •  r refresh  •  j/k navigate  •  x toggle"
+	if (m.focus == paneProjects || m.focus == paneTasks) && w >= 100 {
+		hint += "  •  o new task"
+	}
 	if m.focus == paneDetail {
-		hint = "q/esc close detail  •  Ctrl+W cycle"
+		mode := "NORMAL"
+		if m.editor != nil {
+			switch m.editor.mode {
+			case editorInsert:
+				mode = "INSERT"
+			case editorProjectPicker, editorPriorityPicker:
+				mode = "INSERT"
+			}
+			if m.editor.dirty() {
+				mode += " [+]"
+			}
+		}
+		hint = "[" + mode + "]  i edit  •  :w save  •  :q close  •  Ctrl+W switch pane"
 	}
 	if m.focus == paneHelp {
 		hint = "Ctrl+W k tasks  •  :q close pane"

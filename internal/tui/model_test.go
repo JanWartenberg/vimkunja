@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	apperrors "github.com/vimkunja/vimkunja/internal/errors"
@@ -31,6 +32,14 @@ func (f *fakeStore) ListTasksInView(context.Context, int64, int64, int, int) ([]
 
 func (f *fakeStore) ToggleTaskDone(context.Context, int64, bool) error {
 	return f.toggleErr
+}
+
+func (f *fakeStore) CreateTask(context.Context, vimkunja.TaskDraft) (vimkunja.Task, error) {
+	return vimkunja.Task{}, nil
+}
+
+func (f *fakeStore) UpdateTask(context.Context, vimkunja.TaskDraft) (vimkunja.Task, error) {
+	return vimkunja.Task{}, nil
 }
 
 func TestErrorFooterClearsOnNextKey(t *testing.T) {
@@ -238,6 +247,56 @@ func TestCommandQuitClosesHelpPane(t *testing.T) {
 	}
 	if m.helpPane != nil || m.focus != paneTasks {
 		t.Fatalf("help pane = %#v, focus = %v; want closed task pane", m.helpPane, m.focus)
+	}
+}
+
+func TestDetailEditorEscapeIsNoOpAndDirtyQuitRefuses(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "Unsaved"
+
+	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape}))
+	m = updated.(*model)
+	if !m.showDetail || m.focus != paneDetail || m.editor == nil {
+		t.Fatal("Esc closed the detail editor; it must be a Normal-mode no-op")
+	}
+
+	m, cmd := typeCommand(t, m, "q")
+	if cmd != nil || !m.showDetail || m.lastErr != "unsaved changes; use :w or :q!" {
+		t.Fatalf(":q state = visible:%v error:%q, want dirty editor retained", m.showDetail, m.lastErr)
+	}
+}
+
+func TestDueDateMaskInsertsSeparators(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldDueDate
+	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: 'i', Text: "i"}))
+	m = updated.(*model)
+	for _, digit := range "20260801" {
+		updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: digit, Text: string(digit)}))
+		m = updated.(*model)
+	}
+	if m.editor.draft.DueDate != "2026-08-01" {
+		t.Fatalf("DueDate = %q, want 2026-08-01", m.editor.draft.DueDate)
+	}
+}
+
+func TestProjectPickerShowsNoMatch(t *testing.T) {
+	m := testModel()
+	m.projects = []vimkunja.Project{{ID: 1, Title: "Alpha"}}
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldProject
+
+	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: 'i', Text: "i"}))
+	m = updated.(*model)
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'z', Text: "z"}))
+	m = updated.(*model)
+	if m.editor.mode != editorProjectPicker || !strings.Contains(renderTaskDetail(m, 80, 20), "No match found") {
+		t.Fatal("project picker did not render its no-match state")
 	}
 }
 

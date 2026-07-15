@@ -55,7 +55,11 @@ func (r *CommandRegistry) Execute(m *model, input string) (tea.Model, tea.Cmd, e
 func newDefaultCommandRegistry() *CommandRegistry {
 	registry := NewCommandRegistry()
 	registry.Register("q", []string{"quit"}, quitCommand)
+	registry.Register("q!", []string{"quit!"}, forceQuitCommand)
 	registry.Register("qa", []string{"quitall"}, quitAllCommand)
+	registry.Register("new", nil, newTaskCommand)
+	registry.Register("w", []string{"write"}, writeCommand)
+	registry.Register("wq", nil, writeQuitCommand)
 	registry.Register("h", []string{"help"}, helpCommand)
 	registry.Register("err", []string{"errors"}, errorsCommand)
 	return registry
@@ -63,6 +67,11 @@ func newDefaultCommandRegistry() *CommandRegistry {
 
 func quitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	if m.showDetail && m.focus == paneDetail {
+		if m.editor != nil && m.editor.dirty() {
+			m.recordError(fmt.Errorf("unsaved changes; use :w or :q!"))
+			return m, nil
+		}
+		m.editor = nil
 		m.showDetail = false
 		m.focus = paneTasks
 		return m, nil
@@ -78,6 +87,37 @@ func quitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	return m, tea.Quit
+}
+
+func forceQuitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if m.showDetail && m.focus == paneDetail {
+		m.editor = nil
+		m.showDetail = false
+		m.focus = paneTasks
+		return m, nil
+	}
+	return m, tea.Quit
+}
+
+func newTaskCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	m.openNewEditor()
+	return m, nil
+}
+
+func writeCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if m.showDetail && m.focus == paneDetail && m.editor != nil {
+		return m, m.saveEditor(false)
+	}
+	m.recordError(fmt.Errorf(":write requires a task detail pane"))
+	return m, nil
+}
+
+func writeQuitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if m.showDetail && m.focus == paneDetail && m.editor != nil {
+		return m, m.saveEditor(true)
+	}
+	m.recordError(fmt.Errorf(":wq requires a task detail pane"))
+	return m, nil
 }
 
 func quitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
