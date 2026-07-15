@@ -12,19 +12,19 @@
 - Priority-Farben (rot=urgent, grün=low)
 - Create-/Edit-Editor: Entwurf und bestehende Tasks, Projekt-/Prioritätspicker, Date-Maske, Dirty-Schutz sowie `:new`, `:w`, `:wq`, `:q!` ✅ Phase 4
 - Vollständige, scrollbare Help-Pane via `:h`, `:help` und `?` ✅ Phase 5
-- **Tests:** 13 Store-Tests + 2 Error-Log-Tests + 20 TUI-Tests grün ✅
+- Leader-Key (`Space+o`) zum Ein-/Ausblenden der Projects-Pane ✅ Phase 6
+- **Tests:** 13 Store-Tests + 2 Error-Log-Tests + 23 TUI-Tests grün ✅
 
 ## ❌ Was fehlt:
-- Leader-Key (`Space+o`) (Phase 6)
-- Weitere TUI-Modelltests
+- Weitere TUI-Modelltests (Phase 8)
 
 ---
 
 ## 🎯 Nächster Schritt:
 
-**Phase 6: Leader-Key und Projects-Pane-Collapse**
-- Phase 5 ist umgesetzt: statischer Help-Text, Scrollen und `?` als Alias für `:help`.
-- Als Nächstes: 500-ms-Leader-State-Machine und `Space+o` / `Ctrl+W o` zum Ein-/Ausblenden der Projects-Pane.
+**Phase 8: Tests und Fundament-Abschluss**
+- Phase 6 ist umgesetzt: `Space+o` toggelt die Projects-Pane nach dem zentral konfigurierten `DefaultLeaderTimeout` (500 ms); Insert-/Picker-/Command-Mode bleiben davon ausgenommen.
+- Als Nächstes: fehlende Tests aus der Fundament-Spec ergänzen und die Abschlusskriterien prüfen.
 - `:errors` zeigt den bestehenden Session-Error-Log.
 
 ---
@@ -39,11 +39,11 @@
 | Commands | ✅ Phase 3 |
 | Create/Edit Task | ✅ Phase 4: manuell abgenommen |
 | Help-Pane | ✅ Phase 5 |
-| Leader-Key | ⏳ Phase 6 |
+| Leader-Key | ✅ Phase 6 |
 | Auto-Refresh | ✅ nach Toggle sowie Create/Edit |
 | Error-Log-Infrastruktur | ✅ Phase 2 + Anzeige per `:errors` |
 | Error Footer | ✅ Phase-2-Schritt 2 |
-| Tests | 🟡 13 Store-Tests + 2 Error-Log-Tests + 20 TUI-Tests; weitere TUI-Tests offen |
+| Tests | 🟡 13 Store-Tests + 2 Error-Log-Tests + 23 TUI-Tests; weitere TUI-Tests offen |
 
 ---
 

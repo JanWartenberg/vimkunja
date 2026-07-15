@@ -70,7 +70,7 @@ Build a **production-ready foundation** that:
 27. As a Vimkunja user, I want to type `:q` in the detail pane to close it, so that I can return to the task list.
 28. As a Vimkunja user, I want focus to return to the task list when I close detail, so that I can continue navigating tasks.
 29. As a Vimkunja user, I want to press `Space` followed by a command key (within 500ms), so that I can use leader-key shortcuts.
-30. As a Vimkunja user, I want to press `Space+o` or `Ctrl+W o` to collapse the projects pane, so that I can maximize space for task/kanban views.
+30. As a Vimkunja user, I want to press `Space+o` to collapse the projects pane, so that I can maximize space for task/kanban views.
 31. As a Vimkunja user, I want the collapsed projects pane to toggle back when I press `Space+o` again, so that I can restore the layout.
 32. As a developer, I want a command registry/dispatcher pattern, so that adding new commands (`:goto`, `/search`) is trivial.
 33. As a developer, I want a `FakeStore` test implementation, so that I can test TUI logic without a real DB.
@@ -215,7 +215,7 @@ Build a **production-ready foundation** that:
   - Future: `Space+f` (filter), `Space+g` (goto), etc.
 
 ### 9. Projects-Pane Collapse (Decision #13)
-- **Keybindings:** `Space+o` OR `Ctrl+W o`
+- **Keybindings:** `Space+o`. `Ctrl+W o` remains unbound so it can later preserve Neovim's `:only` semantics instead of surprising Vim users.
 - **State:** `model.projectsPaneCollapsed` (bool)
 - **Layout Impact:**
   - Collapsed → Projects pane width = 0, Tasks pane gets full width
@@ -361,6 +361,7 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 - Autocomplete for commands with arguments (`:goto <project>`)
 - Project View should reflect the hierarchy of projects (via indentation)
 - Commands (`:<xxx>`) should have a history, type in `:` and Arrows Up and Down should scroll through latest 100(?) entered commands
+- User-facing TUI configuration (for example leader timeout); defaults remain centralized in TUI configuration until then.
 
 
 ---
@@ -373,7 +374,7 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 3. **Phase 3 (Commands):** Add `commands.go`, implement `:q/:qa/:h` handlers, wire into `model.Update()`.
 4. **Phase 4 (Create Task):** Run the short grilling session, then specify and implement task creation.
 5. **Phase 5 (Help):** Add `help.go`, static help content, test with `:h` and `?`. ✅ Completed.
-6. **Phase 6 (Leader):** Add leader-key state machine to `model.Update()`, implement `Space+o` toggle.
+6. **Phase 6 (Leader):** Add leader-key state machine to `model.Update()`, implement `Space+o` toggle. ✅ Completed.
 7. **Phase 7 (Write Semantics):** Enhance `SQLiteStore.ToggleTaskDone()` to bump `updated` + move buckets. ✅ Completed ahead of Phase 4.
 8. **Phase 8 (Tests):** Write `sqlite_store_test.go` + `model_test.go`, verify all behaviors. In progress.
 
@@ -394,14 +395,14 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 2. **Error log pane:** Same rendering as Detail-pane, or custom scrollable list?
    - **Recommendation:** Re-use Detail-pane layout (less code).
 3. **Leader timeout:** 500ms hardcoded, or config file?
-   - **Recommendation:** Hardcode initially, add config later if users complain.
+   - **Current decision:** `DefaultLeaderTimeout` is centralized in TUI configuration and can be overridden by the programmatic `Config`; a user-facing config file is deferred.
 
 ### Success Criteria
 This spec is **done** when:
 - ✅ `client.go` deleted, codebase compiles
 - ✅ `:q`, `:qa`, `:h` commands work
 - ✅ `?` opens help-pane
-- ⏳ `Space+o` collapses projects-pane (Phase 6)
+- ✅ `Space+o` collapses projects-pane
 - ✅ `x` on a task bumps `updated` + moves to done-bucket
 - ✅ Auto-refresh after successful `x`
 - ✅ Red footer on write errors, errors logged to `:errors`

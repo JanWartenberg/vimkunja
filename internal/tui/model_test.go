@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	apperrors "github.com/vimkunja/vimkunja/internal/errors"
 	"github.com/vimkunja/vimkunja/internal/vimkunja"
@@ -165,6 +166,53 @@ func TestHelpCommandOpensHelpPane(t *testing.T) {
 	}
 	if m.helpPane == nil || m.helpPane.title != "HELP" || m.focus != paneHelp {
 		t.Fatalf("help pane = %#v, focus = %v; want help pane with help focus", m.helpPane, m.focus)
+	}
+}
+
+func TestLeaderTimeoutUsesCentralDefaultAndConfigOverride(t *testing.T) {
+	if m := testModel(); m.leaderTimeout != DefaultLeaderTimeout {
+		t.Fatalf("default leader timeout = %v, want %v", m.leaderTimeout, DefaultLeaderTimeout)
+	}
+	m := NewModel(Config{Store: &fakeStore{}, LeaderTimeout: time.Second}).(*model)
+	if m.leaderTimeout != time.Second {
+		t.Fatalf("configured leader timeout = %v, want %v", m.leaderTimeout, time.Second)
+	}
+}
+
+func TestLeaderSpaceOTogglesProjectsPane(t *testing.T) {
+	m := testModel()
+	m.focus = paneProjects
+	space := tea.KeyPressMsg(tea.Key{Code: ' ', Text: " "})
+	updated, timeoutCmd := m.Update(space)
+	m = updated.(*model)
+	if !m.leaderArmed || timeoutCmd == nil {
+		t.Fatal("Space did not arm the leader with a timeout")
+	}
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'o', Text: "o"}))
+	m = updated.(*model)
+	if !m.projectsPaneCollapsed || m.focus != paneTasks || m.leaderArmed {
+		t.Fatalf("Space+o state = collapsed:%v focus:%v armed:%v", m.projectsPaneCollapsed, m.focus, m.leaderArmed)
+	}
+}
+
+func TestLeaderTimeoutAndCollapsedLeftFocusAreNoOps(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.projectsPaneCollapsed = true
+	m.leaderArmed = true
+	updated, _ := m.Update(leaderTimeoutMsg{})
+	m = updated.(*model)
+	if m.leaderArmed {
+		t.Fatal("leader remained armed after timeout")
+	}
+
+	ctrlW := tea.KeyPressMsg(tea.Key{Code: 'w', Mod: tea.ModCtrl})
+	updated, _ = m.Update(ctrlW)
+	m = updated.(*model)
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'h', Text: "h"}))
+	m = updated.(*model)
+	if m.focus != paneTasks {
+		t.Fatalf("Ctrl+W h focus = %v, want tasks while collapsed", m.focus)
 	}
 }
 

@@ -35,6 +35,7 @@ type Config struct {
 	InitialProjectID int64
 	InitialViewID    int64
 	ActorUserID      int64
+	LeaderTimeout    time.Duration
 }
 
 type model struct {
@@ -44,10 +45,13 @@ type model struct {
 	width  int
 	height int
 
-	focus      paneID
-	ctrlWArmed bool
-	gArmed     bool
-	neighbors  map[paneID]paneNeighbors
+	focus                 paneID
+	ctrlWArmed            bool
+	leaderArmed           bool
+	projectsPaneCollapsed bool
+	leaderTimeout         time.Duration
+	gArmed                bool
+	neighbors             map[paneID]paneNeighbors
 
 	lastErr string
 	toast   string
@@ -88,11 +92,16 @@ type model struct {
 }
 
 func NewModel(cfg Config) tea.Model {
+	leaderTimeout := cfg.LeaderTimeout
+	if leaderTimeout <= 0 {
+		leaderTimeout = DefaultLeaderTimeout
+	}
 	m := &model{
 		store:            cfg.Store,
 		perPage:          max(1, cfg.PerPage),
 		initialProjectID: cfg.InitialProjectID,
 		actorUserID:      cfg.ActorUserID,
+		leaderTimeout:    leaderTimeout,
 		initialViewID:    cfg.InitialViewID,
 		projectSelected:  0,
 		currentViewID:    cfg.InitialViewID,
@@ -141,7 +150,8 @@ type (
 		closeAfter bool
 		err        error
 	}
-	cursorBlinkMsg struct{}
+	cursorBlinkMsg   struct{}
+	leaderTimeoutMsg struct{}
 )
 
 func (m *model) Init() tea.Cmd {
@@ -196,6 +206,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.commandMode {
 			return m.updateCommandModeKey(key)
+		}
+		if m.leaderArmed {
+			m.leaderArmed = false
+			if k == "o" {
+				m.toggleProjectsPane()
+			}
+			return m, nil
+		}
+		if m.leaderEligible() && isSpaceKey(key) {
+			m.leaderArmed = true
+			return m, tea.Tick(m.leaderTimeout, func(time.Time) tea.Msg { return leaderTimeoutMsg{} })
 		}
 		// In editor Insert/Picker modes ':' is field input. In Detail Normal-mode
 		// it still opens the shared Ex command line.
@@ -313,6 +334,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.taskLoading = true
 		return m, m.loadTasks(m.currentProjectID, m.currentViewID)
 
+	case leaderTimeoutMsg:
+		m.leaderArmed = false
+		return m, nil
+
 	case cursorBlinkMsg:
 		if m.focus == paneDetail && m.editor != nil && m.editor.mode == editorInsert {
 			m.cursorVisible = !m.cursorVisible
@@ -427,7 +452,26 @@ func (m *model) updateCommandModeKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func isSpaceKey(key tea.KeyMsg) bool {
+	return key.String() == " " || key.String() == "space" || key.Key().Text == " "
+}
+
+// leaderEligible keeps Space available for field and picker input.
+func (m *model) leaderEligible() bool {
+	return m.focus != paneDetail || m.editor == nil || m.editor.mode == editorNormal
+}
+
+func (m *model) toggleProjectsPane() {
+	m.projectsPaneCollapsed = !m.projectsPaneCollapsed
+	if m.projectsPaneCollapsed && m.focus == paneProjects {
+		m.focus = paneTasks
+	}
+}
+
 func (m *model) nextFocus() paneID {
+	if m.projectsPaneCollapsed {
+		return paneTasks
+	}
 	if m.focus == paneProjects {
 		return paneTasks
 	}
@@ -435,6 +479,9 @@ func (m *model) nextFocus() paneID {
 }
 
 func (m *model) focusNeighborLeftOrStay() paneID {
+	if m.projectsPaneCollapsed {
+		return m.focus
+	}
 	n := m.neighbors[m.focus]
 	if n.left != nil {
 		return *n.left
@@ -707,39 +754,36 @@ func (m *model) Render() string {
 		}
 	}
 
-	// Horizontal split: projects pane fixed-ish, tasks pane fills the rest.
-	projectsOuter := 30
-	if projectsOuter > w/3 {
-		projectsOuter = w / 3
-	}
-	if projectsOuter < 16 {
-		projectsOuter = 16
-	}
-	tasksOuter := w - projectsOuter
-	if tasksOuter < 16 {
-		tasksOuter = 16
-	}
-
-	leftTextW := projectsOuter - chromeX
-	rightTextW := tasksOuter - chromeX
+	// Horizontal split: collapsed projects leave the tasks pane full width.
 	topTextH := topH - chromeY
-
-	left := renderProjects(m, leftTextW, topTextH)
-	right := renderTasks(m, rightTextW, topTextH)
-
-	leftStyle := lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		Padding(0, 1).
-		Height(topH - 2)
 	rightStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		Padding(0, 1).
 		Height(topH - 2)
-
-	panes := lipgloss.JoinHorizontal(lipgloss.Top,
-		leftStyle.Render(left),
-		rightStyle.Render(right),
-	)
+	var panes string
+	if m.projectsPaneCollapsed {
+		panes = rightStyle.Render(renderTasks(m, w-chromeX, topTextH))
+	} else {
+		projectsOuter := 30
+		if projectsOuter > w/3 {
+			projectsOuter = w / 3
+		}
+		if projectsOuter < 16 {
+			projectsOuter = 16
+		}
+		tasksOuter := w - projectsOuter
+		if tasksOuter < 16 {
+			tasksOuter = 16
+		}
+		leftStyle := lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder()).
+			Padding(0, 1).
+			Height(topH - 2)
+		panes = lipgloss.JoinHorizontal(lipgloss.Top,
+			leftStyle.Render(renderProjects(m, projectsOuter-chromeX, topTextH)),
+			rightStyle.Render(renderTasks(m, tasksOuter-chromeX, topTextH)),
+		)
+	}
 
 	content := panes
 	if m.showDetail || m.helpPane != nil || m.infoPane != nil {
@@ -809,10 +853,13 @@ func (m *model) renderStatusBar(w int) string {
 	if m.commandMode {
 		hint = fmt.Sprintf(":%s_", m.commandInput)
 	}
+	if m.leaderArmed {
+		hint = "[LEADER] o toggle projects pane"
+	}
 	statusStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		Padding(0, 1).
-		Width(w - 2)
+		Width(w)
 	if m.lastErr != "" {
 		hint = fmt.Sprintf("Error: %s", m.lastErr)
 		statusStyle = statusStyle.Foreground(lipgloss.Color("196")).BorderForeground(lipgloss.Color("196"))
