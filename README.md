@@ -46,4 +46,4 @@ go test -v ./...
 
 ---
 
-**Status:** MVP (40%) | **Lizenz:** MIT *(tbd)* | **Go:** 1.25+
+**Status:** In Arbeit – Fundament noch nicht vollständig (siehe `STATUS.md`) | **Lizenz:** MIT *(tbd)* | **Go:** 1.25+

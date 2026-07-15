@@ -29,6 +29,8 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 
 **Vikunja API erhalten:** Die API zur OriginalApp aufrechthalten, TUI muss kompatibel zur Original App bleiben
 **DB-Schema nicht ändern:** bestehendes SQLite-Schema darf nicht geändert werden
+**Windows-Host:** `/workspace` wird auf Windows gehostet. Zeilenenden vor Commits auf LF normalisieren; reine CRLF/LF-Umstellungen nicht als fachliche Änderungen committen.
+**Markdown-Hygiene:** Keine Markdown-Dateien inflationär anlegen. Temporäre Notizen nach Übernahme in die dauerhafte Dokumentation löschen; vorhandene temporäre Dateien regelmäßig aufräumen. Dauerhafte Ausnahmen: `README.md` (Menschen), `AGENTS.md` (allgemeine Agent-Anweisungen), `STATUS.md` (Kurzstatus) und `SPEC_FUNDAMENT.md` (Requirements und User Stories).
 **Default-Modus:** Vorschläge machen, **NICHT** umsetzen!  
 **Umsetzung nur bei:** "setze um", "implementiere", "mach das", etc.
 
@@ -42,10 +44,9 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 
 1. Lies **SPEC_FUNDAMENT.md** (komplette Spec)
 2. Prüfe **STATUS.md** (aktueller Stand, nächste Phase)
-3. Check `.pi/SESSION_NOTES.md` (Kontext)
-4. Implementiere gemäß Ousterhout
-5. Teste Store-Logik
-6. Update STATUS.md
+3. Implementiere gemäß Ousterhout
+4. Teste Store-Logik
+5. Update STATUS.md
 
 ---
 
@@ -65,7 +66,6 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 - **SPEC_FUNDAMENT.md** – Komplette Feature-Spec + Architektur
 - **STATUS.md** – Aktueller Fortschritt, nächste Schritte
 - `.archive/` – Erledigte TODOs, Phase-Reports
-- `.pi/SESSION_NOTES.md` – Agent-Kontext
 
 ---
 

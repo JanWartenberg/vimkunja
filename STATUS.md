@@ -25,7 +25,7 @@
 
 **Phase 4: Create-/Edit-Editor vorbereiten**
 - Die Produktentscheidungen für Create/Edit sind in `SPEC_FUNDAMENT.md`, Abschnitt 6, dokumentiert.
-- Noch offen vor der Umsetzung: Verhalten von `Esc` im Detail-Normal-Mode; minimale Textbearbeitung (Backspace/Delete/Cursor); Projektpicker-No-Match/Sortierung und Description-Scrolling.
+- Die Produktentscheidungen sind vollständig: Projektpicker alphabetisch mit grauem `No match found`; Description unterstützt Vim-Scrolling (`j/k`, `Ctrl+D/U`, `PageDown/PageUp`, `gg/G`) im Normal-Mode.
 - Phase 3 ist umgesetzt: Command-Registry, Command-Mode, `:q`/`:quit`, `:qa`/`:quitall`, `:h`/`:help` und `:errors`.
 - `:h` öffnet bis zur Help-Phase einen Platzhalter als normale Pane (`Ctrl+W j/k`, schließen nur mit `:q`); `:errors` zeigt den bestehenden Session-Error-Log.
 
@@ -63,9 +63,8 @@
 - **STATUS.md** ← Diese Datei
 - **SPEC_FUNDAMENT.md** - Komplette Spec
 - `.archive/` - Erledigte Berichte/TODOs
-- `.pi/SESSION_NOTES.md` - Agent-Notizen (für nächste Session)
 
 ---
 
 **Letzter Commit:**  
-`a873797` - Phase 3.3 help/error commands / Panes
+`2514119` - updates after halfway grilling for edit of Task Detail Pane

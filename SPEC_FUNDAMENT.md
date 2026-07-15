@@ -165,11 +165,13 @@ Build a **production-ready foundation** that:
 - The focused field has a subtle pink border. The pink selection accent is defined once in `internal/tui/theme.go` for future theming.
 - Footer always shows `[NORMAL]`, `[INSERT]`, or `[COMMAND]`; dirty detail panes also show `[+]`.
 - `i` enters Insert-mode for the focused field; `Esc` leaves Insert-mode. In Insert-mode, `:` is literal field text.
-- Description is multi-line (`Enter` inserts a newline). In Title and Due Date, `Enter` leaves Insert-mode without saving. Cursor-style Normal-mode text navigation inside Description is deferred.
+- Description is multi-line (`Enter` inserts a newline). In Title and Due Date, `Enter` leaves Insert-mode without saving. In Description Normal-mode, `j/k` move between lines and `h/l` move left/right; `Ctrl+D`/`Ctrl+U` and `PageDown`/`PageUp` scroll by pages; `gg`/`G` jump to the start/end. Arrow keys move in their respective direction in both modes.
+- In Insert-mode, Backspace deletes the character left of the cursor, Delete deletes the character right of it, and arrow keys move the cursor. `h` and `l` insert literal characters.
+- `Esc` in Detail Normal-mode is a no-op; `Esc` in Insert-mode returns to Normal-mode. Detail panes are changed with `Ctrl+W hjkl` and closed with `:q`.
 
 #### Field values and validation
 - Required before save: Project and non-empty Title. All other fields are optional for now.
-- Project uses a filterable TUI picker: type to filter, `j/k` or arrows select, `Enter` confirms, `Esc` preserves the previous value.
+- Project uses a filterable, alphabetically sorted TUI picker: type to filter, `j/k` or arrows select, `Enter` confirms, `Esc` preserves the previous value. If the filter has no result, show gray `No match found`.
 - Priority picker values are None (0), Low (1), Medium (2), High (3), Urgent (4), and Do now / Jetzt erledigen (5); it uses `i`, `j/k` or arrows, `Enter`, and `Esc` like the project picker.
 - Due Date accepts only `YYYY-MM-DD`; empty is stored as `NULL`, a date as `00:00`. Invalid dates fail before any DB write, log an error, show the red footer, focus Due Date, and retain Insert-mode.
 - New-draft defaults: selected project when available, otherwise empty; empty Title/Due Date/Description; Priority None.
@@ -188,9 +190,7 @@ Build a **production-ready foundation** that:
 - HTML-description parsing and TUI rendering strategy.
 
 #### Open questions before implementation
-- In Detail Normal-mode, should `Esc` retain the current behavior of closing the pane, or be a no-op like Vim Normal-mode? (In Insert-mode it already leaves Insert-mode.)
-- Exact minimal text-editing behavior for Backspace/Delete and cursor placement inside Title, Due Date, and Description.
-- Project-picker ordering, empty-filter/no-match presentation, and whether Description needs scrolling in the first prototype.
+- None.
 
 ### 7. Help-Pane (Decision #10)
 - **Module:** `internal/tui/help.go` (new)
