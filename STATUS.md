@@ -11,10 +11,10 @@
 - Task Toggle (`x`) → `done` + **updated timestamp** + Sync in jeden konfigurierten Done-Bucket ✅
 - Priority-Farben (rot=urgent, grün=low)
 - Create-/Edit-Editor: Entwurf und bestehende Tasks, Projekt-/Prioritätspicker, Date-Maske, Dirty-Schutz sowie `:new`, `:w`, `:wq`, `:q!` ✅ Phase 4
-- **Tests:** 13 Store-Tests + 2 Error-Log-Tests + 19 TUI-Tests grün ✅
+- Vollständige, scrollbare Help-Pane via `:h`, `:help` und `?` ✅ Phase 5
+- **Tests:** 13 Store-Tests + 2 Error-Log-Tests + 20 TUI-Tests grün ✅
 
 ## ❌ Was fehlt:
-- Vollständige Help-Pane inklusive `?` (Phase 5)
 - Leader-Key (`Space+o`) (Phase 6)
 - Weitere TUI-Modelltests
 
@@ -22,11 +22,10 @@
 
 ## 🎯 Nächster Schritt:
 
-**Phase 5: Vollständige Help-Pane**
-- Phase 4 ist manuell abgenommen; die Produktregeln stehen in `SPEC_FUNDAMENT.md`, Abschnitt 6.
-- Als Nächstes: `help.go`, statischer und mit `j/k` scrollbarer Help-Text sowie `?` als Alias für `:help`.
-- Phase 3 ist umgesetzt: Command-Registry, Command-Mode, `:q`/`:quit`, `:qa`/`:quitall`, `:h`/`:help` und `:errors`.
-- `:h` öffnet bis zur Help-Phase einen Platzhalter als normale Pane (`Ctrl+W j/k`, schließen nur mit `:q`); `:errors` zeigt den bestehenden Session-Error-Log.
+**Phase 6: Leader-Key und Projects-Pane-Collapse**
+- Phase 5 ist umgesetzt: statischer Help-Text, Scrollen und `?` als Alias für `:help`.
+- Als Nächstes: 500-ms-Leader-State-Machine und `Space+o` / `Ctrl+W o` zum Ein-/Ausblenden der Projects-Pane.
+- `:errors` zeigt den bestehenden Session-Error-Log.
 
 ---
 
@@ -39,12 +38,12 @@
 | Done-Bucket Move | ✅ |
 | Commands | ✅ Phase 3 |
 | Create/Edit Task | ✅ Phase 4: manuell abgenommen |
-| Help-Pane | ⏳ Phase 5 |
+| Help-Pane | ✅ Phase 5 |
 | Leader-Key | ⏳ Phase 6 |
 | Auto-Refresh | ✅ nach Toggle sowie Create/Edit |
 | Error-Log-Infrastruktur | ✅ Phase 2 + Anzeige per `:errors` |
 | Error Footer | ✅ Phase-2-Schritt 2 |
-| Tests | 🟡 13 Store-Tests + 2 Error-Log-Tests + 19 TUI-Tests; weitere TUI-Tests offen |
+| Tests | 🟡 13 Store-Tests + 2 Error-Log-Tests + 20 TUI-Tests; weitere TUI-Tests offen |
 
 ---
 

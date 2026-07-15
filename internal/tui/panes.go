@@ -180,6 +180,7 @@ func renderTasks(m *model, textW, textH int) string {
 type infoPane struct {
 	title    string
 	lines    []string
+	offset   int
 	errorLog bool
 }
 
@@ -189,7 +190,8 @@ func renderInfoPane(pane *infoPane, textW, textH int) string {
 	}
 
 	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).Render(" " + pane.title + " ")
-	return fitBlock(append([]string{title, ""}, pane.lines...), textW, textH)
+	offset := clamp(pane.offset, 0, max(0, len(pane.lines)-1))
+	return fitBlock(append([]string{title, ""}, pane.lines[offset:]...), textW, textH)
 }
 
 func renderTaskDetail(m *model, textW, textH int) string {

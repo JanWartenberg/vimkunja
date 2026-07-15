@@ -372,7 +372,7 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 2. **Phase 2 (Error Infra):** Add `internal/errors/log.go`, integrate into `model.Update()`.
 3. **Phase 3 (Commands):** Add `commands.go`, implement `:q/:qa/:h` handlers, wire into `model.Update()`.
 4. **Phase 4 (Create Task):** Run the short grilling session, then specify and implement task creation.
-5. **Phase 5 (Help):** Add `help.go`, static help content, test with `:h` and `?`.
+5. **Phase 5 (Help):** Add `help.go`, static help content, test with `:h` and `?`. ✅ Completed.
 6. **Phase 6 (Leader):** Add leader-key state machine to `model.Update()`, implement `Space+o` toggle.
 7. **Phase 7 (Write Semantics):** Enhance `SQLiteStore.ToggleTaskDone()` to bump `updated` + move buckets. ✅ Completed ahead of Phase 4.
 8. **Phase 8 (Tests):** Write `sqlite_store_test.go` + `model_test.go`, verify all behaviors. In progress.
@@ -400,7 +400,7 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 This spec is **done** when:
 - ✅ `client.go` deleted, codebase compiles
 - ✅ `:q`, `:qa`, `:h` commands work
-- ⏳ `?` opens help-pane (Phase 5)
+- ✅ `?` opens help-pane
 - ⏳ `Space+o` collapses projects-pane (Phase 6)
 - ✅ `x` on a task bumps `updated` + moves to done-bucket
 - ✅ Auto-refresh after successful `x`

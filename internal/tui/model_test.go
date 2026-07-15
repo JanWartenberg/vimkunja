@@ -168,6 +168,20 @@ func TestHelpCommandOpensHelpPane(t *testing.T) {
 	}
 }
 
+func TestQuestionMarkOpensScrollableHelp(t *testing.T) {
+	m := testModel()
+	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: '?', Text: "?"}))
+	m = updated.(*model)
+	if m.helpPane == nil || m.focus != paneHelp || len(m.helpPane.lines) != len(helpLines) {
+		t.Fatalf("? did not open full help pane: %#v", m.helpPane)
+	}
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'j', Text: "j"}))
+	m = updated.(*model)
+	if m.helpPane.offset != 1 {
+		t.Fatalf("help offset = %d, want 1 after j", m.helpPane.offset)
+	}
+}
+
 func TestHelpPaneEscDoesNotClose(t *testing.T) {
 	m, _ := typeCommand(t, testModel(), "h")
 	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape}))

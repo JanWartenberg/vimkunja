@@ -127,15 +127,7 @@ func quitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 func helpCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	m.showDetail = false
 	m.infoPane = nil
-	m.helpPane = &infoPane{
-		title: "HELP",
-		lines: []string{
-			"Welcome to Vimkunja, a vim-motion based Ticket-tool.",
-			"",
-			"Help content will be extended in Phase 5.",
-			"Use :q to close this pane.",
-		},
-	}
+	m.helpPane = &infoPane{title: "HELP", lines: helpLines}
 	m.focus = paneHelp
 	return m, nil
 }

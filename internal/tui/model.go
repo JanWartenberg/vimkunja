@@ -207,6 +207,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.commandInput = ""
 			return m, nil
 		}
+		if k == "?" {
+			return helpCommand(m, nil)
+		}
 
 		// Ctrl+W leader
 		if m.ctrlWArmed {
@@ -596,7 +599,31 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // updateHelpKeys intentionally has no close shortcut. Help is a normal pane:
 // switch focus with Ctrl+W and close it explicitly with :q.
-func (m *model) updateHelpKeys(tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *model) updateHelpKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.helpPane == nil {
+		return m, nil
+	}
+	if m.gArmed {
+		m.gArmed = false
+		if k.String() == "g" {
+			m.helpPane.offset = 0
+		}
+		return m, nil
+	}
+	switch k.String() {
+	case "g":
+		m.gArmed = true
+	case "G":
+		m.helpPane.offset = max(0, len(m.helpPane.lines)-1)
+	case "j", "down":
+		m.helpPane.offset = clamp(m.helpPane.offset+1, 0, max(0, len(m.helpPane.lines)-1))
+	case "k", "up":
+		m.helpPane.offset = clamp(m.helpPane.offset-1, 0, max(0, len(m.helpPane.lines)-1))
+	case "ctrl+d", "pgdown", "pagedown":
+		m.helpPane.offset = clamp(m.helpPane.offset+m.pageStep(), 0, max(0, len(m.helpPane.lines)-1))
+	case "ctrl+u", "pgup", "pageup":
+		m.helpPane.offset = clamp(m.helpPane.offset-m.pageStep(), 0, max(0, len(m.helpPane.lines)-1))
+	}
 	return m, nil
 }
 
