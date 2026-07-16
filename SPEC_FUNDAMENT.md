@@ -79,6 +79,8 @@ Build a **production-ready foundation** that:
 36. As a Vimkunja user, I want to create a task within the TUI for the current project or in the current view, and optionally set its due date, priority, and description.
 37. As a Vimkunja user, I want the Detail-pane to use the same editor for new and existing tasks, so that creation and editing behave consistently.
 38. As a Vimkunja user, I want explicit Vim-style save and discard commands, so that I do not lose unsaved task changes.
+39. As a Vimkunja user, I want a future task-deletion workflow with an explicit confirmation, so that I can remove obsolete tasks without accidental data loss.
+40. As a Vimkunja user, I want project deletion planned as a separate future workflow, so that its effect on contained tasks is decided deliberately before it is offered.
 
 ---
 
@@ -354,7 +356,10 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 - Date-picker, priority +/- keybindings
 
 ### Deferred to Later Features
-- Search/Filter (`/` command) (Prio 4)
+- **Task deletion (future feature):** Delete a selected task only after explicit confirmation. It must preserve Vikunja-compatible persistence semantics, surface failures through the existing error feedback and session log, and refresh the affected view after success. The Store interface is the primary test seam; Store tests verify persisted outcomes and TUI model tests verify the confirmation, failure, and refresh behaviour.
+- **Project deletion (separate future feature):** Specify independently of task deletion. Before implementation, decide whether contained tasks are deleted, archived, or moved, and how the operation is confirmed and reflected in the current pane.
+- **Labels (später):** Die bestehende Vikunja-Label-Datenhaltung wird ohne Schemaänderung genutzt. Task-Details sollen vorhandene Labels anzeigen und setzen können; Anlage, Bearbeitung und Löschung von Labels werden später entschieden. Globale Suche und Filter sollen Labels als Suchziel und Filterkriterium unterstützen.
+- **Globale Suche/Filter (`/`, später):** Durchsucht Tasks, Projekte und Vikunja-Labels; genaue Ergebnisansicht, Navigation und Filtersemantik werden in einer späteren Grilling-Session entschieden.
 - Comments (`a` to append comment) (Prio 5)
 - Undo (`u` keybinding)
 - Table/Gantt views

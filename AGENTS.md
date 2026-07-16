@@ -69,4 +69,20 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 
 ---
 
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked as local Markdown under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default local triage roles are configured. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This is a single-context repository. See `docs/agents/domain.md`.
+
+---
+
 **Letzte Änderung:** 2026-07-12
