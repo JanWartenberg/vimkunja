@@ -395,3 +395,119 @@ func TestUnknownCommandRecordsError(t *testing.T) {
 		t.Fatalf("lastErr = %q, want unknown-command error", m.lastErr)
 	}
 }
+
+func pressKey(m *model, key tea.Key) *model {
+	updated, _ := m.Update(tea.KeyPressMsg(key))
+	return updated.(*model)
+}
+
+func ctrlW(m *model) *model {
+	return pressKey(m, tea.Key{Code: 'w', Mod: tea.ModCtrl})
+}
+
+func TestVimMotionGGAndGSelectListBounds(t *testing.T) {
+	t.Run("projects", func(t *testing.T) {
+		m := testModel()
+		m.projects = []vimkunja.Project{{ID: 1}, {ID: 2}, {ID: 3}}
+		m.projectSelected = 1
+
+		m = pressKey(pressKey(m, tea.Key{Code: 'g', Text: "g"}), tea.Key{Code: 'g', Text: "g"})
+		if m.projectSelected != 0 {
+			t.Fatalf("project selection after gg = %d, want first project", m.projectSelected)
+		}
+
+		m = pressKey(m, tea.Key{Code: 'G', Text: "G"})
+		if m.projectSelected != 2 {
+			t.Fatalf("project selection after G = %d, want last project", m.projectSelected)
+		}
+	})
+
+	t.Run("tasks", func(t *testing.T) {
+		m := testModel()
+		m.focus = paneTasks
+		m.tasks = []vimkunja.Task{{ID: 1}, {ID: 2}, {ID: 3}}
+		m.taskSelected = 1
+
+		m = pressKey(pressKey(m, tea.Key{Code: 'g', Text: "g"}), tea.Key{Code: 'g', Text: "g"})
+		if m.taskSelected != 0 {
+			t.Fatalf("task selection after gg = %d, want first task", m.taskSelected)
+		}
+
+		m = pressKey(m, tea.Key{Code: 'G', Text: "G"})
+		if m.taskSelected != 2 {
+			t.Fatalf("task selection after G = %d, want last task", m.taskSelected)
+		}
+	})
+}
+
+func TestPaneFocusCtrlWCyclesProjectsAndTasks(t *testing.T) {
+	m := testModel()
+
+	m = ctrlW(m)
+	m = ctrlW(m)
+	if m.focus != paneTasks {
+		t.Fatalf("focus after Ctrl+W Ctrl+W = %v, want tasks", m.focus)
+	}
+
+	m = ctrlW(m)
+	m = ctrlW(m)
+	if m.focus != paneProjects {
+		t.Fatalf("focus after second Ctrl+W Ctrl+W = %v, want projects", m.focus)
+	}
+}
+
+func TestPaneFocusCtrlWDirectionalNavigation(t *testing.T) {
+	m := testModel()
+
+	m = ctrlW(m)
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	if m.focus != paneTasks {
+		t.Fatalf("focus after Ctrl+W l = %v, want tasks", m.focus)
+	}
+
+	m = ctrlW(m)
+	m = pressKey(m, tea.Key{Code: 'h', Text: "h"})
+	if m.focus != paneProjects {
+		t.Fatalf("focus after Ctrl+W h = %v, want projects", m.focus)
+	}
+
+	m.focus = paneTasks
+	m.showDetail = true
+	m = ctrlW(m)
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.focus != paneDetail {
+		t.Fatalf("focus after Ctrl+W j = %v, want detail", m.focus)
+	}
+
+	m = ctrlW(m)
+	m = pressKey(m, tea.Key{Code: 'k', Text: "k"})
+	if m.focus != paneTasks {
+		t.Fatalf("focus after Ctrl+W k = %v, want tasks", m.focus)
+	}
+}
+
+func TestNavigationKeepsValidStateAtUnavailableBoundaries(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.projectsPaneCollapsed = true
+
+	m = ctrlW(m)
+	m = pressKey(m, tea.Key{Code: 'h', Text: "h"})
+	if m.focus != paneTasks {
+		t.Fatalf("focus after Ctrl+W h with collapsed projects = %v, want tasks", m.focus)
+	}
+
+	m = ctrlW(m)
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.focus != paneTasks {
+		t.Fatalf("focus after Ctrl+W j without a lower pane = %v, want tasks", m.focus)
+	}
+
+	m.tasks = nil
+	m.taskSelected = 0
+	m = pressKey(pressKey(m, tea.Key{Code: 'g', Text: "g"}), tea.Key{Code: 'g', Text: "g"})
+	m = pressKey(m, tea.Key{Code: 'G', Text: "G"})
+	if m.taskSelected != 0 {
+		t.Fatalf("empty task selection = %d, want stable zero", m.taskSelected)
+	}
+}

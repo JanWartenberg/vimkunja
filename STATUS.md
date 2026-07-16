@@ -13,18 +13,18 @@
 - Create-/Edit-Editor: Entwurf und bestehende Tasks, Projekt-/Prioritätspicker, Date-Maske, Dirty-Schutz sowie `:new`, `:w`, `:wq`, `:q!` ✅ Phase 4
 - Vollständige, scrollbare Help-Pane via `:h`, `:help` und `?` ✅ Phase 5
 - Leader-Key (`Space+o`) zum Ein-/Ausblenden der Projects-Pane ✅ Phase 6
-- **Tests:** 13 Store-Tests + 2 Error-Log-Tests + 23 TUI-Tests grün ✅
+- **Tests:** 13 Store-Tests + 2 Error-Log-Tests + 27 TUI-Tests grün ✅
 
 ## ❌ Was fehlt:
-- Weitere TUI-Modelltests (Phase 8)
+- Manueller Smoke-Test und Abschlussprüfung des Fundaments (Ticket 02)
 
 ---
 
 ## 🎯 Nächster Schritt:
 
-**Phase 8: Tests und Fundament-Abschluss**
-- Phase 6 ist umgesetzt: `Space+o` toggelt die Projects-Pane nach dem zentral konfigurierten `DefaultLeaderTimeout` (500 ms); Insert-/Picker-/Command-Mode bleiben davon ausgenommen.
-- Als Nächstes: fehlende Tests aus der Fundament-Spec ergänzen und die Abschlusskriterien prüfen.
+**Phase 8: Fundament-Abschluss**
+- Die fehlenden TUI-Modelltests für Navigation sind ergänzt.
+- Als Nächstes: automatisierte Tests sowie den manuellen Smoke-Test gegen die Fundament-Abschlusskriterien verifizieren.
 - `:errors` zeigt den bestehenden Session-Error-Log.
 
 ---
@@ -43,7 +43,7 @@
 | Auto-Refresh | ✅ nach Toggle sowie Create/Edit |
 | Error-Log-Infrastruktur | ✅ Phase 2 + Anzeige per `:errors` |
 | Error Footer | ✅ Phase-2-Schritt 2 |
-| Tests | 🟡 13 Store-Tests + 2 Error-Log-Tests + 23 TUI-Tests; weitere TUI-Tests offen |
+| Tests | 🟡 13 Store-Tests + 2 Error-Log-Tests + 27 TUI-Tests; manueller Smoke-Test offen |
 
 ---
 

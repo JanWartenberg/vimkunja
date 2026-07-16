@@ -519,6 +519,7 @@ func (m *model) focusNeighborDownOrStay() paneID {
 		if m.infoPane != nil {
 			return paneInfo
 		}
+		return m.focus
 	}
 	n := m.neighbors[m.focus]
 	if n.down != nil {
