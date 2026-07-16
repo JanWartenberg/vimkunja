@@ -84,6 +84,7 @@ type model struct {
 	currentProjectID int64
 	actorUserID      int64
 	pendingTaskID    int64
+	quitAfterSave    bool
 	editor           *taskEditor
 	cursorVisible    bool
 
@@ -349,9 +350,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case taskSavedMsg:
 		m.taskLoading = false
+		quitAfterSave := m.quitAfterSave
+		m.quitAfterSave = false
 		if typed.err != nil {
 			m.recordError(typed.err)
 			return m, nil
+		}
+		if quitAfterSave {
+			return m, tea.Quit
 		}
 		m.pendingTaskID = typed.task.ID
 		if typed.closeAfter {

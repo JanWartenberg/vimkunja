@@ -179,7 +179,7 @@ Build a **production-ready foundation** that:
 - New-draft defaults: selected project when available, otherwise empty; empty Title/Due Date/Description; Priority None.
 
 #### Save and discard
-- `:w` and `:write` save and keep the Detail-pane open; `:wq` saves and closes it.
+- `:w` and `:write` save and keep the Detail-pane open; `:wq` saves and closes it; `:wqa` saves the current task and then quits Vimkunja. Outside a task Detail-pane, `:wqa` quits immediately because there is no task to save.
 - `:q` and `:quit` are synonyms in every context. With unsaved changes they refuse to close and instruct the user to use `:w` or `:q!` / `:quit!`.
 - `:q!` and `:quit!` discard changes and close the Detail-pane.
 - Successful writes use original-Vikunja-compatible default task position and default Kanban buckets. Failed DB writes retain the editor state, log the error, show the red footer, and do not reload.

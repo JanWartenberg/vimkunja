@@ -23,6 +23,7 @@ var helpLines = []string{
 	"  :new                  New task draft",
 	"  :w / :write           Save and keep editor open",
 	"  :wq                   Save and close editor",
+	"  :wqa                  Save task and quit Vimkunja",
 	"  :q                    Close clean editor",
 	"  :q!                   Discard editor changes and close",
 	"  Project picker        Type to filter; j/k or arrows; Enter selects",

@@ -60,6 +60,7 @@ func newDefaultCommandRegistry() *CommandRegistry {
 	registry.Register("new", nil, newTaskCommand)
 	registry.Register("w", []string{"write"}, writeCommand)
 	registry.Register("wq", nil, writeQuitCommand)
+	registry.Register("wqa", nil, writeQuitAllCommand)
 	registry.Register("h", []string{"help"}, helpCommand)
 	registry.Register("err", []string{"errors"}, errorsCommand)
 	return registry
@@ -118,6 +119,17 @@ func writeQuitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	}
 	m.recordError(fmt.Errorf(":wq requires a task detail pane"))
 	return m, nil
+}
+
+func writeQuitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if m.showDetail && m.focus == paneDetail && m.editor != nil {
+		cmd := m.saveEditor(true)
+		if cmd != nil {
+			m.quitAfterSave = true
+		}
+		return m, cmd
+	}
+	return m, tea.Quit
 }
 
 func quitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {

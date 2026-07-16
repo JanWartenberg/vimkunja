@@ -327,6 +327,45 @@ func TestDetailEditorEscapeIsNoOpAndDirtyQuitRefuses(t *testing.T) {
 	}
 }
 
+func TestWriteQuitAllSavesTaskThenQuits(t *testing.T) {
+	store := &fakeStore{}
+	m := NewModel(Config{Store: store}).(*model)
+	m.projects = []vimkunja.Project{{ID: 1, Title: "Project"}}
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "Saved before quit"
+
+	m, saveCmd := typeCommand(t, m, "wqa")
+	if saveCmd == nil {
+		t.Fatal(":wqa returned no save command")
+	}
+
+	updated, quitCmd := m.Update(saveCmd())
+	m = updated.(*model)
+	if store.createdDraft.Title != "Saved before quit" {
+		t.Fatalf("saved draft = %#v, want task saved before quit", store.createdDraft)
+	}
+	if quitCmd == nil {
+		t.Fatal(":wqa did not return a quit command after saving")
+	}
+	if _, ok := quitCmd().(tea.QuitMsg); !ok {
+		t.Fatalf(":wqa command returned %T, want tea.QuitMsg", quitCmd())
+	}
+	if m.quitAfterSave {
+		t.Fatal(":wqa left quit-after-save armed")
+	}
+}
+
+func TestWriteQuitAllQuitsImmediatelyWithoutTaskDetail(t *testing.T) {
+	_, quitCmd := typeCommand(t, testModel(), "wqa")
+	if quitCmd == nil {
+		t.Fatal(":wqa returned no quit command without a task detail pane")
+	}
+	if _, ok := quitCmd().(tea.QuitMsg); !ok {
+		t.Fatalf(":wqa command returned %T, want tea.QuitMsg", quitCmd())
+	}
+}
+
 func TestWriteKeepsSavedEditorOpenAndReloadsTargetProject(t *testing.T) {
 	store := &fakeStore{}
 	m := NewModel(Config{Store: store}).(*model)
