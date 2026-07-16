@@ -31,7 +31,7 @@ Build a **production-ready foundation** that:
 1. **Removes REST client** — SQLite-only data access (Decision #1)
 2. **Adds command-line infrastructure** — `:q`, `:qa`, `:h`, `:errors` as Ex-commands (Decision #6)
 3. **Implements robust error handling** — Red footer + persistent error log + auto-refresh (Decision #9)
-4. **Provides discoverable help** — Help-pane via `:h` or `?` (Decision #10)
+4. **Provides discoverable help** — Help-pane via `:h` (Decision #10)
 5. **Supports leader-key sequences** — `Space` + 500ms timeout for future features (Decision #13)
 6. **Ensures write-correctness** — Bump `updated` timestamp, move done tasks to `done_bucket_id` (Decision #2)
 7. **Keeps UI fresh** — Auto-refresh after every successful write (Decision #3)
@@ -59,7 +59,7 @@ Build a **production-ready foundation** that:
 16. As a Vimkunja user, I want to press `r` to manually refresh the current view, so that I can reload data if the DB changed externally.
 17. As a Vimkunja user, I want to type `:q` to close the current pane, so that I can exit like in Vim.
 18. As a Vimkunja user, I want to type `:qa` to quit the entire app, so that I can exit all panes at once.
-19. As a Vimkunja user, I want to type `:h` or press `?` to see help, so that I can learn keybindings without leaving the app.
+19. As a Vimkunja user, I want to type `:h` to see help, so that I can learn keybindings without leaving the app.
 20. As a Vimkunja user, I want to type `:errors` to see a log of all errors in this session, so that I can debug issues.
 21. As a Vimkunja user, I want to see errors in a red footer immediately, so that I know when a write failed.
 22. As a Vimkunja user, I want trivial errors (DB locks that auto-retry successfully) to show green feedback briefly, so that I'm not alarmed.
@@ -201,7 +201,7 @@ Build a **production-ready foundation** that:
   - **Top 10-20 lines (no scroll needed):** Most common commands (`hjkl`, `gg/G`, `Ctrl+W`, `:q`, `x`, `r`, `Enter`)
   - **Below (scrollable):** Full keybinding list, all commands, explanations
 - **Rendering:** Re-use pane-rendering logic (border, padding, fit-block)
-- **Lifecycle:** Help-pane is a normal pane. It opens via `:h` or `?`; use `Ctrl+W j/k` to move focus into and out of it, and close it only with `:q` while it has focus.
+- **Lifecycle:** Help-pane is a normal pane. It opens via `:h`; use `Ctrl+W j/k` to move focus into and out of it, and close it only with `:q` while it has focus.
 
 ### 8. Leader-Key Support (Decision #13)
 - **Module:** `model.Update()` — add `leaderArmed` state + timeout
@@ -378,7 +378,7 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 2. **Phase 2 (Error Infra):** Add `internal/errors/log.go`, integrate into `model.Update()`.
 3. **Phase 3 (Commands):** Add `commands.go`, implement `:q/:qa/:h` handlers, wire into `model.Update()`.
 4. **Phase 4 (Create Task):** Run the short grilling session, then specify and implement task creation.
-5. **Phase 5 (Help):** Add `help.go`, static help content, test with `:h` and `?`. ✅ Completed.
+5. **Phase 5 (Help):** Add `help.go`, static help content, test with `:h`. ✅ Completed.
 6. **Phase 6 (Leader):** Add leader-key state machine to `model.Update()`, implement `Space+o` toggle. ✅ Completed.
 7. **Phase 7 (Write Semantics):** Enhance `SQLiteStore.ToggleTaskDone()` to bump `updated` + move buckets. ✅ Completed ahead of Phase 4.
 8. **Phase 8 (Tests):** Write `sqlite_store_test.go` + `model_test.go`, verify all behaviors. In progress.
@@ -406,7 +406,6 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 This spec is **done** when:
 - ✅ `client.go` deleted, codebase compiles
 - ✅ `:q`, `:qa`, `:h` commands work
-- ✅ `?` opens help-pane
 - ✅ `Space+o` collapses projects-pane
 - ✅ `x` on a task bumps `updated` + moves to done-bucket
 - ✅ Auto-refresh after successful `x`

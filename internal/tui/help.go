@@ -38,7 +38,7 @@ var helpLines = []string{
 	"  gg / G                Start / end",
 	"",
 	"COMMANDS",
-	"  :h / :help / ?        Open this help pane",
+	"  :h / :help            Open this help pane",
 	"  Space+o              Toggle projects pane",
 	"  :errors               Open session error log",
 	"  :q / :quit            Close current pane or quit",

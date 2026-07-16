@@ -216,17 +216,12 @@ func TestLeaderTimeoutAndCollapsedLeftFocusAreNoOps(t *testing.T) {
 	}
 }
 
-func TestQuestionMarkOpensScrollableHelp(t *testing.T) {
+func TestQuestionMarkDoesNotOpenHelp(t *testing.T) {
 	m := testModel()
 	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: '?', Text: "?"}))
 	m = updated.(*model)
-	if m.helpPane == nil || m.focus != paneHelp || len(m.helpPane.lines) != len(helpLines) {
-		t.Fatalf("? did not open full help pane: %#v", m.helpPane)
-	}
-	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'j', Text: "j"}))
-	m = updated.(*model)
-	if m.helpPane.offset != 1 {
-		t.Fatalf("help offset = %d, want 1 after j", m.helpPane.offset)
+	if m.helpPane != nil || m.focus != paneProjects {
+		t.Fatalf("? state = pane:%#v focus:%v, want no help pane and project focus", m.helpPane, m.focus)
 	}
 }
 
@@ -483,6 +478,36 @@ func TestPaneFocusCtrlWDirectionalNavigation(t *testing.T) {
 	m = pressKey(m, tea.Key{Code: 'k', Text: "k"})
 	if m.focus != paneTasks {
 		t.Fatalf("focus after Ctrl+W k = %v, want tasks", m.focus)
+	}
+}
+
+func TestPaneFocusCtrlWIgnoresLeaderKeyRelease(t *testing.T) {
+	m := testModel()
+
+	m = ctrlW(m)
+	updated, _ := m.Update(tea.KeyReleaseMsg(tea.Key{Code: 'w', Mod: tea.ModCtrl}))
+	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: 'h', Text: "h"})
+
+	if m.focus != paneProjects {
+		t.Fatalf("focus after Ctrl+W release then h = %v, want projects", m.focus)
+	}
+}
+
+func TestInsertFooterShowsOnlyAvailableActions(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+
+	footer := m.renderStatusBar(120)
+	for _, unavailable := range []string{"i edit", ":w save", ":q close"} {
+		if strings.Contains(footer, unavailable) {
+			t.Fatalf("Insert footer contains unavailable action %q: %q", unavailable, footer)
+		}
+	}
+	if !strings.Contains(footer, "Esc normal") {
+		t.Fatalf("Insert footer = %q, want Esc normal hint", footer)
 	}
 }
 

@@ -192,6 +192,12 @@ func (m *model) loadTasks(projectID, viewID int64) tea.Cmd {
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Vim-split style focus switching
 	if key, ok := msg.(tea.KeyMsg); ok {
+		// Windows input can report a key release after its press. Releases must
+		// not consume a pending multi-key command such as Ctrl+W h.
+		if _, released := key.(tea.KeyReleaseMsg); released {
+			return m, nil
+		}
+
 		// A footer error is transient feedback. The full error remains available
 		// in the session log for the future :errors pane.
 		m.lastErr = ""
@@ -228,10 +234,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.commandInput = ""
 			return m, nil
 		}
-		if k == "?" {
-			return helpCommand(m, nil)
-		}
-
 		// Ctrl+W leader
 		if m.ctrlWArmed {
 			m.ctrlWArmed = false
@@ -832,18 +834,22 @@ func (m *model) renderStatusBar(w int) string {
 	}
 	if m.focus == paneDetail {
 		mode := "NORMAL"
+		inputActive := false
 		if m.editor != nil {
 			switch m.editor.mode {
-			case editorInsert:
+			case editorInsert, editorProjectPicker, editorPriorityPicker:
 				mode = "INSERT"
-			case editorProjectPicker, editorPriorityPicker:
-				mode = "INSERT"
+				inputActive = true
 			}
 			if m.editor.dirty() {
 				mode += " [+]"
 			}
 		}
-		hint = "[" + mode + "]  i edit  •  :w save  •  :q close  •  Ctrl+W switch pane"
+		if inputActive {
+			hint = "[" + mode + "]  Esc normal"
+		} else {
+			hint = "[" + mode + "]  i edit  •  :w save  •  :q close  •  Ctrl+W switch pane"
+		}
 	}
 	if m.focus == paneHelp {
 		hint = "Ctrl+W k tasks  •  :q close pane"

@@ -11,7 +11,7 @@
 - Task Toggle (`x`) → `done` + **updated timestamp** + Sync in jeden konfigurierten Done-Bucket ✅
 - Priority-Farben (rot=urgent, grün=low)
 - Create-/Edit-Editor: Entwurf und bestehende Tasks, Projekt-/Prioritätspicker, Date-Maske, Dirty-Schutz sowie `:new`, `:w`, `:wq`, `:q!` ✅ Phase 4
-- Vollständige, scrollbare Help-Pane via `:h`, `:help` und `?` ✅ Phase 5
+- Vollständige, scrollbare Help-Pane via `:h` und `:help` ✅ Phase 5
 - Leader-Key (`Space+o`) zum Ein-/Ausblenden der Projects-Pane ✅ Phase 6
 - **Tests:** 13 Store-Tests + 2 Error-Log-Tests + 27 TUI-Tests grün ✅
 
