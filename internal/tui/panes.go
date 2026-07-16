@@ -219,14 +219,15 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if e.draft.Priority == 0 {
 		priority = placeholderText(priority)
 	}
+	detailFocused := m.focus == paneDetail
 	lines = append(lines,
-		focusedField("Project:  "+projectName, e.field == fieldProject),
-		focusedField("Title:    "+m.editorText(fieldTitle, e.draft.Title), e.field == fieldTitle),
-		focusedField(fmt.Sprintf("Priority: %s", priority), e.field == fieldPriority),
-		focusedField("Due Date: "+m.editorText(fieldDueDate, due), e.field == fieldDueDate),
+		focusedField("Project:  "+projectName, detailFocused && e.field == fieldProject),
+		focusedField("Title:    "+m.editorText(fieldTitle, e.draft.Title), detailFocused && e.field == fieldTitle),
+		focusedField(fmt.Sprintf("Priority: %s", priority), detailFocused && e.field == fieldPriority),
+		focusedField("Due Date: "+m.editorText(fieldDueDate, due), detailFocused && e.field == fieldDueDate),
 		fmt.Sprintf("Done:     %s (read-only)", doneLabel(m, e.id)),
 		"",
-		focusedField("Description:", e.field == fieldDescription),
+		focusedField("Description:", detailFocused && e.field == fieldDescription),
 	)
 	if e.mode == editorProjectPicker {
 		lines = append(lines, "  Filter: "+e.projectFilter)

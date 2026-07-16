@@ -36,6 +36,7 @@ type Config struct {
 	InitialViewID    int64
 	ActorUserID      int64
 	LeaderTimeout    time.Duration
+	CtrlWTimeout     time.Duration
 }
 
 type model struct {
@@ -47,6 +48,7 @@ type model struct {
 
 	focus                 paneID
 	ctrlWArmed            bool
+	ctrlWTimeout          time.Duration
 	leaderArmed           bool
 	projectsPaneCollapsed bool
 	leaderTimeout         time.Duration
@@ -97,12 +99,17 @@ func NewModel(cfg Config) tea.Model {
 	if leaderTimeout <= 0 {
 		leaderTimeout = DefaultLeaderTimeout
 	}
+	ctrlWTimeout := cfg.CtrlWTimeout
+	if ctrlWTimeout <= 0 {
+		ctrlWTimeout = DefaultCtrlWTimeout
+	}
 	m := &model{
 		store:            cfg.Store,
 		perPage:          max(1, cfg.PerPage),
 		initialProjectID: cfg.InitialProjectID,
 		actorUserID:      cfg.ActorUserID,
 		leaderTimeout:    leaderTimeout,
+		ctrlWTimeout:     ctrlWTimeout,
 		initialViewID:    cfg.InitialViewID,
 		projectSelected:  0,
 		currentViewID:    cfg.InitialViewID,
@@ -153,6 +160,7 @@ type (
 	}
 	cursorBlinkMsg   struct{}
 	leaderTimeoutMsg struct{}
+	ctrlWTimeoutMsg  struct{}
 )
 
 func (m *model) Init() tea.Cmd {
@@ -225,22 +233,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.leaderArmed = true
 			return m, tea.Tick(m.leaderTimeout, func(time.Time) tea.Msg { return leaderTimeoutMsg{} })
 		}
-		// In editor Insert/Picker modes ':' is field input. In Detail Normal-mode
-		// it still opens the shared Ex command line.
-		if m.focus == paneDetail && m.editor != nil && (m.editor.mode != editorNormal || k != ":") && kLower != "ctrl+w" {
-			return m.updateDetailKeys(key)
-		}
-		if k == ":" {
-			m.commandMode = true
-			m.commandInput = ""
-			return m, nil
-		}
-		// Ctrl+W leader
+
+		// Ctrl+W must be handled before Detail input. Otherwise the direction key
+		// is consumed by the editor and cannot move focus out of the Detail pane.
 		if m.ctrlWArmed {
 			m.ctrlWArmed = false
 
 			// Ctrl+W + Ctrl+W cycles focus.
-			if kLower == "ctrl+w" {
+			if kLower == "ctrl+w" || kLower == "w" {
 				m.focus = m.nextFocus()
 				return m, nil
 			}
@@ -263,6 +263,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if kLower == "ctrl+w" {
 			m.ctrlWArmed = true
 			m.gArmed = false
+			return m, tea.Tick(m.ctrlWTimeout, func(time.Time) tea.Msg { return ctrlWTimeoutMsg{} })
+		}
+
+		// In editor Insert/Picker modes ':' is field input. In Detail Normal-mode
+		// it still opens the shared Ex command line.
+		if m.focus == paneDetail && m.editor != nil && (m.editor.mode != editorNormal || k != ":") {
+			return m.updateDetailKeys(key)
+		}
+		if k == ":" {
+			m.commandMode = true
+			m.commandInput = ""
 			return m, nil
 		}
 
@@ -339,6 +350,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case leaderTimeoutMsg:
 		m.leaderArmed = false
+		return m, nil
+
+	case ctrlWTimeoutMsg:
+		m.ctrlWArmed = false
 		return m, nil
 
 	case cursorBlinkMsg:
@@ -477,13 +492,23 @@ func (m *model) toggleProjectsPane() {
 }
 
 func (m *model) nextFocus() paneID {
-	if m.projectsPaneCollapsed {
-		return paneTasks
+	open := []paneID{paneTasks}
+	if !m.projectsPaneCollapsed {
+		open = append([]paneID{paneProjects}, open...)
 	}
-	if m.focus == paneProjects {
-		return paneTasks
+	if m.showDetail {
+		open = append(open, paneDetail)
+	} else if m.helpPane != nil {
+		open = append(open, paneHelp)
+	} else if m.infoPane != nil {
+		open = append(open, paneInfo)
 	}
-	return paneProjects
+	for i, pane := range open {
+		if pane == m.focus {
+			return open[(i+1)%len(open)]
+		}
+	}
+	return open[0]
 }
 
 func (m *model) focusNeighborLeftOrStay() paneID {
@@ -868,6 +893,10 @@ func (m *model) renderStatusBar(w int) string {
 	}
 	if m.leaderArmed {
 		hint = "[LEADER] o toggle projects pane"
+	}
+	if m.ctrlWArmed {
+		ctrlWHint := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("227")).Render("Ctrl-W")
+		hint = ctrlWHint + " h/j/k/l change pane  •  Ctrl-W/w cycle"
 	}
 	statusStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

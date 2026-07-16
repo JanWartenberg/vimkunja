@@ -27,6 +27,19 @@
 - Als Nächstes: automatisierte Tests sowie den manuellen Smoke-Test gegen die Fundament-Abschlusskriterien verifizieren.
 - `:errors` zeigt den bestehenden Session-Error-Log.
 
+**Phase 9: manuelles Review**
+- vom Agent durch den Code führen lassen
+- Review von Code-Struktur (Module/Klassen/Funktionen)
+- ggf. einzelne Zeilen hinterfragen
+
+**Phase 10: Abschluss und Nächste Schritte vorbereiten**
+- Fundament als abgeschlossen betrachten
+- Specs aufräumen (alles vom MVP/Fundament ins Archiv)
+- nächste Spec vorbereiten:
+  - nächste offene Punkte sichten und priorisieren
+  - ggf. schon Grilling
+  - in neuem Stil (Matt's Skills) Spec erstellen
+
 ---
 
 ## 📐 Fortschritt (SPEC_FUNDAMENT.md):

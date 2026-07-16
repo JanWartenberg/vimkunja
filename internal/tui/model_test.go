@@ -179,6 +179,16 @@ func TestLeaderTimeoutUsesCentralDefaultAndConfigOverride(t *testing.T) {
 	}
 }
 
+func TestCtrlWTimeoutUsesCentralDefaultAndConfigOverride(t *testing.T) {
+	if m := testModel(); m.ctrlWTimeout != DefaultCtrlWTimeout {
+		t.Fatalf("default Ctrl+W timeout = %v, want %v", m.ctrlWTimeout, DefaultCtrlWTimeout)
+	}
+	m := NewModel(Config{Store: &fakeStore{}, CtrlWTimeout: time.Second}).(*model)
+	if m.ctrlWTimeout != time.Second {
+		t.Fatalf("configured Ctrl+W timeout = %v, want %v", m.ctrlWTimeout, time.Second)
+	}
+}
+
 func TestLeaderSpaceOTogglesProjectsPane(t *testing.T) {
 	m := testModel()
 	m.focus = paneProjects
@@ -474,8 +484,9 @@ func TestVimMotionGGAndGSelectListBounds(t *testing.T) {
 	})
 }
 
-func TestPaneFocusCtrlWCyclesProjectsAndTasks(t *testing.T) {
+func TestPaneFocusCtrlWCyclesAllOpenPanes(t *testing.T) {
 	m := testModel()
+	m.showDetail = true
 
 	m = ctrlW(m)
 	m = ctrlW(m)
@@ -484,9 +495,32 @@ func TestPaneFocusCtrlWCyclesProjectsAndTasks(t *testing.T) {
 	}
 
 	m = ctrlW(m)
+	m = pressKey(m, tea.Key{Code: 'w', Text: "w"})
+	if m.focus != paneDetail {
+		t.Fatalf("focus after Ctrl+W w = %v, want detail", m.focus)
+	}
+
+	m = ctrlW(m)
 	m = ctrlW(m)
 	if m.focus != paneProjects {
-		t.Fatalf("focus after second Ctrl+W Ctrl+W = %v, want projects", m.focus)
+		t.Fatalf("focus after wrapped Ctrl+W Ctrl+W = %v, want projects", m.focus)
+	}
+}
+
+func TestCtrlWTimeoutDisarmsAndShowsFooterState(t *testing.T) {
+	m := testModel()
+	m = ctrlW(m)
+	if !m.ctrlWArmed {
+		t.Fatal("Ctrl+W did not arm pane navigation")
+	}
+	if footer := m.renderStatusBar(120); !strings.Contains(footer, "Ctrl-W") || !strings.Contains(footer, "38;5;227") {
+		t.Fatalf("armed Ctrl+W footer = %q, want bright-yellow Ctrl-W hint", footer)
+	}
+
+	updated, _ := m.Update(ctrlWTimeoutMsg{})
+	m = updated.(*model)
+	if m.ctrlWArmed {
+		t.Fatal("Ctrl+W remained armed after timeout")
 	}
 }
 
@@ -517,6 +551,31 @@ func TestPaneFocusCtrlWDirectionalNavigation(t *testing.T) {
 	m = pressKey(m, tea.Key{Code: 'k', Text: "k"})
 	if m.focus != paneTasks {
 		t.Fatalf("focus after Ctrl+W k = %v, want tasks", m.focus)
+	}
+}
+
+func TestPaneFocusCtrlWKLeavesOpenTaskDetail(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+
+	m = ctrlW(m)
+	m = pressKey(m, tea.Key{Code: 'k', Text: "k"})
+
+	if m.focus != paneTasks {
+		t.Fatalf("focus after Ctrl+W k from detail = %v, want tasks", m.focus)
+	}
+}
+
+func TestUnfocusedTaskDetailHasNoHighlightedField(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldDescription
+	m.focus = paneProjects
+
+	if detail := renderTaskDetail(m, 80, 20); strings.Contains(detail, "▸") {
+		t.Fatalf("unfocused detail contains a selected field: %q", detail)
 	}
 }
 

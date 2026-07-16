@@ -208,12 +208,14 @@ Build a **production-ready foundation** that:
 - **Config:**
   - Leader key = **Space**
   - Timeout = **500ms** (if no second key within 500ms, leader disarms)
+- `Ctrl+W` pane navigation has its own centrally configured **2-second** timeout; the footer shows a bright-yellow `Ctrl-W` hint while the sequence is armed.
 - **Implementation:**
   - When `Space` pressed → `model.leaderArmed = true`, `model.leaderTimeout = time.Now().Add(500ms)`
   - Next key within 500ms → dispatch leader sequence (e.g., `Space+o` → toggle projects pane)
   - After 500ms OR after dispatching → `model.leaderArmed = false`
 - **Leader Sequences (MVP):**
   - `Space+o` → Toggle projects pane collapse (see Decision #13)
+- `Ctrl+W h/j/k/l` → Change pane focus directionally; `Ctrl+W Ctrl+W` and `Ctrl+W w` cycle through all open panes with wrap-around.
   - Future: `Space+f` (filter), `Space+g` (goto), etc.
 
 ### 9. Projects-Pane Collapse (Decision #13)
@@ -399,8 +401,8 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
    - **Recommendation:** Start simple (split-on-space), upgrade if needed for `:goto "My Project"`.
 2. **Error log pane:** Same rendering as Detail-pane, or custom scrollable list?
    - **Recommendation:** Re-use Detail-pane layout (less code).
-3. **Leader timeout:** 500ms hardcoded, or config file?
-   - **Current decision:** `DefaultLeaderTimeout` is centralized in TUI configuration and can be overridden by the programmatic `Config`; a user-facing config file is deferred.
+3. **Leader and pane-navigation timeouts:** 500ms / 2s hardcoded, or config file?
+   - **Current decision:** `DefaultLeaderTimeout` and `DefaultCtrlWTimeout` are centralized in TUI configuration and can be overridden by the programmatic `Config`; a user-facing config file is deferred.
 
 ### Success Criteria
 This spec is **done** when:
