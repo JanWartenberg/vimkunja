@@ -15,6 +15,8 @@ import (
 
 type fakeStore struct {
 	toggleErr         error
+	toggleTaskID      int64
+	toggleDone        bool
 	workflowStatus    vimkunja.WorkflowStatus
 	workflowStatusErr error
 	updateErr         error
@@ -44,7 +46,9 @@ func (f *fakeStore) SetTaskWorkflowStatus(context.Context, int64, int64) error {
 	return nil
 }
 
-func (f *fakeStore) ToggleTaskDone(context.Context, int64, bool) error {
+func (f *fakeStore) ToggleTaskDone(_ context.Context, taskID int64, done bool) error {
+	f.toggleTaskID = taskID
+	f.toggleDone = done
 	return f.toggleErr
 }
 
@@ -216,6 +220,51 @@ func TestWorkflowStatusSaveFailureKeepsEditorDirty(t *testing.T) {
 
 	if !m.editor.dirty() || m.lastErr != "write failed" || reloadCmd != nil {
 		t.Fatalf("failed status save = dirty:%v error:%q reload:%v", m.editor.dirty(), m.lastErr, reloadCmd != nil)
+	}
+}
+
+func TestTaskToggleUsesDoneStateToSelectWorkflowDirection(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		task vimkunja.Task
+		want bool
+	}{
+		{name: "open moves to done", task: vimkunja.Task{ID: 1}, want: true},
+		{name: "done moves to default", task: vimkunja.Task{ID: 2, Done: true}, want: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store := &fakeStore{}
+			m := &model{store: store, focus: paneTasks, tasks: []vimkunja.Task{tc.task}}
+
+			_, toggleCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'x', Text: "x"}))
+			toggleCmd()
+			if store.toggleTaskID != tc.task.ID || store.toggleDone != tc.want {
+				t.Fatalf("toggle = task:%d done:%v, want task:%d done:%v", store.toggleTaskID, store.toggleDone, tc.task.ID, tc.want)
+			}
+		})
+	}
+}
+
+func TestToggleSuccessReloadsTasks(t *testing.T) {
+	store := &fakeStore{}
+	m := &model{
+		store:            store,
+		perPage:          50,
+		focus:            paneTasks,
+		currentProjectID: 1,
+		currentViewID:    1,
+		tasks:            []vimkunja.Task{{ID: 1}},
+	}
+
+	_, toggleCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'x', Text: "x"}))
+	updated, reloadCmd := m.Update(toggleCmd())
+	m = updated.(*model)
+	if reloadCmd == nil {
+		t.Fatal("successful toggle returned no reload command")
+	}
+	reloadCmd()
+	if store.listTasksCalls != 1 {
+		t.Fatalf("ListTasksInView called %d times, want 1", store.listTasksCalls)
 	}
 }
 

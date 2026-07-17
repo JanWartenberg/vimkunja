@@ -379,6 +379,39 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 	return nil
 }
 
+func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool) error {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT pv.id,
+			CASE WHEN ? THEN pv.done_bucket_id ELSE pv.default_bucket_id END
+		FROM project_views pv
+		JOIN tasks t ON t.project_id = pv.project_id
+		WHERE t.id = ?
+			AND CASE WHEN ? THEN pv.done_bucket_id ELSE pv.default_bucket_id END IS NOT NULL
+	`, boolToInt(done), taskID, boolToInt(done))
+	if err != nil {
+		return fmt.Errorf("list configured workflow buckets: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var viewID, bucketID int64
+		if err := rows.Scan(&viewID, &bucketID); err != nil {
+			return fmt.Errorf("scan configured workflow bucket: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `
+			UPDATE task_buckets
+			SET bucket_id = ?
+			WHERE task_id = ? AND project_view_id = ?
+		`, bucketID, taskID, viewID); err != nil {
+			return fmt.Errorf("move task to configured workflow bucket: %w", err)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate configured workflow buckets: %w", err)
+	}
+	return nil
+}
+
 func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done bool) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -401,39 +434,11 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 		return fmt.Errorf("toggle task done: %w", err)
 	}
 
-	// A task's done state is global. Mirror it in the configured done bucket of
-	// every view in its project, using each view's own bucket ID.
-	if done {
-		rows, err := tx.QueryContext(ctx, `
-			SELECT pv.id, pv.done_bucket_id
-			FROM project_views pv
-			JOIN tasks t ON t.project_id = pv.project_id
-			WHERE t.id = ? AND pv.done_bucket_id IS NOT NULL
-		`, taskID)
-		if err != nil {
-			return fmt.Errorf("list done buckets: %w", err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var viewID, doneBucketID int64
-			if err := rows.Scan(&viewID, &doneBucketID); err != nil {
-				return fmt.Errorf("scan done bucket: %w", err)
-			}
-			if _, err := tx.ExecContext(ctx, `
-				UPDATE task_buckets
-				SET bucket_id = ?
-				WHERE task_id = ? AND project_view_id = ?
-			`, doneBucketID, taskID, viewID); err != nil {
-				return fmt.Errorf("move task to done bucket: %w", err)
-			}
-		}
-		if err := rows.Err(); err != nil {
-			return fmt.Errorf("iterate done buckets: %w", err)
-		}
+	// A Task's Done state is global. Mirror it into every configured Done or
+	// Default Bucket so reopening cannot leave a Task assigned to Done.
+	if err := syncTaskBucketsForDoneState(ctx, tx, taskID, done); err != nil {
+		return err
 	}
-	// Note: When toggling to done=false, we leave task in current bucket
-	// (user can manually move it if needed)
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit toggle task transaction: %w", err)

@@ -321,16 +321,16 @@ func TestToggleTaskDone_MovesTaskToEachViewsDoneBucket(t *testing.T) {
 	}
 }
 
-func TestToggleTaskDone_LeavesInBucketWhenUndone(t *testing.T) {
+func TestToggleTaskDone_MovesToDefaultBucketWhenUndone(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
 
-	// Setup: task in bucket 10, mark done, then undo
+	// Setup: task in its Done Bucket, then reopen it.
 	_, err := store.db.Exec(`
 		INSERT INTO projects (id, title) VALUES (1, 'Test Project');
-		INSERT INTO project_views (id, project_id, title, view_kind, done_bucket_id) VALUES (1, 1, 'Kanban', 3, 99);
+		INSERT INTO project_views (id, project_id, title, view_kind, done_bucket_id, default_bucket_id) VALUES (1, 1, 'Kanban', 3, 99, 10);
 		INSERT INTO tasks (id, project_id, title, done) VALUES (1, 1, 'Task 1', 1);
 		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES (1, 1, 99, 1);
 	`)
@@ -343,15 +343,47 @@ func TestToggleTaskDone_LeavesInBucketWhenUndone(t *testing.T) {
 		t.Fatalf("toggle task undone: %v", err)
 	}
 
-	// Check bucket_id stays at 99 (we don't auto-move back)
+	// Reopening must move to the configured Default Bucket.
 	var bucketID int64
 	q := `SELECT bucket_id FROM task_buckets WHERE task_id = 1`
 	if err := store.db.QueryRow(q).Scan(&bucketID); err != nil {
 		t.Fatalf("query bucket_id: %v", err)
 	}
 
-	if bucketID != 99 {
-		t.Errorf("bucket changed unexpectedly: got %d, want 99", bucketID)
+	if bucketID != 10 {
+		t.Errorf("bucket = %d, want default bucket 10", bucketID)
+	}
+}
+
+func TestToggleTaskDone_MovesTaskToEachViewsDefaultBucketWhenUndone(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title) VALUES (1, 'Test Project');
+		INSERT INTO project_views (id, project_id, title, view_kind, done_bucket_id, default_bucket_id) VALUES
+			(1, 1, 'Team', 3, 99, 10),
+			(2, 1, 'Personal', 3, 199, 20);
+		INSERT INTO tasks (id, project_id, title, done) VALUES (1, 1, 'Task 1', 1);
+		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES
+			(1, 1, 99, 1),
+			(2, 1, 199, 2);
+	`)
+	if err != nil {
+		t.Fatalf("insert test data: %v", err)
+	}
+
+	if err := store.ToggleTaskDone(context.Background(), 1, false); err != nil {
+		t.Fatalf("reopen task: %v", err)
+	}
+	for viewID, wantBucketID := range map[int64]int64{1: 10, 2: 20} {
+		var gotBucketID int64
+		if err := store.db.QueryRow(`SELECT bucket_id FROM task_buckets WHERE task_id = 1 AND project_view_id = ?`, viewID).Scan(&gotBucketID); err != nil {
+			t.Fatalf("query bucket for view %d: %v", viewID, err)
+		}
+		if gotBucketID != wantBucketID {
+			t.Errorf("view %d bucket = %d, want default bucket %d", viewID, gotBucketID, wantBucketID)
+		}
 	}
 }
 
