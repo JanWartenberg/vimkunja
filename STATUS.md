@@ -1,64 +1,27 @@
-# Vimkunja - Status
+# Vimkunja – Status
 
-**Stand:** 2026-07-17 | **Branch:** main | **Progress:** Fundament/MVP abgeschlossen
+**Stand:** 2026-07-17 | **Branch:** main | **Fundament/MVP:** abgeschlossen und manuell verifiziert
 
----
+## Aktueller Stand
 
-## ✅ Was läuft:
-- Projekte + Tasks anzeigen
-- Details-View (Enter)
-- Vim-Navigation (hjkl, gg, G, Ctrl+D/U, Ctrl+W)
-- Workflow-Status im Detail: Bucket-Picker (z. B. To-Do, Doing, Done) synchronisiert `done`, `done_at` und `updated` ✅
-- Task Toggle (`x`) → Done- bzw. Default-Bucket + **updated timestamp** ✅
-- Priority-Farben (rot=urgent, grün=low)
-- Create-/Edit-Editor: Entwurf und bestehende Tasks, Projekt-/Prioritäts-/Statuspicker, Date-Maske, Dirty-Schutz sowie `:new`, `:w`, `:wq`, `:wqa`, `:q!`, `:qa!` ✅
-- Vollständige, scrollbare Help-Pane via `:h` und `:help` ✅ Phase 5
-- Leader-Key (`Space+o`) zum Ein-/Ausblenden der Projects-Pane ✅ Phase 6
-- **Tests:** 18 Store-Tests + 2 Error-Log-Tests + 43 TUI-Tests grün ✅
-- Automatisierte und manuelle Fundament-/Workflow-Smoke-Tests ✅
+- Lokale Vikunja-SQLite-Datenbank: Projects, List View, Task-Detail und Task-Editor
+- Workflow-Status im Detail sowie `x`-Toggle zwischen Done- und Default-Bucket
+- Vim-Navigation, Pane-Fokus, Ex-Commands, Help, Fehlerlog und Leader-Key
+- `go test ./...` grün: 18 Store-, 2 Error-Log- und 43 TUI-Tests
 
----
+## Aktuelle Tickets
 
-## 🎯 Nächster Schritt:
+Alle folgenden Tickets sind bewusst noch `needs-triage`; die Reihenfolge ist ein Arbeitsvorschlag, keine feste Roadmap.
 
-- Fundament-Spec und erledigte Tickets archivieren.
-- Eine nächste Feature-Spec aus dem priorisierten UX- oder Kanban-Backlog erstellen.
+1. [Cursor-Darstellung im Editor](.scratch/cursor-shapes/issues/01-improve-editor-cursor-shapes.md)
+2. [Home/End als `gg`/`G`-Aliasse](.scratch/navigation-aliases/issues/01-add-home-end-navigation-aliases.md)
+3. [Scroll-Position in langen Panes anzeigen](.scratch/scroll-position-feedback/issues/01-indicate-scroll-position.md)
+4. [Vikunja-HTML-Beschreibungen lesbar rendern](.scratch/description-rendering/issues/01-render-vikunja-html-descriptions.md)
+5. [Task-Metadaten besser darstellen](.scratch/task-presentation/issues/01-improve-task-date-priority-and-identifier-presentation.md)
+6. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md)
 
----
+## Dokumentation
 
-## 📐 Fortschritt (SPEC_FUNDAMENT.md):
-
-| Kriterium | Status |
-|-----------|--------|
-| REST Client entfernt | ✅ |
-| `updated` timestamp bump | ✅ |
-| Done-Bucket Move | ✅ |
-| Commands | ✅ Phase 3 |
-| Create/Edit Task | ✅ Phase 4: manuell abgenommen |
-| Help-Pane | ✅ Phase 5 |
-| Leader-Key | ✅ Phase 6 |
-| Auto-Refresh | ✅ nach Toggle sowie Create/Edit |
-| Error-Log-Infrastruktur | ✅ Phase 2 + Anzeige per `:errors` |
-| Error Footer | ✅ Phase-2-Schritt 2 |
-| Tests | ✅ 18 Store-Tests + 2 Error-Log-Tests + 43 TUI-Tests; manueller Smoke-Test bestanden |
-
----
-
-## 📝 TODO (Later):
-- Description Rendering (Original-Vikunja-HTML → TUI-Text/Markdown): Parsing- und Formatierungsstrategie diskutieren
-- Erweiterte Vim-Edit-Shortcuts (`o`/`Shift+o`, `i`/`a`, `Shift+i`/`Shift+a`)
-- Datumsformat, Truncation, etc.
-
-**Details:** `.archive/TODO_UX.md`
-
----
-
-## 🗂️ Doku:
-- **STATUS.md** ← Diese Datei
-- **SPEC_FUNDAMENT.md** - Komplette Spec
-- `.archive/` - Erledigte Berichte/TODOs
-
----
-
-**Arbeitsstand:**
-Fundament/MVP einschließlich Workflow-Status ist implementiert und manuell verifiziert. Weitere Arbeit liegt im lokalen `.scratch/`-Backlog.
+- [README.md](README.md) – Einführung, Bedienung, Vision
+- `.scratch/` – einzige Quelle für offene Specs, Bugs und Featurewünsche
+- `.archive/` – abgeschlossene Anforderungen, Tickets und historische Berichte

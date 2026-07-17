@@ -30,7 +30,7 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 **Vikunja API erhalten:** Die API zur OriginalApp aufrechthalten, TUI muss kompatibel zur Original App bleiben
 **DB-Schema nicht ändern:** bestehendes SQLite-Schema darf nicht geändert werden
 **Windows-Host:** `/workspace` wird auf Windows gehostet. Zeilenenden vor Commits auf LF normalisieren; reine CRLF/LF-Umstellungen nicht als fachliche Änderungen committen.
-**Markdown-Hygiene:** Keine Markdown-Dateien inflationär anlegen. Temporäre Notizen nach Übernahme in die dauerhafte Dokumentation löschen; vorhandene temporäre Dateien regelmäßig aufräumen. Dauerhafte Ausnahmen: `README.md` (Menschen), `AGENTS.md` (allgemeine Agent-Anweisungen), `STATUS.md` (Kurzstatus) und `SPEC_FUNDAMENT.md` (Requirements und User Stories).
+**Markdown-Hygiene:** Keine Markdown-Dateien inflationär anlegen. `README.md` enthält Einführung, Bedienung und Vision; `STATUS.md` ist der kurze Ticket-Index. Offene Arbeit gehört ausschließlich in `.scratch/<feature>/`; abgeschlossene Specs und Tickets nach `.archive/YYYY-MM-DD/`. Temporäre Notizen nach Übernahme löschen.
 **Default-Modus:** Vorschläge machen, **NICHT** umsetzen!  
 **Umsetzung nur bei:** "setze um", "implementiere", "mach das", etc.
 
@@ -42,11 +42,11 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 
 ### Arbeitsschritte
 
-1. Lies **SPEC_FUNDAMENT.md** (komplette Spec)
-2. Prüfe **STATUS.md** (aktueller Stand, nächste Phase)
+1. Lies **README.md** und **STATUS.md**
+2. Lies das angeforderte oder aktuelle `.scratch`-Ticket samt zugehöriger Spec
 3. Implementiere gemäß Ousterhout
 4. Teste Store-Logik
-5. Update STATUS.md
+5. Aktualisiere Ticket und STATUS-Index, falls sich die Priorität ändert
 
 ---
 
@@ -63,9 +63,10 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 
 ## 📚 Referenzen
 
-- **SPEC_FUNDAMENT.md** – Komplette Feature-Spec + Architektur
-- **STATUS.md** – Aktueller Fortschritt, nächste Schritte
-- `.archive/` – Erledigte TODOs, Phase-Reports
+- **README.md** – Einführung, Bedienung und Vision
+- **STATUS.md** – Aktueller Ticket-Index
+- `.scratch/` – offene Specs und Tickets
+- `.archive/` – abgeschlossene Specs, Tickets und historische Berichte
 
 ---
 
