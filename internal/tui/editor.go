@@ -19,6 +19,7 @@ const (
 	fieldTitle
 	fieldPriority
 	fieldDueDate
+	fieldWorkflowStatus
 	fieldDescription
 )
 
@@ -29,6 +30,7 @@ const (
 	editorInsert
 	editorProjectPicker
 	editorPriorityPicker
+	editorWorkflowStatusPicker
 )
 
 type taskEditor struct {
@@ -42,6 +44,7 @@ type taskEditor struct {
 	projectFilter         string
 	pickerIndex           int
 	priorityIndex         int
+	workflowStatusIndex   int
 	descScroll            int
 	gArmed                bool
 	workflowStatus        vimkunja.WorkflowStatus
@@ -72,16 +75,18 @@ func (m *model) openExistingEditor(task vimkunja.Task) {
 
 func (e *taskEditor) workflowStatusLabel() string {
 	if e.workflowStatusLoading {
-		return "loading..."
+		return "loading... (read-only)"
 	}
 	switch e.workflowStatus.Availability {
 	case vimkunja.WorkflowStatusUnavailable:
-		return "unavailable (no manual Kanban View)"
+		return "unavailable (no manual Kanban View; read-only)"
 	case vimkunja.WorkflowStatusAmbiguous:
-		return "ambiguous (multiple manual Kanban Views)"
+		return "ambiguous (multiple manual Kanban Views; read-only)"
 	case vimkunja.WorkflowStatusAvailable:
-		if e.workflowStatus.CurrentBucket.Title != "" {
-			return e.workflowStatus.CurrentBucket.Title
+		for _, bucket := range e.workflowStatus.Buckets {
+			if bucket.ID == e.draft.WorkflowBucketID {
+				return bucket.Title
+			}
 		}
 		return "unassigned"
 	default:
@@ -92,7 +97,7 @@ func (e *taskEditor) workflowStatusLabel() string {
 func (e *taskEditor) dirty() bool {
 	return e.draft.ProjectID != e.original.ProjectID || e.draft.Title != e.original.Title ||
 		e.draft.Description != e.original.Description || e.draft.Priority != e.original.Priority ||
-		e.draft.DueDate != e.original.DueDate
+		e.draft.DueDate != e.original.DueDate || e.draft.WorkflowBucketID != e.original.WorkflowBucketID
 }
 
 func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -108,6 +113,8 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateProjectPicker(k)
 	case editorPriorityPicker:
 		return m.updatePriorityPicker(k)
+	case editorWorkflowStatusPicker:
+		return m.updateWorkflowStatusPicker(k)
 	case editorInsert:
 		return m.updateEditorInsert(k)
 	default:
@@ -148,6 +155,11 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case fieldPriority:
 			e.mode = editorPriorityPicker
 			e.priorityIndex = int(e.draft.Priority)
+		case fieldWorkflowStatus:
+			if e.workflowStatus.Availability == vimkunja.WorkflowStatusAvailable && len(e.workflowStatus.Buckets) > 0 {
+				e.mode = editorWorkflowStatusPicker
+				e.workflowStatusIndex = e.workflowStatusPickerIndex()
+			}
 		default:
 			e.mode = editorInsert
 			if e.field == fieldDueDate && e.draft.DueDate == "" {
@@ -311,6 +323,35 @@ func (m *model) updatePriorityPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		e.priorityIndex = clamp(e.priorityIndex-1, 0, 5)
 	}
 	return m, nil
+}
+
+func (m *model) updateWorkflowStatusPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	e := m.editor
+	s := k.String()
+	buckets := e.workflowStatus.Buckets
+	switch s {
+	case "esc":
+		e.mode = editorNormal
+	case "enter":
+		if len(buckets) > 0 {
+			e.draft.WorkflowBucketID = buckets[clamp(e.workflowStatusIndex, 0, len(buckets)-1)].ID
+		}
+		e.mode = editorNormal
+	case "j", "down":
+		e.workflowStatusIndex = clamp(e.workflowStatusIndex+1, 0, max(0, len(buckets)-1))
+	case "k", "up":
+		e.workflowStatusIndex = clamp(e.workflowStatusIndex-1, 0, max(0, len(buckets)-1))
+	}
+	return m, nil
+}
+
+func (e *taskEditor) workflowStatusPickerIndex() int {
+	for i, bucket := range e.workflowStatus.Buckets {
+		if bucket.ID == e.draft.WorkflowBucketID {
+			return i
+		}
+	}
+	return 0
 }
 
 func (m *model) saveEditor(closeAfter bool) tea.Cmd {

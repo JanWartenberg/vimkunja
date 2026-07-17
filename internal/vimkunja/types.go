@@ -57,11 +57,12 @@ type Task struct {
 // (stored as NULL) or an ISO date in YYYY-MM-DD form. CreatedByID is optional:
 // SQLiteStore falls back to the target project's owner when it is zero.
 type TaskDraft struct {
-	ID          int64
-	ProjectID   int64
-	Title       string
-	Description string
-	Priority    int64
-	DueDate     string
-	CreatedByID int64
+	ID               int64
+	ProjectID        int64
+	Title            string
+	Description      string
+	Priority         int64
+	DueDate          string
+	WorkflowBucketID int64
+	CreatedByID      int64
 }

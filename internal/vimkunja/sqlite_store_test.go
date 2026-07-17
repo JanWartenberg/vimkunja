@@ -152,6 +152,47 @@ func TestGetTaskWorkflowStatus_ReportsUnavailableAndAmbiguousViews(t *testing.T)
 	}
 }
 
+func TestSetTaskWorkflowStatus_UpdatesBucketAndDoneState(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO project_views (id, project_id, title, view_kind, done_bucket_id) VALUES (10, 1, 'Board', 3, 12);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES
+			(10, 'To-Do', 10, 1), (11, 'Doing', 10, 2), (12, 'Done', 10, 3);
+		INSERT INTO tasks (id, project_id, title, done, done_at, updated) VALUES
+			(1, 1, 'Task', 1, CURRENT_TIMESTAMP, '2020-01-01 00:00:00');
+		INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (1, 12, 10);
+	`)
+	if err != nil {
+		t.Fatalf("seed database: %v", err)
+	}
+
+	if err := store.SetTaskWorkflowStatus(context.Background(), 1, 11); err != nil {
+		t.Fatalf("set Doing workflow status: %v", err)
+	}
+	var bucketID int64
+	var done bool
+	var doneAt sql.NullTime
+	var updated time.Time
+	if err := store.db.QueryRow(`SELECT tb.bucket_id, t.done, t.done_at, t.updated FROM tasks t JOIN task_buckets tb ON tb.task_id = t.id WHERE t.id = 1 AND tb.project_view_id = 10`).Scan(&bucketID, &done, &doneAt, &updated); err != nil {
+		t.Fatalf("read Doing state: %v", err)
+	}
+	if bucketID != 11 || done || doneAt.Valid || !updated.After(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Fatalf("Doing state = bucket:%d done:%v doneAt:%#v updated:%v", bucketID, done, doneAt, updated)
+	}
+
+	if err := store.SetTaskWorkflowStatus(context.Background(), 1, 12); err != nil {
+		t.Fatalf("set Done workflow status: %v", err)
+	}
+	if err := store.db.QueryRow(`SELECT tb.bucket_id, t.done, t.done_at FROM tasks t JOIN task_buckets tb ON tb.task_id = t.id WHERE t.id = 1 AND tb.project_view_id = 10`).Scan(&bucketID, &done, &doneAt); err != nil {
+		t.Fatalf("read Done state: %v", err)
+	}
+	if bucketID != 12 || !done || !doneAt.Valid {
+		t.Fatalf("Done state = bucket:%d done:%v doneAt:%#v", bucketID, done, doneAt)
+	}
+}
+
 func TestToggleTaskDone_UpdatesTimestamp(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()

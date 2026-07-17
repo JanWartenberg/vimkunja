@@ -293,6 +293,92 @@ func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, task
 	return status, nil
 }
 
+// SetTaskWorkflowStatus assigns a Task to a Bucket in its single manual Kanban
+// View and atomically synchronizes its global Done state.
+func (s *SQLiteStore) SetTaskWorkflowStatus(ctx context.Context, taskID, bucketID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin set workflow status transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var projectID int64
+	if err := tx.QueryRowContext(ctx, `SELECT project_id FROM tasks WHERE id = ?`, taskID).Scan(&projectID); err != nil {
+		return fmt.Errorf("get task project for workflow status: %w", err)
+	}
+	if err := setTaskWorkflowStatus(ctx, tx, taskID, projectID, bucketID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit set workflow status: %w", err)
+	}
+	return nil
+}
+
+func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, bucketID int64) error {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT id, done_bucket_id
+		FROM project_views
+		WHERE project_id = ? AND view_kind = ?
+		ORDER BY position ASC, id ASC
+	`, projectID, viewKindKanban)
+	if err != nil {
+		return fmt.Errorf("list manual kanban views for workflow status: %w", err)
+	}
+	defer rows.Close()
+
+	type workflowView struct {
+		id           int64
+		doneBucketID sql.NullInt64
+	}
+	var views []workflowView
+	for rows.Next() {
+		var view workflowView
+		if err := rows.Scan(&view.id, &view.doneBucketID); err != nil {
+			return fmt.Errorf("scan manual kanban view for workflow status: %w", err)
+		}
+		views = append(views, view)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate manual kanban views for workflow status: %w", err)
+	}
+	if len(views) != 1 {
+		return fmt.Errorf("set workflow status: project has %d manual kanban views", len(views))
+	}
+	view := views[0]
+
+	var bucketExists bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM buckets WHERE id = ? AND project_view_id = ?)`, bucketID, view.id).Scan(&bucketExists); err != nil {
+		return fmt.Errorf("check workflow bucket: %w", err)
+	}
+	if !bucketExists {
+		return fmt.Errorf("set workflow status: bucket does not belong to the manual kanban view")
+	}
+
+	done := view.doneBucketID.Valid && view.doneBucketID.Int64 == bucketID
+	var doneAt any
+	if done {
+		doneAt = time.Now()
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`, boolToInt(done), doneAt, time.Now(), taskID); err != nil {
+		return fmt.Errorf("update task workflow done state: %w", err)
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE task_buckets SET bucket_id = ? WHERE task_id = ? AND project_view_id = ?`, bucketID, taskID, view.id)
+	if err != nil {
+		return fmt.Errorf("update task workflow bucket: %w", err)
+	}
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("count updated task workflow bucket: %w", err)
+	}
+	if changed == 0 {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (?, ?, ?)`, taskID, bucketID, view.id); err != nil {
+			return fmt.Errorf("insert task workflow bucket: %w", err)
+		}
+	}
+	return nil
+}
+
 func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done bool) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -450,6 +536,13 @@ func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, er
 	if oldProjectID != draft.ProjectID {
 		if err := initializeViewAssignments(ctx, tx, draft.ID, draft.ProjectID); err != nil {
 			return Task{}, err
+		}
+	} else if draft.WorkflowBucketID != 0 {
+		if err := setTaskWorkflowStatus(ctx, tx, draft.ID, draft.ProjectID, draft.WorkflowBucketID); err != nil {
+			return Task{}, err
+		}
+		if err := tx.QueryRowContext(ctx, `SELECT done FROM tasks WHERE id = ?`, draft.ID).Scan(&done); err != nil {
+			return Task{}, fmt.Errorf("get updated task done state: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {

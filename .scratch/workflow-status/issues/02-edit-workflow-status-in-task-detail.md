@@ -4,14 +4,14 @@
 
 **Blocked by:** 01 — Show Workflow Status in Task Detail.
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Status participates in the Detail editor's vertical field navigation and opens a keyboard picker with `i`.
-- [ ] `j`/`k` and arrows select, `Enter` confirms, and `Esc` cancels the Status picker consistently with existing pickers.
-- [ ] A confirmed Status selection is dirty state and is included in `:w`, `:wq`, `:wqa`, `:q`, and `:q!` behavior.
-- [ ] Saving the configured Done Bucket atomically persists that Bucket, `done=true`, a Done timestamp, and an updated timestamp.
-- [ ] Saving any non-Done Bucket atomically persists that Bucket, `done=false`, no Done timestamp, and an updated timestamp.
-- [ ] Failed writes preserve dirty editor state and use the existing error feedback; successful writes refresh the visible Task state.
-- [ ] New Tasks and cross-Project Task moves use their target Project's configured default Bucket and do not retain invalid source Statuses.
-- [ ] Store and TUI model tests cover successful changes, cancellation, dirty protection, save/discard, failure retention, and default initialization.
-- [ ] `go test ./...` passes.
+- [x] Status participates in the Detail editor's vertical field navigation and opens a keyboard picker with `i`.
+- [x] `j`/`k` and arrows select, `Enter` confirms, and `Esc` cancels the Status picker consistently with existing pickers.
+- [x] A confirmed Status selection is dirty state and is included in `:w`, `:wq`, `:wqa`, `:q`, and `:q!` behavior.
+- [x] Saving the configured Done Bucket atomically persists that Bucket, `done=true`, a Done timestamp, and an updated timestamp.
+- [x] Saving any non-Done Bucket atomically persists that Bucket, `done=false`, no Done timestamp, and an updated timestamp.
+- [x] Failed writes preserve dirty editor state and use the existing error feedback; successful writes refresh the visible Task state.
+- [x] New Tasks and cross-Project Task moves use their target Project's configured default Bucket and do not retain invalid source Statuses.
+- [x] Store and TUI model tests cover successful changes, cancellation, dirty protection, save/discard, failure retention, and default initialization.
+- [x] `go test ./...` passes.

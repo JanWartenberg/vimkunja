@@ -225,7 +225,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		focusedField("Title:    "+m.editorText(fieldTitle, e.draft.Title), detailFocused && e.field == fieldTitle),
 		focusedField(fmt.Sprintf("Priority: %s", priority), detailFocused && e.field == fieldPriority),
 		focusedField("Due Date: "+m.editorText(fieldDueDate, due), detailFocused && e.field == fieldDueDate),
-		fmt.Sprintf("Status:   %s (read-only)", e.workflowStatusLabel()),
+		focusedField("Status:   "+e.workflowStatusLabel(), detailFocused && e.field == fieldWorkflowStatus),
 		fmt.Sprintf("Done:     %s (read-only)", doneLabel(m, e.id)),
 		"",
 		focusedField("Description:", detailFocused && e.field == fieldDescription),
@@ -251,6 +251,14 @@ func renderTaskDetail(m *model, textW, textH int) string {
 				prefix = "▸ "
 			}
 			lines = append(lines, prefix+priorityName(i))
+		}
+	} else if e.mode == editorWorkflowStatusPicker {
+		for i, bucket := range e.workflowStatus.Buckets {
+			prefix := "  "
+			if i == e.workflowStatusIndex {
+				prefix = "▸ "
+			}
+			lines = append(lines, prefix+bucket.Title)
 		}
 	} else if e.draft.Description == "" {
 		lines = append(lines, placeholderText("  (no description)"))

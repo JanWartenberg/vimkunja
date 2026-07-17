@@ -11,6 +11,7 @@ type Store interface {
 	ListViews(ctx context.Context, projectID int64, page, perPage int) ([]ProjectView, int, error)
 	ListTasksInView(ctx context.Context, projectID, viewID int64, page, perPage int) ([]Task, int, error)
 	GetTaskWorkflowStatus(ctx context.Context, projectID, taskID int64) (WorkflowStatus, error)
+	SetTaskWorkflowStatus(ctx context.Context, taskID, bucketID int64) error
 
 	// ToggleTaskDone updates the 'done' flag (and done_at if possible).
 	ToggleTaskDone(ctx context.Context, taskID int64, done bool) error

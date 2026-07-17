@@ -17,8 +17,10 @@ type fakeStore struct {
 	toggleErr         error
 	workflowStatus    vimkunja.WorkflowStatus
 	workflowStatusErr error
+	updateErr         error
 	listTasksCalls    int
 	createdDraft      vimkunja.TaskDraft
+	updatedDraft      vimkunja.TaskDraft
 }
 
 func (f *fakeStore) ListProjects(context.Context, int, int) ([]vimkunja.Project, int, error) {
@@ -38,6 +40,10 @@ func (f *fakeStore) GetTaskWorkflowStatus(context.Context, int64, int64) (vimkun
 	return f.workflowStatus, f.workflowStatusErr
 }
 
+func (f *fakeStore) SetTaskWorkflowStatus(context.Context, int64, int64) error {
+	return nil
+}
+
 func (f *fakeStore) ToggleTaskDone(context.Context, int64, bool) error {
 	return f.toggleErr
 }
@@ -47,8 +53,12 @@ func (f *fakeStore) CreateTask(_ context.Context, draft vimkunja.TaskDraft) (vim
 	return vimkunja.Task{ID: 99, ProjectID: draft.ProjectID, Title: draft.Title}, nil
 }
 
-func (f *fakeStore) UpdateTask(context.Context, vimkunja.TaskDraft) (vimkunja.Task, error) {
-	return vimkunja.Task{}, nil
+func (f *fakeStore) UpdateTask(_ context.Context, draft vimkunja.TaskDraft) (vimkunja.Task, error) {
+	f.updatedDraft = draft
+	if f.updateErr != nil {
+		return vimkunja.Task{}, f.updateErr
+	}
+	return vimkunja.Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title}, nil
 }
 
 func TestErrorFooterClearsOnNextKey(t *testing.T) {
@@ -109,6 +119,103 @@ func TestOpeningTaskDetailLoadsWorkflowStatus(t *testing.T) {
 	}
 	if got, want := m.editor.workflowStatus.Buckets[0].Title, "To-Do"; got != want {
 		t.Fatalf("first workflow bucket = %q, want %q", got, want)
+	}
+}
+
+func TestWorkflowStatusPickerSelectsBucketAndMarksEditorDirty(t *testing.T) {
+	m := &model{focus: paneDetail, editor: &taskEditor{
+		field: fieldWorkflowStatus,
+		workflowStatus: vimkunja.WorkflowStatus{
+			Availability:  vimkunja.WorkflowStatusAvailable,
+			CurrentBucket: vimkunja.WorkflowBucket{ID: 10, Title: "To-Do"},
+			Buckets: []vimkunja.WorkflowBucket{
+				{ID: 10, Title: "To-Do"}, {ID: 11, Title: "Doing"},
+			},
+		},
+	}}
+
+	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: 'i', Text: "i"}))
+	m = updated.(*model)
+	if m.editor.mode != editorWorkflowStatusPicker {
+		t.Fatalf("editor mode = %v, want workflow status picker", m.editor.mode)
+	}
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'j', Text: "j"}))
+	m = updated.(*model)
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+
+	if m.editor.draft.WorkflowBucketID != 11 || !m.editor.dirty() {
+		t.Fatalf("selected workflow status = bucket:%d dirty:%v, want Doing and dirty", m.editor.draft.WorkflowBucketID, m.editor.dirty())
+	}
+}
+
+func TestWorkflowStatusPickerEscapeKeepsPreviousSelection(t *testing.T) {
+	m := &model{focus: paneDetail, editor: &taskEditor{
+		field: fieldWorkflowStatus,
+		draft: vimkunja.TaskDraft{WorkflowBucketID: 10},
+		workflowStatus: vimkunja.WorkflowStatus{
+			Availability: vimkunja.WorkflowStatusAvailable,
+			Buckets: []vimkunja.WorkflowBucket{
+				{ID: 10, Title: "To-Do"}, {ID: 11, Title: "Doing"},
+			},
+		},
+	}}
+
+	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: 'i', Text: "i"}))
+	m = updated.(*model)
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'j', Text: "j"}))
+	m = updated.(*model)
+	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape}))
+	m = updated.(*model)
+
+	if m.editor.mode != editorNormal || m.editor.draft.WorkflowBucketID != 10 {
+		t.Fatalf("cancelled picker = mode:%v bucket:%d, want normal To-Do", m.editor.mode, m.editor.draft.WorkflowBucketID)
+	}
+}
+
+func TestSavingDetailPersistsSelectedWorkflowStatus(t *testing.T) {
+	store := &fakeStore{}
+	m := NewModel(Config{Store: store}).(*model)
+	m.editor = &taskEditor{
+		id:       1,
+		draft:    vimkunja.TaskDraft{ID: 1, ProjectID: 1, Title: "Task", WorkflowBucketID: 11},
+		original: vimkunja.TaskDraft{ID: 1, ProjectID: 1, Title: "Task", WorkflowBucketID: 10},
+	}
+	m.showDetail = true
+	m.focus = paneDetail
+
+	m, saveCmd := typeCommand(t, m, "w")
+	if saveCmd == nil {
+		t.Fatal(":w returned no save command")
+	}
+	updated, _ := m.Update(saveCmd())
+	m = updated.(*model)
+
+	if store.updatedDraft.WorkflowBucketID != 11 {
+		t.Fatalf("saved workflow bucket = %d, want 11", store.updatedDraft.WorkflowBucketID)
+	}
+	if m.editor == nil || m.editor.dirty() {
+		t.Fatal("saved editor did not become clean")
+	}
+}
+
+func TestWorkflowStatusSaveFailureKeepsEditorDirty(t *testing.T) {
+	store := &fakeStore{updateErr: errors.New("write failed")}
+	m := NewModel(Config{Store: store}).(*model)
+	m.editor = &taskEditor{
+		id:       1,
+		draft:    vimkunja.TaskDraft{ID: 1, ProjectID: 1, Title: "Task", WorkflowBucketID: 11},
+		original: vimkunja.TaskDraft{ID: 1, ProjectID: 1, Title: "Task", WorkflowBucketID: 10},
+	}
+	m.showDetail = true
+	m.focus = paneDetail
+
+	m, saveCmd := typeCommand(t, m, "w")
+	updated, reloadCmd := m.Update(saveCmd())
+	m = updated.(*model)
+
+	if !m.editor.dirty() || m.lastErr != "write failed" || reloadCmd != nil {
+		t.Fatalf("failed status save = dirty:%v error:%q reload:%v", m.editor.dirty(), m.lastErr, reloadCmd != nil)
 	}
 }
 

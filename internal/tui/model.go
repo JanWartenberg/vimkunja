@@ -383,6 +383,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.editor.workflowStatusLoading = false
 			if typed.err == nil {
 				m.editor.workflowStatus = typed.status
+				m.editor.draft.WorkflowBucketID = typed.status.CurrentBucket.ID
+				m.editor.original.WorkflowBucketID = typed.status.CurrentBucket.ID
 			}
 		}
 		if typed.err != nil {
