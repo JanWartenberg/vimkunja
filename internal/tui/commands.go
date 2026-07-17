@@ -57,6 +57,7 @@ func newDefaultCommandRegistry() *CommandRegistry {
 	registry.Register("q", []string{"quit"}, quitCommand)
 	registry.Register("q!", []string{"quit!"}, forceQuitCommand)
 	registry.Register("qa", []string{"quitall"}, quitAllCommand)
+	registry.Register("qa!", []string{"quitall!"}, quitAllCommand)
 	registry.Register("new", nil, newTaskCommand)
 	registry.Register("w", []string{"write"}, writeCommand)
 	registry.Register("wq", nil, writeQuitCommand)

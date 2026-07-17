@@ -45,6 +45,7 @@ var helpLines = []string{
 	"  :errors               Open session error log",
 	"  :q / :quit            Close current pane or quit",
 	"  :qa / :quitall        Quit Vimkunja",
+	"  :qa! / :quitall!      Quit and discard unsaved editor changes",
 	"",
 	"HELP PANE",
 	"  j/k, arrows, Ctrl+D/U, PgUp/PgDn, gg/G  Scroll help",

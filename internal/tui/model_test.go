@@ -289,6 +289,25 @@ func TestCommandQuitQuitsWithoutClosablePane(t *testing.T) {
 	}
 }
 
+func TestCommandForceQuitAllIgnoresUnsavedDetailChanges(t *testing.T) {
+	for _, input := range []string{"qa!", "quitall!"} {
+		t.Run(input, func(t *testing.T) {
+			m := testModel()
+			m.currentProjectID = 1
+			m.openNewEditor()
+			m.editor.draft.Title = "Unsaved"
+
+			_, cmd := typeCommand(t, m, input)
+			if cmd == nil {
+				t.Fatalf(":%s returned no quit command", input)
+			}
+			if _, ok := cmd().(tea.QuitMsg); !ok {
+				t.Fatalf(":%s command returned %T, want tea.QuitMsg", input, cmd())
+			}
+		})
+	}
+}
+
 func TestCommandQuitAllQuits(t *testing.T) {
 	for _, input := range []string{"qa", "quitall"} {
 		t.Run(input, func(t *testing.T) {
