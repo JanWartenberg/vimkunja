@@ -1,6 +1,6 @@
 # Workflow-Status im Task-Detail
 
-**Status:** ready-for-agent
+**Status:** completed — manual smoke test verified
 
 ## Problem Statement
 

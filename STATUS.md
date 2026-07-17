@@ -1,6 +1,6 @@
 # Vimkunja - Status
 
-**Stand:** 2026-07-14 | **Branch:** main | **Progress:** in Arbeit (siehe Matrix; Fundament nicht vollständig)
+**Stand:** 2026-07-17 | **Branch:** main | **Progress:** Fundament/MVP abgeschlossen
 
 ---
 
@@ -8,37 +8,21 @@
 - Projekte + Tasks anzeigen
 - Details-View (Enter)
 - Vim-Navigation (hjkl, gg, G, Ctrl+D/U, Ctrl+W)
-- Task Toggle (`x`) → `done` + **updated timestamp** + Sync in jeden konfigurierten Done-Bucket ✅
+- Workflow-Status im Detail: Bucket-Picker (z. B. To-Do, Doing, Done) synchronisiert `done`, `done_at` und `updated` ✅
+- Task Toggle (`x`) → Done- bzw. Default-Bucket + **updated timestamp** ✅
 - Priority-Farben (rot=urgent, grün=low)
-- Create-/Edit-Editor: Entwurf und bestehende Tasks, Projekt-/Prioritätspicker, Date-Maske, Dirty-Schutz sowie `:new`, `:w`, `:wq`, `:wqa`, `:q!` ✅ Phase 4
+- Create-/Edit-Editor: Entwurf und bestehende Tasks, Projekt-/Prioritäts-/Statuspicker, Date-Maske, Dirty-Schutz sowie `:new`, `:w`, `:wq`, `:wqa`, `:q!`, `:qa!` ✅
 - Vollständige, scrollbare Help-Pane via `:h` und `:help` ✅ Phase 5
 - Leader-Key (`Space+o`) zum Ein-/Ausblenden der Projects-Pane ✅ Phase 6
-- **Tests:** 13 Store-Tests + 2 Error-Log-Tests + 27 TUI-Tests grün ✅
-
-## ❌ Was fehlt:
-- Manueller Smoke-Test und Abschlussprüfung des Fundaments (Ticket 02)
+- **Tests:** 18 Store-Tests + 2 Error-Log-Tests + 43 TUI-Tests grün ✅
+- Automatisierte und manuelle Fundament-/Workflow-Smoke-Tests ✅
 
 ---
 
 ## 🎯 Nächster Schritt:
 
-**Phase 8: Fundament-Abschluss**
-- Die fehlenden TUI-Modelltests für Navigation sind ergänzt.
-- Als Nächstes: automatisierte Tests sowie den manuellen Smoke-Test gegen die Fundament-Abschlusskriterien verifizieren.
-- `:errors` zeigt den bestehenden Session-Error-Log.
-
-**Phase 9: manuelles Review**
-- vom Agent durch den Code führen lassen
-- Review von Code-Struktur (Module/Klassen/Funktionen)
-- ggf. einzelne Zeilen hinterfragen
-
-**Phase 10: Abschluss und Nächste Schritte vorbereiten**
-- Fundament als abgeschlossen betrachten
-- Specs aufräumen (alles vom MVP/Fundament ins Archiv)
-- nächste Spec vorbereiten:
-  - nächste offene Punkte sichten und priorisieren
-  - ggf. schon Grilling
-  - in neuem Stil (Matt's Skills) Spec erstellen
+- Fundament-Spec und erledigte Tickets archivieren.
+- Eine nächste Feature-Spec aus dem priorisierten UX- oder Kanban-Backlog erstellen.
 
 ---
 
@@ -56,14 +40,13 @@
 | Auto-Refresh | ✅ nach Toggle sowie Create/Edit |
 | Error-Log-Infrastruktur | ✅ Phase 2 + Anzeige per `:errors` |
 | Error Footer | ✅ Phase-2-Schritt 2 |
-| Tests | 🟡 13 Store-Tests + 2 Error-Log-Tests + 27 TUI-Tests; manueller Smoke-Test offen |
+| Tests | ✅ 18 Store-Tests + 2 Error-Log-Tests + 43 TUI-Tests; manueller Smoke-Test bestanden |
 
 ---
 
 ## 📝 TODO (Later):
 - Description Rendering (Original-Vikunja-HTML → TUI-Text/Markdown): Parsing- und Formatierungsstrategie diskutieren
 - Erweiterte Vim-Edit-Shortcuts (`o`/`Shift+o`, `i`/`a`, `Shift+i`/`Shift+a`)
-- Editierbare Workflow-Status im Detail-Pane (z. B. Todo, Doing, Done) statt nur Done-Toggle
 - Datumsformat, Truncation, etc.
 
 **Details:** `.archive/TODO_UX.md`
@@ -78,4 +61,4 @@
 ---
 
 **Arbeitsstand:**
-Phase 4 bis 6 sind implementiert und committet. Arbeitsbaum ist sauber. Letzter Commit: `fb533a2` - Implement Phase 6 leader key and pane collapse
+Fundament/MVP einschließlich Workflow-Status ist implementiert und manuell verifiziert. Weitere Arbeit liegt im lokalen `.scratch/`-Backlog.

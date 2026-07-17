@@ -1,6 +1,6 @@
 # Spec: Vimkunja — Fundament (MVP Core)
 
-**Status:** Ready for Implementation  
+**Status:** Completed — manual smoke test verified
 **Related:** [`.archive/TUI_IDEA.md`](.archive/TUI_IDEA.md) (historische Decisions #1-11)  
 **Priority:** P0 (Blocks all features)
 
@@ -162,7 +162,7 @@ Build a **production-ready foundation** that:
 - The Project field is editable for both new and existing tasks. Saving a project change switches the TUI to the target project, reloads its list view, and selects the task.
 
 #### Form and modes
-- Form layout is vertical: Project, Title, Priority, Due Date, then full-width Description; Done is visible read-only metadata outside the focus graph.
+- Form layout is vertical: Project, Title, Priority, Due Date, Workflow Status, then full-width Description; Done is visible read-only metadata outside the focus graph.
 - No navigation wrap-around. In the form, `j/k` or arrows move vertically between fields. In Description Normal-mode, `h/l` move the cursor; `k` or Up on its first line selects Due Date.
 - The focused field has a subtle pink border. The pink selection accent is defined once in `internal/tui/theme.go` for future theming.
 - Footer always shows `[NORMAL]`, `[INSERT]`, or `[COMMAND]`; dirty detail panes also show `[+]`.
@@ -183,12 +183,11 @@ Build a **production-ready foundation** that:
 - `:q` and `:quit` are synonyms in every context. With unsaved changes they refuse to close and instruct the user to use `:w` or `:q!` / `:quit!`.
 - `:q!` and `:quit!` discard changes and close the Detail-pane.
 - Successful writes use original-Vikunja-compatible default task position and default Kanban buckets. Failed DB writes retain the editor state, log the error, show the red footer, and do not reload.
-- Done remains read-only in Detail; `x` is the only toggle for now.
+- Done remains read-only in Detail. Workflow Status is editable through its Bucket picker; `x` toggles between configured Done and Default Buckets.
 
 #### Deferred work
 - Flexible due-date picker/modal alongside direct entry (tomorrow, day after tomorrow, next weekday, next week).
 - Further Vim editing shortcuts beyond Description (`o`/`Shift+o`, `i`/`a`, `Shift+i`/`Shift+a`) inside text fields.
-- Editable workflow statuses (Todo, Doing, Done, etc.) in Detail.
 - HTML-description parsing and TUI rendering strategy.
 
 #### Open questions before implementation
@@ -336,9 +335,9 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 
 ### Deferred to "Feature: OverviewView" (Prio 1)
 - Next to the existing List View of the MVP: another view_kind
-- should list all tickets, regardless the project
-- done tickets should not be shown (at least per default filtered out)
-- tickets should be sorted by DueDate first, then by Priority (at least per default)
+- should list all tasks, regardless the project
+- done tasks should not be shown (at least per default filtered out)
+- tasks should be sorted by DueDate first, then by Priority (at least per default)
 - later extension: sorting/filtering could be chosen/selected by user
 
 ### Deferred to "Feature: Kanban View" (Prio 2)
@@ -383,7 +382,7 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 5. **Phase 5 (Help):** Add `help.go`, static help content, test with `:h`. ✅ Completed.
 6. **Phase 6 (Leader):** Add leader-key state machine to `model.Update()`, implement `Space+o` toggle. ✅ Completed.
 7. **Phase 7 (Write Semantics):** Enhance `SQLiteStore.ToggleTaskDone()` to bump `updated` + move buckets. ✅ Completed ahead of Phase 4.
-8. **Phase 8 (Tests):** Write `sqlite_store_test.go` + `model_test.go`, verify all behaviors. In progress.
+8. **Phase 8 (Tests):** Store and TUI model tests plus the manual Fundament smoke test verified. ✅ Completed.
 
 ### Domain Glossary Alignment
 - **Pane:** A UI section (Projects, Tasks, Detail). Not "panel" or "view" (conflicts with ProjectView).
