@@ -15,6 +15,30 @@ type ProjectView struct {
 	ViewKind string `json:"view_kind"`
 }
 
+// WorkflowStatusAvailability explains whether a project's manual Kanban View
+// supplies one unambiguous Workflow Status for a Task.
+type WorkflowStatusAvailability int
+
+const (
+	WorkflowStatusAvailable WorkflowStatusAvailability = iota
+	WorkflowStatusUnavailable
+	WorkflowStatusAmbiguous
+)
+
+// WorkflowBucket is a Bucket available as a Workflow Status.
+type WorkflowBucket struct {
+	ID    int64
+	Title string
+}
+
+// WorkflowStatus is a Task's Bucket assignment in its single manual Kanban
+// View. Buckets preserve that View's configured order.
+type WorkflowStatus struct {
+	Availability  WorkflowStatusAvailability
+	CurrentBucket WorkflowBucket
+	Buckets       []WorkflowBucket
+}
+
 // Task represents a single task within a project.
 type Task struct {
 	ID          int64  `json:"id"`

@@ -225,6 +225,74 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 	return out, totalPages, nil
 }
 
+// GetTaskWorkflowStatus returns a Task's Bucket assignment and available
+// Buckets when the Project has exactly one manual Kanban View. With no manual
+// Kanban View the status is unavailable; with several it is ambiguous.
+func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, taskID int64) (WorkflowStatus, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id
+		FROM project_views
+		WHERE project_id = ? AND view_kind = ?
+		ORDER BY position ASC, id ASC
+	`, projectID, viewKindKanban)
+	if err != nil {
+		return WorkflowStatus{}, fmt.Errorf("list manual kanban views: %w", err)
+	}
+	defer rows.Close()
+
+	var viewIDs []int64
+	for rows.Next() {
+		var viewID int64
+		if err := rows.Scan(&viewID); err != nil {
+			return WorkflowStatus{}, fmt.Errorf("scan manual kanban view: %w", err)
+		}
+		viewIDs = append(viewIDs, viewID)
+	}
+	if err := rows.Err(); err != nil {
+		return WorkflowStatus{}, fmt.Errorf("iterate manual kanban views: %w", err)
+	}
+	switch len(viewIDs) {
+	case 0:
+		return WorkflowStatus{Availability: WorkflowStatusUnavailable}, nil
+	case 1:
+		// Continue below.
+	default:
+		return WorkflowStatus{Availability: WorkflowStatusAmbiguous}, nil
+	}
+
+	buckets, err := s.db.QueryContext(ctx, `
+		SELECT b.id, b.title, tb.task_id IS NOT NULL
+		FROM buckets b
+		LEFT JOIN task_buckets tb
+			ON tb.bucket_id = b.id
+			AND tb.project_view_id = b.project_view_id
+			AND tb.task_id = ?
+		WHERE b.project_view_id = ?
+		ORDER BY b.position ASC, b.id ASC
+	`, taskID, viewIDs[0])
+	if err != nil {
+		return WorkflowStatus{}, fmt.Errorf("list workflow buckets: %w", err)
+	}
+	defer buckets.Close()
+
+	status := WorkflowStatus{Availability: WorkflowStatusAvailable}
+	for buckets.Next() {
+		var bucket WorkflowBucket
+		var current bool
+		if err := buckets.Scan(&bucket.ID, &bucket.Title, &current); err != nil {
+			return WorkflowStatus{}, fmt.Errorf("scan workflow bucket: %w", err)
+		}
+		status.Buckets = append(status.Buckets, bucket)
+		if current {
+			status.CurrentBucket = bucket
+		}
+	}
+	if err := buckets.Err(); err != nil {
+		return WorkflowStatus{}, fmt.Errorf("iterate workflow buckets: %w", err)
+	}
+	return status, nil
+}
+
 func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done bool) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {

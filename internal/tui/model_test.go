@@ -14,9 +14,11 @@ import (
 )
 
 type fakeStore struct {
-	toggleErr      error
-	listTasksCalls int
-	createdDraft   vimkunja.TaskDraft
+	toggleErr         error
+	workflowStatus    vimkunja.WorkflowStatus
+	workflowStatusErr error
+	listTasksCalls    int
+	createdDraft      vimkunja.TaskDraft
 }
 
 func (f *fakeStore) ListProjects(context.Context, int, int) ([]vimkunja.Project, int, error) {
@@ -30,6 +32,10 @@ func (f *fakeStore) ListViews(context.Context, int64, int, int) ([]vimkunja.Proj
 func (f *fakeStore) ListTasksInView(context.Context, int64, int64, int, int) ([]vimkunja.Task, int, error) {
 	f.listTasksCalls++
 	return nil, 0, nil
+}
+
+func (f *fakeStore) GetTaskWorkflowStatus(context.Context, int64, int64) (vimkunja.WorkflowStatus, error) {
+	return f.workflowStatus, f.workflowStatusErr
 }
 
 func (f *fakeStore) ToggleTaskDone(context.Context, int64, bool) error {
@@ -70,6 +76,40 @@ func typeCommand(t *testing.T, m *model, input string) (*model, tea.Cmd) {
 	}
 	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
 	return updated.(*model), cmd
+}
+
+func TestOpeningTaskDetailLoadsWorkflowStatus(t *testing.T) {
+	store := &fakeStore{workflowStatus: vimkunja.WorkflowStatus{
+		Availability:  vimkunja.WorkflowStatusAvailable,
+		CurrentBucket: vimkunja.WorkflowBucket{ID: 11, Title: "Doing"},
+		Buckets: []vimkunja.WorkflowBucket{
+			{ID: 10, Title: "To-Do"}, {ID: 11, Title: "Doing"}, {ID: 12, Title: "Done"},
+		},
+	}}
+	m := &model{
+		store:            store,
+		focus:            paneTasks,
+		currentProjectID: 1,
+		tasks:            []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "Task"}},
+	}
+
+	updated, loadStatus := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if !m.showDetail || loadStatus == nil {
+		t.Fatalf("opening detail = visible:%v command:%v, want detail and status load", m.showDetail, loadStatus != nil)
+	}
+	updated, _ = m.Update(loadStatus())
+	m = updated.(*model)
+
+	if m.editor.workflowStatusLoading {
+		t.Fatal("workflow status remains loading after Store response")
+	}
+	if m.editor.workflowStatus.CurrentBucket.Title != "Doing" {
+		t.Fatalf("current workflow status = %#v, want Doing", m.editor.workflowStatus)
+	}
+	if got, want := m.editor.workflowStatus.Buckets[0].Title, "To-Do"; got != want {
+		t.Fatalf("first workflow bucket = %q, want %q", got, want)
+	}
 }
 
 func TestToggleFailureDoesNotReloadTasks(t *testing.T) {

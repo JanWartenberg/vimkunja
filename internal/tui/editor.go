@@ -39,11 +39,13 @@ type taskEditor struct {
 	mode     editorMode
 	cursor   int // rune offset in the active text field
 
-	projectFilter string
-	pickerIndex   int
-	priorityIndex int
-	descScroll    int
-	gArmed        bool
+	projectFilter         string
+	pickerIndex           int
+	priorityIndex         int
+	descScroll            int
+	gArmed                bool
+	workflowStatus        vimkunja.WorkflowStatus
+	workflowStatusLoading bool
 }
 
 func (m *model) openNewEditor() {
@@ -63,9 +65,28 @@ func (m *model) openExistingEditor(task vimkunja.Task) {
 		Description: task.Description, Priority: task.Priority, DueDate: task.DueDate,
 		CreatedByID: m.actorUserID,
 	}
-	m.editor = &taskEditor{id: task.ID, draft: draft, original: draft, field: fieldTitle}
+	m.editor = &taskEditor{id: task.ID, draft: draft, original: draft, field: fieldTitle, workflowStatusLoading: true}
 	m.showDetail = true
 	m.focus = paneDetail
+}
+
+func (e *taskEditor) workflowStatusLabel() string {
+	if e.workflowStatusLoading {
+		return "loading..."
+	}
+	switch e.workflowStatus.Availability {
+	case vimkunja.WorkflowStatusUnavailable:
+		return "unavailable (no manual Kanban View)"
+	case vimkunja.WorkflowStatusAmbiguous:
+		return "ambiguous (multiple manual Kanban Views)"
+	case vimkunja.WorkflowStatusAvailable:
+		if e.workflowStatus.CurrentBucket.Title != "" {
+			return e.workflowStatus.CurrentBucket.Title
+		}
+		return "unassigned"
+	default:
+		return "unavailable"
+	}
 }
 
 func (e *taskEditor) dirty() bool {

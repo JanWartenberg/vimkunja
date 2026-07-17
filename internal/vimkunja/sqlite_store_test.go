@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -60,6 +61,13 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			created_by_id INTEGER DEFAULT 1
 		);
 
+		CREATE TABLE buckets (
+			id INTEGER PRIMARY KEY,
+			title TEXT,
+			project_view_id INTEGER,
+			position REAL
+		);
+
 		CREATE TABLE task_buckets (
 			id INTEGER PRIMARY KEY,
 			task_id INTEGER,
@@ -87,6 +95,61 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 	}
 
 	return store, cleanup
+}
+
+func TestGetTaskWorkflowStatus_ReturnsCurrentBucketAndOrderedChoices(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO project_views (id, project_id, title, view_kind) VALUES (10, 1, 'Board', 3);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES
+			(12, 'Done', 10, 3), (10, 'To-Do', 10, 1), (11, 'Doing', 10, 2);
+		INSERT INTO tasks (id, project_id, title) VALUES (1, 1, 'Task');
+		INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (1, 11, 10);
+	`)
+	if err != nil {
+		t.Fatalf("seed database: %v", err)
+	}
+
+	status, err := store.GetTaskWorkflowStatus(context.Background(), 1, 1)
+	if err != nil {
+		t.Fatalf("get task workflow status: %v", err)
+	}
+	if status.Availability != WorkflowStatusAvailable || status.CurrentBucket.ID != 11 || status.CurrentBucket.Title != "Doing" {
+		t.Fatalf("status = %#v, want available Doing bucket", status)
+	}
+	if got, want := status.Buckets, []WorkflowBucket{{ID: 10, Title: "To-Do"}, {ID: 11, Title: "Doing"}, {ID: 12, Title: "Done"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("buckets = %#v, want %#v", got, want)
+	}
+}
+
+func TestGetTaskWorkflowStatus_ReportsUnavailableAndAmbiguousViews(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	status, err := store.GetTaskWorkflowStatus(context.Background(), 1, 1)
+	if err != nil {
+		t.Fatalf("get unavailable workflow status: %v", err)
+	}
+	if status.Availability != WorkflowStatusUnavailable {
+		t.Fatalf("unavailable status = %#v", status)
+	}
+
+	_, err = store.db.Exec(`
+		INSERT INTO project_views (id, project_id, title, view_kind) VALUES
+			(10, 1, 'Board A', 3), (11, 1, 'Board B', 3);
+	`)
+	if err != nil {
+		t.Fatalf("seed database: %v", err)
+	}
+	status, err = store.GetTaskWorkflowStatus(context.Background(), 1, 1)
+	if err != nil {
+		t.Fatalf("get ambiguous workflow status: %v", err)
+	}
+	if status.Availability != WorkflowStatusAmbiguous {
+		t.Fatalf("ambiguous status = %#v", status)
+	}
 }
 
 func TestToggleTaskDone_UpdatesTimestamp(t *testing.T) {

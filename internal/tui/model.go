@@ -153,6 +153,11 @@ type (
 	taskToggledMsg struct {
 		err error
 	}
+	workflowStatusLoadedMsg struct {
+		taskID int64
+		status vimkunja.WorkflowStatus
+		err    error
+	}
 	taskSavedMsg struct {
 		task       vimkunja.Task
 		closeAfter bool
@@ -185,6 +190,16 @@ func (m *model) loadViews(projectID int64) tea.Cmd {
 
 		items, _, err := m.store.ListViews(ctx, projectID, 1, 200)
 		return viewsLoadedMsg{views: items, err: err}
+	}
+}
+
+func (m *model) loadWorkflowStatus(projectID, taskID int64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel()
+
+		status, err := m.store.GetTaskWorkflowStatus(ctx, projectID, taskID)
+		return workflowStatusLoadedMsg{taskID: taskID, status: status, err: err}
 	}
 }
 
@@ -360,6 +375,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.focus == paneDetail && m.editor != nil && m.editor.mode == editorInsert {
 			m.cursorVisible = !m.cursorVisible
 			return m, cursorBlinkCmd()
+		}
+		return m, nil
+
+	case workflowStatusLoadedMsg:
+		if m.editor != nil && m.editor.id == typed.taskID {
+			m.editor.workflowStatusLoading = false
+			if typed.err == nil {
+				m.editor.workflowStatus = typed.status
+			}
+		}
+		if typed.err != nil {
+			m.recordError(typed.err)
 		}
 		return m, nil
 
@@ -630,7 +657,9 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "enter":
 		if m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
-			m.openExistingEditor(m.tasks[m.taskSelected])
+			task := m.tasks[m.taskSelected]
+			m.openExistingEditor(task)
+			return m, m.loadWorkflowStatus(task.ProjectID, task.ID)
 		}
 		return m, nil
 	case "o":
