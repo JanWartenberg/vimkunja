@@ -225,22 +225,22 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if detailFocused && e.isPickerMode() && e.field == fieldPriority {
 		priority = priorityName(e.draft.Priority)
 	}
-	renderField := func(field editorField, text string) string {
+	renderField := func(field editorField, label, value string) string {
 		active := detailFocused && e.field == field
 		if e.isPickerMode() {
-			return pickerField(text, active)
+			return label + pickerField(value, active)
 		}
-		return focusedField(text, active)
+		return focusedField(label+value, active)
 	}
 	lines = append(lines,
-		renderField(fieldProject, "Project:  "+projectName),
-		renderField(fieldTitle, "Title:    "+m.editorText(fieldTitle, e.draft.Title)),
-		renderField(fieldPriority, fmt.Sprintf("Priority: %s", priority)),
-		renderField(fieldDueDate, "Due Date: "+m.editorText(fieldDueDate, due)),
-		renderField(fieldWorkflowStatus, "Status:   "+e.workflowStatusLabel()),
+		renderField(fieldProject, "Project:  ", projectName),
+		renderField(fieldTitle, "Title:    ", m.editorText(fieldTitle, e.draft.Title)),
+		renderField(fieldPriority, "Priority: ", priority),
+		renderField(fieldDueDate, "Due Date: ", m.editorText(fieldDueDate, due)),
+		renderField(fieldWorkflowStatus, "Status:   ", e.workflowStatusLabel()),
 		fmt.Sprintf("Done:     %s (read-only)", doneLabel(m, e.id)),
 		"",
-		renderField(fieldDescription, "Description:"),
+		renderField(fieldDescription, "Description:", ""),
 	)
 	if e.mode == editorProjectPicker {
 		lines = append(lines, "  Filter: "+e.projectFilter)
@@ -295,7 +295,7 @@ func placeholderText(value string) string {
 // editorText marks the character at the insertion point instead of inserting a
 // printable cursor glyph, so the text never shifts while the cursor blinks.
 func (m *model) editorText(field editorField, value string) string {
-	if m.editor == nil || m.editor.mode != editorInsert || m.editor.field != field || !m.cursorVisible {
+	if m.editor == nil || m.editor.mode != editorInsert || m.editor.field != field || !m.cursorVisible || m.nativeEditorCursorActive() {
 		return value
 	}
 	return cursorMarkedText(value, m.editor.cursor)
@@ -331,6 +331,9 @@ func (m *model) editorDescriptionText(line descriptionLine) string {
 		return line.text
 	}
 	if m.editor.cursor < line.start || m.editor.cursor > line.end {
+		return line.text
+	}
+	if m.nativeEditorCursorActive() {
 		return line.text
 	}
 	cursor := m.editor.cursor - line.start

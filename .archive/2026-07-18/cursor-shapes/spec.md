@@ -10,9 +10,9 @@ Make Vimkunja's existing editor states recognizable through Vim-inspired cursor 
 | --- | --- | --- |
 | Normal | Block | Existing editor feedback remains stable. |
 | Insert | Thin vertical bar (about 20% of a character cell) | Existing text rendering remains stable. |
-| Picker | Block | The complete active Picker field uses the shared inverted/background focus treatment. |
+| Picker | Block | Only the selected value uses the shared inverted/background focus treatment. |
 
-A Picker is an editor control that selects a value from a finite set. The Project Picker may accept text to filter its choices; this does not make it a separate editor mode. Current and future Pickers use the same complete-field focus treatment.
+A Picker is an editor control that selects a value from a finite set. The Project Picker may accept text to filter its choices; this does not make it a separate editor mode. Current and future Pickers use the same value-only focus treatment.
 
 ## Configuration
 

@@ -10,7 +10,7 @@
 
 - [x] Normal mode requests a native block cursor.
 - [x] Insert mode requests a native vertical cursor at approximately 20% character-cell width.
-- [x] Every Picker requests a native block cursor and highlights its entire active field with a shared rendered treatment.
+- [x] Every Picker requests a native block cursor and highlights only its selected value with a shared rendered treatment.
 - [x] `tui.Config.DisableCursorShapes` disables native cursor-shape requests when set; rendered Picker feedback remains available when disabled or unsupported.
 - [x] Cursor feedback never shifts or corrupts editable text; leaving the editor or application restores a normal block cursor.
 - [x] Model/rendering coverage covers mode changes, configuration, Picker consistency, and restoration.
@@ -32,17 +32,17 @@ Priority: higher than the ordinary later UX backlog, but not part of the complet
 
 **Current behavior:** The editor has Normal and Insert states plus Project, Priority, and Workflow-Status Pickers. Normal and Insert currently use rendered character markers; Picker fields do not share a complete focus treatment. Native terminal cursor shapes are not configured.
 
-**Desired behavior:** Normal mode and every Picker use a native block cursor when enabled. Insert mode uses a native thin vertical cursor when enabled. Every Picker also highlights its complete active field with the same inverted or background treatment, independently of terminal cursor support. Native cursor-shape control is best effort: terminals that do not honor it must remain fully usable through the rendered feedback. Leaving the editor or application restores the normal block cursor.
+**Desired behavior:** Normal mode and every Picker use a native block cursor when enabled. Insert mode uses a native thin vertical cursor when enabled. Every Picker also highlights only its selected value with the same inverted or background treatment, independently of terminal cursor support. Native cursor-shape control is best effort: terminals that do not honor it must remain fully usable through the rendered feedback. Leaving the editor or application restores the normal block cursor.
 
 **Key interfaces:**
 - `tui.Config` — add `DisableCursorShapes bool`; its zero value keeps native cursor shapes enabled.
-- Editor mode and Picker rendering — expose a reusable focus treatment so current and future Pickers are consistent.
+- Editor mode and Picker rendering — expose a reusable value-only focus treatment so current and future Pickers are consistent.
 - Terminal lifecycle handling — select cursor shape on relevant mode/focus transitions and restore the block cursor during cleanup.
 
 **Acceptance criteria:**
 - [ ] With cursor shapes enabled, Normal mode and all Picker modes request a block cursor; Insert mode requests a thin vertical cursor.
 - [ ] `DisableCursorShapes: true` emits no native cursor-shape changes while the editor and Pickers retain clear rendered feedback.
-- [ ] Project, Priority, and Workflow-Status Pickers visibly apply the same complete-field highlight; the rule is reusable for future Pickers.
+- [ ] Project, Priority, and Workflow-Status Pickers visibly apply the same value-only highlight; the rule is reusable for future Pickers.
 - [ ] Unsupported or ignored native cursor-shape requests neither shift nor corrupt text, and the rendered feedback remains usable.
 - [ ] Leaving the editor or application restores a normal block cursor.
 - [ ] Model/rendering coverage verifies mode selection, configuration behavior, Picker highlighting, and cursor restoration.

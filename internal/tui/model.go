@@ -792,8 +792,12 @@ func (m *model) View() tea.View {
 
 // editorCursor delegates cursor-shape support to Bubble Tea. Its renderer
 // restores the terminal default when a previously visible cursor becomes nil.
+func (m *model) nativeEditorCursorActive() bool {
+	return !m.disableCursorShapes && m.focus == paneDetail && m.editor != nil
+}
+
 func (m *model) editorCursor() *tea.Cursor {
-	if m.disableCursorShapes || m.focus != paneDetail || m.editor == nil {
+	if !m.nativeEditorCursorActive() {
 		return nil
 	}
 
@@ -826,7 +830,7 @@ func (m *model) editorCursorPosition() (int, int) {
 	case fieldWorkflowStatus:
 		row, labelWidth = 6, len([]rune("Status:   "))
 	case fieldDescription:
-		row = 9
+		return m.descriptionCursorPosition(w, h, topH)
 	default:
 		labelWidth = len([]rune("Project:  "))
 	}
@@ -836,6 +840,31 @@ func (m *model) editorCursorPosition() (int, int) {
 		cursorOffset = m.editor.cursor
 	}
 	return clamp(textX+labelWidth+cursorOffset, 0, w-1), clamp(topH+1+row, 0, h-1)
+}
+
+func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
+	textW := w - 4
+	contentH := max(4, h-3)
+	detailH := max(4, contentH-topH)
+	textH := detailH - 2
+	const precedingLines = 10 // header, form fields, and Description label
+	available := max(1, textH-precedingLines)
+	description := wrapDescription(m.editor.draft.Description, textW)
+	start := 0
+	if len(description) > available {
+		start = clamp(m.editor.descScroll, 0, len(description)-available)
+	}
+
+	cursor := clamp(m.editor.cursor, 0, m.editor.fieldRuneLen())
+	lineIndex, column := 0, 0
+	for i, line := range description {
+		if cursor >= line.start && cursor <= line.end {
+			lineIndex, column = i, cursor-line.start
+			break
+		}
+	}
+	visibleLine := clamp(lineIndex-start, 0, available-1)
+	return clamp(2+column, 0, w-1), clamp(topH+1+precedingLines+visibleLine, 0, h-1)
 }
 
 func (m *model) viewportSize() (int, int) {

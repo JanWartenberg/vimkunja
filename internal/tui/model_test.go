@@ -860,16 +860,17 @@ func TestEditorViewOmitsNativeCursorWhenDisabled(t *testing.T) {
 	}
 }
 
-func TestPickerHighlightsTheCompleteActiveField(t *testing.T) {
+func TestPickerHighlightsOnlyTheFieldValue(t *testing.T) {
 	tests := []struct {
 		name  string
 		field editorField
 		mode  editorMode
-		text  string
+		label string
+		value string
 	}{
-		{"project", fieldProject, editorProjectPicker, "Project:  (none)"},
-		{"priority", fieldPriority, editorPriorityPicker, "Priority: None"},
-		{"workflow status", fieldWorkflowStatus, editorWorkflowStatusPicker, "Status:   unassigned"},
+		{"project", fieldProject, editorProjectPicker, "Project:  ", "(none)"},
+		{"priority", fieldPriority, editorPriorityPicker, "Priority: ", "None"},
+		{"workflow status", fieldWorkflowStatus, editorWorkflowStatusPicker, "Status:   ", "unassigned"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -879,10 +880,50 @@ func TestPickerHighlightsTheCompleteActiveField(t *testing.T) {
 			m.editor.field, m.editor.mode = tc.field, tc.mode
 
 			detail := renderTaskDetail(m, 80, 20)
-			if !strings.Contains(detail, "\x1b[48;5;205m"+tc.text+"\x1b[m") {
-				t.Fatalf("picker field lacks complete highlight: %q", detail)
+			highlightedValue := tc.label + "\x1b[48;5;205m" + tc.value + "\x1b[m"
+			if !strings.Contains(detail, highlightedValue) {
+				t.Fatalf("picker value lacks highlight: %q", detail)
+			}
+			if strings.Contains(detail, "\x1b[48;5;205m"+tc.label) {
+				t.Fatalf("picker label is highlighted: %q", detail)
 			}
 		})
+	}
+}
+
+func TestNativeDescriptionCursorUsesTextPositionWithoutRenderedDuplicate(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 40
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldDescription
+	m.editor.draft.Description = "hello"
+	m.editor.cursor = 2
+	m.editor.mode = editorInsert
+	m.cursorVisible = true
+
+	detail := renderTaskDetail(m, 96, 17)
+	if strings.Contains(detail, "\x1b[7m") {
+		t.Fatalf("native description cursor still has rendered duplicate: %q", detail)
+	}
+	cursor := m.View().Cursor
+	if cursor == nil || cursor.Position != (tea.Position{X: 4, Y: 29}) {
+		t.Fatalf("description cursor = %#v, want text position (4,29)", cursor)
+	}
+}
+
+func TestDisabledDescriptionCursorRetainsRenderedFallback(t *testing.T) {
+	m := NewModel(Config{Store: &fakeStore{}, DisableCursorShapes: true}).(*model)
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldDescription
+	m.editor.draft.Description = "hello"
+	m.editor.cursor = 2
+	m.editor.mode = editorInsert
+	m.cursorVisible = true
+
+	if detail := renderTaskDetail(m, 80, 20); !strings.Contains(detail, "\x1b[7m") {
+		t.Fatalf("disabled cursor shapes lost rendered fallback: %q", detail)
 	}
 }
 
