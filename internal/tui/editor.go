@@ -187,10 +187,11 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch s {
 		case "h", "left":
 			e.moveCursor(-1)
+			return m, nil
 		case "l", "right":
 			e.moveCursor(1)
+			return m, nil
 		}
-		return m, nil
 	}
 	if e.field == fieldDescription {
 		switch s {

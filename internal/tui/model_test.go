@@ -891,6 +891,22 @@ func TestPickerHighlightsOnlyTheFieldValue(t *testing.T) {
 	}
 }
 
+func TestTitleHorizontalMotionsDoNotConsumeFieldNavigation(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldTitle
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.editor.field != fieldPriority {
+		t.Fatalf("field after j from title = %v, want priority", m.editor.field)
+	}
+	m = pressKey(m, tea.Key{Code: 'k', Text: "k"})
+	if m.editor.field != fieldTitle {
+		t.Fatalf("field after k from priority = %v, want title", m.editor.field)
+	}
+}
+
 func TestTitleNormalModeUsesHorizontalCursorPositionForInsert(t *testing.T) {
 	m := testModel()
 	m.currentProjectID = 1
