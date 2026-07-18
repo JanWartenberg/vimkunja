@@ -4,6 +4,8 @@
 
 **Blocked by:** None — deliberately deferred until after the Fundament/MVP.
 
+**Category:** enhancement
+
 **Status:** needs-triage
 
 - [ ] Decide whether the first version strips HTML to plain text, converts HTML to Markdown-like text, or renders a supported HTML subset directly.

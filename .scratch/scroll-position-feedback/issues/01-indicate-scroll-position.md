@@ -4,6 +4,8 @@
 
 **Blocked by:** None — deliberately deferred until after the Fundament/MVP.
 
+**Category:** enhancement
+
 **Status:** needs-triage
 
 - [ ] A Pane with overflow visibly indicates that it can scroll.

@@ -4,6 +4,8 @@
 
 **Blocked by:** None — deliberately deferred until after the Fundament/MVP.
 
+**Category:** enhancement
+
 **Status:** needs-triage
 
 - [ ] Specify the supported behavior for `o`, `O`, `a`, `A`, `I`, and related text-entry motions in each editable field.

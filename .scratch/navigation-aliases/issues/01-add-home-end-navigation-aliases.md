@@ -4,6 +4,8 @@
 
 **Blocked by:** None — deliberately deferred until after the Fundament/MVP.
 
+**Category:** enhancement
+
 **Status:** needs-triage
 
 - [ ] Home moves the visible position to the beginning wherever `gg` is supported.

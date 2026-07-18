@@ -4,6 +4,8 @@
 
 **Blocked by:** None — deliberately deferred until after the Fundament/MVP.
 
+**Category:** enhancement
+
 **Status:** needs-triage
 
 - [ ] Decide and implement a concise Due Date presentation, including overdue and near-term dates.
