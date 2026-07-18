@@ -296,7 +296,15 @@ func (m *model) updateProjectPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		e.mode = editorNormal
 	case "enter":
 		if len(matches) > 0 {
-			e.draft.ProjectID = matches[clamp(e.pickerIndex, 0, len(matches)-1)].ID
+			projectID := matches[clamp(e.pickerIndex, 0, len(matches)-1)].ID
+			if projectID != e.draft.ProjectID {
+				e.draft.ProjectID = projectID
+				// Buckets are scoped to a project's Kanban View. A bucket from
+				// the previous project must never be saved with this move.
+				e.draft.WorkflowBucketID = 0
+				e.workflowStatus = vimkunja.WorkflowStatus{}
+				e.workflowStatusLoading = false
+			}
 		}
 		e.mode = editorNormal
 	case "backspace":

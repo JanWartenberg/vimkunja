@@ -153,6 +153,29 @@ func TestWorkflowStatusPickerSelectsBucketAndMarksEditorDirty(t *testing.T) {
 	}
 }
 
+func TestProjectPickerClearsWorkflowBucketFromPreviousProject(t *testing.T) {
+	m := testModel()
+	m.projects = []vimkunja.Project{{ID: 1, Title: "Misc"}, {ID: 2, Title: "Sonstiges"}}
+	m.editor = &taskEditor{
+		id:       1,
+		field:    fieldProject,
+		draft:    vimkunja.TaskDraft{ID: 1, ProjectID: 1, Title: "dummy task", WorkflowBucketID: 10},
+		original: vimkunja.TaskDraft{ID: 1, ProjectID: 1, Title: "dummy task", WorkflowBucketID: 10},
+	}
+	m.focus = paneDetail
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+
+	if m.editor.draft.ProjectID != 2 {
+		t.Fatalf("selected project = %d, want 2", m.editor.draft.ProjectID)
+	}
+	if m.editor.draft.WorkflowBucketID != 0 {
+		t.Fatalf("workflow bucket after project move = %d, want cleared", m.editor.draft.WorkflowBucketID)
+	}
+}
+
 func TestWorkflowStatusPickerEscapeKeepsPreviousSelection(t *testing.T) {
 	m := &model{focus: paneDetail, editor: &taskEditor{
 		field: fieldWorkflowStatus,
