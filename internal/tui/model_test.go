@@ -891,6 +891,36 @@ func TestPickerHighlightsOnlyTheFieldValue(t *testing.T) {
 	}
 }
 
+func TestTitleNormalModeUsesHorizontalCursorPositionForInsert(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "abc"
+
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
+
+	if got := m.editor.draft.Title; got != "aXbc" {
+		t.Fatalf("title after l then insert = %q, want %q", got, "aXbc")
+	}
+}
+
+func TestNativeTitleCursorAccountsForFocusedFieldPrefix(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 40
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "abc"
+	m.editor.cursor = 1
+	m.editor.mode = editorInsert
+
+	cursor := m.View().Cursor
+	if cursor == nil || cursor.Position != (tea.Position{X: 15, Y: 22}) {
+		t.Fatalf("title cursor = %#v, want text position (15,22)", cursor)
+	}
+}
+
 func TestNativeDescriptionCursorUsesTextPositionWithoutRenderedDuplicate(t *testing.T) {
 	m := testModel()
 	m.width, m.height = 100, 40

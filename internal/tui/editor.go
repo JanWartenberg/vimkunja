@@ -165,8 +165,8 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if e.field == fieldDueDate && e.draft.DueDate == "" {
 				e.draft.DueDate = "YYYY-MM-DD"
 				e.cursor = 0
-			} else if e.field != fieldDescription {
-				// Description keeps the Normal-mode cursor position on `i`.
+			} else if e.field != fieldDescription && e.field != fieldTitle {
+				// Title and Description preserve their Normal-mode cursor position on `i`.
 				e.cursor = e.fieldRuneLen()
 			}
 			m.cursorVisible = true
@@ -181,6 +181,15 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if s == "G" && e.field == fieldDescription {
 		e.cursor = e.fieldRuneLen()
 		e.descScroll = max(0, len(strings.Split(e.draft.Description, "\n"))-1)
+		return m, nil
+	}
+	if e.field == fieldTitle {
+		switch s {
+		case "h", "left":
+			e.moveCursor(-1)
+		case "l", "right":
+			e.moveCursor(1)
+		}
 		return m, nil
 	}
 	if e.field == fieldDescription {

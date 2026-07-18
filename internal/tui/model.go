@@ -817,7 +817,11 @@ func (m *model) editorCursorPosition() (int, int) {
 	w, h := m.viewportSize()
 	topH := m.detailPaneTop()
 	textX := 2 // detail border plus horizontal padding
-	row := 2   // Project follows the header and its blank line
+	// Text fields render the focused-field prefix before their label.
+	if !m.editor.isPickerMode() {
+		textX += 2
+	}
+	row := 2 // Project follows the header and its blank line
 	labelWidth := 0
 
 	switch m.editor.field {
