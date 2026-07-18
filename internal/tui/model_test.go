@@ -824,6 +824,84 @@ func TestInsertFooterShowsOnlyAvailableActions(t *testing.T) {
 	}
 }
 
+func TestEditorViewUsesCursorShapeForCurrentMode(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+
+	view := m.View()
+	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBlock {
+		t.Fatalf("normal editor cursor = %#v, want block cursor", view.Cursor)
+	}
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	view = m.View()
+	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBar {
+		t.Fatalf("insert editor cursor = %#v, want bar cursor", view.Cursor)
+	}
+
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	m.editor.field = fieldPriority
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	view = m.View()
+	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBlock {
+		t.Fatalf("picker cursor = %#v, want block cursor", view.Cursor)
+	}
+}
+
+func TestEditorViewOmitsNativeCursorWhenDisabled(t *testing.T) {
+	m := NewModel(Config{Store: &fakeStore{}, DisableCursorShapes: true}).(*model)
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+
+	if view := m.View(); view.Cursor != nil {
+		t.Fatalf("disabled cursor shapes produced cursor %#v", view.Cursor)
+	}
+}
+
+func TestPickerHighlightsTheCompleteActiveField(t *testing.T) {
+	tests := []struct {
+		name  string
+		field editorField
+		mode  editorMode
+		text  string
+	}{
+		{"project", fieldProject, editorProjectPicker, "Project:  (none)"},
+		{"priority", fieldPriority, editorPriorityPicker, "Priority: None"},
+		{"workflow status", fieldWorkflowStatus, editorWorkflowStatusPicker, "Status:   unassigned"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testModel()
+			m.currentProjectID = 1
+			m.openNewEditor()
+			m.editor.field, m.editor.mode = tc.field, tc.mode
+
+			detail := renderTaskDetail(m, 80, 20)
+			if !strings.Contains(detail, "\x1b[48;5;205m"+tc.text+"\x1b[m") {
+				t.Fatalf("picker field lacks complete highlight: %q", detail)
+			}
+		})
+	}
+}
+
+func TestClosingEditorRemovesNativeCursor(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	if m.View().Cursor == nil {
+		t.Fatal("open editor has no native cursor")
+	}
+
+	m.editor = nil
+	m.showDetail = false
+	m.focus = paneTasks
+	if m.View().Cursor != nil {
+		t.Fatalf("closed editor cursor = %#v, want no cursor", m.View().Cursor)
+	}
+}
+
 func TestNavigationKeepsValidStateAtUnavailableBoundaries(t *testing.T) {
 	m := testModel()
 	m.focus = paneTasks

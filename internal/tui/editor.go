@@ -345,6 +345,15 @@ func (m *model) updateWorkflowStatusPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (e *taskEditor) isPickerMode() bool {
+	switch e.mode {
+	case editorProjectPicker, editorPriorityPicker, editorWorkflowStatusPicker:
+		return true
+	default:
+		return false
+	}
+}
+
 func (e *taskEditor) workflowStatusPickerIndex() int {
 	for i, bucket := range e.workflowStatus.Buckets {
 		if bucket.ID == e.draft.WorkflowBucketID {

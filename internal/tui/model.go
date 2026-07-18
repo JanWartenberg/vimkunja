@@ -32,16 +32,18 @@ type Config struct {
 
 	PerPage int
 
-	InitialProjectID int64
-	InitialViewID    int64
-	ActorUserID      int64
-	LeaderTimeout    time.Duration
-	CtrlWTimeout     time.Duration
+	InitialProjectID    int64
+	InitialViewID       int64
+	ActorUserID         int64
+	LeaderTimeout       time.Duration
+	CtrlWTimeout        time.Duration
+	DisableCursorShapes bool
 }
 
 type model struct {
-	store   vimkunja.Store
-	perPage int
+	store               vimkunja.Store
+	perPage             int
+	disableCursorShapes bool
 
 	width  int
 	height int
@@ -104,15 +106,16 @@ func NewModel(cfg Config) tea.Model {
 		ctrlWTimeout = DefaultCtrlWTimeout
 	}
 	m := &model{
-		store:            cfg.Store,
-		perPage:          max(1, cfg.PerPage),
-		initialProjectID: cfg.InitialProjectID,
-		actorUserID:      cfg.ActorUserID,
-		leaderTimeout:    leaderTimeout,
-		ctrlWTimeout:     ctrlWTimeout,
-		initialViewID:    cfg.InitialViewID,
-		projectSelected:  0,
-		currentViewID:    cfg.InitialViewID,
+		store:               cfg.Store,
+		perPage:             max(1, cfg.PerPage),
+		disableCursorShapes: cfg.DisableCursorShapes,
+		initialProjectID:    cfg.InitialProjectID,
+		actorUserID:         cfg.ActorUserID,
+		leaderTimeout:       leaderTimeout,
+		ctrlWTimeout:        ctrlWTimeout,
+		initialViewID:       cfg.InitialViewID,
+		projectSelected:     0,
+		currentViewID:       cfg.InitialViewID,
 		neighbors: map[paneID]paneNeighbors{
 			paneProjects: {left: nil, right: ptr(paneTasks), down: ptr(paneDetail)},
 			paneTasks:    {left: ptr(paneProjects), right: nil, down: ptr(paneDetail)},
@@ -783,10 +786,59 @@ func (m *model) pickListViewIndex() int {
 func (m *model) View() tea.View {
 	v := tea.NewView(m.Render())
 	v.AltScreen = true
+	v.Cursor = m.editorCursor()
 	return v
 }
 
-func (m *model) Render() string {
+// editorCursor delegates cursor-shape support to Bubble Tea. Its renderer
+// restores the terminal default when a previously visible cursor becomes nil.
+func (m *model) editorCursor() *tea.Cursor {
+	if m.disableCursorShapes || m.focus != paneDetail || m.editor == nil {
+		return nil
+	}
+
+	x, y := m.editorCursorPosition()
+	cursor := tea.NewCursor(x, y)
+	cursor.Shape = tea.CursorBlock
+	if m.editor.mode == editorInsert {
+		cursor.Shape = tea.CursorBar
+	}
+	return cursor
+}
+
+// editorCursorPosition locates the focused field in the detail pane. Picker
+// fields are visibly highlighted as a whole; the native cursor sits at their
+// value position without changing the rendered text.
+func (m *model) editorCursorPosition() (int, int) {
+	w, h := m.viewportSize()
+	topH := m.detailPaneTop()
+	textX := 2 // detail border plus horizontal padding
+	row := 2   // Project follows the header and its blank line
+	labelWidth := 0
+
+	switch m.editor.field {
+	case fieldTitle:
+		row, labelWidth = 3, len([]rune("Title:    "))
+	case fieldPriority:
+		row, labelWidth = 4, len([]rune("Priority: "))
+	case fieldDueDate:
+		row, labelWidth = 5, len([]rune("Due Date: "))
+	case fieldWorkflowStatus:
+		row, labelWidth = 6, len([]rune("Status:   "))
+	case fieldDescription:
+		row = 9
+	default:
+		labelWidth = len([]rune("Project:  "))
+	}
+
+	cursorOffset := 0
+	if !m.editor.isPickerMode() {
+		cursorOffset = m.editor.cursor
+	}
+	return clamp(textX+labelWidth+cursorOffset, 0, w-1), clamp(topH+1+row, 0, h-1)
+}
+
+func (m *model) viewportSize() (int, int) {
 	w, h := m.width, m.height
 	if w < 40 {
 		w = 80
@@ -794,6 +846,16 @@ func (m *model) Render() string {
 	if h < 10 {
 		h = 24
 	}
+	return w, h
+}
+
+func (m *model) detailPaneTop() int {
+	_, h := m.viewportSize()
+	return max(4, (h-3)/2)
+}
+
+func (m *model) Render() string {
+	w, h := m.viewportSize()
 
 	// chrome: border(1 each side) + padding(0,1) -> 4 cols horizontal, 2 rows vertical
 	const chromeX = 4
@@ -809,10 +871,7 @@ func (m *model) Render() string {
 	topH := contentH
 	detailH := 0
 	if m.showDetail || m.helpPane != nil || m.infoPane != nil {
-		topH = contentH / 2
-		if topH < 4 {
-			topH = 4
-		}
+		topH = m.detailPaneTop()
 		detailH = contentH - topH
 		if detailH < 4 {
 			detailH = 4

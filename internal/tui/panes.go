@@ -220,15 +220,27 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		priority = placeholderText(priority)
 	}
 	detailFocused := m.focus == paneDetail
+	// A Picker field is styled as one unit. Avoid nested placeholder styling
+	// resetting that background before the field value is rendered.
+	if detailFocused && e.isPickerMode() && e.field == fieldPriority {
+		priority = priorityName(e.draft.Priority)
+	}
+	renderField := func(field editorField, text string) string {
+		active := detailFocused && e.field == field
+		if e.isPickerMode() {
+			return pickerField(text, active)
+		}
+		return focusedField(text, active)
+	}
 	lines = append(lines,
-		focusedField("Project:  "+projectName, detailFocused && e.field == fieldProject),
-		focusedField("Title:    "+m.editorText(fieldTitle, e.draft.Title), detailFocused && e.field == fieldTitle),
-		focusedField(fmt.Sprintf("Priority: %s", priority), detailFocused && e.field == fieldPriority),
-		focusedField("Due Date: "+m.editorText(fieldDueDate, due), detailFocused && e.field == fieldDueDate),
-		focusedField("Status:   "+e.workflowStatusLabel(), detailFocused && e.field == fieldWorkflowStatus),
+		renderField(fieldProject, "Project:  "+projectName),
+		renderField(fieldTitle, "Title:    "+m.editorText(fieldTitle, e.draft.Title)),
+		renderField(fieldPriority, fmt.Sprintf("Priority: %s", priority)),
+		renderField(fieldDueDate, "Due Date: "+m.editorText(fieldDueDate, due)),
+		renderField(fieldWorkflowStatus, "Status:   "+e.workflowStatusLabel()),
 		fmt.Sprintf("Done:     %s (read-only)", doneLabel(m, e.id)),
 		"",
-		focusedField("Description:", detailFocused && e.field == fieldDescription),
+		renderField(fieldDescription, "Description:"),
 	)
 	if e.mode == editorProjectPicker {
 		lines = append(lines, "  Filter: "+e.projectFilter)

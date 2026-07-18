@@ -11,14 +11,13 @@
 
 ## Aktuelle Tickets
 
-Alle folgenden Tickets sind bewusst noch `needs-triage`; die Reihenfolge ist ein Arbeitsvorschlag, keine feste Roadmap.
+Die Cursor-Darstellung im Editor ist abgeschlossen und archiviert. Alle folgenden Tickets sind bewusst noch `needs-triage`; die Reihenfolge ist ein Arbeitsvorschlag, keine feste Roadmap.
 
-1. [Cursor-Darstellung im Editor](.scratch/cursor-shapes/issues/01-improve-editor-cursor-shapes.md)
-2. [Home/End als `gg`/`G`-Aliasse](.scratch/navigation-aliases/issues/01-add-home-end-navigation-aliases.md)
-3. [Scroll-Position in langen Panes anzeigen](.scratch/scroll-position-feedback/issues/01-indicate-scroll-position.md)
-4. [Vikunja-HTML-Beschreibungen lesbar rendern](.scratch/description-rendering/issues/01-render-vikunja-html-descriptions.md)
-5. [Task-Metadaten besser darstellen](.scratch/task-presentation/issues/01-improve-task-date-priority-and-identifier-presentation.md)
-6. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md)
+1. [Home/End als `gg`/`G`-Aliasse](.scratch/navigation-aliases/issues/01-add-home-end-navigation-aliases.md)
+2. [Scroll-Position in langen Panes anzeigen](.scratch/scroll-position-feedback/issues/01-indicate-scroll-position.md)
+3. [Vikunja-HTML-Beschreibungen lesbar rendern](.scratch/description-rendering/issues/01-render-vikunja-html-descriptions.md)
+4. [Task-Metadaten besser darstellen](.scratch/task-presentation/issues/01-improve-task-date-priority-and-identifier-presentation.md)
+5. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md)
 
 ## Dokumentation
 
