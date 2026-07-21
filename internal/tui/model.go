@@ -715,31 +715,7 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 // updateHelpKeys intentionally has no close shortcut. Help is a normal pane:
 // switch focus with Ctrl+W and close it explicitly with :q.
 func (m *model) updateHelpKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if m.helpPane == nil {
-		return m, nil
-	}
-	if m.gArmed {
-		m.gArmed = false
-		if k.String() == "g" {
-			m.helpPane.offset = 0
-		}
-		return m, nil
-	}
-	switch k.String() {
-	case "g":
-		m.gArmed = true
-	case "G":
-		m.helpPane.offset = max(0, len(m.helpPane.lines)-1)
-	case "j", "down":
-		m.helpPane.offset = clamp(m.helpPane.offset+1, 0, max(0, len(m.helpPane.lines)-1))
-	case "k", "up":
-		m.helpPane.offset = clamp(m.helpPane.offset-1, 0, max(0, len(m.helpPane.lines)-1))
-	case "ctrl+d", "pgdown", "pagedown":
-		m.helpPane.offset = clamp(m.helpPane.offset+m.pageStep(), 0, max(0, len(m.helpPane.lines)-1))
-	case "ctrl+u", "pgup", "pageup":
-		m.helpPane.offset = clamp(m.helpPane.offset-m.pageStep(), 0, max(0, len(m.helpPane.lines)-1))
-	}
-	return m, nil
+	return m.updateInfoPaneScrollKeys(m.helpPane, k)
 }
 
 func (m *model) updateInfoKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -747,6 +723,37 @@ func (m *model) updateInfoKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q", "esc":
 		m.infoPane = nil
 		m.focus = paneTasks
+		return m, nil
+	}
+	return m.updateInfoPaneScrollKeys(m.infoPane, k)
+}
+
+func (m *model) updateInfoPaneScrollKeys(pane *infoPane, k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if pane == nil {
+		return m, nil
+	}
+	if m.gArmed {
+		m.gArmed = false
+		if k.String() == "g" {
+			pane.offset = 0
+		}
+		return m, nil
+	}
+	switch k.String() {
+	case "g":
+		m.gArmed = true
+	case "G", "end":
+		pane.offset = max(0, len(pane.lines)-1)
+	case "home":
+		pane.offset = 0
+	case "j", "down":
+		pane.offset = clamp(pane.offset+1, 0, max(0, len(pane.lines)-1))
+	case "k", "up":
+		pane.offset = clamp(pane.offset-1, 0, max(0, len(pane.lines)-1))
+	case "ctrl+d", "pgdown", "pagedown":
+		pane.offset = clamp(pane.offset+m.pageStep(), 0, max(0, len(pane.lines)-1))
+	case "ctrl+u", "pgup", "pageup":
+		pane.offset = clamp(pane.offset-m.pageStep(), 0, max(0, len(pane.lines)-1))
 	}
 	return m, nil
 }

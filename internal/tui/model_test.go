@@ -687,6 +687,43 @@ func ctrlW(m *model) *model {
 	return pressKey(m, tea.Key{Code: 'w', Mod: tea.ModCtrl})
 }
 
+func TestHomeEndAliasesScrollInformationalPanes(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		model  *model
+		offset func(*model) int
+	}{
+		{
+			name:   "help",
+			model:  &model{focus: paneHelp, helpPane: &infoPane{lines: []string{"first", "middle", "last"}, offset: 1}},
+			offset: func(m *model) int { return m.helpPane.offset },
+		},
+		{
+			name:   "errors",
+			model:  &model{focus: paneInfo, infoPane: &infoPane{lines: []string{"first", "middle", "last"}, offset: 1}},
+			offset: func(m *model) int { return m.infoPane.offset },
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := pressKey(tc.model, tea.Key{Code: tea.KeyEnd})
+			if got := tc.offset(m); got != 2 {
+				t.Fatalf("offset after End = %d, want 2", got)
+			}
+
+			m = pressKey(m, tea.Key{Code: tea.KeyHome})
+			if got := tc.offset(m); got != 0 {
+				t.Fatalf("offset after Home = %d, want 0", got)
+			}
+		})
+	}
+}
+
+func TestHelpDocumentsHomeEndAliases(t *testing.T) {
+	if !strings.Contains(strings.Join(helpLines, "\n"), "Home / End") {
+		t.Fatal("help text does not document Home / End aliases")
+	}
+}
+
 func TestVimMotionGGAndGSelectListBounds(t *testing.T) {
 	t.Run("projects", func(t *testing.T) {
 		m := testModel()

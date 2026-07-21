@@ -6,12 +6,12 @@
 
 **Category:** enhancement
 
-**Status:** needs-triage
+**Status:** resolved
 
-- [ ] Home moves the visible position to the beginning wherever `gg` is supported.
-- [ ] End moves the visible position to the end wherever `G` is supported.
-- [ ] Existing Vim motions and selection behavior remain unchanged.
-- [ ] Help documents the aliases where appropriate.
+- [x] Home moves the visible position to the beginning wherever `gg` is supported.
+- [x] End moves the visible position to the end wherever `G` is supported.
+- [x] Existing Vim motions and selection behavior remain unchanged.
+- [x] Help documents the aliases where appropriate.
 
 ## Further context
 

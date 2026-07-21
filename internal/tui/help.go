@@ -49,5 +49,6 @@ var helpLines = []string{
 	"",
 	"HELP PANE",
 	"  j/k, arrows, Ctrl+D/U, PgUp/PgDn, gg/G  Scroll help",
+	"  Home / End            First / last scroll position",
 	"  :q                    Close help pane",
 }
