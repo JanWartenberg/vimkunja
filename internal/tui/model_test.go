@@ -687,6 +687,62 @@ func ctrlW(m *model) *model {
 	return pressKey(m, tea.Key{Code: 'w', Mod: tea.ModCtrl})
 }
 
+func TestHomeEndAliasesNavigateProjectsTasksAndDescription(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		model    *model
+		position func(*model) int
+		last     int
+	}{
+		{
+			name: "projects",
+			model: &model{
+				focus:           paneProjects,
+				projects:        []vimkunja.Project{{ID: 1}, {ID: 2}, {ID: 3}},
+				projectSelected: 1,
+			},
+			position: func(m *model) int { return m.projectSelected },
+			last:     2,
+		},
+		{
+			name: "tasks",
+			model: &model{
+				focus:        paneTasks,
+				tasks:        []vimkunja.Task{{ID: 1}, {ID: 2}, {ID: 3}},
+				taskSelected: 1,
+			},
+			position: func(m *model) int { return m.taskSelected },
+			last:     2,
+		},
+		{
+			name: "description",
+			model: func() *model {
+				m := testModel()
+				m.currentProjectID = 1
+				m.openNewEditor()
+				m.editor.field = fieldDescription
+				m.editor.draft.Description = "first\nsecond"
+				m.editor.cursor = 1
+				return m
+			}(),
+			position: func(m *model) int { return m.editor.cursor },
+			last:     len([]rune("first\nsecond")),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := pressKey(tc.model, tea.Key{Code: tea.KeyEnd})
+			if got := tc.position(m); got != tc.last {
+				t.Fatalf("position after End = %d, want %d", got, tc.last)
+			}
+
+			m = pressKey(m, tea.Key{Code: tea.KeyHome})
+			if got := tc.position(m); got != 0 {
+				t.Fatalf("position after Home = %d, want 0", got)
+			}
+		})
+	}
+}
+
 func TestHomeEndAliasesScrollInformationalPanes(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

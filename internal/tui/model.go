@@ -624,8 +624,11 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "g":
 		m.gArmed = true
 		return m, nil
-	case "G":
+	case "G", "end":
 		m.projectSelected = last
+		return m, m.onProjectSelectionChanged()
+	case "home":
+		m.projectSelected = 0
 		return m, m.onProjectSelectionChanged()
 	case "ctrl+d":
 		m.projectSelected = clamp(m.projectSelected+m.pageStep(), 0, last)
@@ -680,8 +683,11 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "g":
 		m.gArmed = true
 		return m, nil
-	case "G":
+	case "G", "end":
 		m.taskSelected = last
+		return m, nil
+	case "home":
+		m.taskSelected = 0
 		return m, nil
 	case "ctrl+d":
 		m.taskSelected = clamp(m.taskSelected+m.pageStep(), 0, last)

@@ -178,9 +178,14 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		e.gArmed = true
 		return m, nil
 	}
-	if s == "G" && e.field == fieldDescription {
+	if (s == "G" || s == "end") && e.field == fieldDescription {
 		e.cursor = e.fieldRuneLen()
 		e.descScroll = max(0, len(strings.Split(e.draft.Description, "\n"))-1)
+		return m, nil
+	}
+	if s == "home" && e.field == fieldDescription {
+		e.cursor = 0
+		e.descScroll = 0
 		return m, nil
 	}
 	if e.field == fieldTitle {
