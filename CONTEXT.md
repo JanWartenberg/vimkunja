@@ -1,0 +1,54 @@
+# Vimkunja
+
+Vimkunja is a keyboard-first terminal interface for Vikunja projects and tasks. This glossary fixes the user-facing terms used by its TUI and rich-text descriptions.
+
+## TUI regions
+
+**Pane**:
+A focusable terminal subwindow that represents a distinct aspect of Vimkunja.
+_Avoid_: View, window
+
+**Projects Pane**:
+The Pane used to browse and select Projects.
+_Avoid_: Project Pane
+
+**Tasks Pane**:
+The Pane used to browse Tasks for the active Project and View.
+_Avoid_: Task Pane
+
+**Task Detail Pane**:
+The lower Pane that presents and edits the selected Task's fields and Description.
+_Avoid_: Detail Pane, TaskDetailedPane
+
+**View**:
+A representation and navigation model for Tasks within the Tasks Pane; it is not a focusable TUI region.
+_Avoid_: Pane, window
+
+**List View**, **Kanban View**, **Table View**, **Gantt View**, **Overview View**:
+The initial named Views, each representing Tasks in a different form. Future Views may extend this set.
+
+## Rich-text descriptions
+
+**Description**:
+A Task's rich-text content stored by Vikunja as HTML.
+_Avoid_: Notes, body
+
+**Description block**:
+A logical unit inside a Description, such as a paragraph, heading, list item, code block, quote, or table.
+_Avoid_: Source line, HTML line
+
+**Checkbox list**:
+A checklist embedded in a Description, represented by Vikunja/Tiptap `data-type="taskList"` HTML; it is not a list of Vimkunja Task records.
+_Avoid_: Task list
+
+**Task Done state**:
+The top-level completion state of a Task record, distinct from every Checkbox-list entry in its Description.
+_Avoid_: Checkbox state
+
+**Logical paragraph jump**:
+Description navigation between paragraph blocks using `j` and `k`.
+_Avoid_: Line jump
+
+**Visual row jump**:
+Description navigation between terminal rows produced by paragraph wrapping using `gj` and `gk`.
+_Avoid_: Paragraph jump

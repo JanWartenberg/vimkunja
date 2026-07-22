@@ -14,4 +14,6 @@
 
 ## Further context
 
+Unsaved Description-draft undo/redo is defined separately by `.scratch/description-rendering/spec.md`; this ticket concerns persisted Task actions and must not duplicate that local editor history.
+
 Archived source: `TUI_IDEA.md`, Kanban undo TODO.

@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vimkunja — Rich-text keyboard prototype</title>
+  <style>
+    :root { color-scheme: dark; --bg:#111317; --panel:#191d23; --line:#343b47; --muted:#9da9b8; --text:#e8edf3; --accent:#80d4ff; --green:#8ee6a3; --yellow:#ffcf70; --selection:#2f6688; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font:15px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    main { width:min(1040px, calc(100% - 32px)); margin:34px auto 56px; }
+    header { display:flex; gap:20px; align-items:flex-start; justify-content:space-between; margin-bottom:18px; }
+    h1 { font-size:18px; margin:0 0 4px; letter-spacing:.02em; }
+    .eyebrow { color:var(--yellow); font-size:12px; letter-spacing:.08em; }
+    .hint, .subtle { color:var(--muted); margin:0; font-size:13px; }
+    .mode { flex:none; min-width:152px; padding:9px 12px; text-align:center; border:1px solid var(--line); border-radius:5px; color:var(--accent); background:var(--panel); font-weight:700; }
+    .mode.insert { color:var(--green); border-color:#386347; }
+    .mode.visual { color:var(--yellow); border-color:#755a2d; }
+    .mode.leader { color:#fff; background:#3f2e58; border-color:#9e70d8; }
+    #editor { min-height:510px; padding:24px 28px; border:1px solid var(--line); border-radius:7px; outline:none; background:var(--panel); box-shadow:0 16px 40px #0003; caret-color:var(--accent); overflow-wrap:anywhere; }
+    #editor:focus { border-color:#5186a2; box-shadow:0 0 0 2px #34617855, 0 16px 40px #0003; }
+    #editor ::selection { background:var(--selection); color:white; }
+    #editor p { margin:0 0 1em; }
+    #editor h1, #editor h2, #editor h3 { color:#f4f7fb; margin:1.2em 0 .5em; line-height:1.25; }
+    #editor h1 { font-size:1.45em; } #editor h2 { font-size:1.2em; } #editor h3 { font-size:1em; }
+    #editor blockquote { margin:1em 0; padding:0 0 0 1em; border-left:2px solid var(--accent); color:#c3d0db; }
+    #editor pre { margin:1em 0; padding:.75em 1em; background:#0d1014; border-left:3px solid #7b8799; overflow:auto; color:#d9e3ef; }
+    #editor ul, #editor ol { padding-left:2.1em; margin:.6em 0 1em; }
+    #editor li { padding-left:.2em; }
+    #editor hr { border:0; border-top:1px solid #58616d; margin:1.4em 0; }
+    #editor a { color:var(--accent); text-decoration:underline; text-underline-offset:2px; }
+    .checkbox-list { list-style:none; padding-left:.2em !important; }
+    .checkbox-list input { accent-color:var(--green); margin:0 .6em 0 0; vertical-align:middle; }
+    .checkbox-note { color:var(--muted); font-size:12px; }
+    .opaque-table { display:block; max-width:100%; overflow-x:auto; border:1px solid #424a56; padding:.35em; background:#13171c; }
+    .opaque-table::before { content:"READ-ONLY TABLE · zh / zl scroll"; display:block; color:var(--muted); font-size:11px; margin:0 0 .35em; }
+    table { border-collapse:collapse; min-width:460px; } th, td { padding:.25em .7em; border:1px solid #424a56; text-align:left; } th { color:#cdd9e6; }
+    .status { display:flex; gap:16px; flex-wrap:wrap; padding:10px 2px 0; color:var(--muted); font-size:12px; }
+    .status b { color:var(--text); font-weight:600; }
+    .cheatsheet { margin-top:28px; border:1px solid var(--line); border-radius:7px; background:var(--panel); overflow:hidden; }
+    .cheatsheet h2 { padding:12px 16px; margin:0; border-bottom:1px solid var(--line); font-size:13px; color:#dbe7f3; }
+    .shortcuts { display:grid; grid-template-columns:repeat(3, 1fr); }
+    .shortcut-group { padding:14px 16px; min-height:130px; border-right:1px solid var(--line); }
+    .shortcut-group:last-child { border:0; } .shortcut-group h3 { color:var(--accent); font-size:12px; margin:0 0 8px; letter-spacing:.04em; }
+    dl { display:grid; grid-template-columns:max-content 1fr; gap:4px 10px; margin:0; font-size:12px; } dt { color:#fff; } dd { margin:0; color:var(--muted); }
+    kbd { padding:1px 4px; border:1px solid #596475; border-bottom-width:2px; border-radius:3px; background:#222832; color:#f5f7fa; font:inherit; white-space:nowrap; }
+    #message { color:var(--yellow); min-height:1.55em; }
+    @media (max-width:720px) { main { width:min(100% - 20px, 1040px); margin-top:18px; } #editor { padding:18px; min-height:450px; } .shortcuts { grid-template-columns:1fr; } .shortcut-group { border-right:0; border-bottom:1px solid var(--line); } .shortcut-group:last-child { border-bottom:0; } header { gap:10px; } .mode { min-width:112px; font-size:12px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <div class="eyebrow">THROWAWAY PROTOTYPE · DESCRIPTION ONLY</div>
+        <h1>Rich-text mit Vim-artiger Tastaturbedienung</h1>
+        <p class="hint">Klicke in den Text. Starte mit <kbd>v</kbd>, wähle per Motion und probiere <kbd>Space</kbd> + Formatierung.</p>
+      </div>
+      <div class="mode" id="mode" aria-live="polite">NORMAL</div>
+    </header>
+
+    <article id="editor" contenteditable="true" spellcheck="false" aria-label="Rich-text Description prototype">
+      <h1>Release vorbereiten</h1>
+      <p>Diese <strong>lange Beispielzeile</strong> soll bei schmalem Fenster umbrechen, damit <em>gj</em> und <em>gk</em> ausprobiert werden können. Wähle einzelne Wörter, Wortgruppen oder Text über mehrere Blöcke hinweg aus.</p>
+      <p>Ein zweiter Absatz ist ein eigener <u>logischer Description-Block</u>. Mit <s>j und k</s> springst du zwischen Blöcken; die Cursorposition wird dabei möglichst beibehalten.</p>
+      <blockquote>Ein Zitat erhält einen linken Marker statt einer anderen Schriftart.</blockquote>
+      <h2>Checkliste</h2>
+      <ul class="checkbox-list">
+        <li><label><input type="checkbox" checked> API-Antwort prüfen</label></li>
+        <li><label><input type="checkbox"> Beschreibung veröffentlichen</label></li>
+      </ul>
+      <p class="checkbox-note" contenteditable="false">Die Checkliste gehört zur Description, nicht zum Done-Status des umgebenden Tasks.</p>
+      <ol><li>Ersten Schritt ausführen</li><li>Zweiten Schritt kontrollieren</li></ol>
+      <pre><code>git status
+# Codeblöcke bleiben monospaced, aber erhalten Fläche und Rand.</code></pre>
+      <p>Ein <a href="https://vikunja.io" target="_blank" rel="noreferrer">sichtbarer Link</a> zeigt nur Text; <kbd>Space</kbd> + <kbd>l</kbd> fragt nach der URL.</p>
+      <hr>
+      <div class="opaque-table" contenteditable="false"><table><thead><tr><th>Status</th><th>Besitzer</th><th>Termin</th></tr></thead><tbody><tr><td>Offen</td><td>Mira</td><td>Freitag</td></tr><tr><td>In Arbeit</td><td>Jo</td><td>Montag</td></tr></tbody></table></div>
+    </article>
+
+    <div class="status" aria-live="polite">
+      <span>Modus: <b id="status-mode">Normal</b></span>
+      <span>Auswahl: <b id="selection-state">keine</b></span>
+      <span id="message">Vim-Motions sind außerhalb des Insert-Modus aktiv.</span>
+    </div>
+
+    <section class="cheatsheet" aria-label="Tastenkürzel">
+      <h2>Cheat Sheet</h2>
+      <div class="shortcuts">
+        <div class="shortcut-group"><h3>NAVIGATION · NORMAL / VISUAL</h3><dl>
+          <dt><kbd>h</kbd> <kbd>l</kbd></dt><dd>Zeichen links / rechts</dd>
+          <dt><kbd>w</kbd> <kbd>b</kbd> <kbd>e</kbd></dt><dd>Wort-Motions</dd>
+          <dt><kbd>0</kbd> <kbd>$</kbd></dt><dd>Zeilenanfang / -ende</dd>
+          <dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>logischer Block vor / zurück</dd>
+          <dt><kbd>g</kbd><kbd>j</kbd> / <kbd>g</kbd><kbd>k</kbd></dt><dd>sichtbare Zeile vor / zurück</dd>
+        </dl></div>
+        <div class="shortcut-group"><h3>MODI & AUSWAHL</h3><dl>
+          <dt><kbd>i</kbd></dt><dd>Insert-Modus</dd>
+          <dt><kbd>Esc</kbd></dt><dd>Normal-Modus / Auswahl verlassen</dd>
+          <dt><kbd>v</kbd></dt><dd>Visual: Zeichenauswahl</dd>
+          <dt><kbd>V</kbd></dt><dd>Visual: ganzen Block auswählen</dd>
+          <dt><kbd>i</kbd><kbd>w</kbd></dt><dd>in Visual: inneres Wort</dd>
+        </dl></div>
+        <div class="shortcut-group"><h3>FORMATIEREN · NUR VISUAL</h3><dl>
+          <dt><kbd>Space</kbd> <kbd>b</kbd></dt><dd>fett umschalten</dd>
+          <dt><kbd>Space</kbd> <kbd>i</kbd></dt><dd>kursiv umschalten</dd>
+          <dt><kbd>Space</kbd> <kbd>u</kbd></dt><dd>unterstreichen umschalten</dd>
+          <dt><kbd>Space</kbd> <kbd>s</kbd></dt><dd>durchstreichen umschalten</dd>
+          <dt><kbd>Space</kbd> <kbd>l</kbd></dt><dd>Link-URL bearbeiten</dd>
+        </dl></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Prototype question: Do Visual-mode leader actions feel natural without stealing Vim motions?
+    const editor = document.getElementById('editor');
+    const modeEl = document.getElementById('mode');
+    const statusMode = document.getElementById('status-mode');
+    const selectionState = document.getElementById('selection-state');
+    const message = document.getElementById('message');
+    let mode = 'normal';
+    let leaderPending = false;
+    let gPending = false;
+    let innerPending = false;
+
+    function setMessage(text) { message.textContent = text; }
+    function selection() { return window.getSelection(); }
+    function insideEditor(node) { return node && (node === editor || editor.contains(node.nodeType === Node.TEXT_NODE ? node.parentNode : node)); }
+    function hasSelection() { const s = selection(); return s.rangeCount && !s.isCollapsed && insideEditor(s.anchorNode) && insideEditor(s.focusNode); }
+    function updateUI() {
+      const labels = { normal: 'NORMAL', insert: 'INSERT', visual: leaderPending ? 'VISUAL · LEADER' : 'VISUAL' };
+      modeEl.textContent = labels[mode];
+      modeEl.className = 'mode ' + (leaderPending ? 'leader' : mode);
+      statusMode.textContent = labels[mode].replace(' · ', ' / ');
+      selectionState.textContent = hasSelection() ? 'aktiv' : mode === 'visual' ? 'Startpunkt gesetzt' : 'keine';
+    }
+    function focusEditor() { editor.focus({ preventScroll: true }); }
+    function modify(alter, direction, granularity) {
+      const s = selection();
+      if (!s.rangeCount) return;
+      // Selection.modify is supported by the desktop browsers this keyboard prototype targets.
+      if (typeof s.modify === 'function') s.modify(alter, direction, granularity);
+    }
+    function move(direction, granularity) { modify(mode === 'visual' ? 'extend' : 'move', direction, granularity); updateUI(); }
+    function rangeAtCaret() { const s = selection(); return s.rangeCount ? s.getRangeAt(0) : null; }
+    function closestBlock(node) {
+      let el = node && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+      while (el && el !== editor) {
+        if (/^(P|H1|H2|H3|LI|BLOCKQUOTE|PRE|HR|DIV)$/.test(el.tagName)) return el;
+        el = el.parentElement;
+      }
+      return null;
+    }
+    function blockMove(direction) {
+      const s = selection(); if (!s.rangeCount) return;
+      const current = closestBlock(s.focusNode); if (!current) return;
+      const blocks = [...editor.querySelectorAll('p,h1,h2,h3,li,blockquote,pre,hr,.opaque-table')];
+      const index = blocks.indexOf(current); const target = blocks[index + direction];
+      if (!target) return;
+      const r = document.createRange();
+      r.selectNodeContents(target); r.collapse(direction > 0);
+      if (mode === 'visual') {
+        const anchorNode = s.anchorNode, anchorOffset = s.anchorOffset;
+        s.removeAllRanges(); s.setBaseAndExtent(anchorNode, anchorOffset, r.startContainer, r.startOffset);
+      } else { s.removeAllRanges(); s.addRange(r); }
+      updateUI();
+    }
+    function selectCurrentBlock() {
+      const s = selection(); const block = s.rangeCount && closestBlock(s.focusNode); if (!block) return;
+      const r = document.createRange(); r.selectNodeContents(block); s.removeAllRanges(); s.addRange(r); updateUI();
+    }
+    function innerWord() {
+      const s = selection(); if (!s.rangeCount) return;
+      const original = s.getRangeAt(0).cloneRange();
+      // First move back to the beginning of this word, then extend to its end.
+      modify('move', 'backward', 'word'); modify('extend', 'forward', 'word');
+      if (s.isCollapsed) { s.removeAllRanges(); s.addRange(original); }
+      updateUI();
+    }
+    function collapseToFocus() {
+      const s = selection(); if (!s.rangeCount) return;
+      const r = document.createRange(); r.setStart(s.focusNode, s.focusOffset); r.collapse(true); s.removeAllRanges(); s.addRange(r);
+    }
+    function executeFormat(key) {
+      if (!hasSelection()) { setMessage('Erst mit v und einer Motion Text auswählen.'); leaderPending = false; updateUI(); return; }
+      const command = { b: 'bold', i: 'italic', u: 'underline', s: 'strikeThrough' }[key];
+      if (key === 'l') {
+        // A browser prompt may move focus; restore the Visual range before creating the link.
+        const selectedRange = selection().getRangeAt(0).cloneRange();
+        const url = window.prompt('URL für den ausgewählten Link:', 'https://');
+        if (url && url !== 'https://') {
+          const s = selection(); s.removeAllRanges(); s.addRange(selectedRange); focusEditor();
+          document.execCommand('createLink', false, url);
+          setMessage('Link gesetzt: ' + url);
+        } else setMessage('Link-Bearbeitung abgebrochen.');
+      } else if (command) {
+        document.execCommand('styleWithCSS', false, false);
+        document.execCommand(command, false, null);
+        setMessage(({b:'Fett', i:'Kursiv', u:'Unterstrichen', s:'Durchgestrichen'})[key] + ' umgeschaltet.');
+      }
+      leaderPending = false; mode = 'normal'; focusEditor(); collapseToFocus(); updateUI();
+    }
+    function beginVisual(blockwise) {
+      focusEditor(); mode = 'visual'; leaderPending = false; innerPending = false;
+      if (blockwise) selectCurrentBlock();
+      setMessage(blockwise ? 'Visual Block: ganzer Description-Block ausgewählt.' : 'Visual: Motion erweitert die Auswahl.');
+      updateUI();
+    }
+    function normalMotion(key) {
+      const motions = { h:['backward','character'], l:['forward','character'], w:['forward','word'], b:['backward','word'], e:['forward','word'], '0':['backward','lineboundary'], '$':['forward','lineboundary'] };
+      if (motions[key]) { move(...motions[key]); return true; }
+      if (key === 'j') { blockMove(1); return true; }
+      if (key === 'k') { blockMove(-1); return true; }
+      return false;
+    }
+    editor.addEventListener('keydown', (event) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const key = event.key;
+      if (key === 'Escape') {
+        event.preventDefault(); leaderPending = gPending = innerPending = false;
+        if (mode === 'insert') { mode = 'normal'; setMessage('Normal-Modus.'); }
+        else { mode = 'normal'; collapseToFocus(); setMessage('Normal-Modus.'); }
+        updateUI(); return;
+      }
+      if (mode === 'insert') return;
+      if (leaderPending) {
+        event.preventDefault();
+        if ('biusl'.includes(key)) executeFormat(key);
+        else { leaderPending = false; setMessage('Kein Leader-Befehl: Space + b/i/u/s/l.'); updateUI(); }
+        return;
+      }
+      if (gPending) {
+        event.preventDefault(); gPending = false;
+        if (key === 'j') { move('forward', 'line'); setMessage('Visual row vor.'); }
+        else if (key === 'k') { move('backward', 'line'); setMessage('Visual row zurück.'); }
+        else setMessage('g erwartet j oder k.');
+        updateUI(); return;
+      }
+      if (innerPending) {
+        event.preventDefault(); innerPending = false;
+        if (key === 'w' && mode === 'visual') { innerWord(); setMessage('Inneres Wort ausgewählt.'); }
+        else setMessage('i erwartet in Visual einen Text-Objekt-Key (hier: w).');
+        updateUI(); return;
+      }
+      if (key === 'i' && mode === 'normal') { event.preventDefault(); mode = 'insert'; setMessage('Insert-Modus: Browser-Textbearbeitung aktiv.'); updateUI(); return; }
+      if (key === 'v' && mode === 'normal') { event.preventDefault(); beginVisual(false); return; }
+      if (key === 'V' && mode === 'normal') { event.preventDefault(); beginVisual(true); return; }
+      // Also accept a mouse-made selection: it is useful for quickly testing the
+      // leader vocabulary, even though the intended TUI flow begins with v/V.
+      if ((key === ' ' || key === 'Spacebar' || event.code === 'Space') && (mode === 'visual' || hasSelection())) {
+        event.preventDefault(); mode = 'visual'; leaderPending = true;
+        setMessage('Leader: b fett · i kursiv · u unterstreichen · s durchstreichen · l Link'); updateUI(); return;
+      }
+      if (key === 'g') { event.preventDefault(); gPending = true; return; }
+      if (key === 'i' && mode === 'visual') { event.preventDefault(); innerPending = true; return; }
+      if (normalMotion(key)) { event.preventDefault(); return; }
+      if (mode === 'visual' && ['s'].includes(key)) { event.preventDefault(); setMessage('s bleibt in Visual Mode reserviert; formatiere mit Space + s.'); return; }
+      // Ignore printable keys in Normal/Visual mode so text changes only in Insert mode.
+      if (key.length === 1 || key === 'Enter' || key === 'Backspace' || key === 'Delete') event.preventDefault();
+    });
+    editor.addEventListener('mouseup', () => { if (mode !== 'insert') mode = 'normal'; updateUI(); });
+    document.addEventListener('selectionchange', updateUI);
+    editor.addEventListener('click', () => { focusEditor(); updateUI(); });
+    updateUI();
+  </script>
+</body>
+</html>
