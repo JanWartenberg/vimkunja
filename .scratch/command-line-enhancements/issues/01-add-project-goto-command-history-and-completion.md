@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Medium
+
 **Status:** needs-triage
 
 - [ ] Define `:goto` target matching and resulting focus/selection behavior.

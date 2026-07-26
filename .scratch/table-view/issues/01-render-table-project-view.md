@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Low
+
 **Status:** needs-triage
 
 - [ ] Define displayed columns, selection, scrolling, and narrow-terminal behavior.

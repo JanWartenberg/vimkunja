@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Medium
+
 **Status:** needs-triage
 
 - [ ] Read parent relationships from the existing Vikunja schema without changing it.

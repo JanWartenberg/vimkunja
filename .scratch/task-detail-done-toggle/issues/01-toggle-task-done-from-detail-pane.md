@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Medium
+
 **Status:** needs-triage
 
 - [ ] Include Done directly after Workflow Status and before Description in the Task Detail Pane's normal field-navigation order, matching its visual position.

@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Medium
+
 **Status:** needs-triage
 
 - [ ] Decide and implement a concise Due Date presentation, including overdue and near-term dates.

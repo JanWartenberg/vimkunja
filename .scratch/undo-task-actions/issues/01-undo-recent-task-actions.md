@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Medium
+
 **Status:** needs-triage
 
 - [ ] Decide which actions are undoable: toggle, workflow move, edit, create, delete, or others.

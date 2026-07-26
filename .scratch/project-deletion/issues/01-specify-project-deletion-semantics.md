@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Low
+
 **Status:** needs-triage
 
 - [ ] Decide whether contained Tasks are deleted, archived, or moved.

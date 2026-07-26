@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** High
+
 **Status:** needs-triage
 
 - [ ] Define command/keybinding, confirmation wording, and cancellation behavior.
@@ -14,5 +16,7 @@
 - [ ] Cover Store persistence and TUI confirmation/failure/refresh behavior.
 
 ## Further context
+
+This is a Daily-driver basic operation and deliberately takes priority over presentation polish and rich-text work.
 
 Archived source: `SPEC_FUNDAMENT.md`, “Task deletion (future feature)”.

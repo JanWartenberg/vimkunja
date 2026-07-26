@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Low
+
 **Status:** needs-triage
 
 - [ ] Decide whether the first version strips HTML to plain text, converts HTML to Markdown-like text, or renders a supported HTML subset directly.
@@ -14,5 +16,7 @@
 - [ ] Description scrolling and wrapping remain consistent with the Detail-pane.
 
 ## Further context
+
+Rich-text Description editing is deliberately outside the current Daily-driver milestone. If raw HTML prevents basic reading before that work resumes, create a separate, narrowly scoped reader-only ticket (for example readable paragraphs with tags removed); do not use it to begin the structured editor.
 
 Vikunja stores rich-text descriptions as HTML. The previous UX note recommended a deliberately small first step (plain text with tags removed) before considering HTML-to-Markdown conversion or a custom renderer.

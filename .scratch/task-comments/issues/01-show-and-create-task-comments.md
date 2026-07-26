@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Low
+
 **Status:** needs-triage
 
 - [ ] Define comment ordering, pagination, and Detail-pane space behavior.
@@ -14,5 +16,7 @@
 - [ ] Keep editing and deleting existing Comments explicitly out of the first version.
 
 ## Further context
+
+Comments are deliberately outside the current Daily-driver milestone and should not delay the All-Tasks overview, Kanban View, or Task deletion.
 
 Archived source: `SPEC_FUNDAMENT.md` and `TUI_IDEA.md`, “Kommentare”.

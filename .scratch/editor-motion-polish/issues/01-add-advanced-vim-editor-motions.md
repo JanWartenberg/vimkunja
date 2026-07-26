@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Low
+
 **Status:** needs-triage
 
 - [ ] Specify the supported behavior for `o`, `O`, `a`, `A`, `I`, and related text-entry motions in each editable field.

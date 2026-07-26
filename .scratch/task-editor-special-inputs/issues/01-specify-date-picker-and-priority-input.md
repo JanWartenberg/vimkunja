@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Medium
+
 **Status:** needs-triage
 
 - [ ] Decide whether Due Date uses a keyboard date picker, shortcuts, or an improved text mask.

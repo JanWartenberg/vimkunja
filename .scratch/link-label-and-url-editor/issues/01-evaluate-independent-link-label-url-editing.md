@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Low
+
 **Status:** needs-triage
 
 - [ ] Compare the URL-only interaction with a two-field terminal dialog through a focused prototype.

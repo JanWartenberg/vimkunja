@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vimkunja – Daily-driver &amp; Suche Prototype</title>
+  <style>
+    /* THROWAWAY UI PROTOTYPE.
+       Three radically different Daily-driver/Search surfaces, switchable with
+       ?variant=A, ?variant=B, or ?variant=C. It uses synthetic in-memory data. */
+    :root {
+      --bg: #111827; --surface: #172033; --surface-2: #202b40; --line: #31405d;
+      --text: #e7edf8; --muted: #91a0bb; --pink: #ff6b9b; --cyan: #62d6e8;
+      --yellow: #ffd166; --green: #80d39b; --red: #ff7b72; --mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 14px/1.4 var(--mono); }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .app { min-height: 100vh; padding-bottom: 88px; }
+    .topbar { min-height: 54px; display: flex; align-items: center; gap: 18px; padding: 9px 18px; background: #0d1525; border-bottom: 1px solid var(--line); }
+    .brand { color: var(--pink); font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
+    .question { color: var(--muted); font-size: 12px; }
+    .badge { margin-left: auto; padding: 3px 8px; border: 1px solid #6d4b5c; border-radius: 999px; color: #ffb3cb; font-size: 11px; white-space: nowrap; }
+    .pane { background: var(--surface); border: 1px solid var(--line); min-width: 0; }
+    .pane-title { display: flex; gap: 8px; align-items: center; min-height: 36px; padding: 7px 11px; color: #c8d4eb; border-bottom: 1px solid var(--line); font-weight: 700; }
+    .pane-title small { margin-left: auto; color: var(--muted); font-weight: 400; }
+    .hint { color: var(--muted); font-size: 12px; }
+    .key { display: inline-block; padding: 0 4px; border: 1px solid #5d6b83; border-radius: 3px; color: #d8e3f5; background: #10192a; font-size: 11px; }
+    .toolbar { display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-bottom: 1px solid var(--line); background: #131d30; }
+    .search-input { width: 100%; min-width: 100px; padding: 7px 9px; color: var(--text); background: #0c1423; border: 1px solid #596987; outline: none; }
+    .search-input:focus { border-color: var(--pink); box-shadow: 0 0 0 2px #ff6b9b22; }
+    .chip { padding: 4px 7px; color: var(--muted); border: 1px solid #43516a; background: transparent; cursor: pointer; }
+    .chip.active { color: #ffbed0; border-color: var(--pink); background: #3a1e31; }
+    .task-row, .project-row, .result-row { position: relative; display: block; width: 100%; padding: 9px 11px; border: 0; border-bottom: 1px solid #25324a; background: transparent; text-align: left; cursor: pointer; }
+    .task-row:hover, .project-row:hover, .result-row:hover { background: #1d2940; }
+    .task-row.selected, .result-row.selected { background: #263552; box-shadow: inset 3px 0 var(--pink); }
+    .row-main { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+    .check { color: var(--muted); }
+    .task-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .done .task-name { color: #77839a; text-decoration: line-through; }
+    .meta { margin: 3px 0 0 25px; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .meta strong { color: var(--cyan); font-weight: 500; }
+    .priority { margin-left: auto; flex: 0 0 auto; font-size: 11px; }
+    .p1 { color: var(--green); } .p2 { color: var(--yellow); } .p3, .p4 { color: var(--red); }
+    mark { padding: 0; color: #fff; background: #a23f67; }
+    .section-label { padding: 7px 11px; color: var(--cyan); background: #131d30; border-bottom: 1px solid #25324a; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+    .empty { padding: 22px 12px; color: var(--muted); text-align: center; }
+    .preview { padding: 16px; }
+    .preview h2 { margin: 0 0 9px; font-size: 16px; line-height: 1.35; }
+    .preview dl { display: grid; grid-template-columns: 95px 1fr; gap: 7px 10px; margin: 15px 0; color: var(--muted); font-size: 12px; }
+    .preview dt { color: #7f90ae; } .preview dd { margin: 0; color: #d6e0ef; }
+    .preview p { color: #b9c6dc; line-height: 1.65; }
+    .tag { display: inline-block; margin: 2px 3px 0 0; padding: 2px 5px; color: var(--cyan); border: 1px solid #336073; font-size: 11px; }
+    .state { margin: 11px 18px 0; padding: 7px 10px; color: #aebbd1; background: #0d1525; border: 1px solid #25324a; font-size: 11px; }
+    .state summary { cursor: pointer; color: var(--cyan); }
+    .state pre { margin: 8px 0 0; white-space: pre-wrap; color: #b7c5db; }
+
+    /* A: Overview is primary. Search temporarily takes over its list. */
+    .overview-layout { display: grid; grid-template-columns: 220px minmax(360px, 1fr) 300px; gap: 10px; padding: 12px 18px 0; }
+    .project-list .project-row.selected { background: #263552; color: #fff; box-shadow: inset 3px 0 var(--pink); }
+    .project-dot { color: var(--cyan); margin-right: 7px; }
+    .overview-count { color: var(--muted); font-size: 11px; }
+    .overview-title { display: flex; align-items: center; gap: 9px; padding: 12px 12px 8px; font-size: 16px; }
+    .overview-title span { color: var(--muted); font-size: 11px; }
+    .footer-command { display: flex; gap: 8px; align-items: center; margin-top: 10px; padding: 9px 11px; color: var(--muted); border-top: 1px solid var(--line); background: #10192a; font-size: 12px; }
+
+    /* B: Search is a permanent Pane, with scope as the main navigation. */
+    .finder-layout { display: grid; grid-template-columns: 250px minmax(360px, 1fr) 310px; gap: 10px; padding: 12px 18px 0; }
+    .scope-block { padding: 11px; border-bottom: 1px solid #25324a; }
+    .scope-heading { margin-bottom: 7px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .scope-option { display: block; width: 100%; padding: 6px; border: 1px solid transparent; color: #cbd7e9; background: transparent; text-align: left; cursor: pointer; }
+    .scope-option.active { color: #fff; background: #263552; border-color: #496080; }
+    .result-kind { width: 60px; color: var(--yellow); font-size: 10px; text-transform: uppercase; }
+    .result-copy { min-width: 0; flex: 1; }
+    .result-sub { margin-top: 2px; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .finder-status { padding: 8px 11px; color: var(--muted); border-bottom: 1px solid #25324a; font-size: 11px; }
+
+    /* C: Search behaves like a global command overlay on top of the daily work surface. */
+    .command-stage { position: relative; min-height: 590px; margin: 12px 18px 0; overflow: hidden; border: 1px solid var(--line); background: #111a2b; }
+    .board-ghost { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 44px 12px 12px; opacity: .42; filter: saturate(.65); }
+    .board-column { min-height: 390px; border: 1px solid #40506d; background: #172135; }
+    .board-column h3 { margin: 0; padding: 9px; color: #cbd8ec; border-bottom: 1px solid #40506d; font-size: 12px; }
+    .board-card { margin: 8px; padding: 9px; border: 1px solid #40506d; color: #c7d3e8; background: #202b40; font-size: 12px; }
+    .command-overlay { position: absolute; z-index: 2; top: 54px; left: 50%; width: min(760px, calc(100% - 36px)); transform: translateX(-50%); border: 1px solid var(--pink); background: #18233a; box-shadow: 0 24px 70px #000b; }
+    .command-top { padding: 11px; border-bottom: 1px solid #52617d; }
+    .command-help { display: flex; justify-content: space-between; padding: 8px 11px; color: var(--muted); background: #111a2b; font-size: 11px; }
+    .command-results { max-height: 386px; overflow: auto; }
+    .overlay-label { position: absolute; top: 12px; left: 12px; color: #8c9dbb; font-size: 12px; }
+
+    /* Prototype switcher: intentionally not part of any variant. */
+    .prototype-switcher { position: fixed; z-index: 10; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid #6f7f9b; border-radius: 999px; background: #0b1220; box-shadow: 0 8px 28px #000a; }
+    .prototype-switcher button { min-width: 32px; height: 30px; border: 1px solid #51617e; border-radius: 50%; background: #1d2940; cursor: pointer; }
+    .prototype-switcher button:hover { border-color: var(--pink); color: var(--pink); }
+    .variant-label { min-width: 180px; color: #d9e4f5; text-align: center; font-size: 12px; }
+    .prototype-note { position: fixed; z-index: 10; right: 14px; bottom: 19px; color: #7686a1; font-size: 10px; }
+    @media (max-width: 850px) { .overview-layout, .finder-layout { grid-template-columns: 170px 1fr; } .overview-layout > :last-child, .finder-layout > :last-child { display: none; } .question { display: none; } }
+    @media (max-width: 560px) { .overview-layout, .finder-layout { grid-template-columns: 1fr; padding: 8px; } .overview-layout > :first-child, .finder-layout > :first-child { display: none; } .topbar { padding: 9px; } .state { margin: 8px; } }
+  </style>
+</head>
+<body>
+  <main class="app" id="app"></main>
+  <div class="prototype-switcher" aria-label="Prototype variants">
+    <button id="previous" title="Previous variant">←</button>
+    <span class="variant-label" id="variant-label"></span>
+    <button id="next" title="Next variant">→</button>
+  </div>
+  <span class="prototype-note">THROWAWAY PROTOTYPE · synthetic data</span>
+
+  <script>
+    const projects = [
+      { id: 'home', name: 'HOME', title: 'Personal', count: 4 },
+      { id: 'vim', name: 'VIM', title: 'Vimkunja', count: 5 },
+      { id: 'client', name: 'ACME', title: 'Acme client', count: 2 },
+      { id: 'later', name: 'IDEAS', title: 'Later / ideas', count: 6 },
+    ];
+    const tasks = [
+      { id: 21, project: 'VIM', projectTitle: 'Vimkunja', title: 'All Tasks Overview spezifizieren', description: 'Eine flache Übersicht für offene Tasks aus allen Projects mit stabiler Projektkennung.', labels: ['daily-driver', 'tui'], due: 'Heute', priority: 3, bucket: 'To Do', done: false },
+      { id: 22, project: 'VIM', projectTitle: 'Vimkunja', title: 'Kanban View als Tasks Pane rendern', description: 'Buckets horizontal darstellen; hjkl bewegt die Auswahl im Board.', labels: ['daily-driver', 'kanban'], due: 'Morgen', priority: 3, bucket: 'Doing', done: false },
+      { id: 23, project: 'HOME', projectTitle: 'Personal', title: 'Zahnarzt anrufen', description: 'Termin für Kontrolle vereinbaren.', labels: ['health'], due: 'Überfällig', priority: 4, bucket: 'Inbox', done: false },
+      { id: 24, project: 'ACME', projectTitle: 'Acme client', title: 'Angebot gegenlesen', description: 'Feedback aus dem Vertragsentwurf einarbeiten und Rückfragen sammeln.', labels: ['client', 'review'], due: 'Fr, 26. Jul', priority: 2, bucket: 'Review', done: false },
+      { id: 25, project: 'HOME', projectTitle: 'Personal', title: 'Wocheneinkauf planen', description: 'Liste aus dem Wochenplan erstellen.', labels: ['routine'], due: 'Heute', priority: 1, bucket: 'To Do', done: false },
+      { id: 26, project: 'IDEAS', projectTitle: 'Later / ideas', title: 'Suche: Labels als Filterziel', description: 'Globale Suche soll Projects, Tasks und vorhandene Vikunja Labels finden.', labels: ['search', 'later'], due: '—', priority: 1, bucket: 'Backlog', done: false },
+      { id: 27, project: 'VIM', projectTitle: 'Vimkunja', title: 'Task löschen mit Bestätigung', description: 'Löschen muss ausdrücklich bestätigt werden und danach die View aktualisieren.', labels: ['daily-driver'], due: 'Morgen', priority: 2, bucket: 'To Do', done: false },
+      { id: 28, project: 'ACME', projectTitle: 'Acme client', title: 'Stundenzettel senden', description: 'Abrechnung für Juli abschließen.', labels: ['client'], due: 'Erledigt', priority: 2, bucket: 'Done', done: true },
+    ];
+    const variants = [
+      ['A', 'A — Overview zuerst'],
+      ['B', 'B — Suche als Pane'],
+      ['C', 'C — globale Command-Overlay'],
+    ];
+    const params = new URLSearchParams(location.search);
+    const state = {
+      variant: variants.some(([key]) => key === params.get('variant')) ? params.get('variant') : 'A',
+      query: '', scope: 'all', hideDone: true, selected: 0, selectedProject: 'all', lastAction: 'Prototype gestartet',
+    };
+
+    function visibleTasks() {
+      const query = state.query.trim().toLocaleLowerCase('de');
+      return tasks.filter(task => {
+        if (state.hideDone && task.done) return false;
+        if (state.selectedProject !== 'all' && task.project !== state.selectedProject) return false;
+        if (!query) return true;
+        const fields = {
+          task: [task.title, task.description, task.labels.join(' ')],
+          project: [task.project, task.projectTitle],
+          label: task.labels,
+          all: [task.title, task.description, task.labels.join(' '), task.project, task.projectTitle],
+        };
+        return fields[state.scope].join(' ').toLocaleLowerCase('de').includes(query);
+      });
+    }
+    function resultItems() {
+      const query = state.query.trim().toLocaleLowerCase('de');
+      const taskResults = visibleTasks().map(task => ({ kind: 'Task', task }));
+      if (!query) return taskResults;
+      const projectResults = projects
+        .filter(project => (project.name + ' ' + project.title).toLocaleLowerCase('de').includes(query))
+        .map(project => ({ kind: 'Project', project }));
+      if (state.scope === 'project') return projectResults;
+      if (state.scope === 'all') return [...taskResults, ...projectResults];
+      return taskResults;
+    }
+    function selectedTask() {
+      const results = resultItems();
+      if (!results.length) return null;
+      state.selected = Math.max(0, Math.min(state.selected, results.length - 1));
+      const item = results[state.selected];
+      return item.task || tasks.find(task => task.project === item.project.name) || null;
+    }
+    function highlight(text) {
+      const query = state.query.trim();
+      if (!query) return escapeHtml(text);
+      const position = text.toLocaleLowerCase('de').indexOf(query.toLocaleLowerCase('de'));
+      if (position < 0) return escapeHtml(text);
+      return escapeHtml(text.slice(0, position)) + '<mark>' + escapeHtml(text.slice(position, position + query.length)) + '</mark>' + escapeHtml(text.slice(position + query.length));
+    }
+    function escapeHtml(value) { return value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c]); }
+    function priority(task) { return task.priority === 1 ? 'P1' : `P${task.priority}`; }
+    function taskRow(task, index, result = false) {
+      const selected = index === state.selected ? ' selected' : '';
+      const classes = `${result ? 'result-row' : 'task-row'}${selected}${task.done ? ' done' : ''}`;
+      if (result) return `<button class="${classes}" data-select="${index}"><div class="row-main"><span class="result-kind">Task</span><span class="result-copy"><span>${highlight(task.title)}</span><span class="result-sub">${highlight(task.projectTitle + ' · ' + task.description)}</span></span><span class="priority p${task.priority}">${priority(task)}</span></div></button>`;
+      return `<button class="${classes}" data-select="${index}"><div class="row-main"><span class="check">${task.done ? '[x]' : '[ ]'}</span><span class="task-name">${highlight(task.title)}</span><span class="priority p${task.priority}">${priority(task)}</span></div><div class="meta"><strong>${task.project}</strong> · ${task.due} · ${task.labels.map(label => '#' + label).join(' ')}</div></button>`;
+    }
+    function projectRow(project) {
+      const selected = state.selectedProject === project.name ? ' selected' : '';
+      return `<button class="project-row${selected}" data-project="${project.name}"><span class="project-dot">›</span>${project.name}<span class="overview-count"> ${project.count}</span></button>`;
+    }
+    function searchBar(label = 'Suche') {
+      return `<div class="toolbar"><span class="key">/</span><input id="search" class="search-input" autocomplete="off" placeholder="${label}: Tasks, Projects, Labels und Description …" value="${escapeHtml(state.query)}"><button class="chip ${state.hideDone ? 'active' : ''}" data-done>offen</button></div>`;
+    }
+    function preview(task) {
+      if (!task) return `<div class="preview"><div class="empty">Kein Treffer.<br>Suche ändern oder Scope wechseln.</div></div>`;
+      return `<div class="preview"><div class="hint">Task Detail Pane · Vorschau</div><h2>${highlight(task.title)}</h2><dl><dt>Project</dt><dd>${task.projectTitle} (${task.project})</dd><dt>Workflow</dt><dd>${task.bucket}</dd><dt>Due date</dt><dd>${task.due}</dd><dt>Priority</dt><dd class="p${task.priority}">${priority(task)}</dd></dl><p>${highlight(task.description)}</p><div>${task.labels.map(label => `<span class="tag">#${label}</span>`).join('')}</div></div>`;
+    }
+    function listByDate(rows) {
+      if (!rows.length) return '<div class="empty">Keine passenden offenen Tasks.</div>';
+      const groups = [['Überfällig', rows.filter(t => t.due === 'Überfällig')], ['Heute', rows.filter(t => t.due === 'Heute')], ['Als Nächstes', rows.filter(t => !['Überfällig', 'Heute'].includes(t.due))]];
+      let index = 0;
+      return groups.filter(([, group]) => group.length).map(([name, group]) => `<div class="section-label">${name}</div>${group.map(task => taskRow(task, index++)).join('')}`).join('');
+    }
+    function variantA() {
+      const rows = visibleTasks();
+      const task = selectedTask();
+      const heading = state.query ? `Suche · ${resultItems().length} Treffer` : `Alle offenen Tasks · ${rows.length}`;
+      let index = 0;
+      const content = state.query ? resultItems().map(item => item.task ? taskRow(item.task, index++, true) : `<button class="result-row ${index++ === state.selected ? 'selected' : ''}" data-select="${index - 1}"><div class="row-main"><span class="result-kind">Project</span><span class="result-copy">${highlight(item.project.title)}<span class="result-sub">Project identifier: ${item.project.name}</span></span></div></button>`).join('') : listByDate(rows);
+      return `<div class="topbar"><span class="brand">VIMKUNJA</span><span class="question">Variante A: Die Overview ist dein Zuhause; <b>/</b> verwandelt sie kurzfristig in eine globale Suche.</span><span class="badge">Overview View</span></div><section class="overview-layout"><aside class="pane project-list"><div class="pane-title">Projects <small>Space+o</small></div><button class="project-row${state.selectedProject === 'all' ? ' selected' : ''}" data-project="all"><span class="project-dot">›</span>ALLE PROJECTS</button>${projects.map(projectRow).join('')}</aside><section class="pane"><div class="overview-title">${heading}<span>Due date → Priority → Project</span></div>${searchBar('Volltext durchsuchen')}${content}<div class="footer-command"><span class="key">/</span> suchen · <span class="key">n</span>/<span class="key">N</span> Treffer · <span class="key">Enter</span> Task Detail Pane</div></section><aside class="pane"><div class="pane-title">Task Detail Pane <small>Enter</small></div>${preview(task)}</aside></section>`;
+    }
+    function variantB() {
+      const items = resultItems();
+      const task = selectedTask();
+      let index = 0;
+      const results = items.length ? items.map(item => item.task ? taskRow(item.task, index++, true) : `<button class="result-row ${index++ === state.selected ? 'selected' : ''}" data-select="${index - 1}"><div class="row-main"><span class="result-kind">Project</span><span class="result-copy">${highlight(item.project.title)}<span class="result-sub">${item.project.name} · ${item.project.count} offene Tasks</span></span></div></button>`).join('') : '<div class="empty">Keine Treffer im gewählten Scope.</div>';
+      return `<div class="topbar"><span class="brand">VIMKUNJA</span><span class="question">Variante B: Suche ist ein dauerhaftes Pane; leere Suche ist die All-Tasks-Übersicht.</span><span class="badge">Search Pane</span></div><section class="finder-layout"><aside class="pane"><div class="pane-title">Search scope</div><div class="scope-block"><div class="scope-heading">Durchsuche</div>${[['all','Alles: Tasks, Projects, Labels'], ['task','Tasks: Title + Description + Labels'], ['project','Projects'], ['label','Labels']].map(([key, name]) => `<button class="scope-option ${state.scope === key ? 'active' : ''}" data-scope="${key}">${name}</button>`).join('')}</div><div class="scope-block"><div class="scope-heading">Projects</div><button class="scope-option ${state.selectedProject === 'all' ? 'active' : ''}" data-project="all">Alle Projects</button>${projects.map(project => `<button class="scope-option ${state.selectedProject === project.name ? 'active' : ''}" data-project="${project.name}">${project.name} · ${project.title}</button>`).join('')}</div></aside><section class="pane">${searchBar('Suche bleibt sichtbar')}<div class="finder-status">${state.query ? `${items.length} Treffer` : `${items.length} offene Tasks · tippe los, um zu filtern`} <span class="hint">· n/N oder j/k navigieren</span></div>${results}</section><aside class="pane"><div class="pane-title">Preview <small>Enter öffnet</small></div>${preview(task)}</aside></section>`;
+    }
+    function variantC() {
+      const items = resultItems();
+      const task = selectedTask();
+      let index = 0;
+      const results = items.length ? items.map(item => item.task ? taskRow(item.task, index++, true) : `<button class="result-row ${index++ === state.selected ? 'selected' : ''}" data-select="${index - 1}"><div class="row-main"><span class="result-kind">Project</span><span class="result-copy">${highlight(item.project.title)}<span class="result-sub">${item.project.name} · springe zur Project-Ansicht</span></span></div></button>`).join('') : '<div class="empty">Keine globalen Treffer.</div>';
+      const board = ['To Do', 'Doing', 'Done'].map(bucket => `<section class="board-column"><h3>${bucket}</h3>${tasks.filter(task => task.bucket === bucket).map(task => `<div class="board-card">${task.title}<br><span class="hint">${task.project}</span></div>`).join('')}</section>`).join('');
+      return `<div class="topbar"><span class="brand">VIMKUNJA</span><span class="question">Variante C: Suche ist ein globaler Vim-Befehl über der aktuellen Overview oder Kanban View.</span><span class="badge">Command Overlay</span></div><section class="command-stage"><div class="overlay-label">Aktive View im Hintergrund: Kanban · Vimkunja</div><div class="board-ghost">${board}</div><section class="command-overlay"><div class="command-top"><div class="hint">GLOBAL FIND</div>${searchBar('Über alle Projects suchen')}</div><div class="command-help"><span><span class="key">Esc</span> zurück zur View · <span class="key">Enter</span> öffnen</span><span><span class="key">n</span>/<span class="key">N</span> next/previous</span></div><div class="command-results">${results}</div></section></section><section class="pane" style="margin:10px 18px 0"><div class="pane-title">Ausgewähltes Ergebnis</div>${preview(task)}</section>`;
+    }
+    function stateDump() {
+      const selection = selectedTask();
+      return `<details class="state"><summary>Prototype state (nach jeder Aktion aktualisiert)</summary><pre>${escapeHtml(JSON.stringify({ variant: state.variant, query: state.query, scope: state.scope, openOnly: state.hideDone, projectFilter: state.selectedProject, resultCount: resultItems().length, selected: selection ? { id: selection.id, title: selection.title } : null, lastAction: state.lastAction }, null, 2))}</pre></details>`;
+    }
+    function render() {
+      const view = state.variant === 'A' ? variantA() : state.variant === 'B' ? variantB() : variantC();
+      document.getElementById('app').innerHTML = view + stateDump();
+      document.getElementById('variant-label').textContent = variants.find(([key]) => key === state.variant)[1];
+      document.querySelectorAll('[data-select]').forEach(node => node.addEventListener('click', () => { state.selected = Number(node.dataset.select); state.lastAction = 'Treffer ausgewählt'; render(); }));
+      document.querySelectorAll('[data-project]').forEach(node => node.addEventListener('click', () => { state.selectedProject = node.dataset.project; state.selected = 0; state.lastAction = 'Project-Scope geändert'; render(); }));
+      document.querySelectorAll('[data-scope]').forEach(node => node.addEventListener('click', () => { state.scope = node.dataset.scope; state.selected = 0; state.lastAction = 'Volltext-Scope geändert'; render(); }));
+      const done = document.querySelector('[data-done]');
+      done?.addEventListener('click', () => { state.hideDone = !state.hideDone; state.selected = 0; state.lastAction = state.hideDone ? 'Erledigte Tasks ausgeblendet' : 'Erledigte Tasks eingeblendet'; render(); });
+      const search = document.getElementById('search');
+      search?.addEventListener('input', event => { state.query = event.target.value; state.selected = 0; state.lastAction = 'Volltext-Abfrage geändert'; render(); const replacement = document.getElementById('search'); replacement?.focus(); replacement?.setSelectionRange(state.query.length, state.query.length); });
+    }
+    function cycle(direction) {
+      const index = variants.findIndex(([key]) => key === state.variant);
+      state.variant = variants[(index + direction + variants.length) % variants.length][0];
+      state.lastAction = 'Variante gewechselt';
+      const nextParams = new URLSearchParams(location.search); nextParams.set('variant', state.variant);
+      history.replaceState(null, '', `${location.pathname}?${nextParams.toString()}`);
+      render();
+    }
+    document.getElementById('previous').addEventListener('click', () => cycle(-1));
+    document.getElementById('next').addEventListener('click', () => cycle(1));
+    document.addEventListener('keydown', event => {
+      const editing = ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable;
+      if (editing) return;
+      if (event.key === 'ArrowLeft') { event.preventDefault(); cycle(-1); }
+      if (event.key === 'ArrowRight') { event.preventDefault(); cycle(1); }
+      if (event.key === '/') { event.preventDefault(); document.getElementById('search')?.focus(); }
+      if (event.key === 'j' || event.key === 'n') { state.selected += 1; state.lastAction = 'Nächster Treffer'; selectedTask(); render(); }
+      if (event.key === 'k' || event.key === 'N') { state.selected -= 1; state.lastAction = 'Vorheriger Treffer'; selectedTask(); render(); }
+      if (event.key === 'Escape') { state.query = ''; state.lastAction = 'Suche geleert'; render(); }
+    });
+    render();
+  </script>
+</body>
+</html>

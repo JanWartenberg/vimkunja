@@ -6,6 +6,8 @@
 
 **Category:** enhancement
 
+**Priority:** Low
+
 **Status:** needs-triage
 
 - [ ] Define whether the summary appears before or after the Checkbox list and its narrow-terminal behavior.
