@@ -513,6 +513,64 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 
 // CreateTask persists a new task and creates the default per-view position and
 // bucket assignments expected by Vikunja's SQLite schema.
+// DeleteTask permanently removes a Task and its Vikunja-owned relations in one
+// transaction. Attachment files themselves are retained: removing their link
+// cannot safely establish that no other record references the file.
+func (s *SQLiteStore) DeleteTask(ctx context.Context, taskID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin delete task: %w", err)
+	}
+	defer tx.Rollback()
+
+	deletes := []struct {
+		table string
+		query string
+	}{
+		{"task_positions", "DELETE FROM task_positions WHERE task_id = ?"},
+		{"task_buckets", "DELETE FROM task_buckets WHERE task_id = ?"},
+		{"task_assignees", "DELETE FROM task_assignees WHERE task_id = ?"},
+		{"label_tasks", "DELETE FROM label_tasks WHERE task_id = ?"},
+		{"task_reminders", "DELETE FROM task_reminders WHERE task_id = ?"},
+		{"task_relations", "DELETE FROM task_relations WHERE task_id = ? OR other_task_id = ?"},
+		{"task_attachments", "DELETE FROM task_attachments WHERE task_id = ?"},
+		{"task_comments", "DELETE FROM task_comments WHERE task_id = ?"},
+		{"task_unread_statuses", "DELETE FROM task_unread_statuses WHERE task_id = ?"},
+	}
+	for _, delete := range deletes {
+		var exists int
+		if err := tx.QueryRowContext(ctx, "SELECT COUNT(1) FROM sqlite_master WHERE type = 'table' AND name = ?", delete.table).Scan(&exists); err != nil {
+			return fmt.Errorf("check %s for task deletion: %w", delete.table, err)
+		}
+		if exists == 0 {
+			continue
+		}
+		args := []any{taskID}
+		if delete.table == "task_relations" {
+			args = append(args, taskID)
+		}
+		if _, err := tx.ExecContext(ctx, delete.query, args...); err != nil {
+			return fmt.Errorf("delete task relation from %s: %w", delete.table, err)
+		}
+	}
+
+	result, err := tx.ExecContext(ctx, "DELETE FROM tasks WHERE id = ?", taskID)
+	if err != nil {
+		return fmt.Errorf("delete task: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("confirm task deletion: %w", err)
+	}
+	if affected != 1 {
+		return fmt.Errorf("task %d not found", taskID)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit task deletion: %w", err)
+	}
+	return nil
+}
+
 func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, error) {
 	if err := validateDraft(draft); err != nil {
 		return Task{}, err

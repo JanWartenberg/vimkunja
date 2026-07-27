@@ -52,6 +52,9 @@ type model struct {
 	ctrlWArmed               bool
 	ctrlWTimeout             time.Duration
 	leaderArmed              bool
+	deleteArmed              bool
+	deleteConfirm            bool
+	deleteTaskID             int64
 	projectsPaneCollapsed    bool
 	projectsPaneAutoShown    bool
 	lastProjectPaneCollapsed bool
@@ -163,6 +166,9 @@ type (
 	taskToggledMsg struct {
 		err error
 	}
+	taskDeletedMsg struct {
+		err error
+	}
 	workflowStatusLoadedMsg struct {
 		taskID int64
 		status vimkunja.WorkflowStatus
@@ -246,6 +252,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.commandMode {
 			return m.updateCommandModeKey(key)
+		}
+		if m.deleteConfirm {
+			return m.updateDeleteConfirmation(k)
 		}
 		if m.leaderArmed {
 			m.leaderArmed = false
@@ -444,6 +453,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(m.loadViews(typed.task.ProjectID), m.refreshActiveTasks())
 		}
 		return m, m.loadViews(typed.task.ProjectID)
+
+	case taskDeletedMsg:
+		m.deleteConfirm = false
+		m.deleteTaskID = 0
+		if typed.err != nil {
+			m.taskLoading = false
+			m.recordError(typed.err)
+			return m, nil
+		}
+		return m, m.refreshActiveTasks()
 
 	case taskToggledMsg:
 		if typed.err != nil {
@@ -685,6 +704,13 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.inOverview() && m.updateOverviewPrompt(s) {
 		return m, nil
 	}
+	if m.deleteArmed {
+		m.deleteArmed = false
+		if s == "d" {
+			m.beginTaskDeletion()
+		}
+		return m, nil
+	}
 
 	// `gg` prefix: first g arms, second g jumps to top.
 	if m.gArmed {
@@ -758,6 +784,9 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "k":
 		m.taskSelected = clamp(m.taskSelected-1, 0, last)
+		return m, nil
+	case "d":
+		m.deleteArmed = true
 		return m, nil
 	case "x":
 		// Toggle done (MVP write-support for SQLite mode).
@@ -1087,6 +1116,9 @@ func (m *model) renderStatusBar(w int) string {
 	}
 	if m.commandMode {
 		hint = fmt.Sprintf(":%s_", m.commandInput)
+	}
+	if m.deleteConfirm {
+		hint = m.deleteConfirmationLabel()
 	}
 	if m.leaderArmed {
 		hint = "[LEADER] a Overview/return  •  o toggle projects pane"

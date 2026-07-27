@@ -585,6 +585,42 @@ func TestListTasksInView_OrdersByPosition(t *testing.T) {
 	}
 }
 
+func TestDeleteTaskRemovesTaskAndRelationsTransactionally(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title) VALUES (1, 'Project');
+		INSERT INTO tasks (id, project_id, title) VALUES (1, 1, 'Delete'), (2, 1, 'Keep');
+		INSERT INTO task_positions (task_id, project_view_id, position) VALUES (1, 1, 1.0);
+		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES (1, 1, 1, 1);
+		CREATE TABLE task_relations (task_id INTEGER, other_task_id INTEGER);
+		INSERT INTO task_relations (task_id, other_task_id) VALUES (1, 2), (2, 1);
+	`)
+	if err != nil {
+		t.Fatalf("insert deletion fixtures: %v", err)
+	}
+
+	if err := store.DeleteTask(context.Background(), 1); err != nil {
+		t.Fatalf("delete task: %v", err)
+	}
+	for _, check := range []string{
+		"SELECT COUNT(1) FROM tasks WHERE id = 1",
+		"SELECT COUNT(1) FROM task_positions WHERE task_id = 1",
+		"SELECT COUNT(1) FROM task_buckets WHERE task_id = 1",
+		"SELECT COUNT(1) FROM task_relations WHERE task_id = 1 OR other_task_id = 1",
+	} {
+		var count int
+		if err := store.db.QueryRow(check).Scan(&count); err != nil || count != 0 {
+			t.Fatalf("%s = %d, err=%v; want 0", check, count, err)
+		}
+	}
+	var remaining int
+	if err := store.db.QueryRow("SELECT COUNT(1) FROM tasks WHERE id = 2").Scan(&remaining); err != nil || remaining != 1 {
+		t.Fatalf("remaining task = %d, err=%v; want 1", remaining, err)
+	}
+}
+
 func TestToggleTaskDone_SetsDoneAt(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()

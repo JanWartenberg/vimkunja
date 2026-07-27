@@ -16,6 +16,7 @@ type Store interface {
 
 	// ToggleTaskDone updates the 'done' flag (and done_at if possible).
 	ToggleTaskDone(ctx context.Context, taskID int64, done bool) error
+	DeleteTask(ctx context.Context, taskID int64) error
 	CreateTask(ctx context.Context, draft TaskDraft) (Task, error)
 	UpdateTask(ctx context.Context, draft TaskDraft) (Task, error)
 }

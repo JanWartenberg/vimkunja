@@ -17,6 +17,8 @@ type fakeStore struct {
 	toggleErr          error
 	toggleTaskID       int64
 	toggleDone         bool
+	deleteErr          error
+	deleteTaskID       int64
 	workflowStatus     vimkunja.WorkflowStatus
 	workflowStatusErr  error
 	updateErr          error
@@ -57,6 +59,11 @@ func (f *fakeStore) ToggleTaskDone(_ context.Context, taskID int64, done bool) e
 	f.toggleTaskID = taskID
 	f.toggleDone = done
 	return f.toggleErr
+}
+
+func (f *fakeStore) DeleteTask(_ context.Context, taskID int64) error {
+	f.deleteTaskID = taskID
+	return f.deleteErr
 }
 
 func (f *fakeStore) CreateTask(_ context.Context, draft vimkunja.TaskDraft) (vimkunja.Task, error) {
@@ -172,6 +179,65 @@ func TestOpeningTaskFromOverviewTemporarilyShowsProjects(t *testing.T) {
 	m.closeTaskDetail()
 	if !m.projectsPaneCollapsed {
 		t.Fatal("automatically shown Projects Pane remained visible after closing detail")
+	}
+}
+
+func TestTaskDeletionRequiresConfirmationAndRefreshesAfterSuccess(t *testing.T) {
+	store := &fakeStore{}
+	m := testModel()
+	m.store = store
+	m.focus = paneTasks
+	m.currentProjectID = 1
+	m.currentViewID = 1
+	m.tasks = []vimkunja.Task{{ID: 7, ProjectID: 1, Title: "Delete me"}}
+
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	if !m.deleteConfirm || m.deleteTaskID != 7 {
+		t.Fatalf("delete confirmation = %v task=%d, want task 7", m.deleteConfirm, m.deleteTaskID)
+	}
+	updated, deleteCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
+	m = updated.(*model)
+	if deleteCmd == nil {
+		t.Fatal("confirmation returned no delete command")
+	}
+	updated, refreshCmd := m.Update(deleteCmd())
+	m = updated.(*model)
+	if store.deleteTaskID != 7 || m.deleteConfirm || refreshCmd == nil {
+		t.Fatalf("delete = id:%d confirm:%v refresh:%v", store.deleteTaskID, m.deleteConfirm, refreshCmd != nil)
+	}
+}
+
+func TestTaskDeletionFailureIsVisibleAndDoesNotRefresh(t *testing.T) {
+	store := &fakeStore{deleteErr: errors.New("delete failed")}
+	m := testModel()
+	m.store = store
+	m.focus = paneTasks
+	m.tasks = []vimkunja.Task{{ID: 7, Title: "Keep me"}}
+
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	updated, deleteCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
+	m = updated.(*model)
+	updated, refreshCmd := m.Update(deleteCmd())
+	m = updated.(*model)
+	if refreshCmd != nil || m.lastErr != "delete failed" || store.listTasksCalls != 0 {
+		t.Fatalf("failure = refresh:%v error:%q listCalls:%d", refreshCmd != nil, m.lastErr, store.listTasksCalls)
+	}
+}
+
+func TestTaskDeletionCancellationDoesNotPersist(t *testing.T) {
+	store := &fakeStore{}
+	m := testModel()
+	m.store = store
+	m.focus = paneTasks
+	m.tasks = []vimkunja.Task{{ID: 7, Title: "Keep me"}}
+
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	m = pressKey(m, tea.Key{Code: 'n', Text: "n"})
+	if m.deleteConfirm || store.deleteTaskID != 0 {
+		t.Fatalf("cancellation = confirm:%v task:%d, want no delete", m.deleteConfirm, store.deleteTaskID)
 	}
 }
 

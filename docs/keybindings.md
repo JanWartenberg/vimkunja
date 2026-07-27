@@ -57,6 +57,7 @@ The Project View switcher is visible above the Tasks Pane only outside Overview 
 | `Enter` | Open the selected Task in the Task Detail Pane | Implemented |
 | `o` | Create a Task in the selected Project | Implemented |
 | `x` | Toggle the selected Task's Done state | Implemented |
+| `dd`, then `y` | Permanently delete the selected Task after explicit confirmation; `n` or `Esc` cancel. | Implemented |
 | `r` | Reload the active View | Implemented |
 
 ## Task Detail Pane
