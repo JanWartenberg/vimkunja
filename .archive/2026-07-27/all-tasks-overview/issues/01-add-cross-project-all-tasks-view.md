@@ -2,18 +2,18 @@
 
 **What to build:** A user can open a flat overview of tasks across Projects, with an explicit default treatment for completed tasks and stable task metadata.
 
-**Implementation prerequisites:** Needs specification of data source, pane placement, navigation, and default sorting/filtering.
+**Implementation prerequisites:** None — implemented in `f5d944e`.
 
 **Category:** enhancement
 
 **Priority:** High
 
-**Status:** needs-triage
+**Status:** resolved
 
-- [ ] Decide whether the overview is a View, a Pane, or replaces the Project/Tasks pair while open.
-- [ ] Define its entry point (the archived proposal was `-`) and task creation behavior.
-- [ ] Define default visibility for completed tasks.
-- [ ] Define initial ordering by due date, priority, and project plus future sorting/filter controls.
+- [x] Overview replaces the project-specific Tasks Pane in the same right-hand slot; Projects stay hidden by default.
+- [x] `-` opens Overview; `Space+a` toggles to the remembered Project context; `o` starts with a Project Picker.
+- [x] Completed Tasks are hidden by default; `f`, then `a` shows all Tasks.
+- [x] Default ordering is Due Date ascending, with undated Tasks afterward by Priority; `s` exposes the agreed alternate sorts.
 
 ## Further context
 
@@ -40,4 +40,6 @@ It tests these deliberately provisional decisions:
 - Default ordering is Due Date ascending (nearest date first); Tasks without a Due Date follow and are ordered by Priority descending.
 - A netrw-inspired second step is available for evaluation: `s` opens a sort picker (`d` Due ↓, `u` Due ↑, `p` Priority ↓, `t` Title) and `f` opens a filter picker (`o` open, `a` all, `v` overdue, `t` due today).
 
-**Next session:** maintainer evaluates the interaction and records feedback here before the Overview specification or implementation begins.
+### 2026-07-27 — Resolved
+
+Implemented in `f5d944e` with a cross-Project Store query, Overview navigation, sorting/filtering, Project Picker creation flow, context restoration, Due Date presentation, and Store/TUI regression coverage. `go test ./...` passed.
