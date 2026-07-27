@@ -2,7 +2,7 @@
 
 **What to build:** The Projects Pane represents Vikunja's Project parent/child hierarchy through clear keyboard-navigable indentation.
 
-**Blocked by:** Needs confirmation of the available schema fields and specification of collapse, ordering, and selection semantics.
+**Implementation prerequisites:** Needs confirmation of the available schema fields and specification of collapse, ordering, and selection semantics.
 
 **Category:** enhancement
 

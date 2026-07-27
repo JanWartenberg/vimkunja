@@ -2,7 +2,7 @@
 
 **What to build:** A Project View with `view_kind=table` has a keyboard-first TUI representation.
 
-**Blocked by:** Needs its own view-model and interaction specification after List and Kanban priorities are decided.
+**Implementation prerequisites:** Needs its own view-model and interaction specification after List and Kanban priorities are decided.
 
 **Category:** enhancement
 

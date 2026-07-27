@@ -2,7 +2,7 @@
 
 **What to build:** Users can configure supported Vimkunja behavior, starting with timing preferences already exposed programmatically.
 
-**Blocked by:** Needs a configuration source, precedence, and compatibility specification.
+**Implementation prerequisites:** Needs a configuration source, precedence, and compatibility specification.
 
 **Category:** enhancement
 

@@ -2,7 +2,7 @@
 
 **What to decide:** Improve the Task editor's specialized Due Date and Priority input beyond the current mask and fixed Picker.
 
-**Blocked by:** Needs interaction decisions.
+**Implementation prerequisites:** Needs interaction decisions.
 
 **Category:** enhancement
 

@@ -2,7 +2,7 @@
 
 **What to build:** A user can open a flat overview of tasks across Projects, with an explicit default treatment for completed tasks and stable task metadata.
 
-**Blocked by:** Needs specification of data source, pane placement, navigation, and default sorting/filtering.
+**Implementation prerequisites:** Needs specification of data source, pane placement, navigation, and default sorting/filtering.
 
 **Category:** enhancement
 

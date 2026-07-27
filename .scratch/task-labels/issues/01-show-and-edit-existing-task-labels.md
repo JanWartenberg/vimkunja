@@ -2,7 +2,7 @@
 
 **What to build:** A Task Detail shows and can assign existing Vikunja Labels without changing the database schema.
 
-**Blocked by:** Needs a Labels interaction spec and schema/API compatibility check.
+**Implementation prerequisites:** Needs a Labels interaction spec and schema/API compatibility check.
 
 **Category:** enhancement
 

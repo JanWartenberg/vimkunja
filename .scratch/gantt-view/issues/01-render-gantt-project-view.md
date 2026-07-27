@@ -2,7 +2,7 @@
 
 **What to build:** A Project View with `view_kind=gantt` has a keyboard-first terminal representation.
 
-**Blocked by:** Needs dedicated feasibility and UX specification; terminal timeline constraints are unresolved.
+**Implementation prerequisites:** Needs dedicated feasibility and UX specification; terminal timeline constraints are unresolved.
 
 **Category:** enhancement
 

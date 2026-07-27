@@ -2,7 +2,7 @@
 
 **What to build:** A Vimkunja user editing Task text can use additional familiar Vim-style editing motions beyond the current Detail editor basics, without weakening explicit save and discard behavior.
 
-**Blocked by:** None — deliberately deferred until after the Fundament/MVP.
+**Implementation prerequisites:** None — deliberately deferred until after the Fundament/MVP.
 
 **Category:** enhancement
 

@@ -2,7 +2,7 @@
 
 **What to decide:** Determine whether Vimkunja should eventually offer a dedicated Link editor that can edit visible Link text and URL independently, rather than matching Vikunja's current URL-only Link prompt.
 
-**Blocked by:** Rich-text Description editor and the initial Vikunja-compatible `Space+l` URL-only interaction.
+**Implementation prerequisites:** Rich-text Description editor and the initial Vikunja-compatible `Space+l` URL-only interaction.
 
 **Category:** enhancement
 

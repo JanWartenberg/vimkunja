@@ -2,7 +2,7 @@
 
 **What to build:** A user can delete a selected Task only after an explicit confirmation, with Vikunja-compatible persistence, error feedback, and refresh.
 
-**Blocked by:** Needs a deletion interaction and confirmation spec.
+**Implementation prerequisites:** Needs a deletion interaction and confirmation spec.
 
 **Category:** enhancement
 

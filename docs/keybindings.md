@@ -2,7 +2,7 @@
 
 This is the durable, context-sorted contract for Vimkunja keybindings. It is an exchange format for discussing and comparing alternative interaction designs.
 
-`internal/tui/help.go` is the in-application help and must list **only implemented** bindings. This contract may additionally contain agreed or provisional future bindings; its status column makes the distinction explicit.
+`internal/tui/help.go` lists implemented bindings plus an explicitly marked **Agreed, not yet implemented** View-navigation section. This contract remains the complete source for agreed and provisional bindings; its status column makes the distinction explicit.
 
 This document is maintained manually for now. Generating or deriving `help.go` from it is deferred until the rich-text binding design has stabilized.
 
@@ -23,6 +23,27 @@ This document is maintained manually for now. Generating or deriving `help.go` f
 | `:h` / `:help` | Open in-application help | Implemented |
 | `:errors` | Open the session error log | Implemented |
 | `:q`, `:qa`, and force variants | Close a Pane or quit Vimkunja | Implemented |
+
+## Task context and View navigation
+
+A Task context consists of a Scope (`Overview` or the current Project) and a View (`List`, `Kanban`, later `Table` or `Gantt`). Overview is a Scope, not a Project View. Vimkunja remembers one last non-Overview View globally, plus the last Project and Task selection needed to return there.
+
+| Binding | Action | Status |
+| --- | --- | --- |
+| `-` | Open Overview from a Project context; this is always one-way and never toggles. | Agreed |
+| `Space+a` | Toggle between Overview and the remembered Project context, including its selected Task. | Agreed |
+| `Space+o` | Toggle the Projects Pane. Overview starts with it hidden; opening a Task Detail from Overview temporarily reveals and selects that Task's Project. | Agreed |
+| `Space+v`, then `l` | Select List View for the current Project. | Agreed |
+| `Space+v`, then `k` | Select Kanban View for the current Project. | Agreed |
+| `Space+v`, then `t` | Select Table View for the current Project. | Agreed; View deferred |
+| `Space+v`, then `g` | Select Gantt View for the current Project. | Agreed; View deferred |
+| `:overview` | Open Overview. | Agreed |
+| `:list` | Select List View for the current Project context; from Overview, restore the last Project context first. | Agreed |
+| `:kanban` | Select Kanban View for the current Project context; from Overview, restore the last Project context first. | Agreed |
+| `:table` | Select Table View for the current Project context. | Agreed; View deferred |
+| `:gantt` | Select Gantt View for the current Project context. | Agreed; View deferred |
+
+The Project View switcher is visible above the Tasks Pane only outside Overview and lists only Views available to the current Project. If the remembered View is unavailable, restoring a Project uses List View.
 
 ## Tasks Pane
 

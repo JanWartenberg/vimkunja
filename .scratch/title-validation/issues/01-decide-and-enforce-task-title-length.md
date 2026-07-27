@@ -2,7 +2,7 @@
 
 **What to decide:** Define whether Vimkunja limits Task Titles and, if so, enforce a Vikunja-compatible limit without silently truncating user input.
 
-**Blocked by:** Product decision on the limit and compatibility behavior.
+**Implementation prerequisites:** Product decision on the limit and compatibility behavior.
 
 **Category:** enhancement
 

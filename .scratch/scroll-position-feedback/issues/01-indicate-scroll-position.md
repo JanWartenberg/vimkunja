@@ -2,7 +2,7 @@
 
 **What to build:** A Vimkunja user can tell that a Pane contains more content than fits on screen and can estimate their current position, without sacrificing keyboard-first operation.
 
-**Blocked by:** None — deliberately deferred until after the Fundament/MVP.
+**Implementation prerequisites:** None — deliberately deferred until after the Fundament/MVP.
 
 **Category:** enhancement
 

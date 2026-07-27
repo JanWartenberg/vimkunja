@@ -2,7 +2,7 @@
 
 **What to build:** A user can navigate to the Done field in the Task Detail Pane with `j`/`k` and toggle the selected Task's Done state with `x`.
 
-**Blocked by:** None — this supersedes the archived Fundament/MVP decision that Done is read-only outside the field focus graph.
+**Implementation prerequisites:** None — this supersedes the archived Fundament/MVP decision that Done is read-only outside the field focus graph.
 
 **Category:** enhancement
 

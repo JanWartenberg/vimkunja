@@ -2,7 +2,7 @@
 
 **What to build:** A selected Task title can be edited inline from List and future Kanban Views with Vim-like save and discard semantics.
 
-**Blocked by:** Kanban integration depends on the Kanban View; List behavior still needs a focused specification.
+**Implementation prerequisites:** Kanban integration depends on the Kanban View; List behavior still needs a focused specification.
 
 **Category:** enhancement
 

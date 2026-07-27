@@ -2,7 +2,7 @@
 
 **What to build:** Vimkunja's Ex command line can support dynamic commands such as `:goto <project>`, command history, and argument completion.
 
-**Blocked by:** Needs a command grammar and interaction spec.
+**Implementation prerequisites:** Needs a command grammar and interaction spec.
 
 **Category:** enhancement
 

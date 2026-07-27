@@ -2,7 +2,7 @@
 
 **What to build:** A user can undo a recent destructive or workflow-changing Task action through a Vim-like interaction.
 
-**Blocked by:** Needs an explicit undo boundary and persistence model.
+**Implementation prerequisites:** Needs an explicit undo boundary and persistence model.
 
 **Category:** enhancement
 

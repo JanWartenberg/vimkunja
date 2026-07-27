@@ -2,7 +2,7 @@
 
 **What to build:** A Vimkunja user can scan Task metadata in list and Detail Panes without raw timestamps, unclear priority conventions, or missing project identifiers.
 
-**Blocked by:** None — deliberately deferred until after the Fundament/MVP.
+**Implementation prerequisites:** None — deliberately deferred until after the Fundament/MVP.
 
 **Category:** enhancement
 

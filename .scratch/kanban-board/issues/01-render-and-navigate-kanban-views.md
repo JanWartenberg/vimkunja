@@ -2,7 +2,7 @@
 
 **What to build:** A Project's `view_kind=kanban` can render as a dynamic bucket board in the Tasks Pane, with keyboard navigation and Vikunja-compatible task moves.
 
-**Blocked by:** Needs a dedicated Kanban spec that reconciles the archived Decisions 12–17 with the current workflow-status abstraction.
+**Implementation prerequisites:** Needs a dedicated Kanban spec that reconciles the archived Decisions 12–17 with the current workflow-status abstraction.
 
 **Category:** enhancement
 

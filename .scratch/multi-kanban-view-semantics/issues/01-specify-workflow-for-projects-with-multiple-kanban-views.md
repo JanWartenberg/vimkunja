@@ -2,7 +2,7 @@
 
 **What to decide:** Define how Vimkunja handles a Project with multiple manual Kanban Views when showing or editing workflow status and rendering a board.
 
-**Blocked by:** Requires Kanban interaction decisions.
+**Implementation prerequisites:** Requires Kanban interaction decisions.
 
 **Category:** enhancement
 

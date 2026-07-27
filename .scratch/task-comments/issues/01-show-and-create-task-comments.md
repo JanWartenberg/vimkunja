@@ -2,7 +2,7 @@
 
 **What to build:** A Task Detail can show its Vikunja Comments and append a new Comment through a keyboard workflow.
 
-**Blocked by:** Needs schema compatibility research and interaction specification.
+**Implementation prerequisites:** Needs schema compatibility research and interaction specification.
 
 **Category:** enhancement
 

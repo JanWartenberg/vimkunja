@@ -2,7 +2,7 @@
 
 **What to build:** A Vim-like `/` search can find Projects, Tasks, and Labels, with follow-up navigation and an explicit filtering model.
 
-**Blocked by:** Needs grilling on result presentation, query scope, and local versus database-backed filtering.
+**Implementation prerequisites:** Needs grilling on result presentation, query scope, and local versus database-backed filtering.
 
 **Category:** enhancement
 

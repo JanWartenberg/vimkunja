@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vimkunja – Views-Achsen-Prototyp</title>
+  <style>
+    /*
+      THROWAWAY UI PROTOTYPE — open this file directly in a browser.
+      Question: Does the separation Scope (Overview / Project) and View
+      (List / Kanban) make navigation and the Space+a return toggle clear?
+      Variants: ?variant=A, ?variant=B, ?variant=C.
+    */
+    :root {
+      --bg: #111;
+      --surface: #181818;
+      --surface-2: #202020;
+      --line: #444;
+      --line-soft: #2d2d2d;
+      --text: #f0f0f0;
+      --muted: #a5a5a5;
+      --subtle: #737373;
+      --selected: #303030;
+      --red: #f06c6c;
+      --orange: #f0a65a;
+      --yellow: #e6d36d;
+      --prio-high: #ef7777;
+      --prio-medium: #e4cd70;
+      --mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 14px/1.45 var(--mono); }
+    button { color: inherit; font: inherit; }
+    button:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+    .app { min-height: 100vh; padding-bottom: 102px; }
+    .topbar { display: flex; align-items: center; gap: 15px; min-height: 54px; padding: 8px 18px; border-bottom: 1px solid var(--line); background: #0d0d0d; }
+    .brand { font-weight: 800; letter-spacing: .09em; white-space: nowrap; }
+    .prototype-tag { color: var(--muted); font-size: 11px; }
+    .topbar .prototype-tag { margin-left: auto; }
+    .layout { display: grid; gap: 10px; padding: 12px 18px 0; }
+    .pane { min-width: 0; border: 1px solid var(--line); background: var(--surface); }
+    .pane-title { display: flex; align-items: center; min-height: 36px; padding: 7px 10px; border-bottom: 1px solid var(--line); color: #ddd; font-weight: 700; }
+    .pane-title small { margin-left: auto; color: var(--muted); font-weight: 400; }
+    .key { display: inline-block; padding: 0 4px; border: 1px solid #666; border-radius: 3px; color: #eee; background: #101010; font-size: 11px; line-height: 18px; }
+    .muted { color: var(--muted); }
+    .hint { color: var(--subtle); font-size: 11px; }
+    .axis { display: grid; gap: 5px; padding: 10px; border-bottom: 1px solid var(--line-soft); }
+    .axis-label { color: var(--muted); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; }
+    .axis-options { display: flex; flex-wrap: wrap; gap: 5px; }
+    .option, .action { padding: 5px 8px; border: 1px solid #555; background: #151515; cursor: pointer; text-align: left; }
+    .option:hover, .action:hover { border-color: #aaa; background: #262626; }
+    .option.active { color: #fff; border-color: #d7d7d7; background: #353535; }
+    .option.disabled { color: #666; cursor: not-allowed; }
+    .task-row { display: grid; grid-template-columns: 18px minmax(120px, 1fr) auto auto auto; gap: 9px; align-items: baseline; width: 100%; padding: 9px 10px; border: 0; border-bottom: 1px solid var(--line-soft); background: transparent; text-align: left; cursor: pointer; }
+    .task-row:hover { background: #242424; }
+    .task-row.selected { background: var(--selected); box-shadow: inset 3px 0 #eee; }
+    .task-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .project { color: var(--muted); font-size: 11px; }
+    .priority { min-width: 20px; font-size: 11px; }
+    .p1 { color: var(--muted); } .p2 { color: var(--prio-medium); } .p3, .p4 { color: var(--prio-high); }
+    .due { min-width: 96px; color: var(--muted); font-size: 11px; text-align: right; }
+    .due.overdue { color: var(--red); } .due.today, .due.tomorrow { color: var(--orange); } .due.soon { color: var(--yellow); }
+    .done .task-title { color: #777; text-decoration: line-through; }
+    .list-head { display: grid; grid-template-columns: 18px minmax(120px, 1fr) auto auto auto; gap: 9px; padding: 6px 10px; color: var(--subtle); border-bottom: 1px solid var(--line); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+    .list-head span:last-child { text-align: right; }
+    .surface-heading { display: flex; gap: 10px; align-items: baseline; padding: 12px 10px 8px; }
+    .surface-heading strong { font-size: 16px; }
+    .surface-heading .muted { font-size: 11px; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: #151515; }
+    .filter { padding: 4px 7px; border: 1px solid #555; background: transparent; color: var(--muted); cursor: pointer; font-size: 11px; }
+    .filter.active { color: #fff; border-color: #bbb; }
+    .footer { padding: 8px 10px; color: var(--muted); background: #111; font-size: 11px; }
+    .projects { padding: 7px; }
+    .project-row { display: block; width: 100%; padding: 8px; border: 1px solid transparent; background: transparent; text-align: left; cursor: pointer; }
+    .project-row:hover { background: #252525; }
+    .project-row.active { border-color: #777; background: #2c2c2c; }
+    .project-row small { float: right; color: var(--subtle); }
+    .detail { padding: 13px; }
+    .detail h2 { margin: 5px 0 14px; font-size: 16px; line-height: 1.35; }
+    .detail dl { display: grid; grid-template-columns: 86px 1fr; gap: 7px; margin: 0; color: var(--muted); font-size: 12px; }
+    .detail dd { margin: 0; color: #e4e4e4; }
+    .detail p { color: #bbb; line-height: 1.6; }
+    .empty-detail { padding: 22px 12px; color: var(--muted); text-align: center; }
+    .kanban { display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 9px; padding: 10px; overflow-x: auto; }
+    .bucket { min-height: 270px; border: 1px solid #4b4b4b; background: #161616; }
+    .bucket h3 { margin: 0; padding: 8px; color: #d8d8d8; border-bottom: 1px solid #4b4b4b; font-size: 12px; }
+    .card { margin: 7px; padding: 8px; border: 1px solid #555; background: #242424; cursor: pointer; }
+    .card:hover { border-color: #aaa; }
+    .card small { display: block; margin-top: 5px; color: var(--muted); font-size: 10px; }
+    .state { padding: 10px; border-top: 1px solid var(--line); color: #bdbdbd; background: #101010; font-size: 11px; }
+    .state strong { color: white; }
+    .state-grid { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; margin-top: 8px; }
+    .state-grid span:nth-child(odd) { color: var(--subtle); }
+    .callout { margin: 10px; padding: 9px; border-left: 3px solid #999; background: #202020; color: #cfcfcf; font-size: 12px; }
+
+    /* A: A compact control strip makes the two axes explicit above the surface. */
+    .variant-a { grid-template-columns: minmax(0, 1fr) 300px; }
+    .variant-a .main { grid-column: 1; }
+    .variant-a .side { grid-column: 2; grid-row: 1; }
+    .axes-strip { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); }
+    .axes-strip .axis:first-child { border-right: 1px solid var(--line); }
+    .a-projects { margin: 10px; border: 1px solid var(--line); }
+
+    /* B: Scope becomes a left navigation rail; View remains a separate local choice. */
+    .variant-b { grid-template-columns: 236px minmax(0, 1fr) 292px; }
+    .scope-rail { padding: 9px; }
+    .scope-rail .axis { padding: 7px 0 13px; }
+    .scope-rail .axis-options { display: grid; }
+    .scope-rail .option { width: 100%; }
+    .view-tabs { display: flex; border-bottom: 1px solid var(--line); }
+    .view-tabs .option { border-width: 0 1px 0 0; }
+
+    /* C: A terminal-like layout puts current context and transition history first. */
+    .variant-c { grid-template-columns: minmax(0, 1fr); max-width: 1120px; margin: 0 auto; }
+    .context-line { display: flex; flex-wrap: wrap; gap: 7px 14px; padding: 10px; color: #ddd; border-bottom: 1px solid var(--line); background: #101010; }
+    .context-line b { color: white; }
+    .c-content { display: grid; grid-template-columns: minmax(0, 1fr) 286px; gap: 10px; padding: 10px; }
+    .command-row { display: grid; grid-template-columns: 92px 1fr; gap: 9px; padding: 8px 10px; color: var(--muted); border-top: 1px solid var(--line); background: #111; font-size: 11px; }
+    .diagram { margin: 10px; padding: 12px; border: 1px dashed #666; color: var(--muted); font-size: 12px; line-height: 1.8; }
+    .diagram strong { color: #fff; }
+
+    /* D: Existing Projects Pane stays left; View choice appears only for a Project scope. */
+    .variant-d { grid-template-columns: minmax(0, 1fr) 300px; }
+    .variant-d.with-projects { grid-template-columns: 220px minmax(0, 1fr) 300px; }
+    .variant-d .center-column { grid-column: 1; }
+    .variant-d .side { grid-column: 2; }
+    .variant-d.with-projects .projects-pane { grid-column: 1; }
+    .variant-d.with-projects .center-column { grid-column: 2; }
+    .variant-d.with-projects .side { grid-column: 3; }
+    .view-bar, .overview-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: #121212; }
+    .view-bar strong { margin-right: 4px; }
+    .view-picker { width: 100%; padding-top: 4px; color: var(--muted); font-size: 11px; }
+
+    /* This fixed switcher is prototype chrome, not a product proposal. */
+    .prototype-switcher { position: fixed; z-index: 3; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 7px; border: 1px solid #777; border-radius: 999px; background: #080808; box-shadow: 0 8px 28px #000c; }
+    .prototype-switcher button { width: 30px; height: 30px; border: 1px solid #666; border-radius: 50%; background: #232323; cursor: pointer; }
+    .prototype-switcher button:hover { background: #3a3a3a; }
+    #variant-label { min-width: 210px; text-align: center; font-size: 12px; }
+    .prototype-note { position: fixed; right: 14px; bottom: 22px; color: var(--subtle); font-size: 10px; }
+    @media (max-width: 900px) { .variant-a, .variant-b { grid-template-columns: minmax(0, 1fr) 260px; } .variant-b .scope-pane { display: none; } .variant-b .main { grid-column: 1; } .variant-b .side { grid-column: 2; } }
+    @media (max-width: 650px) { .topbar { padding: 8px 10px; } .prototype-tag { display: none; } .layout { padding: 8px; } .variant-a, .variant-b, .variant-d, .variant-d.with-projects, .c-content { grid-template-columns: 1fr; } .variant-a .side, .variant-b .side, .variant-d .side, .variant-d.with-projects .side { grid-column: 1; grid-row: auto; } .variant-d.with-projects .projects-pane, .variant-d.with-projects .center-column { grid-column: 1; } .side { display: none; } .axes-strip { grid-template-columns: 1fr; } .axes-strip .axis:first-child { border-right: 0; border-bottom: 1px solid var(--line); } .task-row, .list-head { grid-template-columns: 18px minmax(80px, 1fr) auto auto; } .task-row .project, .list-head .project { display: none; } .prototype-note { display: none; } }
+  </style>
+</head>
+<body>
+  <main class="app" id="app"></main>
+  <div class="prototype-switcher" aria-label="Prototype variants">
+    <button id="previous-variant" title="Vorherige Variante">←</button>
+    <span id="variant-label"></span>
+    <button id="next-variant" title="Nächste Variante">→</button>
+  </div>
+  <span class="prototype-note">THROWAWAY PROTOTYPE · nur In-Memory-State</span>
+
+  <script>
+    const projects = [
+      { id: 'vimkunja', name: 'Vimkunja', short: 'VIM' },
+      { id: 'home', name: 'Personal', short: 'HOME' },
+      { id: 'acme', name: 'Acme Client', short: 'ACME' },
+    ];
+    const tasks = [
+      { id: 1, title: 'Overview View spezifizieren', project: 'vimkunja', bucket: 'To Do', priority: 3, due: 'overdue', dueText: 'überfällig' },
+      { id: 2, title: 'Task-Löschung mit Bestätigung', project: 'vimkunja', bucket: 'Doing', priority: 2, due: 'today', dueText: 'heute' },
+      { id: 3, title: 'Kanban-Navigation festlegen', project: 'vimkunja', bucket: 'To Do', priority: 3, due: 'tomorrow', dueText: 'morgen' },
+      { id: 4, title: 'Zahnarzt anrufen', project: 'home', bucket: 'To Do', priority: 4, due: 'soon', dueText: 'in 4 Tagen' },
+      { id: 5, title: 'Angebot gegenlesen', project: 'acme', bucket: 'Review', priority: 2, due: 'neutral', dueText: 'in 12 Tagen' },
+      { id: 6, title: 'Stundenzettel senden', project: 'acme', bucket: 'Done', priority: 1, due: 'neutral', dueText: 'ohne Due Date', done: true },
+    ];
+    const variants = [
+      ['A', 'A — Achsen als Kopfzeile'],
+      ['B', 'B — Scope-Navigation links'],
+      ['C', 'C — Kontext zuerst'],
+      ['D', 'D — Projects links, Views oben'],
+    ];
+    const params = new URLSearchParams(location.search);
+    const state = {
+      variant: variants.some(([key]) => key === params.get('variant')) ? params.get('variant') : 'D',
+      scope: 'overview',
+      projectId: 'vimkunja',
+      view: 'list',
+      lastViewByProject: { vimkunja: 'list', home: 'list', acme: 'list' },
+      projectsVisible: false,
+      projectsOrigin: 'hidden', // hidden | manual | detail
+      detailTaskId: null,
+      selectedTaskId: 1,
+      filter: 'open',
+      viewPickerOpen: false,
+      returnContext: null,
+      lastAction: 'Prototype gestartet: Overview ist fokussiert.',
+    };
+
+    function project() { return projects.find(item => item.id === state.projectId); }
+    function task(id) { return tasks.find(item => item.id === id); }
+    function visibleTasks() {
+      return tasks.filter(item => (state.scope === 'overview' || item.project === state.projectId) && (state.filter === 'all' || !item.done));
+    }
+    function selectedTask() { return task(state.selectedTaskId) || visibleTasks()[0] || null; }
+    function selectFallback() { state.selectedTaskId = visibleTasks()[0]?.id ?? null; }
+    function openOverview(reason) {
+      if (state.scope !== 'overview') {
+        state.returnContext = { projectId: state.projectId, view: state.view, selectedTaskId: state.selectedTaskId };
+      }
+      state.scope = 'overview';
+      state.view = 'list';
+      state.detailTaskId = null;
+      state.projectsVisible = false;
+      state.projectsOrigin = 'hidden';
+      selectFallback();
+      state.lastAction = reason;
+    }
+    function toggleOverview() {
+      if (state.scope !== 'overview') {
+        openOverview('Space+a: Project-Kontext gemerkt und Overview geöffnet.');
+        return;
+      }
+      if (!state.returnContext) {
+        state.lastAction = 'Space+a: Kein vorheriger Project-Kontext zum Wiederherstellen.';
+        return;
+      }
+      const context = state.returnContext;
+      state.scope = 'project';
+      state.projectId = context.projectId;
+      state.view = context.view;
+      state.selectedTaskId = context.selectedTaskId;
+      state.detailTaskId = null;
+      state.projectsVisible = true;
+      state.projectsOrigin = 'manual';
+      state.lastAction = 'Space+a: Gemerkten Project-Kontext wiederhergestellt.';
+    }
+    function openProject(id) {
+      state.scope = 'project';
+      state.projectId = id;
+      state.view = state.lastViewByProject[id];
+      state.projectsVisible = true;
+      state.projectsOrigin = 'manual';
+      state.detailTaskId = null;
+      selectFallback();
+      state.lastAction = `Project geöffnet: ${project().name} · zuletzt genutzt: ${state.view === 'list' ? 'List View' : 'Kanban View'}.`;
+    }
+    function openTask(id) {
+      const item = task(id);
+      state.selectedTaskId = id;
+      state.detailTaskId = id;
+      if (state.scope === 'overview') {
+        state.projectId = item.project;
+        state.projectsVisible = true;
+        state.projectsOrigin = 'detail';
+        state.lastAction = `Task Detail geöffnet; Projects Pane zeigt ${project().name}.`;
+      } else {
+        state.lastAction = 'Task Detail geöffnet.';
+      }
+    }
+    function closeDetail() {
+      state.detailTaskId = null;
+      if (state.projectsOrigin === 'detail') {
+        state.projectsVisible = false;
+        state.projectsOrigin = 'hidden';
+        state.lastAction = 'Detail geschlossen; automatisch eingeblendete Projects Pane verborgen.';
+      } else {
+        state.lastAction = 'Detail geschlossen.';
+      }
+    }
+    function toggleProjects() {
+      state.projectsVisible = !state.projectsVisible;
+      state.projectsOrigin = state.projectsVisible ? 'manual' : 'hidden';
+      state.lastAction = state.projectsVisible ? 'Space+o: Projects Pane eingeblendet.' : 'Space+o: Projects Pane verborgen.';
+    }
+    function setView(view) {
+      if (state.scope === 'overview' && view === 'kanban') {
+        state.lastAction = 'Kanban ist eine Project View: zuerst ein Project öffnen.';
+        return;
+      }
+      state.view = view;
+      state.lastViewByProject[state.projectId] = view;
+      state.viewPickerOpen = false;
+      state.detailTaskId = null;
+      state.lastAction = `View gewechselt: ${view === 'list' ? 'List' : 'Kanban'}.`;
+    }
+    function setFilter(filter) {
+      state.filter = filter;
+      selectFallback();
+      state.lastAction = `Filter: ${filter === 'open' ? 'offene Tasks' : 'alle Tasks'}.`;
+    }
+    function taskRow(item) {
+      const p = projects.find(entry => entry.id === item.project);
+      const selected = item.id === state.selectedTaskId ? ' selected' : '';
+      return `<button class="task-row${selected}${item.done ? ' done' : ''}" data-task="${item.id}">
+        <span>${item.done ? '[x]' : '[ ]'}</span><span class="task-title">${item.title}</span>
+        <span class="project">${p.short}</span><span class="priority p${item.priority}">P${item.priority}</span>
+        <span class="due ${item.due}">${item.dueText}</span>
+      </button>`;
+    }
+    function listSurface() {
+      const rows = visibleTasks();
+      const scopeName = state.scope === 'overview' ? 'Overview' : project().name;
+      return `<section class="pane main-surface">
+        <div class="surface-heading"><strong>${scopeName} · List View</strong><span class="muted">${rows.length} Tasks · Due → Priority → Project</span></div>
+        <div class="toolbar"><span class="hint">FILTER</span><button class="filter ${state.filter === 'open' ? 'active' : ''}" data-filter="open">o offen</button><button class="filter ${state.filter === 'all' ? 'active' : ''}" data-filter="all">a alle</button><span class="hint">· s Sort · f Filter (im späteren TUI)</span></div>
+        <div class="list-head"><span></span><span>Task</span><span class="project">Project</span><span>Prio</span><span>Due</span></div>
+        ${rows.map(taskRow).join('') || '<div class="empty-detail">Keine Tasks für diesen Filter.</div>'}
+        <div class="footer"><span class="key">Enter</span> Detail · <span class="key">o</span> neue Task → Project Picker · <span class="key">-</span> Overview</div>
+      </section>`;
+    }
+    function kanbanSurface() {
+      const buckets = ['To Do', 'Doing', 'Review', 'Done'];
+      return `<section class="pane main-surface"><div class="surface-heading"><strong>${project().name} · Kanban View</strong><span class="muted">Project-spezifisch</span></div>
+        <div class="kanban">${buckets.map(bucket => `<section class="bucket"><h3>${bucket}</h3>${visibleTasks().filter(item => item.bucket === bucket).map(item => `<button class="card" data-task="${item.id}">${item.title}<small>P${item.priority} · ${item.dueText}</small></button>`).join('')}</section>`).join('')}</div>
+        <div class="footer"><span class="key">h/j/k/l</span> Board-Navigation (später) · <span class="key">-</span> Overview</div>
+      </section>`;
+    }
+    function projectsPane() {
+      if (!state.projectsVisible) return '';
+      return `<aside class="pane projects-pane"><div class="pane-title">Projects Pane <small>Space+o</small></div><div class="projects">${projects.map(item => `<button class="project-row ${item.id === state.projectId ? 'active' : ''}" data-project="${item.id}">${item.name}<small>${item.short}</small></button>`).join('')}</div><div class="footer">Enter → zuletzt genutzte Project View</div></aside>`;
+    }
+    function detailPane() {
+      const item = task(state.detailTaskId);
+      if (!item) return `<aside class="pane side"><div class="pane-title">Task Detail Pane <small>Enter</small></div><div class="empty-detail">Detail bleibt verborgen,<br>bis eine Task explizit geöffnet wird.</div></aside>`;
+      const p = projects.find(entry => entry.id === item.project);
+      return `<aside class="pane side"><div class="pane-title">Task Detail Pane <small>Esc</small></div><div class="detail"><div class="hint">#${item.id} · ${p.name}</div><h2>${item.title}</h2><dl><dt>Project</dt><dd>${p.name}</dd><dt>View-Kontext</dt><dd>${state.scope === 'overview' ? 'Overview' : project().name + ' · ' + state.view}</dd><dt>Priority</dt><dd class="p${item.priority}">P${item.priority}</dd><dt>Due Date</dt><dd class="due ${item.due}" style="text-align:left">${item.dueText}</dd></dl><p>Detail ist ein unabhängiger UI-Zustand. Aus der Overview blendet es die zugehörige Projects Pane temporär ein.</p></div><div class="footer"><span class="key">Esc</span> Detail schließen</div></aside>`;
+    }
+    function axes(horizontal = false) {
+      return `<div class="${horizontal ? 'axes-strip' : ''}">
+        <div class="axis"><span class="axis-label">Achse 1 · Scope</span><div class="axis-options"><button class="option ${state.scope === 'overview' ? 'active' : ''}" data-overview>Overview · alle Tasks</button><button class="option ${state.scope === 'project' ? 'active' : ''}" data-project="${state.projectId}">Project · ${project().name}</button></div></div>
+        <div class="axis"><span class="axis-label">Achse 2 · View</span><div class="axis-options"><button class="option ${state.view === 'list' ? 'active' : ''}" data-view="list">List</button><button class="option ${state.view === 'kanban' ? 'active' : ''} ${state.scope === 'overview' ? 'disabled' : ''}" data-view="kanban">Kanban</button><span class="hint">Table/Gantt später</span></div></div>
+      </div>`;
+    }
+    function statePanel() {
+      const returnLabel = state.returnContext ? `${projects.find(item => item.id === state.returnContext.projectId).name} · ${state.returnContext.view}` : '—';
+      return `<section class="pane state-panel"><div class="pane-title">Live state <small>nach jeder Aktion</small></div><div class="state"><strong>${state.lastAction}</strong><div class="state-grid"><span>scope</span><span>${state.scope}</span><span>project</span><span>${project().name}</span><span>view</span><span>${state.view}</span><span>detail</span><span>${state.detailTaskId ?? 'geschlossen'}</span><span>projects pane</span><span>${state.projectsVisible ? `sichtbar (${state.projectsOrigin})` : 'verborgen'}</span><span>return context</span><span>${returnLabel}</span></div></div></section>`;
+    }
+    function header(question) { return `<header class="topbar"><span class="brand">VIMKUNJA</span><span class="prototype-tag">${question}</span><span class="prototype-tag">synthetische Daten · keine Persistenz</span></header>`; }
+    function variantA() {
+      return header('A: Die beiden Achsen liegen kompakt über der Arbeitssurface.') + `<section class="layout variant-a"><section class="pane main">${axes(true)}${state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"')}${projectsPane() ? `<div class="a-projects">${projectsPane().replace('class="pane projects-pane"', 'class="projects-pane"')}</div>` : ''}</section><aside class="side">${detailPane().replace('class="pane side"', '')}${statePanel()}</aside></section>`;
+    }
+    function variantB() {
+      return header('B: Scope ist eine Navigation; View ist eine separate lokale Wahl.') + `<section class="layout variant-b"><aside class="pane scope-pane"><div class="pane-title">Task-Kontext</div><div class="scope-rail">${axes(false)}<div class="callout"><span class="key">Space+a</span> wechselt Overview ↔ gemerkter Project-Kontext.<br><br><span class="key">-</span> geht immer nur zur Overview.</div></div>${projectsPane() ? projectsPane().replace('class="pane projects-pane"', 'class="projects-pane"') : '<div class="footer">Space+o zeigt Projects</div>'}</aside><section class="pane main">${state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"')}</section><aside class="side">${detailPane().replace('class="pane side"', '')}${statePanel()}</aside></section>`;
+    }
+    function variantC() {
+      const current = state.scope === 'overview' ? 'Overview · alle Projects' : `Project · ${project().name}`;
+      return header('C: Der aktuelle Kontext und seine Übergänge stehen vor dem Layout.') + `<section class="layout variant-c"><section class="pane"><div class="context-line"><span>SCOPE <b>${current}</b></span><span>VIEW <b>${state.view}</b></span><span>DETAIL <b>${state.detailTaskId ? 'offen' : 'geschlossen'}</b></span><span>PROJECTS <b>${state.projectsVisible ? 'sichtbar' : 'verborgen'}</b></span></div>${axes(true)}<section class="c-content"><div>${state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"')}${projectsPane() ? projectsPane() : ''}</div><div>${detailPane().replace('class="pane side"', '')}${statePanel()}<div class="diagram"><strong>Scope</strong><br>Overview ⇄ Project<br><br><strong>View</strong><br>List | Kanban<br><br><span class="hint">Overview ist Scope, nicht die Schwester von Kanban.</span></div></div></section><div class="command-row"><span>Transition</span><span><span class="key">Space+a</span> Toggle zum gemerkten Project-Kontext · <span class="key">-</span> Overview · <span class="key">Space+o</span> Projects · <span class="key">Esc</span> Detail schließen</span></div></section></section>`;
+    }
+    function projectViewBar() {
+      if (state.scope === 'overview') return `<div class="overview-bar"><strong>Overview</strong><span class="muted">alle Tasks · keine Project View ausgewählt</span><span class="hint"><span class="key">Space+a</span> zurück zum Project-Kontext · <span class="key">Space+o</span> Projects</span></div>`;
+      return `<div class="view-bar"><strong>${project().name}</strong><span class="hint">VIEWS</span><button class="option ${state.view === 'list' ? 'active' : ''}" data-view="list">List</button><button class="option ${state.view === 'kanban' ? 'active' : ''}" data-view="kanban">Kanban</button><button class="option disabled" disabled>Table</button><button class="option disabled" disabled>Gantt</button><span class="hint"><span class="key">Space+v</span>, dann <span class="key">l</span> / <span class="key">k</span></span>${state.viewPickerOpen ? '<div class="view-picker">VIEW PICKER: [l] List · [k] Kanban · [Esc] abbrechen</div>' : ''}</div>`;
+    }
+    function variantD() {
+      const surface = state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"');
+      const projects = state.projectsVisible ? projectsPane() : '';
+      return header('D: Bestehende Projects Pane links; View-Leiste nur innerhalb eines Projects.') + `<section class="layout variant-d ${state.projectsVisible ? 'with-projects' : 'projects-hidden'}">${projects}<section class="pane center-column">${projectViewBar()}${surface}</section><aside class="side">${detailPane().replace('class="pane side"', '')}${statePanel()}</aside></section>`;
+    }
+    function render() {
+      const content = state.variant === 'A' ? variantA() : state.variant === 'B' ? variantB() : state.variant === 'C' ? variantC() : variantD();
+      document.getElementById('app').innerHTML = content;
+      document.getElementById('variant-label').textContent = variants.find(([key]) => key === state.variant)[1];
+      document.querySelectorAll('[data-task]').forEach(button => button.addEventListener('click', () => { openTask(Number(button.dataset.task)); render(); }));
+      document.querySelectorAll('[data-project]').forEach(button => button.addEventListener('click', () => { openProject(button.dataset.project); render(); }));
+      document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => { setView(button.dataset.view); render(); }));
+      document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { setFilter(button.dataset.filter); render(); }));
+      document.querySelectorAll('[data-overview]').forEach(button => button.addEventListener('click', () => { openOverview('Overview direkt geöffnet.'); render(); }));
+    }
+    function cycleVariant(direction) {
+      const index = variants.findIndex(([key]) => key === state.variant);
+      state.variant = variants[(index + direction + variants.length) % variants.length][0];
+      const next = new URLSearchParams(location.search); next.set('variant', state.variant);
+      history.replaceState(null, '', `${location.pathname}?${next}`);
+      render();
+    }
+    document.getElementById('previous-variant').addEventListener('click', () => cycleVariant(-1));
+    document.getElementById('next-variant').addEventListener('click', () => cycleVariant(1));
+    let leaderArmed = false;
+    document.addEventListener('keydown', event => {
+      if (event.key === 'ArrowLeft') { event.preventDefault(); cycleVariant(-1); return; }
+      if (event.key === 'ArrowRight') { event.preventDefault(); cycleVariant(1); return; }
+      if (event.key === 'Escape') {
+        leaderArmed = false;
+        if (state.viewPickerOpen) { state.viewPickerOpen = false; state.lastAction = 'View Picker geschlossen.'; render(); return; }
+        closeDetail(); render(); return;
+      }
+      if (state.viewPickerOpen) {
+        if (event.key.toLowerCase() === 'l') { setView('list'); render(); return; }
+        if (event.key.toLowerCase() === 'k') { setView('kanban'); render(); return; }
+        state.viewPickerOpen = false;
+      }
+      if (event.key === '-' && !event.repeat) { event.preventDefault(); openOverview('-: Overview geöffnet; kein Toggle.'); render(); return; }
+      if (leaderArmed) {
+        leaderArmed = false;
+        if (event.key.toLowerCase() === 'a') { event.preventDefault(); toggleOverview(); render(); return; }
+        if (event.key.toLowerCase() === 'o') { event.preventDefault(); toggleProjects(); render(); return; }
+        if (event.key.toLowerCase() === 'v') {
+          event.preventDefault();
+          if (state.scope === 'overview') { state.lastAction = 'View Picker ist nur innerhalb eines Projects verfügbar.'; render(); return; }
+          state.viewPickerOpen = true;
+          state.lastAction = 'View Picker geöffnet: l für List, k für Kanban.';
+          render();
+          return;
+        }
+      }
+      if (event.code === 'Space') {
+        event.preventDefault();
+        leaderArmed = true;
+        state.lastAction = 'Leader wartet auf a (Overview) oder o (Projects Pane).';
+        render();
+      }
+    });
+    render();
+  </script>
+</body>
+</html>

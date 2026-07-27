@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**Stand:** 2026-07-22 | **Branch:** main | **Fundament/MVP:** abgeschlossen und manuell verifiziert
+**Stand:** 2026-07-27 | **Branch:** main | **Fundament/MVP:** abgeschlossen und manuell verifiziert
 
 ## Aktueller Stand
 

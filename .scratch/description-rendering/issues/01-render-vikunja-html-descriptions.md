@@ -2,7 +2,7 @@
 
 **What to build:** A Vimkunja user can read a Task Description created in Vikunja's rich-text editor without seeing raw HTML tags, while preserving as much useful structure as the chosen rendering strategy supports.
 
-**Blocked by:** None — deliberately deferred until after the Fundament/MVP.
+**Implementation prerequisites:** None — deliberately deferred until after the Fundament/MVP.
 
 **Category:** enhancement
 

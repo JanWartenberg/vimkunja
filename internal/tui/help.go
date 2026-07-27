@@ -1,7 +1,7 @@
 package tui
 
-// helpLines documents only bindings that are available in the current build.
-// It deliberately keeps planned features out so the pane remains trustworthy.
+// helpLines documents implemented bindings and an explicitly marked agreed
+// View-navigation section. Planned entries must state that they are unavailable.
 var helpLines = []string{
 	"Vimkunja help",
 	"",
@@ -46,6 +46,15 @@ var helpLines = []string{
 	"  :q / :quit            Close current pane or quit",
 	"  :qa / :quitall        Quit Vimkunja",
 	"  :qa! / :quitall!      Quit and discard unsaved editor changes",
+	"",
+	"AGREED VIEW NAVIGATION (NOT YET IMPLEMENTED)",
+	"  -                     Open Overview (never toggles)",
+	"  Space+a               Toggle Overview / remembered Project context",
+	"  Space+v, then l / k   Select List / Kanban View",
+	"  Space+v, then t / g   Select Table / Gantt View (deferred)",
+	"  :overview             Open Overview",
+	"  :list / :kanban       Select Project List / Kanban View",
+	"  :table / :gantt       Select deferred Table / Gantt View",
 	"",
 	"HELP PANE",
 	"  j/k, arrows, Ctrl+D/U, PgUp/PgDn, gg/G  Scroll help",

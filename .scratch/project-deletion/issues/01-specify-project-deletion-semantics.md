@@ -2,7 +2,7 @@
 
 **What to decide:** Define whether and how Vimkunja may delete a Project, including the fate of its contained Tasks.
 
-**Blocked by:** Requires a product decision before implementation.
+**Implementation prerequisites:** Requires a product decision before implementation.
 
 **Category:** enhancement
 
