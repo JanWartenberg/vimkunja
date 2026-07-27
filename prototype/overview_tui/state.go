@@ -117,8 +117,6 @@ func sortTasks(items []prototypeTask, mode sortMode) {
 		left, right := items[i], items[j]
 		switch mode {
 		case sortDueDesc:
-			// The requested default: dated Tasks come first, newest/farthest Due
-			// Date first; undated Tasks are then ordered by priority.
 			if left.Due.IsZero() != right.Due.IsZero() {
 				return !left.Due.IsZero()
 			}
@@ -127,6 +125,8 @@ func sortTasks(items []prototypeTask, mode sortMode) {
 			}
 			return priorityThenTitle(left, right)
 		case sortDueAsc:
+			// Default: dated Tasks closest to today come first; undated Tasks are
+			// then ordered by priority.
 			if left.Due.IsZero() != right.Due.IsZero() {
 				return !left.Due.IsZero()
 			}

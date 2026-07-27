@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/vimkunja/vimkunja/internal/vimkunja"
 
@@ -93,7 +94,11 @@ func renderProjects(m *model, textW, textH int) string {
 }
 
 func renderTasks(m *model, textW, textH int) string {
-	header := lipgloss.NewStyle().Bold(true).Render(" Tasks (list) ")
+	headerText := " Tasks (list) "
+	if m.inOverview() {
+		headerText = fmt.Sprintf(" Overview · %s · %s ", m.overviewSortLabel(), m.overviewFilterLabel())
+	}
+	header := lipgloss.NewStyle().Bold(true).Render(headerText)
 	focus := m.focus == paneTasks
 
 	lines := []string{header}
@@ -117,6 +122,16 @@ func renderTasks(m *model, textW, textH int) string {
 		if due == "" {
 			due = "-"
 		}
+		project := ""
+		if m.inOverview() {
+			project = t.ProjectIdentifier
+			if project == "" {
+				project = t.ProjectTitle
+			}
+			if project == "" {
+				project = fmt.Sprintf("%d", t.ProjectID)
+			}
+		}
 		prioStr := fmt.Sprintf("P%d", t.Priority)
 		// Priority segment: colored only when not done. Rendered once from a
 		// PLAIN string (never nested inside another Render, which corrupts
@@ -137,8 +152,8 @@ func renderTasks(m *model, textW, textH int) string {
 		fixedW := lipgloss.Width(done) + 1 +
 			lipgloss.Width(prioStr) + 1 +
 			lipgloss.Width(idx) + 2 +
-			2 +
-			lipgloss.Width(due)
+			lipgloss.Width(project) + 2 +
+			2 + lipgloss.Width(due)
 		avail := textW - fixedW
 		title := truncatePlain(t.Title, avail)
 
@@ -170,11 +185,40 @@ func renderTasks(m *model, textW, textH int) string {
 			return s
 		}
 
-		line := rend(done) + " " + prioSeg + " " + rend(idx) + "  " + rend(title) + "  " + rend(due)
+		dueSeg := due
+		if !t.Done {
+			dueSeg = duePresentation(t, due)
+		}
+		projectSeg := ""
+		if project != "" {
+			projectSeg = project + "  "
+		}
+		line := rend(done) + " " + prioSeg + " " + rend(idx) + "  " + projectSeg + rend(title) + "  " + dueSeg
 		lines = append(lines, line)
 	}
 
 	return fitBlock(lines, textW, textH)
+}
+
+func duePresentation(task vimkunja.Task, value string) string {
+	due, ok := overviewDueDate(task)
+	if !ok {
+		return value
+	}
+	today := time.Now().Local().Truncate(24 * time.Hour)
+	color := ""
+	switch {
+	case due.Before(today):
+		color = "196" // overdue: red
+	case due.Equal(today) || due.Equal(today.AddDate(0, 0, 1)):
+		color = "208" // today/tomorrow: orange
+	case due.Before(today.AddDate(0, 0, 8)):
+		color = "220" // 2-7 days: yellow
+	}
+	if color == "" {
+		return value
+	}
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(value)
 }
 
 type infoPane struct {

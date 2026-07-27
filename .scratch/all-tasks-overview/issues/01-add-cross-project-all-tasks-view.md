@@ -37,7 +37,7 @@ It tests these deliberately provisional decisions:
 
 - Overview Pane and the project-specific Tasks Pane are peers in the same right-hand Pane slot; `-` opens Overview, while `Enter` on a Project opens that Project's Tasks Pane.
 - The Task Detail Pane is hidden until `Enter` explicitly opens the selected Task; `Esc` closes it.
-- Default ordering is Due Date descending; Tasks without a Due Date follow and are ordered by Priority descending.
+- Default ordering is Due Date ascending (nearest date first); Tasks without a Due Date follow and are ordered by Priority descending.
 - A netrw-inspired second step is available for evaluation: `s` opens a sort picker (`d` Due ↓, `u` Due ↑, `p` Priority ↓, `t` Title) and `f` opens a filter picker (`o` open, `a` all, `v` overdue, `t` due today).
 
 **Next session:** maintainer evaluates the interaction and records feedback here before the Overview specification or implementation begins.

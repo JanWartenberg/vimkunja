@@ -133,7 +133,12 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if s == "esc" { // A detail pane is a pane, not a modal.
+	if s == "esc" {
+		if e.dirty() {
+			m.recordError(errUnsavedNavigation)
+			return m, nil
+		}
+		m.closeTaskDetail()
 		return m, nil
 	}
 	if e.field == fieldDescription && (s == "I" || s == "A") {

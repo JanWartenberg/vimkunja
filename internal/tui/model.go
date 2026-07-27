@@ -48,14 +48,16 @@ type model struct {
 	width  int
 	height int
 
-	focus                 paneID
-	ctrlWArmed            bool
-	ctrlWTimeout          time.Duration
-	leaderArmed           bool
-	projectsPaneCollapsed bool
-	leaderTimeout         time.Duration
-	gArmed                bool
-	neighbors             map[paneID]paneNeighbors
+	focus                    paneID
+	ctrlWArmed               bool
+	ctrlWTimeout             time.Duration
+	leaderArmed              bool
+	projectsPaneCollapsed    bool
+	projectsPaneAutoShown    bool
+	lastProjectPaneCollapsed bool
+	leaderTimeout            time.Duration
+	gArmed                   bool
+	neighbors                map[paneID]paneNeighbors
 
 	lastErr string
 	toast   string
@@ -76,9 +78,14 @@ type model struct {
 	currentViewID int64
 
 	// Tasks pane
-	tasks        []vimkunja.Task
-	taskSelected int
-	taskLoading  bool
+	tasks          []vimkunja.Task
+	taskSelected   int
+	taskLoading    bool
+	taskScope      taskScope
+	overviewTasks  []vimkunja.Task
+	overviewFilter overviewFilter
+	overviewSort   overviewSort
+	overviewPrompt overviewPrompt
 
 	// Detail and auxiliary panes
 	showDetail bool
@@ -242,8 +249,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.leaderArmed {
 			m.leaderArmed = false
-			if k == "o" {
+			switch k {
+			case "o":
 				m.toggleProjectsPane()
+			case "a":
+				if m.inOverview() {
+					return m, m.restoreProjectScope()
+				}
+				return m, m.openOverview()
 			}
 			return m, nil
 		}
@@ -362,6 +375,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.currentViewID = m.projectViews[m.viewSelected].ID
+		if m.inOverview() {
+			return m, nil
+		}
 
 		m.taskLoading = true
 		return m, m.loadTasks(m.currentProjectID, m.currentViewID)
@@ -406,19 +422,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if quitAfterSave {
 			return m, tea.Quit
 		}
+		wasOverview := m.inOverview()
 		m.pendingTaskID = typed.task.ID
 		if typed.closeAfter {
-			m.editor = nil
+			m.closeTaskDetail()
 		} else if m.editor != nil {
 			m.editor.id = typed.task.ID
 			m.editor.draft.ID = typed.task.ID
 			m.editor.original = m.editor.draft
 			m.editor.mode = editorNormal
-		}
-		m.showDetail = !typed.closeAfter
-		m.focus = paneDetail
-		if typed.closeAfter {
-			m.focus = paneTasks
+			m.showDetail = true
+			m.focus = paneDetail
 		}
 		if idx := m.findProjectIndex(typed.task.ProjectID); idx >= 0 {
 			m.projectSelected = idx
@@ -426,6 +440,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.currentProjectID = typed.task.ProjectID
 		m.currentViewID = 0
 		m.viewLoading = true
+		if wasOverview {
+			return m, tea.Batch(m.loadViews(typed.task.ProjectID), m.refreshActiveTasks())
+		}
 		return m, m.loadViews(typed.task.ProjectID)
 
 	case taskToggledMsg:
@@ -434,13 +451,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
-		if m.currentProjectID == 0 || m.currentViewID == 0 {
-			m.taskLoading = false
+		return m, m.refreshActiveTasks()
+
+	case overviewTasksLoadedMsg:
+		if !m.inOverview() {
 			return m, nil
 		}
-		return m, m.loadTasks(m.currentProjectID, m.currentViewID)
+		m.taskLoading = false
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		m.setOverviewTasks(typed.tasks)
+		return m, nil
 
 	case tasksLoadedMsg:
+		if m.inOverview() {
+			return m, nil
+		}
 		m.taskLoading = false
 		if typed.err != nil {
 			m.recordError(typed.err)
@@ -518,6 +546,7 @@ func (m *model) leaderEligible() bool {
 
 func (m *model) toggleProjectsPane() {
 	m.projectsPaneCollapsed = !m.projectsPaneCollapsed
+	m.projectsPaneAutoShown = false
 	if m.projectsPaneCollapsed && m.focus == paneProjects {
 		m.focus = paneTasks
 	}
@@ -611,8 +640,12 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q":
 		return m, tea.Quit
 	case "enter":
-		// Confirm current project selection and jump to the tasks pane.
+		// Confirm current Project and replace Overview with its Tasks Pane.
 		m.focus = paneTasks
+		if m.inOverview() {
+			m.taskScope = scopeProject
+			return m, m.onProjectSelectionChanged()
+		}
 		return m, nil
 	case "o":
 		m.openNewEditor()
@@ -649,6 +682,9 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	s := normalizeArrow(k.String())
+	if m.inOverview() && m.updateOverviewPrompt(s) {
+		return m, nil
+	}
 
 	// `gg` prefix: first g arms, second g jumps to top.
 	if m.gArmed {
@@ -666,18 +702,40 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
 			task := m.tasks[m.taskSelected]
+			if m.inOverview() {
+				if idx := m.findProjectIndex(task.ProjectID); idx >= 0 {
+					m.projectSelected = idx
+				}
+				m.projectsPaneCollapsed = false
+				m.projectsPaneAutoShown = true
+			}
 			m.openExistingEditor(task)
 			return m, m.loadWorkflowStatus(task.ProjectID, task.ID)
 		}
 		return m, nil
 	case "o":
-		m.openNewEditor()
+		if m.inOverview() {
+			m.openOverviewNewEditor()
+		} else {
+			m.openNewEditor()
+		}
 		return m, nil
 	case "r":
 		m.lastErr = ""
-		if m.currentProjectID != 0 && m.currentViewID != 0 {
-			m.taskLoading = true
-			return m, m.loadTasks(m.currentProjectID, m.currentViewID)
+		return m, m.refreshActiveTasks()
+	case "-":
+		if !m.inOverview() {
+			return m, m.openOverview()
+		}
+		return m, nil
+	case "s":
+		if m.inOverview() {
+			m.overviewPrompt = overviewPromptSort
+		}
+		return m, nil
+	case "f":
+		if m.inOverview() {
+			m.overviewPrompt = overviewPromptFilter
 		}
 		return m, nil
 	case "g":
@@ -765,7 +823,7 @@ func (m *model) updateInfoPaneScrollKeys(pane *infoPane, k tea.KeyMsg) (tea.Mode
 }
 
 func (m *model) onProjectSelectionChanged() tea.Cmd {
-	if len(m.projects) == 0 {
+	if len(m.projects) == 0 || m.inOverview() {
 		return nil
 	}
 	m.currentProjectID = m.projects[m.projectSelected].ID
@@ -996,6 +1054,9 @@ func (m *model) renderStatusBar(w int) string {
 	}
 
 	hint := "Ctrl+W cycles  •  Enter detail  •  q quit  •  r refresh  •  j/k navigate  •  x toggle"
+	if m.focus == paneTasks && m.inOverview() {
+		hint = "Enter detail  •  o new task  •  s sort  •  f filter  •  - Overview  •  Space+a return"
+	}
 	if (m.focus == paneProjects || m.focus == paneTasks) && w >= 100 {
 		hint += "  •  o new task"
 	}
@@ -1028,7 +1089,13 @@ func (m *model) renderStatusBar(w int) string {
 		hint = fmt.Sprintf(":%s_", m.commandInput)
 	}
 	if m.leaderArmed {
-		hint = "[LEADER] o toggle projects pane"
+		hint = "[LEADER] a Overview/return  •  o toggle projects pane"
+	}
+	if m.overviewPrompt == overviewPromptSort {
+		hint = "SORT  d Due ↓  •  u Due ↑  •  p Priority ↓  •  t Title  •  Esc cancel"
+	}
+	if m.overviewPrompt == overviewPromptFilter {
+		hint = "FILTER  o open  •  a all  •  v overdue  •  t due today  •  Esc cancel"
 	}
 	if m.ctrlWArmed {
 		ctrlWHint := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("227")).Render("Ctrl-W")

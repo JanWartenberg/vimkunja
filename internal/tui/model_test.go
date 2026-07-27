@@ -14,15 +14,17 @@ import (
 )
 
 type fakeStore struct {
-	toggleErr         error
-	toggleTaskID      int64
-	toggleDone        bool
-	workflowStatus    vimkunja.WorkflowStatus
-	workflowStatusErr error
-	updateErr         error
-	listTasksCalls    int
-	createdDraft      vimkunja.TaskDraft
-	updatedDraft      vimkunja.TaskDraft
+	toggleErr          error
+	toggleTaskID       int64
+	toggleDone         bool
+	workflowStatus     vimkunja.WorkflowStatus
+	workflowStatusErr  error
+	updateErr          error
+	listTasksCalls     int
+	overviewTasks      []vimkunja.Task
+	overviewTasksCalls int
+	createdDraft       vimkunja.TaskDraft
+	updatedDraft       vimkunja.TaskDraft
 }
 
 func (f *fakeStore) ListProjects(context.Context, int, int) ([]vimkunja.Project, int, error) {
@@ -36,6 +38,11 @@ func (f *fakeStore) ListViews(context.Context, int64, int, int) ([]vimkunja.Proj
 func (f *fakeStore) ListTasksInView(context.Context, int64, int64, int, int) ([]vimkunja.Task, int, error) {
 	f.listTasksCalls++
 	return nil, 0, nil
+}
+
+func (f *fakeStore) ListOverviewTasks(context.Context, int, int) ([]vimkunja.Task, int, error) {
+	f.overviewTasksCalls++
+	return f.overviewTasks, 0, nil
 }
 
 func (f *fakeStore) GetTaskWorkflowStatus(context.Context, int64, int64) (vimkunja.WorkflowStatus, error) {
@@ -90,6 +97,82 @@ func typeCommand(t *testing.T, m *model, input string) (*model, tea.Cmd) {
 	}
 	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
 	return updated.(*model), cmd
+}
+
+func TestOverviewOpensWithOpenTasksAndHidesProjects(t *testing.T) {
+	store := &fakeStore{overviewTasks: []vimkunja.Task{
+		{ID: 1, ProjectID: 1, ProjectIdentifier: "VIM", Title: "Open", DueDate: "2026-07-26"},
+		{ID: 2, ProjectID: 2, ProjectIdentifier: "HOME", Title: "Done", Done: true},
+	}}
+	m := testModel()
+	m.store = store
+	m.focus = paneTasks
+	m.currentProjectID = 1
+	m.currentViewID = 10
+	m.projectsPaneCollapsed = false
+
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: '-', Text: "-"}))
+	m = updated.(*model)
+	if !m.inOverview() || !m.projectsPaneCollapsed || cmd == nil {
+		t.Fatalf("overview state = scope:%v collapsed:%v cmd:%v", m.taskScope, m.projectsPaneCollapsed, cmd != nil)
+	}
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if store.overviewTasksCalls != 1 || len(m.tasks) != 1 || m.tasks[0].Title != "Open" {
+		t.Fatalf("overview tasks = %#v, calls:%d; want only open task", m.tasks, store.overviewTasksCalls)
+	}
+}
+
+func TestOverviewFilterAndSortPicker(t *testing.T) {
+	m := testModel()
+	m.taskScope = scopeOverview
+	m.overviewTasks = []vimkunja.Task{
+		{ID: 1, Title: "Zulu", Priority: 1},
+		{ID: 2, Title: "Alpha", Priority: 3},
+	}
+	m.applyOverview()
+	m.focus = paneTasks
+
+	m = pressKey(m, tea.Key{Code: 's', Text: "s"})
+	m = pressKey(m, tea.Key{Code: 't', Text: "t"})
+	if m.overviewSort != overviewTitle || m.tasks[0].Title != "Alpha" {
+		t.Fatalf("sort = %v tasks=%#v, want title order", m.overviewSort, m.tasks)
+	}
+	m = pressKey(m, tea.Key{Code: 'f', Text: "f"})
+	m = pressKey(m, tea.Key{Code: 'a', Text: "a"})
+	if m.overviewFilter != overviewAll {
+		t.Fatalf("filter = %v, want all", m.overviewFilter)
+	}
+}
+
+func TestOverviewNewTaskStartsWithProjectPicker(t *testing.T) {
+	m := testModel()
+	m.taskScope = scopeOverview
+	m.focus = paneTasks
+	m.projects = []vimkunja.Project{{ID: 1, Title: "Vimkunja"}}
+
+	m = pressKey(m, tea.Key{Code: 'o', Text: "o"})
+	if m.editor == nil || m.editor.mode != editorProjectPicker || m.editor.draft.ProjectID != 0 {
+		t.Fatalf("overview new editor = %#v, want an empty Project Picker", m.editor)
+	}
+}
+
+func TestOpeningTaskFromOverviewTemporarilyShowsProjects(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.taskScope = scopeOverview
+	m.projects = []vimkunja.Project{{ID: 2, Title: "Home"}}
+	m.tasks = []vimkunja.Task{{ID: 4, ProjectID: 2, Title: "Task"}}
+	m.projectsPaneCollapsed = true
+
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if !m.showDetail || m.projectsPaneCollapsed || !m.projectsPaneAutoShown || m.projectSelected != 0 {
+		t.Fatalf("detail=%v collapsed=%v auto=%v selected=%d", m.showDetail, m.projectsPaneCollapsed, m.projectsPaneAutoShown, m.projectSelected)
+	}
+	m.closeTaskDetail()
+	if !m.projectsPaneCollapsed {
+		t.Fatal("automatically shown Projects Pane remained visible after closing detail")
+	}
 }
 
 func TestOpeningTaskDetailLoadsWorkflowStatus(t *testing.T) {
@@ -557,21 +640,20 @@ func TestCommandQuitClosesHelpPane(t *testing.T) {
 	}
 }
 
-func TestDetailEditorEscapeIsNoOpAndDirtyQuitRefuses(t *testing.T) {
+func TestDetailEditorEscapeClosesCleanEditorAndRefusesDirtyEditor(t *testing.T) {
 	m := testModel()
 	m.currentProjectID = 1
 	m.openNewEditor()
-	m.editor.draft.Title = "Unsaved"
-
-	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEscape}))
-	m = updated.(*model)
-	if !m.showDetail || m.focus != paneDetail || m.editor == nil {
-		t.Fatal("Esc closed the detail editor; it must be a Normal-mode no-op")
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if m.showDetail || m.editor != nil {
+		t.Fatal("Esc did not close a clean detail editor")
 	}
 
-	m, cmd := typeCommand(t, m, "q")
-	if cmd != nil || !m.showDetail || m.lastErr != "unsaved changes; use :w or :q!" {
-		t.Fatalf(":q state = visible:%v error:%q, want dirty editor retained", m.showDetail, m.lastErr)
+	m.openNewEditor()
+	m.editor.draft.Title = "Unsaved"
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if !m.showDetail || m.editor == nil || m.lastErr == "" {
+		t.Fatalf("dirty Esc state = visible:%v editor:%v error:%q, want editor retained with error", m.showDetail, m.editor != nil, m.lastErr)
 	}
 }
 

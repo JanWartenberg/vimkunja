@@ -225,6 +225,71 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 	return out, totalPages, nil
 }
 
+// ListOverviewTasks returns Tasks from every non-archived Project with enough
+// Project metadata for the cross-project Overview. It owns the Overview's
+// default ordering so the TUI does not need to reproduce database semantics.
+func (s *SQLiteStore) ListOverviewTasks(ctx context.Context, page, perPage int) ([]Task, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage <= 0 {
+		perPage = 200
+	}
+	offset := (page - 1) * perPage
+
+	var total int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(1)
+		FROM tasks t JOIN projects p ON p.id = t.project_id
+		WHERE (p.is_archived = 0 OR p.is_archived IS NULL)`).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count overview tasks: %w", err)
+	}
+	totalPages := (total + perPage - 1) / perPage
+
+	rows, err := s.db.QueryContext(ctx, `SELECT
+		t.id, t.project_id, p.identifier, p.title, t.title, t.done, t.due_date,
+		t.priority, t."index", t.description
+		FROM tasks t JOIN projects p ON p.id = t.project_id
+		WHERE (p.is_archived = 0 OR p.is_archived IS NULL)
+		ORDER BY t.due_date IS NULL ASC, t.due_date ASC, t.priority DESC,
+			p.identifier COLLATE NOCASE ASC, t.title COLLATE NOCASE ASC, t.id ASC
+		LIMIT ? OFFSET ?`, perPage, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list overview tasks: %w", err)
+	}
+	defer rows.Close()
+
+	var out []Task
+	for rows.Next() {
+		var t Task
+		var projectIdentifier, projectTitle, description sql.NullString
+		var dueDate sql.NullTime
+		var index sql.NullInt64
+		if err := rows.Scan(&t.ID, &t.ProjectID, &projectIdentifier, &projectTitle, &t.Title, &t.Done, &dueDate, &t.Priority, &index, &description); err != nil {
+			return nil, 0, fmt.Errorf("scan overview task: %w", err)
+		}
+		if projectIdentifier.Valid {
+			t.ProjectIdentifier = projectIdentifier.String
+		}
+		if projectTitle.Valid {
+			t.ProjectTitle = projectTitle.String
+		}
+		if dueDate.Valid {
+			t.DueDate = dueDate.Time.Format("2006-01-02")
+		}
+		if index.Valid {
+			t.Index = index.Int64
+		}
+		if description.Valid {
+			t.Description = description.String
+		}
+		out = append(out, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate overview tasks: %w", err)
+	}
+	return out, totalPages, nil
+}
+
 // GetTaskWorkflowStatus returns a Task's Bucket assignment and available
 // Buckets when the Project has exactly one manual Kanban View. With no manual
 // Kanban View the status is unavailable; with several it is ambiguous.

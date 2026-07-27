@@ -41,14 +41,16 @@ type WorkflowStatus struct {
 
 // Task represents a single task within a project.
 type Task struct {
-	ID          int64  `json:"id"`
-	ProjectID   int64  `json:"project_id"`
-	Title       string `json:"title"`
-	Done        bool   `json:"done"`
-	DueDate     string `json:"due_date"`
-	Priority    int64  `json:"priority"`
-	Index       int64  `json:"index"`
-	Description string `json:"description"`
+	ID                int64  `json:"id"`
+	ProjectID         int64  `json:"project_id"`
+	ProjectIdentifier string `json:"project_identifier"`
+	ProjectTitle      string `json:"project_title"`
+	Title             string `json:"title"`
+	Done              bool   `json:"done"`
+	DueDate           string `json:"due_date"`
+	Priority          int64  `json:"priority"`
+	Index             int64  `json:"index"`
+	Description       string `json:"description"`
 	// Identifier is present on some responses; we still can fall back to "#<index>".
 	Identifier string `json:"identifier"`
 }

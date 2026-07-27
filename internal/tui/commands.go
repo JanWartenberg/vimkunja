@@ -64,6 +64,8 @@ func newDefaultCommandRegistry() *CommandRegistry {
 	registry.Register("wqa", nil, writeQuitAllCommand)
 	registry.Register("h", []string{"help"}, helpCommand)
 	registry.Register("err", []string{"errors"}, errorsCommand)
+	registry.Register("overview", nil, overviewCommand)
+	registry.Register("list", nil, listCommand)
 	return registry
 }
 
@@ -73,9 +75,7 @@ func quitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 			m.recordError(fmt.Errorf("unsaved changes; use :w or :q!"))
 			return m, nil
 		}
-		m.editor = nil
-		m.showDetail = false
-		m.focus = paneTasks
+		m.closeTaskDetail()
 		return m, nil
 	}
 	if m.helpPane != nil && m.focus == paneHelp {
@@ -93,9 +93,7 @@ func quitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 
 func forceQuitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	if m.showDetail && m.focus == paneDetail {
-		m.editor = nil
-		m.showDetail = false
-		m.focus = paneTasks
+		m.closeTaskDetail()
 		return m, nil
 	}
 	return m, tea.Quit
@@ -151,6 +149,27 @@ func errorsCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	m.infoPane = &infoPane{title: "ERRORS", lines: errorLogLines(), errorLog: true}
 	m.focus = paneInfo
 	return m, nil
+}
+
+func overviewCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	return m, m.openOverview()
+}
+
+func listCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if m.inOverview() {
+		return m, m.restoreProjectScope()
+	}
+	if m.currentProjectID == 0 {
+		m.recordError(fmt.Errorf(":list requires a Project context"))
+		return m, nil
+	}
+	m.viewSelected = m.pickListViewIndex()
+	if m.viewSelected < 0 {
+		m.recordError(fmt.Errorf("no list View for the current Project"))
+		return m, nil
+	}
+	m.currentViewID = m.projectViews[m.viewSelected].ID
+	return m, m.refreshActiveTasks()
 }
 
 func errorLogLines() []string {

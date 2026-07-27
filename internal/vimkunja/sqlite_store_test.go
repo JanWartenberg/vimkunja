@@ -517,6 +517,35 @@ func TestListProjectsAndTasks_HandleNullableFields(t *testing.T) {
 	}
 }
 
+func TestListOverviewTasksIncludesProjectMetadataAndExcludesArchivedProjects(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, identifier, title, is_archived) VALUES
+			(1, 'VIM', 'Vimkunja', 0), (2, 'OLD', 'Archived', 1);
+		INSERT INTO tasks (id, project_id, title, priority, due_date) VALUES
+			(1, 1, 'Later', 3, '2026-07-30'),
+			(2, 1, 'Sooner', 2, '2026-07-26'),
+			(3, 1, 'Undated', 5, NULL),
+			(4, 2, 'Hidden', 5, '2026-08-01');
+	`)
+	if err != nil {
+		t.Fatalf("insert overview fixtures: %v", err)
+	}
+
+	tasks, _, err := store.ListOverviewTasks(context.Background(), 1, 50)
+	if err != nil {
+		t.Fatalf("list overview tasks: %v", err)
+	}
+	if len(tasks) != 3 {
+		t.Fatalf("overview tasks = %#v, want three non-archived tasks", tasks)
+	}
+	if tasks[0].Title != "Sooner" || tasks[1].Title != "Later" || tasks[0].ProjectIdentifier != "VIM" || tasks[0].ProjectTitle != "Vimkunja" {
+		t.Fatalf("overview tasks = %#v, want nearest due date first with Project metadata", tasks)
+	}
+}
+
 func TestListTasksInView_OrdersByPosition(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()

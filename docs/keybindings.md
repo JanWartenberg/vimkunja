@@ -30,15 +30,17 @@ A Task context consists of a Scope (`Overview` or the current Project) and a Vie
 
 | Binding | Action | Status |
 | --- | --- | --- |
-| `-` | Open Overview from a Project context; this is always one-way and never toggles. | Agreed |
-| `Space+a` | Toggle between Overview and the remembered Project context, including its selected Task. | Agreed |
-| `Space+o` | Toggle the Projects Pane. Overview starts with it hidden; opening a Task Detail from Overview temporarily reveals and selects that Task's Project. | Agreed |
+| `-` | Open Overview from a Project context; this is always one-way and never toggles. | Implemented |
+| `Space+a` | Toggle between Overview and the remembered Project context, including its selected Task. | Implemented |
+| `Space+o` | Toggle the Projects Pane. Overview starts with it hidden; opening a Task Detail from Overview temporarily reveals and selects that Task's Project. | Implemented |
+| `s`, then `d/u/p/t` | Choose Overview sort: Due ↓ / Due ↑ / Priority ↓ / Title. | Implemented |
+| `f`, then `o/a/v/t` | Choose Overview filter: open / all / overdue / due today. | Implemented |
 | `Space+v`, then `l` | Select List View for the current Project. | Agreed |
 | `Space+v`, then `k` | Select Kanban View for the current Project. | Agreed |
 | `Space+v`, then `t` | Select Table View for the current Project. | Agreed; View deferred |
 | `Space+v`, then `g` | Select Gantt View for the current Project. | Agreed; View deferred |
-| `:overview` | Open Overview. | Agreed |
-| `:list` | Select List View for the current Project context; from Overview, restore the last Project context first. | Agreed |
+| `:overview` | Open Overview. | Implemented |
+| `:list` | Select List View for the current Project context; from Overview, restore the last Project context first. | Implemented |
 | `:kanban` | Select Kanban View for the current Project context; from Overview, restore the last Project context first. | Agreed |
 | `:table` | Select Table View for the current Project context. | Agreed; View deferred |
 | `:gantt` | Select Gantt View for the current Project context. | Agreed; View deferred |

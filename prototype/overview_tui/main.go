@@ -43,7 +43,7 @@ func newPrototype() prototypeModel {
 	return prototypeModel{
 		state: prototypeState{
 			surface: surfaceOverview,
-			sort:    sortDueDesc,
+			sort:    sortDueAsc,
 			filter:  filterOpen,
 			message: "Overview is active; no Task Detail Pane is open.",
 		},
