@@ -159,6 +159,20 @@ func typeCommand(t *testing.T, m *model, input string) (*model, tea.Cmd) {
 	return updated.(*model), cmd
 }
 
+func TestKanbanBoardUsesAvailableWidthWhenAllBucketsFit(t *testing.T) {
+	m := testModel()
+	m.kanbanActive = true
+	m.kanbanBoard = vimkunja.KanbanBoard{Buckets: []vimkunja.KanbanBucket{
+		{ID: 1, Title: "To-Do"},
+		{ID: 2, Title: "Doing"},
+	}}
+
+	header := strings.Split(ansi.Strip(renderKanbanBoard(m, 80, 4)), "\n")[0]
+	if columnStart := strings.Index(header, "Doing"); columnStart < 40 {
+		t.Fatalf("second Bucket starts at column %d, want a wide layout using the 80-column pane: %q", columnStart, header)
+	}
+}
+
 func TestKanbanCommandOpensAvailableManualBoard(t *testing.T) {
 	store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{
 		Availability: vimkunja.KanbanBoardAvailable,

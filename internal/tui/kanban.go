@@ -261,6 +261,15 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 	end := min(len(m.kanbanBoard.Buckets), start+visible)
 	columns := make([]string, 0, end-start)
 	for index := start; index < end; index++ {
+		columnWidth := 25
+		if len(m.kanbanBoard.Buckets) <= visible {
+			columnCount := end - start
+			columnWidth = textW / columnCount
+			if index-start < textW%columnCount {
+				columnWidth++
+			}
+		}
+		contentWidth := max(1, columnWidth-2)
 		bucket := m.kanbanBoard.Buckets[index]
 		title := bucket.Title
 		if index == start && start > 0 {
@@ -269,7 +278,7 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 		if index == end-1 && end < len(m.kanbanBoard.Buckets) {
 			title += " >"
 		}
-		header := " " + truncatePlain(title, 23) + " "
+		header := " " + truncatePlain(title, contentWidth) + " "
 		if index == m.kanbanBucketSelected {
 			header = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).Render(header)
 		} else {
@@ -281,13 +290,13 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 			if task.Done {
 				prefix = "✓ "
 			}
-			line := prefix + truncatePlain(task.Title, 23)
+			line := prefix + truncatePlain(task.Title, max(1, contentWidth-lipgloss.Width(prefix)))
 			if index == m.kanbanBucketSelected && taskIndex == m.kanbanTaskSelected {
 				line = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("205")).Render(line)
 			}
 			lines = append(lines, line)
 		}
-		columns = append(columns, fitBlock(lines, 25, textH))
+		columns = append(columns, fitBlock(lines, columnWidth, textH))
 	}
 	if len(columns) == 0 {
 		return fitBlock([]string{" Kanban ", "  (no buckets)"}, textW, textH)
