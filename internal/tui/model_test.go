@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
 	apperrors "github.com/vimkunja/vimkunja/internal/errors"
 	"github.com/vimkunja/vimkunja/internal/vimkunja"
 
@@ -106,6 +107,28 @@ func typeCommand(t *testing.T, m *model, input string) (*model, tea.Cmd) {
 	return updated.(*model), cmd
 }
 
+func TestStartFooterAdvertisesHelpInsteadOfRefresh(t *testing.T) {
+	footer := testModel().renderStatusBar(120)
+	if !strings.Contains(footer, ":h help") {
+		t.Fatalf("start footer = %q, want :h help", footer)
+	}
+	if strings.Contains(footer, "r refresh") {
+		t.Fatalf("start footer = %q, must not advertise r refresh", footer)
+	}
+}
+
+func TestOverviewOpensFromProjectsPane(t *testing.T) {
+	store := &fakeStore{overviewTasks: []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "Open"}}}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+
+	m = pressKey(m, tea.Key{Code: '-', Text: "-"})
+	if !m.inOverview() || !m.projectsPaneCollapsed || m.focus != paneTasks {
+		t.Fatalf("overview from Projects Pane = scope:%v collapsed:%v focus:%v", m.taskScope, m.projectsPaneCollapsed, m.focus)
+	}
+}
+
 func TestOverviewOpensWithOpenTasksAndHidesProjects(t *testing.T) {
 	store := &fakeStore{overviewTasks: []vimkunja.Task{
 		{ID: 1, ProjectID: 1, ProjectIdentifier: "VIM", Title: "Open", DueDate: "2026-07-26"},
@@ -152,6 +175,49 @@ func TestOverviewFilterAndSortPicker(t *testing.T) {
 	}
 }
 
+func TestTasksPaneKeepsSelectedTaskVisibleWithDetailOpen(t *testing.T) {
+	for _, scope := range []struct {
+		name      string
+		taskScope taskScope
+	}{
+		{name: "project list", taskScope: scopeProject},
+		{name: "overview", taskScope: scopeOverview},
+	} {
+		t.Run(scope.name, func(t *testing.T) {
+			m := testModel()
+			m.focus = paneTasks
+			m.taskScope = scope.taskScope
+			m.showDetail = true
+			m.editor = &taskEditor{}
+			m.tasks = make([]vimkunja.Task, 8)
+			for i := range m.tasks {
+				m.tasks[i] = vimkunja.Task{ID: int64(i + 1), Title: "Earlier task"}
+			}
+			m.tasks[len(m.tasks)-1].Title = "Selected task near the bottom"
+			m.taskSelected = len(m.tasks) - 1
+
+			if pane := ansi.Strip(renderTasks(m, 80, 8)); !strings.Contains(pane, "Selected task near the bottom") {
+				t.Fatalf("Tasks Pane = %q, want selected Task visible", pane)
+			}
+		})
+	}
+}
+
+func TestTasksPaneLeavesMarginBelowSelectedTask(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.tasks = make([]vimkunja.Task, 13)
+	for i := range m.tasks {
+		m.tasks[i] = vimkunja.Task{ID: int64(i + 1), Title: "Task " + string(rune('A'+i))}
+	}
+	m.taskSelected = 10
+
+	pane := ansi.Strip(renderTasks(m, 80, 8))
+	if !strings.Contains(pane, "Task K") || !strings.Contains(pane, "Task L") || !strings.Contains(pane, "Task M") {
+		t.Fatalf("Tasks Pane = %q, want selected Task and two rows below it", pane)
+	}
+}
+
 func TestOverviewNewTaskStartsWithProjectPicker(t *testing.T) {
 	m := testModel()
 	m.taskScope = scopeOverview
@@ -164,7 +230,7 @@ func TestOverviewNewTaskStartsWithProjectPicker(t *testing.T) {
 	}
 }
 
-func TestOpeningTaskFromOverviewTemporarilyShowsProjects(t *testing.T) {
+func TestOpeningTaskFromOverviewKeepsProjectsPaneCollapsed(t *testing.T) {
 	m := testModel()
 	m.focus = paneTasks
 	m.taskScope = scopeOverview
@@ -173,12 +239,8 @@ func TestOpeningTaskFromOverviewTemporarilyShowsProjects(t *testing.T) {
 	m.projectsPaneCollapsed = true
 
 	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
-	if !m.showDetail || m.projectsPaneCollapsed || !m.projectsPaneAutoShown || m.projectSelected != 0 {
-		t.Fatalf("detail=%v collapsed=%v auto=%v selected=%d", m.showDetail, m.projectsPaneCollapsed, m.projectsPaneAutoShown, m.projectSelected)
-	}
-	m.closeTaskDetail()
-	if !m.projectsPaneCollapsed {
-		t.Fatal("automatically shown Projects Pane remained visible after closing detail")
+	if !m.showDetail || !m.projectsPaneCollapsed || m.projectsPaneAutoShown {
+		t.Fatalf("detail=%v collapsed=%v auto=%v, want Overview Detail without Projects Pane", m.showDetail, m.projectsPaneCollapsed, m.projectsPaneAutoShown)
 	}
 }
 
@@ -205,6 +267,39 @@ func TestTaskDeletionRequiresConfirmationAndRefreshesAfterSuccess(t *testing.T) 
 	m = updated.(*model)
 	if store.deleteTaskID != 7 || m.deleteConfirm || refreshCmd == nil {
 		t.Fatalf("delete = id:%d confirm:%v refresh:%v", store.deleteTaskID, m.deleteConfirm, refreshCmd != nil)
+	}
+}
+
+func TestTaskDeletionConfirmationRendersCenteredModal(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 120, 30
+	m.focus = paneTasks
+	m.tasks = []vimkunja.Task{{ID: 7, Title: "Delete me"}}
+
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	view := m.Render()
+	if !strings.Contains(view, "DELETE TASK") || !strings.Contains(view, `Delete "Delete me"?`) {
+		t.Fatalf("confirmation view = %q, want centered delete modal", view)
+	}
+	if !strings.Contains(view, "38;5;255") {
+		t.Fatalf("confirmation view = %q, want white modal border", view)
+	}
+	if strings.Contains(m.renderStatusBar(120), "Delete") {
+		t.Fatalf("confirmation footer = %q, must remain a normal status footer", m.renderStatusBar(120))
+	}
+}
+
+func TestTaskDeletionModalFitsNarrowTerminal(t *testing.T) {
+	m := testModel()
+	m.tasks = []vimkunja.Task{{ID: 7, Title: strings.Repeat("A very long task title ", 8)}}
+	m.deleteTaskID = 7
+	background := strings.Repeat(strings.Repeat(" ", 40)+"\n", 12)
+
+	for _, line := range strings.Split(m.renderDeleteConfirmationModal(background, 40), "\n") {
+		if ansi.StringWidth(line) > 40 {
+			t.Fatalf("modal line width = %d, want at most 40: %q", ansi.StringWidth(line), line)
+		}
 	}
 }
 
@@ -543,6 +638,13 @@ func TestCommandQuitAllQuits(t *testing.T) {
 				t.Fatalf(":%s command returned %T, want tea.QuitMsg", input, cmd())
 			}
 		})
+	}
+}
+
+func TestHelpUsesTaglineInsteadOfRepeatingPaneTitle(t *testing.T) {
+	const want = "Vimkunja is a task manager in your terminal facilitating Vim Motions."
+	if len(helpLines) == 0 || helpLines[0] != want {
+		t.Fatalf("first help line = %q, want %q", helpLines[0], want)
 	}
 }
 

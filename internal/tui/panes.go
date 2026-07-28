@@ -112,8 +112,16 @@ func renderTasks(m *model, textW, textH int) string {
 		return fitBlock(lines, textW, textH)
 	}
 
-	for i, t := range m.tasks {
-		sel := i == m.taskSelected
+	// The Tasks Pane owns its viewport: its selected Task must remain visible
+	// when a Detail Pane reduces the available height, regardless of Scope.
+	visibleRows := max(0, textH-1) // header consumes the first row
+	selected := clamp(m.taskSelected, 0, len(m.tasks)-1)
+	// Keep context below the selection instead of pinning it to the bottom.
+	bottomMargin := min(2, max(0, visibleRows-1))
+	start := max(0, selected-visibleRows+1+bottomMargin)
+	end := min(len(m.tasks), start+visibleRows)
+	for i, t := range m.tasks[start:end] {
+		sel := start+i == selected
 		done := "[ ]"
 		if t.Done {
 			done = "[x]"

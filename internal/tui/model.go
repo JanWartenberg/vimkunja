@@ -669,6 +669,8 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "o":
 		m.openNewEditor()
 		return m, nil
+	case "-":
+		return m, m.openOverview()
 	case "r":
 		m.lastErr = ""
 		m.projectLoading = true
@@ -732,8 +734,6 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 				if idx := m.findProjectIndex(task.ProjectID); idx >= 0 {
 					m.projectSelected = idx
 				}
-				m.projectsPaneCollapsed = false
-				m.projectsPaneAutoShown = true
 			}
 			m.openExistingEditor(task)
 			return m, m.loadWorkflowStatus(task.ProjectID, task.ID)
@@ -1063,6 +1063,9 @@ func (m *model) Render() string {
 		)
 	}
 
+	if m.deleteConfirm {
+		content = m.renderDeleteConfirmationModal(content, w)
+	}
 	status := m.renderStatusBar(w)
 	return lipgloss.JoinVertical(lipgloss.Top, content, status)
 }
@@ -1082,7 +1085,7 @@ func (m *model) renderStatusBar(w int) string {
 		info = "[Info]"
 	}
 
-	hint := "Ctrl+W cycles  •  Enter detail  •  q quit  •  r refresh  •  j/k navigate  •  x toggle"
+	hint := "Ctrl+W cycles  •  Enter detail  •  q quit  •  :h help  •  j/k navigate  •  x toggle"
 	if m.focus == paneTasks && m.inOverview() {
 		hint = "Enter detail  •  o new task  •  s sort  •  f filter  •  - Overview  •  Space+a return"
 	}
@@ -1116,9 +1119,6 @@ func (m *model) renderStatusBar(w int) string {
 	}
 	if m.commandMode {
 		hint = fmt.Sprintf(":%s_", m.commandInput)
-	}
-	if m.deleteConfirm {
-		hint = m.deleteConfirmationLabel()
 	}
 	if m.leaderArmed {
 		hint = "[LEADER] a Overview/return  •  o toggle projects pane"

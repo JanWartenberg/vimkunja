@@ -3,9 +3,12 @@ package tui
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // beginTaskDeletion keeps the destructive-action state behind a small model
@@ -36,11 +39,51 @@ func (m *model) updateDeleteConfirmation(key string) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *model) deleteConfirmationLabel() string {
+func (m *model) deleteConfirmationTaskTitle() string {
 	for _, task := range m.tasks {
 		if task.ID == m.deleteTaskID {
-			return fmt.Sprintf("Delete %q? y yes / n or Esc cancel", truncatePlain(task.Title, 36))
+			return truncatePlain(task.Title, 46)
 		}
 	}
-	return "Delete selected task? y yes / n or Esc cancel"
+	return "selected task"
+}
+
+// renderDeleteConfirmationModal overlays a compact destructive-action dialog
+// over the current Pane content while preserving the surrounding context.
+func (m *model) renderDeleteConfirmationModal(background string, width int) string {
+	// The modal's border and horizontal padding consume six cells. Truncate
+	// variable content before styling so narrow terminals never overflow.
+	contentWidth := max(1, width-6)
+	taskTitle := truncatePlain(m.deleteConfirmationTaskTitle(), contentWidth-lipgloss.Width(`Delete ""?`))
+	body := strings.Join([]string{
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196")).Render(truncatePlain("DELETE TASK", contentWidth)),
+		"",
+		fmt.Sprintf("Delete %q?", taskTitle),
+		"",
+		truncatePlain("y delete  •  n / Esc cancel", contentWidth),
+	}, "\n")
+	modal := lipgloss.NewStyle().
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(lipgloss.Color("255")).
+		Padding(1, 2).
+		Width(width).
+		Render(body)
+	modalLines := strings.Split(modal, "\n")
+	backgroundLines := strings.Split(background, "\n")
+	modalWidth := lipgloss.Width(modalLines[0])
+	left := max(0, (width-modalWidth)/2)
+	top := max(0, (len(backgroundLines)-len(modalLines))/2)
+
+	for i, modalLine := range modalLines {
+		row := top + i
+		if row >= len(backgroundLines) {
+			break
+		}
+		backgroundLine := backgroundLines[row]
+		if padding := width - lipgloss.Width(backgroundLine); padding > 0 {
+			backgroundLine += strings.Repeat(" ", padding)
+		}
+		backgroundLines[row] = ansi.Cut(backgroundLine, 0, left) + modalLine + ansi.Cut(backgroundLine, left+modalWidth, width)
+	}
+	return strings.Join(backgroundLines, "\n")
 }

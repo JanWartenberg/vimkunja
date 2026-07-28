@@ -3,7 +3,7 @@ package tui
 // helpLines documents implemented bindings and an explicitly marked agreed
 // View-navigation section. Planned entries must state that they are unavailable.
 var helpLines = []string{
-	"Vimkunja help",
+	"Vimkunja is a task manager in your terminal facilitating Vim Motions.",
 	"",
 	"NAVIGATION",
 	"  h j k l / Arrow keys  Move selection or cursor",
