@@ -23,7 +23,10 @@ type fakeStore struct {
 	workflowStatus     vimkunja.WorkflowStatus
 	workflowStatusErr  error
 	kanbanBoard        vimkunja.KanbanBoard
+	kanbanBoards       map[int64]vimkunja.KanbanBoard
 	kanbanBoardErr     error
+	views              []vimkunja.ProjectView
+	viewsByProject     map[int64][]vimkunja.ProjectView
 	provisionedBoard   vimkunja.KanbanBoard
 	provisionErr       error
 	provisionCalls     int
@@ -42,8 +45,11 @@ func (f *fakeStore) ListProjects(context.Context, int, int) ([]vimkunja.Project,
 	return nil, 0, nil
 }
 
-func (f *fakeStore) ListViews(context.Context, int64, int, int) ([]vimkunja.ProjectView, int, error) {
-	return nil, 0, nil
+func (f *fakeStore) ListViews(_ context.Context, projectID int64, _ int, _ int) ([]vimkunja.ProjectView, int, error) {
+	if views, ok := f.viewsByProject[projectID]; ok {
+		return views, 0, nil
+	}
+	return f.views, 0, nil
 }
 
 func (f *fakeStore) ListTasksInView(_ context.Context, _ int64, viewID int64, _ int, _ int) ([]vimkunja.Task, int, error) {
@@ -52,7 +58,10 @@ func (f *fakeStore) ListTasksInView(_ context.Context, _ int64, viewID int64, _ 
 	return nil, 0, nil
 }
 
-func (f *fakeStore) LoadManualKanbanBoard(context.Context, int64) (vimkunja.KanbanBoard, error) {
+func (f *fakeStore) LoadManualKanbanBoard(_ context.Context, projectID int64) (vimkunja.KanbanBoard, error) {
+	if board, ok := f.kanbanBoards[projectID]; ok {
+		return board, f.kanbanBoardErr
+	}
 	return f.kanbanBoard, f.kanbanBoardErr
 }
 
@@ -290,6 +299,85 @@ func TestKanbanPickerMovesSelectedTaskToAnyBucket(t *testing.T) {
 	_, _ = m.Update(cmd())
 	if store.workflowTaskID != 1 || store.workflowBucketID != 102 {
 		t.Fatalf("move = task:%d bucket:%d, want task 1 to Done", store.workflowTaskID, store.workflowBucketID)
+	}
+}
+
+func TestProjectSwitchKeepsKanbanWhenTheNextProjectHasOne(t *testing.T) {
+	store := &fakeStore{
+		views: []vimkunja.ProjectView{
+			{ID: 5, ViewKind: "list"},
+			{ID: 20, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		},
+		kanbanBoards: map[int64]vimkunja.KanbanBoard{
+			1: {Availability: vimkunja.KanbanBoardAvailable, View: vimkunja.ProjectView{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"}, Buckets: []vimkunja.KanbanBucket{{ID: 100, Title: "To-Do"}}},
+			2: {Availability: vimkunja.KanbanBoardAvailable, View: vimkunja.ProjectView{ID: 20, ViewKind: "kanban", BucketConfigurationMode: "manual"}, Buckets: []vimkunja.KanbanBucket{{ID: 200, Title: "To-Do"}}},
+		},
+	}
+	m := testModel()
+	m.store = store
+	m.projects = []vimkunja.Project{{ID: 1, Title: "First"}, {ID: 2, Title: "Second"}}
+	m.currentProjectID = 1
+	m.focus = paneTasks
+	m, cmd := typeCommand(t, m, "kanban")
+	updated, _ := m.Update(cmd())
+	m = updated.(*model)
+
+	m.focus = paneProjects
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'j', Text: "j"}))
+	m = updated.(*model)
+	updated, cmd = m.Update(cmd())
+	m = updated.(*model)
+	if cmd != nil {
+		updated, _ = m.Update(cmd())
+		m = updated.(*model)
+	}
+	if !m.kanbanActive || m.currentViewID != 20 {
+		t.Fatalf("project switch = Kanban:%v view:%d, want next Project Kanban view 20", m.kanbanActive, m.currentViewID)
+	}
+}
+
+func TestProjectSwitchFallsBackToListThenRestoresGlobalKanbanPreference(t *testing.T) {
+	store := &fakeStore{
+		viewsByProject: map[int64][]vimkunja.ProjectView{
+			1: {{ID: 5, ViewKind: "list"}, {ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"}},
+			2: {{ID: 6, ViewKind: "list"}},
+		},
+		kanbanBoards: map[int64]vimkunja.KanbanBoard{
+			1: {Availability: vimkunja.KanbanBoardAvailable, View: vimkunja.ProjectView{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"}, Buckets: []vimkunja.KanbanBucket{{ID: 100, Title: "To-Do"}}},
+		},
+	}
+	m := testModel()
+	m.store = store
+	m.projects = []vimkunja.Project{{ID: 1, Title: "First"}, {ID: 2, Title: "Second"}}
+	m.currentProjectID = 1
+	m.focus = paneTasks
+	m, cmd := typeCommand(t, m, "kanban")
+	updated, _ := m.Update(cmd())
+	m = updated.(*model)
+
+	m.focus = paneProjects
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'j', Text: "j"}))
+	m = updated.(*model)
+	updated, cmd = m.Update(cmd())
+	m = updated.(*model)
+	if cmd != nil {
+		updated, _ = m.Update(cmd())
+		m = updated.(*model)
+	}
+	if m.kanbanActive || m.currentViewID != 6 || m.projectViewPreference != projectViewKanban {
+		t.Fatalf("fallback = Kanban:%v view:%d preference:%v, want List 6 with Kanban preference", m.kanbanActive, m.currentViewID, m.projectViewPreference)
+	}
+
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'k', Text: "k"}))
+	m = updated.(*model)
+	updated, cmd = m.Update(cmd())
+	m = updated.(*model)
+	if cmd != nil {
+		updated, _ = m.Update(cmd())
+		m = updated.(*model)
+	}
+	if !m.kanbanActive || m.currentViewID != 10 {
+		t.Fatalf("return = Kanban:%v view:%d, want Kanban view 10", m.kanbanActive, m.currentViewID)
 	}
 }
 

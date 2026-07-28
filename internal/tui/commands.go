@@ -161,6 +161,7 @@ func overviewCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 }
 
 func kanbanCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	m.projectViewPreference = projectViewKanban
 	if m.currentProjectID == 0 {
 		m.recordError(fmt.Errorf(":kanban requires a Project context"))
 		return m, nil
@@ -183,6 +184,7 @@ func notYetImplementedCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 }
 
 func listCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	m.projectViewPreference = projectViewList
 	if m.currentProjectID == 0 {
 		m.recordError(fmt.Errorf(":list requires a Project context"))
 		return m, nil

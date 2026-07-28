@@ -15,6 +15,13 @@ import (
 
 type paneID int
 
+type projectViewPreference int
+
+const (
+	projectViewList projectViewPreference = iota
+	projectViewKanban
+)
+
 const (
 	paneProjects paneID = iota
 	paneTasks
@@ -80,6 +87,7 @@ type model struct {
 	viewSelected           int
 	viewLoading            bool
 	currentViewID          int64
+	projectViewPreference  projectViewPreference
 	kanbanActive           bool
 	kanbanBoard            vimkunja.KanbanBoard
 	kanbanBucketSelected   int
@@ -453,6 +461,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.viewSelected = i
 					return m, nil
 				}
+			}
+		}
+		if m.projectViewPreference == projectViewKanban {
+			if kanbanView := m.pickManualKanbanViewIndex(); kanbanView >= 0 {
+				m.viewSelected = kanbanView
+				m.currentViewID = m.projectViews[kanbanView].ID
+				m.taskLoading = true
+				return m, m.loadKanbanBoard(m.currentProjectID)
 			}
 		}
 		m.viewSelected = m.pickListViewIndex()
@@ -996,6 +1012,15 @@ func (m *model) onProjectSelectionChanged() tea.Cmd {
 func (m *model) findProjectIndex(id int64) int {
 	for i, p := range m.projects {
 		if p.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func (m *model) pickManualKanbanViewIndex() int {
+	for i, view := range m.projectViews {
+		if view.ViewKind == "kanban" && view.BucketConfigurationMode == "manual" {
 			return i
 		}
 	}
