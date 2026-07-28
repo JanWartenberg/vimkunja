@@ -23,6 +23,8 @@ Der Datenbankpfad muss existieren und lesbar sein. Vimkunja greift direkt auf di
 - `:h` – integrierte Hilfe
 - `:errors` – Session-Fehlerlog
 - `Space+o` – Projects-Pane ein- oder ausblenden
+- `:kanban` oder `Space+v`, dann `k` – einzelne manuelle Kanban View öffnen oder nach Bestätigung standardkonform provisionieren
+- Im Kanban Board: `h/l` Buckets, `j/k` Karten, `Shift+H/L` Nachbar-Move, `m` Ziel-Bucket wählen
 
 Im Detail-pane können Project, Title, Priority, Due Date, Description und der Workflow-Status bearbeitet werden. Der Status verwendet die konfigurierten Buckets der eindeutigen Kanban View des Projects.
 
@@ -34,6 +36,6 @@ go test ./...
 
 ## 3. Ausblick / Vision
 
-Das Fundament ist abgeschlossen: List View, Editor, Workflow-Status, Fehleranzeige und Vim-artige Pane-Navigation sind verifiziert. Als Nächstes werden UX-Verbesserungen und später eine Kanban View spezifiziert.
+Das Fundament ist abgeschlossen: List View, Editor, Workflow-Status, Fehleranzeige, Vim-artige Pane-Navigation und die einzelne manuelle Kanban View sind verifiziert. Weitere Views sowie Bucket-Verwaltung bleiben im Backlog.
 
 Der aktuelle, priorisierbare Backlog liegt in `.scratch/`; der Kurzstatus mit Verweisen steht in [STATUS.md](STATUS.md). Abgeschlossene Anforderungen und Implementierungsdetails liegen im [Archiv](.archive/).

@@ -52,6 +52,7 @@ type model struct {
 	ctrlWArmed               bool
 	ctrlWTimeout             time.Duration
 	leaderArmed              bool
+	viewSwitchArmed          bool
 	deleteArmed              bool
 	deleteConfirm            bool
 	deleteTaskID             int64
@@ -75,10 +76,20 @@ type model struct {
 	projectLoading  bool
 
 	// Views (derived from selected project)
-	projectViews  []vimkunja.ProjectView
-	viewSelected  int
-	viewLoading   bool
-	currentViewID int64
+	projectViews           []vimkunja.ProjectView
+	viewSelected           int
+	viewLoading            bool
+	currentViewID          int64
+	kanbanActive           bool
+	kanbanBoard            vimkunja.KanbanBoard
+	kanbanBucketSelected   int
+	kanbanTaskSelected     int
+	kanbanViewportStart    int
+	kanbanPicker           bool
+	kanbanPickerIndex      int
+	kanbanProvisionConfirm bool
+	pendingKanbanTaskID    int64
+	pendingKanbanBucketID  int64
 
 	// Tasks pane
 	tasks          []vimkunja.Task
@@ -163,6 +174,19 @@ type (
 		tasks []vimkunja.Task
 		err   error
 	}
+	kanbanBoardLoadedMsg struct {
+		board vimkunja.KanbanBoard
+		err   error
+	}
+	kanbanProvisionedMsg struct {
+		board vimkunja.KanbanBoard
+		err   error
+	}
+	kanbanTaskMovedMsg struct {
+		taskID   int64
+		bucketID int64
+		err      error
+	}
 	taskToggledMsg struct {
 		err error
 	}
@@ -219,6 +243,34 @@ func (m *model) loadWorkflowStatus(projectID, taskID int64) tea.Cmd {
 	}
 }
 
+func (m *model) loadKanbanBoard(projectID int64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel()
+
+		board, err := m.store.LoadManualKanbanBoard(ctx, projectID)
+		return kanbanBoardLoadedMsg{board: board, err: err}
+	}
+}
+
+func (m *model) moveKanbanTask(taskID, bucketID int64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel()
+		return kanbanTaskMovedMsg{taskID: taskID, bucketID: bucketID, err: m.store.SetTaskWorkflowStatus(ctx, taskID, bucketID)}
+	}
+}
+
+func (m *model) provisionStandardKanbanView(projectID int64) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel()
+
+		board, err := m.store.ProvisionStandardManualKanbanView(ctx, projectID)
+		return kanbanProvisionedMsg{board: board, err: err}
+	}
+}
+
 func (m *model) loadTasks(projectID, viewID int64) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
@@ -256,9 +308,26 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.deleteConfirm {
 			return m.updateDeleteConfirmation(k)
 		}
+		if m.kanbanProvisionConfirm {
+			return m.updateKanbanProvisionConfirmation(k)
+		}
+		if m.viewSwitchArmed {
+			m.viewSwitchArmed = false
+			switch k {
+			case "l":
+				return listCommand(m, nil)
+			case "k":
+				return kanbanCommand(m, nil)
+			case "t", "g":
+				return notYetImplementedCommand(m, nil)
+			}
+			return m, nil
+		}
 		if m.leaderArmed {
 			m.leaderArmed = false
 			switch k {
+			case "v":
+				m.viewSwitchArmed = true
 			case "o":
 				m.toggleProjectsPane()
 			case "a":
@@ -378,6 +447,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.projectViews = typed.views
+		if m.kanbanActive {
+			for i, view := range m.projectViews {
+				if view.ID == m.currentViewID {
+					m.viewSelected = i
+					return m, nil
+				}
+			}
+		}
 		m.viewSelected = m.pickListViewIndex()
 		if m.viewSelected < 0 {
 			m.lastErr = "No 'list' views found for the selected project."
@@ -432,6 +509,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		wasOverview := m.inOverview()
+		wasKanban := m.kanbanActive && !wasOverview
 		m.pendingTaskID = typed.task.ID
 		if typed.closeAfter {
 			m.closeTaskDetail()
@@ -447,6 +525,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.projectSelected = idx
 		}
 		m.currentProjectID = typed.task.ProjectID
+		if wasKanban {
+			m.pendingKanbanTaskID = typed.task.ID
+			return m, m.loadKanbanBoard(typed.task.ProjectID)
+		}
 		m.currentViewID = 0
 		m.viewLoading = true
 		if wasOverview {
@@ -472,6 +554,45 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.refreshActiveTasks()
 
+	case kanbanBoardLoadedMsg:
+		m.taskLoading = false
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		if typed.board.Availability == vimkunja.KanbanBoardUnavailable {
+			m.kanbanActive = false
+			m.kanbanProvisionConfirm = true
+			return m, nil
+		}
+		if typed.board.Availability == vimkunja.KanbanBoardAmbiguous {
+			m.kanbanActive = false
+			m.recordError(fmt.Errorf("multiple manual Kanban Views are not supported"))
+			return m, nil
+		}
+		m.setKanbanBoard(typed.board)
+		return m, nil
+
+	case kanbanProvisionedMsg:
+		m.taskLoading = false
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		m.setKanbanBoard(typed.board)
+		return m, m.loadViews(m.currentProjectID)
+
+	case kanbanTaskMovedMsg:
+		if typed.err != nil {
+			m.taskLoading = false
+			m.recordError(typed.err)
+			return m, nil
+		}
+		m.pendingKanbanTaskID = typed.taskID
+		m.pendingKanbanBucketID = typed.bucketID
+		m.taskLoading = true
+		return m, m.loadKanbanBoard(m.currentProjectID)
+
 	case overviewTasksLoadedMsg:
 		if !m.inOverview() {
 			return m, nil
@@ -493,6 +614,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		m.kanbanActive = false
+		m.kanbanBoard = vimkunja.KanbanBoard{}
 		m.tasks = typed.tasks
 		m.taskSelected = clamp(m.taskSelected, 0, max(0, len(m.tasks)-1))
 		if m.pendingTaskID != 0 {
@@ -702,6 +825,9 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.kanbanActive && !m.inOverview() {
+		return m.updateKanbanKeys(k)
+	}
 	s := normalizeArrow(k.String())
 	if m.inOverview() && m.updateOverviewPrompt(s) {
 		return m, nil
@@ -852,6 +978,8 @@ func (m *model) updateInfoPaneScrollKeys(pane *infoPane, k tea.KeyMsg) (tea.Mode
 }
 
 func (m *model) onProjectSelectionChanged() tea.Cmd {
+	m.kanbanActive = false
+	m.kanbanBoard = vimkunja.KanbanBoard{}
 	if len(m.projects) == 0 || m.inOverview() {
 		return nil
 	}
@@ -1120,8 +1248,14 @@ func (m *model) renderStatusBar(w int) string {
 	if m.commandMode {
 		hint = fmt.Sprintf(":%s_", m.commandInput)
 	}
+	if m.kanbanProvisionConfirm {
+		hint = fmt.Sprintf(`Create standard Kanban View for %q? y/n`, m.currentProjectTitle())
+	}
 	if m.leaderArmed {
-		hint = "[LEADER] a Overview/return  •  o toggle projects pane"
+		hint = "[LEADER] a Overview/return  •  o toggle projects pane  •  v views"
+	}
+	if m.viewSwitchArmed {
+		hint = "[VIEWS] l list  •  k Kanban  •  t table  •  g Gantt"
 	}
 	if m.overviewPrompt == overviewPromptSort {
 		hint = "SORT  d Due ↓  •  u Due ↑  •  p Priority ↓  •  t Title  •  Esc cancel"

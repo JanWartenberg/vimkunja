@@ -78,7 +78,11 @@ func (m *model) openOverview() tea.Cmd {
 		m.recordError(errUnsavedNavigation)
 		return nil
 	}
-	if m.taskScope == scopeProject && m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
+	if m.kanbanActive {
+		if task, ok := m.selectedKanbanTask(); ok {
+			m.pendingKanbanTaskID = task.ID
+		}
+	} else if m.taskScope == scopeProject && m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
 		m.pendingTaskID = m.tasks[m.taskSelected].ID
 	}
 	m.lastProjectPaneCollapsed = m.projectsPaneCollapsed
@@ -116,6 +120,7 @@ func (m *model) openOverviewNewEditor() {
 }
 
 func (m *model) restoreProjectScope() tea.Cmd {
+	wasKanban := m.kanbanActive
 	if m.editor != nil && m.editor.dirty() {
 		m.recordError(errUnsavedNavigation)
 		return nil
@@ -127,11 +132,17 @@ func (m *model) restoreProjectScope() tea.Cmd {
 	m.editor = nil
 	m.focus = paneTasks
 	m.taskLoading = true
+	if wasKanban {
+		return m.loadKanbanBoard(m.currentProjectID)
+	}
 	return m.loadTasks(m.currentProjectID, m.currentViewID)
 }
 
 func (m *model) refreshActiveTasks() tea.Cmd {
 	m.taskLoading = true
+	if m.kanbanActive && !m.inOverview() {
+		return m.loadKanbanBoard(m.currentProjectID)
+	}
 	if m.inOverview() {
 		return m.loadOverview()
 	}

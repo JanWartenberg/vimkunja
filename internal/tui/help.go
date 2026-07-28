@@ -1,7 +1,7 @@
 package tui
 
-// helpLines documents implemented bindings and an explicitly marked agreed
-// View-navigation section. Planned entries must state that they are unavailable.
+// helpLines documents implemented bindings. Deferred View entries state that
+// they remain unavailable.
 var helpLines = []string{
 	"Vimkunja is a task manager in your terminal facilitating Vim Motions.",
 	"",
@@ -55,10 +55,19 @@ var helpLines = []string{
 	"  f o/a/v/t             Overview filter: open, all, overdue, due today",
 	"  :overview / :list     Open Overview / restore Project List",
 	"",
-	"AGREED PROJECT VIEWS (NOT YET IMPLEMENTED)",
+	"PROJECT VIEWS",
 	"  Space+v, then l / k   Select List / Kanban View",
+	"  :kanban               Select or provision Project Kanban View",
+	"",
+	"KANBAN BOARD",
+	"  h / l                 Select previous / next Bucket",
+	"  j / k                 Select previous / next Task in Bucket",
+	"  Shift+H / Shift+L     Move selected Task to adjacent Bucket",
+	"  m                     Choose any target Bucket",
+	"  Enter                 Open selected Task detail",
+	"",
+	"DEFERRED PROJECT VIEWS",
 	"  Space+v, then t / g   Select Table / Gantt View (deferred)",
-	"  :kanban               Select Project Kanban View",
 	"  :table / :gantt       Select deferred Table / Gantt View",
 	"",
 	"HELP PANE",

@@ -2,7 +2,7 @@
 
 This is the durable, context-sorted contract for Vimkunja keybindings. It is an exchange format for discussing and comparing alternative interaction designs.
 
-`internal/tui/help.go` lists implemented bindings plus an explicitly marked **Agreed, not yet implemented** View-navigation section. This contract remains the complete source for agreed and provisional bindings; its status column makes the distinction explicit.
+`internal/tui/help.go` lists implemented bindings and marks deferred View entries explicitly. This contract remains the complete source for agreed and provisional bindings; its status column makes the distinction explicit.
 
 This document is maintained manually for now. Generating or deriving `help.go` from it is deferred until the rich-text binding design has stabilized.
 
@@ -35,13 +35,13 @@ A Task context consists of a Scope (`Overview` or the current Project) and a Vie
 | `Space+o` | Toggle the Projects Pane. Overview starts with it hidden; opening a Task Detail from Overview temporarily reveals and selects that Task's Project. | Implemented |
 | `s`, then `d/u/p/t` | Choose Overview sort: Due ↓ / Due ↑ / Priority ↓ / Title. | Implemented |
 | `f`, then `o/a/v/t` | Choose Overview filter: open / all / overdue / due today. | Implemented |
-| `Space+v`, then `l` | Select List View for the current Project. | Agreed |
-| `Space+v`, then `k` | Select Kanban View for the current Project. | Agreed |
+| `Space+v`, then `l` | Select List View for the current Project. | Implemented |
+| `Space+v`, then `k` | Select or provision the single manual Kanban View for the current Project. | Implemented |
 | `Space+v`, then `t` | Select Table View for the current Project. | Agreed; View deferred |
 | `Space+v`, then `g` | Select Gantt View for the current Project. | Agreed; View deferred |
 | `:overview` | Open Overview. | Implemented |
 | `:list` | Select List View for the current Project context; from Overview, restore the last Project context first. | Implemented |
-| `:kanban` | Select Kanban View for the current Project context; from Overview, restore the last Project context first. | Agreed |
+| `:kanban` | Select or provision the single manual Kanban View for the current Project context; from Overview, restore the last Project context first. | Implemented |
 | `:table` | Select Table View for the current Project context. | Agreed; View deferred |
 | `:gantt` | Select Gantt View for the current Project context. | Agreed; View deferred |
 
@@ -59,6 +59,16 @@ The Project View switcher is visible above the Tasks Pane only outside Overview 
 | `x` | Toggle the selected Task's Done state | Implemented |
 | `dd`, then `y` | Permanently delete the selected Task after explicit confirmation; `n` or `Esc` cancel. | Implemented |
 | `r` | Reload the active View | Implemented |
+
+## Kanban Board
+
+| Binding | Action | Status |
+| --- | --- | --- |
+| `h` / `l` | Select the adjacent Bucket and reveal it horizontally when necessary. | Implemented |
+| `j` / `k` | Select the previous / next Task in the active Bucket; empty Buckets remain active. | Implemented |
+| `Shift+H` / `Shift+L` | Move the selected Task to the adjacent Bucket. | Implemented |
+| `m`, then `j/k`, `Enter` | Select and confirm any target Bucket; `Esc` cancels. | Implemented |
+| `Enter` | Open the selected Task in the Task Detail Pane. | Implemented |
 
 ## Task Detail Pane
 

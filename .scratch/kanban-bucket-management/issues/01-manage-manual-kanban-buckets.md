@@ -20,4 +20,4 @@
 
 ## Further context
 
-Upstream Vikunja supports CRUD for Buckets scoped to a Project View. A manual Kanban View is the only initial supported kind because it has persisted, movable Buckets. The upstream default Bucket template and its semantics are documented in [`../kanban-board/research-vikunja-default-kanban.md`](../../kanban-board/research-vikunja-default-kanban.md).
+Upstream Vikunja supports CRUD for Buckets scoped to a Project View. A manual Kanban View is the only initial supported kind because it has persisted, movable Buckets. The upstream default Bucket template and its semantics are documented in [`research-vikunja-default-kanban.md`](../../../.archive/2026-07-28/kanban-board/research-vikunja-default-kanban.md).

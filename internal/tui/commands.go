@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	apperrors "github.com/vimkunja/vimkunja/internal/errors"
+	"github.com/vimkunja/vimkunja/internal/vimkunja"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -67,7 +68,7 @@ func newDefaultCommandRegistry() *CommandRegistry {
 	registry.Register("err", []string{"errors"}, errorsCommand)
 	registry.Register("overview", nil, overviewCommand)
 	registry.Register("list", nil, listCommand)
-	registry.Register("kanban", nil, notYetImplementedCommand)
+	registry.Register("kanban", nil, kanbanCommand)
 	registry.Register("table", nil, notYetImplementedCommand)
 	registry.Register("gantt", nil, notYetImplementedCommand)
 	return registry
@@ -159,15 +160,29 @@ func overviewCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	return m, m.openOverview()
 }
 
+func kanbanCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if m.currentProjectID == 0 {
+		m.recordError(fmt.Errorf(":kanban requires a Project context"))
+		return m, nil
+	}
+	if m.inOverview() {
+		m.taskScope = scopeProject
+		m.overviewPrompt = overviewPromptNone
+		m.showDetail = false
+		m.editor = nil
+		m.projectsPaneCollapsed = m.lastProjectPaneCollapsed
+		m.focus = paneTasks
+	}
+	m.taskLoading = true
+	return m, m.loadKanbanBoard(m.currentProjectID)
+}
+
 func notYetImplementedCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	m.recordError(errors.New("Not yet implemented"))
 	return m, nil
 }
 
 func listCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
-	if m.inOverview() {
-		return m, m.restoreProjectScope()
-	}
 	if m.currentProjectID == 0 {
 		m.recordError(fmt.Errorf(":list requires a Project context"))
 		return m, nil
@@ -178,6 +193,11 @@ func listCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	m.currentViewID = m.projectViews[m.viewSelected].ID
+	m.kanbanActive = false
+	m.kanbanBoard = vimkunja.KanbanBoard{}
+	if m.inOverview() {
+		return m, m.restoreProjectScope()
+	}
 	return m, m.refreshActiveTasks()
 }
 

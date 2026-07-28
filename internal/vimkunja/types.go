@@ -10,9 +10,35 @@ type Project struct {
 
 // ProjectView represents a view within a project (Kanban, List, Table, Gantt, etc.).
 type ProjectView struct {
-	ID       int64  `json:"id"`
-	Title    string `json:"title"`
-	ViewKind string `json:"view_kind"`
+	ID                      int64  `json:"id"`
+	Title                   string `json:"title"`
+	ViewKind                string `json:"view_kind"`
+	BucketConfigurationMode string `json:"bucket_configuration_mode"`
+}
+
+// KanbanBoardAvailability explains whether a Project has one unambiguous
+// manual Kanban View that Vimkunja can render.
+type KanbanBoardAvailability int
+
+const (
+	KanbanBoardAvailable KanbanBoardAvailability = iota
+	KanbanBoardUnavailable
+	KanbanBoardAmbiguous
+)
+
+// KanbanBucket is a persisted Bucket and its Tasks in the active Kanban View.
+type KanbanBucket struct {
+	ID       int64
+	Title    string
+	Position float64
+	Tasks    []Task
+}
+
+// KanbanBoard is the Store-owned read model for one manual Kanban View.
+type KanbanBoard struct {
+	Availability KanbanBoardAvailability
+	View         ProjectView
+	Buckets      []KanbanBucket
 }
 
 // WorkflowStatusAvailability explains whether a project's manual Kanban View

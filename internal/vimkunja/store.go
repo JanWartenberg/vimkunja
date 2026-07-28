@@ -10,6 +10,8 @@ type Store interface {
 	ListProjects(ctx context.Context, page, perPage int) ([]Project, int, error)
 	ListViews(ctx context.Context, projectID int64, page, perPage int) ([]ProjectView, int, error)
 	ListTasksInView(ctx context.Context, projectID, viewID int64, page, perPage int) ([]Task, int, error)
+	LoadManualKanbanBoard(ctx context.Context, projectID int64) (KanbanBoard, error)
+	ProvisionStandardManualKanbanView(ctx context.Context, projectID int64) (KanbanBoard, error)
 	ListOverviewTasks(ctx context.Context, page, perPage int) ([]Task, int, error)
 	GetTaskWorkflowStatus(ctx context.Context, projectID, taskID int64) (WorkflowStatus, error)
 	SetTaskWorkflowStatus(ctx context.Context, taskID, bucketID int64) error

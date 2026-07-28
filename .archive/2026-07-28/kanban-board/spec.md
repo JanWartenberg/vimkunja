@@ -117,7 +117,7 @@ For a View added to an existing Project, Vimkunja deliberately assigns open Task
 
 ## Out of scope
 
-- Create, rename, delete, reorder, set limits on, or otherwise administer Buckets. See [`../kanban-bucket-management/issues/01-manage-manual-kanban-buckets.md`](../kanban-bucket-management/issues/01-manage-manual-kanban-buckets.md).
+- Create, rename, delete, reorder, set limits on, or otherwise administer Buckets. See [`01-manage-manual-kanban-buckets.md`](../../../.scratch/kanban-bucket-management/issues/01-manage-manual-kanban-buckets.md).
 - Multiple manual Kanban Views and a View picker.
 - Filter-configured Kanban Views.
 - Card reordering or changing `task_positions.position`.
@@ -150,5 +150,5 @@ Against the same local database in the original Vikunja UI: compare Bucket title
 ## Sources
 
 - Upstream compatibility research: [`research-vikunja-default-kanban.md`](research-vikunja-default-kanban.md)
-- Historical Decisions 12–17: [`.archive/TUI_IDEA.md`](../../.archive/TUI_IDEA.md)
-- Existing workflow-status decisions: [`.archive/2026-07-17/fundament-mvp/workflow-status/spec.md`](../../.archive/2026-07-17/fundament-mvp/workflow-status/spec.md)
+- Historical Decisions 12–17: [`TUI_IDEA.md`](../../TUI_IDEA.md)
+- Existing workflow-status decisions: [`workflow-status/spec.md`](../../2026-07-17/fundament-mvp/workflow-status/spec.md)

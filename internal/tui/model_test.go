@@ -22,8 +22,16 @@ type fakeStore struct {
 	deleteTaskID       int64
 	workflowStatus     vimkunja.WorkflowStatus
 	workflowStatusErr  error
+	kanbanBoard        vimkunja.KanbanBoard
+	kanbanBoardErr     error
+	provisionedBoard   vimkunja.KanbanBoard
+	provisionErr       error
+	provisionCalls     int
+	workflowTaskID     int64
+	workflowBucketID   int64
 	updateErr          error
 	listTasksCalls     int
+	listTasksViewID    int64
 	overviewTasks      []vimkunja.Task
 	overviewTasksCalls int
 	createdDraft       vimkunja.TaskDraft
@@ -38,9 +46,19 @@ func (f *fakeStore) ListViews(context.Context, int64, int, int) ([]vimkunja.Proj
 	return nil, 0, nil
 }
 
-func (f *fakeStore) ListTasksInView(context.Context, int64, int64, int, int) ([]vimkunja.Task, int, error) {
+func (f *fakeStore) ListTasksInView(_ context.Context, _ int64, viewID int64, _ int, _ int) ([]vimkunja.Task, int, error) {
 	f.listTasksCalls++
+	f.listTasksViewID = viewID
 	return nil, 0, nil
+}
+
+func (f *fakeStore) LoadManualKanbanBoard(context.Context, int64) (vimkunja.KanbanBoard, error) {
+	return f.kanbanBoard, f.kanbanBoardErr
+}
+
+func (f *fakeStore) ProvisionStandardManualKanbanView(context.Context, int64) (vimkunja.KanbanBoard, error) {
+	f.provisionCalls++
+	return f.provisionedBoard, f.provisionErr
 }
 
 func (f *fakeStore) ListOverviewTasks(context.Context, int, int) ([]vimkunja.Task, int, error) {
@@ -52,7 +70,32 @@ func (f *fakeStore) GetTaskWorkflowStatus(context.Context, int64, int64) (vimkun
 	return f.workflowStatus, f.workflowStatusErr
 }
 
-func (f *fakeStore) SetTaskWorkflowStatus(context.Context, int64, int64) error {
+func (f *fakeStore) SetTaskWorkflowStatus(_ context.Context, taskID, bucketID int64) error {
+	f.workflowTaskID = taskID
+	f.workflowBucketID = bucketID
+	var moved vimkunja.Task
+	found := false
+	for i := range f.kanbanBoard.Buckets {
+		for j, task := range f.kanbanBoard.Buckets[i].Tasks {
+			if task.ID == taskID {
+				moved = task
+				f.kanbanBoard.Buckets[i].Tasks = append(f.kanbanBoard.Buckets[i].Tasks[:j], f.kanbanBoard.Buckets[i].Tasks[j+1:]...)
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+	if found {
+		for i := range f.kanbanBoard.Buckets {
+			if f.kanbanBoard.Buckets[i].ID == bucketID {
+				f.kanbanBoard.Buckets[i].Tasks = append(f.kanbanBoard.Buckets[i].Tasks, moved)
+				break
+			}
+		}
+	}
 	return nil
 }
 
@@ -105,6 +148,321 @@ func typeCommand(t *testing.T, m *model, input string) (*model, tea.Cmd) {
 	}
 	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
 	return updated.(*model), cmd
+}
+
+func TestKanbanCommandOpensAvailableManualBoard(t *testing.T) {
+	store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{
+		Availability: vimkunja.KanbanBoardAvailable,
+		View:         vimkunja.ProjectView{ID: 10, Title: "Kanban", ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		Buckets: []vimkunja.KanbanBucket{
+			{ID: 100, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "Open"}}},
+			{ID: 101, Title: "Doing"},
+		},
+	}}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.focus = paneTasks
+
+	m, cmd := typeCommand(t, m, "kanban")
+	if cmd == nil {
+		t.Fatal(":kanban returned no board load command")
+	}
+	updated, _ := m.Update(cmd())
+	m = updated.(*model)
+	if m.currentViewID != 10 || !strings.Contains(m.Render(), "To-Do") || !strings.Contains(m.Render(), "Doing") {
+		t.Fatalf("kanban board was not opened: view:%d render:%q", m.currentViewID, m.Render())
+	}
+}
+
+func TestKanbanCommandProvisionsAfterExplicitConfirmation(t *testing.T) {
+	store := &fakeStore{
+		kanbanBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardUnavailable},
+		provisionedBoard: vimkunja.KanbanBoard{
+			Availability: vimkunja.KanbanBoardAvailable,
+			View:         vimkunja.ProjectView{ID: 10, Title: "Kanban", ViewKind: "kanban", BucketConfigurationMode: "manual"},
+			Buckets:      []vimkunja.KanbanBucket{{ID: 100, Title: "To-Do"}},
+		},
+	}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.projects = []vimkunja.Project{{ID: 1, Title: "Home"}}
+	m.focus = paneTasks
+
+	m, cmd := typeCommand(t, m, "kanban")
+	updated, _ := m.Update(cmd())
+	m = updated.(*model)
+	if !strings.Contains(m.renderStatusBar(100), `Create standard Kanban View for "Home"? y/n`) {
+		t.Fatalf("kanban prompt = %q", m.renderStatusBar(100))
+	}
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("confirmation returned no provisioning command")
+	}
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if m.currentViewID != 10 || !strings.Contains(m.Render(), "To-Do") {
+		t.Fatalf("provisioned board was not opened: view:%d render:%q", m.currentViewID, m.Render())
+	}
+}
+
+func TestKanbanProvisionCanCancelAndAmbiguousBoardIsNotSelected(t *testing.T) {
+	t.Run("cancel", func(t *testing.T) {
+		store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardUnavailable}}
+		m := testModel()
+		m.store = store
+		m.currentProjectID = 1
+		m.focus = paneTasks
+		m, cmd := typeCommand(t, m, "kanban")
+		updated, _ := m.Update(cmd())
+		m = updated.(*model)
+		m = pressKey(m, tea.Key{Code: tea.KeyEsc})
+		if store.provisionCalls != 0 || m.kanbanProvisionConfirm {
+			t.Fatalf("cancelled provision = calls:%d prompt:%v", store.provisionCalls, m.kanbanProvisionConfirm)
+		}
+	})
+	t.Run("failure", func(t *testing.T) {
+		store := &fakeStore{
+			kanbanBoard:  vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardUnavailable},
+			provisionErr: errors.New("database is locked"),
+		}
+		m := testModel()
+		m.store = store
+		m.currentProjectID = 1
+		m.currentViewID = 5
+		m.focus = paneTasks
+		m, cmd := typeCommand(t, m, "kanban")
+		updated, _ := m.Update(cmd())
+		m = updated.(*model)
+		updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
+		m = updated.(*model)
+		updated, _ = m.Update(cmd())
+		m = updated.(*model)
+		if store.provisionCalls != 1 || m.currentViewID != 5 || !strings.Contains(m.lastErr, "database is locked") {
+			t.Fatalf("failed provision = calls:%d view:%d err:%q", store.provisionCalls, m.currentViewID, m.lastErr)
+		}
+	})
+	t.Run("ambiguous", func(t *testing.T) {
+		store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardAmbiguous}}
+		m := testModel()
+		m.store = store
+		m.currentProjectID = 1
+		m.focus = paneTasks
+		m, cmd := typeCommand(t, m, "kanban")
+		updated, _ := m.Update(cmd())
+		m = updated.(*model)
+		if m.kanbanActive || m.kanbanProvisionConfirm || !strings.Contains(m.lastErr, "multiple manual Kanban Views") {
+			t.Fatalf("ambiguous board = active:%v prompt:%v err:%q", m.kanbanActive, m.kanbanProvisionConfirm, m.lastErr)
+		}
+	})
+}
+
+func TestKanbanPickerMovesSelectedTaskToAnyBucket(t *testing.T) {
+	store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{
+		Availability: vimkunja.KanbanBoardAvailable,
+		View:         vimkunja.ProjectView{ID: 10, Title: "Kanban", ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		Buckets: []vimkunja.KanbanBucket{
+			{ID: 100, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "Open"}}},
+			{ID: 101, Title: "Doing"},
+			{ID: 102, Title: "Done"},
+		},
+	}}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.focus = paneTasks
+	m, cmd := typeCommand(t, m, "kanban")
+	updated, _ := m.Update(cmd())
+	m = updated.(*model)
+
+	m = pressKey(m, tea.Key{Code: 'm', Text: "m"})
+	if !strings.Contains(m.Render(), `Move "Open" to:`) {
+		t.Fatalf("picker render = %q", m.Render())
+	}
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("picker confirmation returned no move command")
+	}
+	_, _ = m.Update(cmd())
+	if store.workflowTaskID != 1 || store.workflowBucketID != 102 {
+		t.Fatalf("move = task:%d bucket:%d, want task 1 to Done", store.workflowTaskID, store.workflowBucketID)
+	}
+}
+
+func TestOverviewReturnPreservesKanbanTaskSelection(t *testing.T) {
+	store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{
+		Availability: vimkunja.KanbanBoardAvailable,
+		View:         vimkunja.ProjectView{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		Buckets: []vimkunja.KanbanBucket{
+			{ID: 100, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "First"}}},
+			{ID: 101, Title: "Doing", Tasks: []vimkunja.Task{{ID: 2, ProjectID: 1, Title: "Second"}}},
+		},
+	}}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.focus = paneTasks
+	m, cmd := typeCommand(t, m, "kanban")
+	updated, _ := m.Update(cmd())
+	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: '-', Text: "-"}))
+	m = updated.(*model)
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: ' ', Text: " "})
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'a', Text: "a"}))
+	m = updated.(*model)
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if m.editor == nil || m.editor.id != 2 {
+		t.Fatalf("returned Kanban selection = %#v, want task 2", m.editor)
+	}
+}
+
+func TestListFromOverviewRestoresListInsteadOfKanbanTasks(t *testing.T) {
+	store := &fakeStore{}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.currentViewID = 10
+	m.kanbanActive = true
+	m.kanbanBoard = vimkunja.KanbanBoard{View: vimkunja.ProjectView{ID: 10}}
+	m.projectViews = []vimkunja.ProjectView{
+		{ID: 5, ViewKind: "list"},
+		{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+	}
+	m.taskScope = scopeOverview
+
+	m, cmd := typeCommand(t, m, "list")
+	if cmd == nil {
+		t.Fatal(":list returned no list load command")
+	}
+	_, _ = m.Update(cmd())
+	if store.listTasksViewID != 5 || m.kanbanActive {
+		t.Fatalf(":list from Overview loaded view:%d active:%v, want list view 5", store.listTasksViewID, m.kanbanActive)
+	}
+}
+
+func TestKanbanInitiallySelectsAnExistingTaskAfterEmptyFirstBucket(t *testing.T) {
+	store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{
+		Availability: vimkunja.KanbanBoardAvailable,
+		View:         vimkunja.ProjectView{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		Buckets: []vimkunja.KanbanBucket{
+			{ID: 100, Title: "To-Do"},
+			{ID: 101, Title: "Done", Tasks: []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "Finished", Done: true}}},
+		},
+	}}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.focus = paneTasks
+	m, cmd := typeCommand(t, m, "kanban")
+	updated, _ := m.Update(cmd())
+	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if m.editor == nil || m.editor.id != 1 {
+		t.Fatalf("initial Kanban selection = %#v, want existing task 1", m.editor)
+	}
+}
+
+func TestKanbanNavigationActivatesEmptyBucketAndScrollsHorizontally(t *testing.T) {
+	store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{
+		Availability: vimkunja.KanbanBoardAvailable,
+		View:         vimkunja.ProjectView{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		Buckets: []vimkunja.KanbanBucket{
+			{ID: 100, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "First"}}},
+			{ID: 101, Title: "Empty"},
+			{ID: 102, Title: "Later", Tasks: []vimkunja.Task{{ID: 2, ProjectID: 1, Title: "Second"}}},
+			{ID: 103, Title: "Done"},
+		},
+	}}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.focus = paneTasks
+	m, cmd := typeCommand(t, m, "kanban")
+	updated, _ := m.Update(cmd())
+	m = updated.(*model)
+
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"}) // Empty Bucket: no selected Task.
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if m.editor != nil {
+		t.Fatal("Enter opened a detail pane for an empty Bucket")
+	}
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	if !strings.Contains(m.Render(), "< Empty") || !strings.Contains(m.Render(), "Later >") {
+		t.Fatalf("horizontal Board viewport = %q, want hidden-Bucket indicators", m.Render())
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if m.editor == nil || m.editor.id != 2 {
+		t.Fatalf("detail after empty Bucket navigation = %#v, want task 2", m.editor)
+	}
+}
+
+func TestLeaderViewSwitcherOpensKanban(t *testing.T) {
+	store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{
+		Availability: vimkunja.KanbanBoardAvailable,
+		View:         vimkunja.ProjectView{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		Buckets:      []vimkunja.KanbanBucket{{ID: 100, Title: "To-Do"}},
+	}}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.focus = paneTasks
+
+	m = pressKey(m, tea.Key{Code: ' ', Text: " "})
+	m = pressKey(m, tea.Key{Code: 'v', Text: "v"})
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'k', Text: "k"}))
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("Space+v, then k returned no Kanban load command")
+	}
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if m.currentViewID != 10 {
+		t.Fatalf("view id = %d, want Kanban view 10", m.currentViewID)
+	}
+}
+
+func TestKanbanAdjacentMoveKeepsMovedTaskSelected(t *testing.T) {
+	store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{
+		Availability: vimkunja.KanbanBoardAvailable,
+		View:         vimkunja.ProjectView{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		Buckets: []vimkunja.KanbanBucket{
+			{ID: 100, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "Open"}}},
+			{ID: 101, Title: "Doing"},
+		},
+	}}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.focus = paneTasks
+	m, cmd := typeCommand(t, m, "kanban")
+	updated, _ := m.Update(cmd())
+	m = updated.(*model)
+
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'L', Text: "L"}))
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("adjacent move returned no command")
+	}
+	updated, cmd = m.Update(cmd())
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("successful move returned no board reload")
+	}
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if m.editor == nil || m.editor.id != 1 {
+		t.Fatalf("detail after move = %#v, want moved task 1 selected", m.editor)
+	}
 }
 
 func TestStartFooterAdvertisesHelpInsteadOfRefresh(t *testing.T) {
@@ -940,7 +1298,7 @@ func TestProjectPickerShowsNoMatch(t *testing.T) {
 }
 
 func TestAdvertisedUnimplementedCommandsExplainTheirStatus(t *testing.T) {
-	for _, command := range []string{"kanban", "table", "gantt"} {
+	for _, command := range []string{"table", "gantt"} {
 		t.Run(command, func(t *testing.T) {
 			m, cmd := typeCommand(t, testModel(), command)
 			if cmd != nil {

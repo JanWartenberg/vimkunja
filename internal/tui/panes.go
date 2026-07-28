@@ -94,6 +94,9 @@ func renderProjects(m *model, textW, textH int) string {
 }
 
 func renderTasks(m *model, textW, textH int) string {
+	if m.kanbanActive && !m.inOverview() {
+		return renderKanbanBoard(m, textW, textH)
+	}
 	headerText := " Tasks (list) "
 	if m.inOverview() {
 		headerText = fmt.Sprintf(" Overview · %s · %s ", m.overviewSortLabel(), m.overviewFilterLabel())
@@ -432,6 +435,15 @@ func priorityName(priority int64) string {
 }
 
 func doneLabel(m *model, taskID int64) string {
+	if m.kanbanActive {
+		for _, bucket := range m.kanbanBoard.Buckets {
+			for _, task := range bucket.Tasks {
+				if task.ID == taskID && task.Done {
+					return "done"
+				}
+			}
+		}
+	}
 	for _, task := range m.tasks {
 		if task.ID == taskID && task.Done {
 			return "done"

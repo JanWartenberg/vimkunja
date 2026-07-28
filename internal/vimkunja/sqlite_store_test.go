@@ -43,7 +43,10 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			view_kind INTEGER,
 			position INTEGER,
 			done_bucket_id INTEGER,
-			default_bucket_id INTEGER
+			default_bucket_id INTEGER,
+			bucket_configuration_mode INTEGER DEFAULT 1,
+			created DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
 
 		CREATE TABLE tasks (
@@ -65,7 +68,10 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			id INTEGER PRIMARY KEY,
 			title TEXT,
 			project_view_id INTEGER,
-			position REAL
+			position REAL,
+			created DATETIME DEFAULT CURRENT_TIMESTAMP,
+			updated DATETIME DEFAULT CURRENT_TIMESTAMP,
+			created_by_id INTEGER DEFAULT 1
 		);
 
 		CREATE TABLE task_buckets (
@@ -95,6 +101,112 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 	}
 
 	return store, cleanup
+}
+
+func TestProvisionStandardManualKanbanView_AssignsTasksByDoneState(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title, owner_id) VALUES (1, 'Project', 7);
+		INSERT INTO tasks (id, project_id, title, done) VALUES
+			(1, 1, 'Open', 0), (2, 1, 'Finished', 1);
+	`)
+	if err != nil {
+		t.Fatalf("seed database: %v", err)
+	}
+
+	board, err := store.ProvisionStandardManualKanbanView(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("provision board: %v", err)
+	}
+	if board.Availability != KanbanBoardAvailable || board.View.Title != "Kanban" {
+		t.Fatalf("board = %#v, want available Kanban board", board)
+	}
+	if got, want := []string{board.Buckets[0].Title, board.Buckets[1].Title, board.Buckets[2].Title}, []string{"To-Do", "Doing", "Done"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("bucket titles = %#v, want %#v", got, want)
+	}
+	if got, want := []int64{board.Buckets[0].Tasks[0].ID}, []int64{1}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("To-Do tasks = %#v, want %#v", got, want)
+	}
+	if got, want := []int64{board.Buckets[2].Tasks[0].ID}, []int64{2}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Done tasks = %#v, want %#v", got, want)
+	}
+
+	var viewPosition, defaultBucketID, doneBucketID int64
+	var configurationMode int
+	if err := store.db.QueryRow(`SELECT position, default_bucket_id, done_bucket_id, bucket_configuration_mode FROM project_views WHERE id = ?`, board.View.ID).Scan(&viewPosition, &defaultBucketID, &doneBucketID, &configurationMode); err != nil {
+		t.Fatalf("read provisioned view: %v", err)
+	}
+	if viewPosition != 400 || configurationMode != bucketConfigurationManual || defaultBucketID != board.Buckets[0].ID || doneBucketID != board.Buckets[2].ID {
+		t.Fatalf("provisioned view = position:%d configuration:%d default:%d done:%d", viewPosition, configurationMode, defaultBucketID, doneBucketID)
+	}
+	var createdByID int64
+	if err := store.db.QueryRow(`SELECT created_by_id FROM buckets WHERE id = ?`, board.Buckets[0].ID).Scan(&createdByID); err != nil {
+		t.Fatalf("read provisioned bucket creator: %v", err)
+	}
+	if createdByID != 7 {
+		t.Fatalf("bucket creator = %d, want Project owner 7", createdByID)
+	}
+	var positions int
+	if err := store.db.QueryRow(`SELECT COUNT(1) FROM task_positions WHERE project_view_id = ? AND position > 0`, board.View.ID).Scan(&positions); err != nil {
+		t.Fatalf("read task positions: %v", err)
+	}
+	if positions != 2 {
+		t.Fatalf("persisted positions = %d, want 2", positions)
+	}
+}
+
+func TestProvisionStandardManualKanbanView_RejectsMissingProjectWithoutView(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	if _, err := store.ProvisionStandardManualKanbanView(context.Background(), 99); err == nil {
+		t.Fatal("provision missing Project succeeded")
+	}
+	var views int
+	if err := store.db.QueryRow(`SELECT COUNT(1) FROM project_views`).Scan(&views); err != nil {
+		t.Fatalf("count views after failed provision: %v", err)
+	}
+	if views != 0 {
+		t.Fatalf("views after failed provision = %d, want none", views)
+	}
+}
+
+func TestLoadManualKanbanBoard_GroupsTasksAndIgnoresFilteredViews(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO project_views (id, project_id, title, view_kind, position, bucket_configuration_mode) VALUES
+			(10, 1, 'Kanban', 3, 400, 1),
+			(11, 1, 'Filtered', 3, 500, 2);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES
+			(100, 'To-Do', 10, 100), (101, 'Doing', 10, 200), (102, 'Done', 10, 300);
+		INSERT INTO tasks (id, project_id, title) VALUES
+			(1, 1, 'Later'), (2, 1, 'First');
+		INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES
+			(1, 101, 10), (2, 101, 10);
+		INSERT INTO task_positions (task_id, project_view_id, position) VALUES
+			(1, 10, 200), (2, 10, 100);
+	`)
+	if err != nil {
+		t.Fatalf("seed database: %v", err)
+	}
+
+	board, err := store.LoadManualKanbanBoard(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("load board: %v", err)
+	}
+	if board.Availability != KanbanBoardAvailable || board.View.ID != 10 {
+		t.Fatalf("board = %#v, want available manual view 10", board)
+	}
+	if got, want := []string{board.Buckets[0].Title, board.Buckets[1].Title, board.Buckets[2].Title}, []string{"To-Do", "Doing", "Done"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("bucket titles = %#v, want %#v", got, want)
+	}
+	if got, want := []int64{board.Buckets[1].Tasks[0].ID, board.Buckets[1].Tasks[1].ID}, []int64{2, 1}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Doing task order = %#v, want %#v", got, want)
+	}
 }
 
 func TestGetTaskWorkflowStatus_ReturnsCurrentBucketAndOrderedChoices(t *testing.T) {
@@ -163,6 +275,7 @@ func TestSetTaskWorkflowStatus_UpdatesBucketAndDoneState(t *testing.T) {
 		INSERT INTO tasks (id, project_id, title, done, done_at, updated) VALUES
 			(1, 1, 'Task', 1, CURRENT_TIMESTAMP, '2020-01-01 00:00:00');
 		INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (1, 12, 10);
+		INSERT INTO task_positions (task_id, project_view_id, position) VALUES (1, 10, 123.5);
 	`)
 	if err != nil {
 		t.Fatalf("seed database: %v", err)
@@ -180,6 +293,13 @@ func TestSetTaskWorkflowStatus_UpdatesBucketAndDoneState(t *testing.T) {
 	}
 	if bucketID != 11 || done || doneAt.Valid || !updated.After(time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)) {
 		t.Fatalf("Doing state = bucket:%d done:%v doneAt:%#v updated:%v", bucketID, done, doneAt, updated)
+	}
+	var position float64
+	if err := store.db.QueryRow(`SELECT position FROM task_positions WHERE task_id = 1 AND project_view_id = 10`).Scan(&position); err != nil {
+		t.Fatalf("read task position: %v", err)
+	}
+	if position != 123.5 {
+		t.Fatalf("task position = %v, want unchanged 123.5", position)
 	}
 
 	if err := store.SetTaskWorkflowStatus(context.Background(), 1, 12); err != nil {
