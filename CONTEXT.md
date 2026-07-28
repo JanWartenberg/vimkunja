@@ -27,6 +27,9 @@ _Avoid_: Pane, window
 **List View**, **Kanban View**, **Table View**, **Gantt View**, **Overview View**:
 The initial named Views, each representing Tasks in a different form. Future Views may extend this set.
 
+**Manual Kanban View**:
+A Kanban View with Vikunja's `bucket_configuration_mode=manual`. Its persisted Buckets accept direct Task moves. _Avoid_: filter-configured Kanban View, which derives Buckets from filters and is outside the initial Board scope.
+
 ## Rich-text descriptions
 
 **Description**:
