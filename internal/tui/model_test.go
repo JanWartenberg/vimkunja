@@ -303,6 +303,27 @@ func TestTaskDeletionModalFitsNarrowTerminal(t *testing.T) {
 	}
 }
 
+func TestTaskDeletionModalIsWidthCappedAndCenteredOnWideTerminal(t *testing.T) {
+	const terminalWidth = 120
+	m := testModel()
+	m.tasks = []vimkunja.Task{{ID: 7, Title: "Delete me"}}
+	m.deleteTaskID = 7
+	background := strings.Repeat(strings.Repeat(" ", terminalWidth)+"\n", 12)
+
+	for _, line := range strings.Split(m.renderDeleteConfirmationModal(background, terminalWidth), "\n") {
+		borderStart := strings.Index(line, "\x1b[38;5;255")
+		if borderStart < 0 {
+			continue
+		}
+		left := ansi.StringWidth(line[:borderStart])
+		if want := (terminalWidth - 50) / 2; left != want {
+			t.Fatalf("modal starts at column %d, want %d for a 50-column centered modal", left, want)
+		}
+		return
+	}
+	t.Fatal("rendered modal has no white border")
+}
+
 func TestTaskDeletionFailureIsVisibleAndDoesNotRefresh(t *testing.T) {
 	store := &fakeStore{deleteErr: errors.New("delete failed")}
 	m := testModel()

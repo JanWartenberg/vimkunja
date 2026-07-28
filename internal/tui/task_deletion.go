@@ -48,12 +48,15 @@ func (m *model) deleteConfirmationTaskTitle() string {
 	return "selected task"
 }
 
+const deleteConfirmationModalMaxWidth = 50
+
 // renderDeleteConfirmationModal overlays a compact destructive-action dialog
 // over the current Pane content while preserving the surrounding context.
 func (m *model) renderDeleteConfirmationModal(background string, width int) string {
-	// The modal's border and horizontal padding consume six cells. Truncate
-	// variable content before styling so narrow terminals never overflow.
-	contentWidth := max(1, width-6)
+	// The modal's border and horizontal padding consume six cells. Cap it on
+	// wide terminals, but let it use the available width on narrow terminals.
+	modalWidth := min(width, deleteConfirmationModalMaxWidth)
+	contentWidth := max(1, modalWidth-6)
 	taskTitle := truncatePlain(m.deleteConfirmationTaskTitle(), contentWidth-lipgloss.Width(`Delete ""?`))
 	body := strings.Join([]string{
 		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196")).Render(truncatePlain("DELETE TASK", contentWidth)),
@@ -66,11 +69,11 @@ func (m *model) renderDeleteConfirmationModal(background string, width int) stri
 		Border(lipgloss.ThickBorder()).
 		BorderForeground(lipgloss.Color("255")).
 		Padding(1, 2).
-		Width(width).
+		Width(modalWidth).
 		Render(body)
 	modalLines := strings.Split(modal, "\n")
 	backgroundLines := strings.Split(background, "\n")
-	modalWidth := lipgloss.Width(modalLines[0])
+	modalWidth = lipgloss.Width(modalLines[0])
 	left := max(0, (width-modalWidth)/2)
 	top := max(0, (len(backgroundLines)-len(modalLines))/2)
 
