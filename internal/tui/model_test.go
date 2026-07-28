@@ -918,6 +918,23 @@ func TestProjectPickerShowsNoMatch(t *testing.T) {
 	}
 }
 
+func TestAdvertisedUnimplementedCommandsExplainTheirStatus(t *testing.T) {
+	for _, command := range []string{"kanban", "table", "gantt"} {
+		t.Run(command, func(t *testing.T) {
+			m, cmd := typeCommand(t, testModel(), command)
+			if cmd != nil {
+				t.Fatalf(":%s returned an unexpected command", command)
+			}
+			if m.lastErr != "Not yet implemented" {
+				t.Fatalf(":%s error = %q, want not-yet-implemented status", command, m.lastErr)
+			}
+			if footer := m.renderStatusBar(120); !strings.Contains(footer, "Error: Not yet implemented") {
+				t.Fatalf(":%s footer = %q, want explicit status", command, footer)
+			}
+		})
+	}
+}
+
 func TestUnknownCommandRecordsError(t *testing.T) {
 	m, cmd := typeCommand(t, testModel(), "missing")
 	if cmd != nil {

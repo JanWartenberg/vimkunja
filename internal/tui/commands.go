@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -66,6 +67,9 @@ func newDefaultCommandRegistry() *CommandRegistry {
 	registry.Register("err", []string{"errors"}, errorsCommand)
 	registry.Register("overview", nil, overviewCommand)
 	registry.Register("list", nil, listCommand)
+	registry.Register("kanban", nil, notYetImplementedCommand)
+	registry.Register("table", nil, notYetImplementedCommand)
+	registry.Register("gantt", nil, notYetImplementedCommand)
 	return registry
 }
 
@@ -153,6 +157,11 @@ func errorsCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 
 func overviewCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	return m, m.openOverview()
+}
+
+func notYetImplementedCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	m.recordError(errors.New("Not yet implemented"))
+	return m, nil
 }
 
 func listCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
