@@ -707,6 +707,24 @@ func TestOverviewFilterAndSortPicker(t *testing.T) {
 	}
 }
 
+func TestOverviewAlignsPriorityProjectAndTitleColumns(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.taskScope = scopeOverview
+	m.tasks = []vimkunja.Task{
+		{ID: 1, Title: "First title", Priority: 3, ProjectIdentifier: "VIM"},
+		{ID: 2, Title: "Second title", Priority: 5, ProjectIdentifier: "HOME"},
+	}
+
+	view := ansi.Strip(renderTasks(m, 100, 4))
+	lines := strings.Split(view, "\n")
+	first := strings.Index(lines[1], "First title")
+	second := strings.Index(lines[2], "Second title")
+	if first < 0 || second < 0 || first != second {
+		t.Fatalf("Overview columns = %q, title columns at %d and %d", view, first, second)
+	}
+}
+
 func TestOverviewDueDescendingReversesUndatedTasksToo(t *testing.T) {
 	m := testModel()
 	m.taskScope = scopeOverview

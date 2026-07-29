@@ -145,6 +145,10 @@ func renderTasks(m *model, textW, textH int) string {
 			}
 		}
 		prioStr := prioritySummary(t.Priority)
+		if m.inOverview() {
+			prioStr = fmt.Sprintf("%-6s", prioStr)
+			project = fmt.Sprintf("%-8s", truncatePlain(project, 8))
+		}
 		// Priority segment: colored only when not done. Rendered once from a
 		// PLAIN string (never nested inside another Render, which corrupts
 		// the embedded ANSI codes in lipgloss v2).
