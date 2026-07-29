@@ -19,7 +19,7 @@ Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor sowie die
 
 **Ziel:** Die tägliche Aufgabenverwaltung ist ohne Wechsel zur Original-App praktikabel.
 
-1. [Task-Metadaten besser darstellen](.scratch/task-presentation/issues/01-improve-task-date-priority-and-identifier-presentation.md) – einschließlich Eingabe von `YYYYMMDD` ohne manuelle Bindestriche.
+1. [Task-Metadaten besser darstellen](.scratch/task-presentation/issues/01-improve-task-date-priority-and-identifier-presentation.md)
 2. [Task Done in der Task Detail Pane togglen](.scratch/task-detail-done-toggle/issues/01-toggle-task-done-from-detail-pane.md)
 
 ### M2 – Bald danach

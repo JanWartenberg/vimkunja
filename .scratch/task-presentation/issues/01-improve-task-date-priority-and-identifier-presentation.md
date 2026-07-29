@@ -20,7 +20,7 @@
 ### Due Date
 
 - Store and display dates in English and at date precision only; do not display a time. A non-focused Detail field uses this human presentation; its focused editor remains canonical `YYYY-MM-DD`.
-- In M1, the focused editor also accepts exactly eight digits (`YYYYMMDD`) and normalizes them to `YYYY-MM-DD` before validation and persistence; typing separators is not required.
+- The existing focused Due Date mask already accepts eight digits (`YYYYMMDD`), renders/stores canonical `YYYY-MM-DD`, and does not require typing separators. M1 adds regression coverage while preserving this behavior.
 - Display `today`, `tomorrow`, and `in N days` for due dates in the next seven days. Overdue dates display as red `N days overdue`.
 - For later dates, display `04 Aug` in the current year and `04 Aug 2027` in another year.
 - An optional ` (Mon, 04 Aug)` suffix may appear only when it fits without reducing the title's available width; the base `in N days` form is always sufficient.
