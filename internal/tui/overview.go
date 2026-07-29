@@ -212,12 +212,8 @@ func overviewLess(left, right vimkunja.Task, mode overviewSort) bool {
 		return strings.ToLower(left.Title) < strings.ToLower(right.Title)
 	}
 	if leftHasDue != rightHasDue {
-		// Descending due-date order reverses the entire sequence: Tasks
-		// without a Due Date precede dated Tasks, so the earliest Due Date
-		// remains at the bottom.
-		if mode == overviewDueDesc {
-			return !leftHasDue
-		}
+		// Tasks without a Due Date remain after the dated block in either
+		// direction: they are not time-critical and should not dominate it.
 		return leftHasDue
 	}
 	if leftHasDue && !leftDue.Equal(rightDue) {
