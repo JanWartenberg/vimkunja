@@ -51,6 +51,7 @@ type model struct {
 	store               vimkunja.Store
 	perPage             int
 	disableCursorShapes bool
+	now                 func() time.Time
 
 	width  int
 	height int
@@ -138,6 +139,7 @@ func NewModel(cfg Config) tea.Model {
 		store:               cfg.Store,
 		perPage:             max(1, cfg.PerPage),
 		disableCursorShapes: cfg.DisableCursorShapes,
+		now:                 time.Now,
 		initialProjectID:    cfg.InitialProjectID,
 		actorUserID:         cfg.ActorUserID,
 		leaderTimeout:       leaderTimeout,

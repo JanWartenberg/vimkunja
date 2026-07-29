@@ -595,6 +595,60 @@ func TestKanbanFooterPrioritizesMoveActions(t *testing.T) {
 	}
 }
 
+func TestTaskDetailFormatsMetadataOutsideDueDateInsertMode(t *testing.T) {
+	m := testModel()
+	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
+	m.openExistingEditor(vimkunja.Task{ID: 123, ProjectID: 1, Index: 42, Title: "Launch", Priority: 3, DueDate: "2026-08-02"})
+
+	view := ansi.Strip(renderTaskDetail(m, 80, 12))
+	for _, want := range []string{"Priority: High", "Due Date: tomorrow", "(DB-ID: 123, Task-Index: 42)"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("detail = %q, want %q", view, want)
+		}
+	}
+
+	m.editor.field = fieldDueDate
+	m.editor.mode = editorInsert
+	view = ansi.Strip(renderTaskDetail(m, 80, 12))
+	if !strings.Contains(view, "Due Date: 2026-08-02") {
+		t.Fatalf("due date editor = %q, want canonical input", view)
+	}
+}
+
+func TestTaskListFormatsDueDatesRelativeToToday(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
+	m.tasks = []vimkunja.Task{
+		{ID: 1, Title: "Today", DueDate: "2026-08-01"},
+		{ID: 2, Title: "Tomorrow", DueDate: "2026-08-02"},
+		{ID: 3, Title: "Soon", DueDate: "2026-08-04"},
+		{ID: 4, Title: "Late", DueDate: "2026-07-30"},
+		{ID: 5, Title: "Later", DueDate: "2026-08-12"},
+	}
+
+	view := ansi.Strip(renderTasks(m, 120, 8))
+	for _, want := range []string{"today", "tomorrow", "in 3 days", "2 days overdue", "12 Aug"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("task list = %q, want %q", view, want)
+		}
+	}
+}
+
+func TestTaskListUsesNamedPriority(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.tasks = []vimkunja.Task{{ID: 1, Title: "Launch", Priority: 3}}
+
+	view := ansi.Strip(renderTasks(m, 80, 4))
+	if !strings.Contains(view, "High") {
+		t.Fatalf("task list = %q, want named priority", view)
+	}
+	if strings.Contains(view, "P3") {
+		t.Fatalf("task list = %q, must not show numeric priority", view)
+	}
+}
+
 func TestOverviewOpensFromProjectsPane(t *testing.T) {
 	store := &fakeStore{overviewTasks: []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "Open"}}}
 	m := testModel()

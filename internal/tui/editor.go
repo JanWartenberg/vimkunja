@@ -34,12 +34,13 @@ const (
 )
 
 type taskEditor struct {
-	id       int64
-	original vimkunja.TaskDraft
-	draft    vimkunja.TaskDraft
-	field    editorField
-	mode     editorMode
-	cursor   int // rune offset in the active text field
+	id        int64
+	taskIndex int64
+	original  vimkunja.TaskDraft
+	draft     vimkunja.TaskDraft
+	field     editorField
+	mode      editorMode
+	cursor    int // rune offset in the active text field
 
 	projectFilter         string
 	pickerIndex           int
@@ -68,7 +69,7 @@ func (m *model) openExistingEditor(task vimkunja.Task) {
 		Description: task.Description, Priority: task.Priority, DueDate: task.DueDate,
 		CreatedByID: m.actorUserID,
 	}
-	m.editor = &taskEditor{id: task.ID, draft: draft, original: draft, field: fieldTitle, workflowStatusLoading: true}
+	m.editor = &taskEditor{id: task.ID, taskIndex: task.Index, draft: draft, original: draft, field: fieldTitle, workflowStatusLoading: true}
 	m.showDetail = true
 	m.focus = paneDetail
 }

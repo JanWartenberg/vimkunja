@@ -8,6 +8,7 @@ import (
 	"github.com/vimkunja/vimkunja/internal/vimkunja"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // fitBlock normalises a set of lines to exactly the given display height and
@@ -143,7 +144,7 @@ func renderTasks(m *model, textW, textH int) string {
 				project = fmt.Sprintf("%d", t.ProjectID)
 			}
 		}
-		prioStr := fmt.Sprintf("P%d", t.Priority)
+		prioStr := prioritySummary(t.Priority)
 		// Priority segment: colored only when not done. Rendered once from a
 		// PLAIN string (never nested inside another Render, which corrupts
 		// the embedded ANSI codes in lipgloss v2).
@@ -151,18 +152,10 @@ func renderTasks(m *model, textW, textH int) string {
 		if !t.Done {
 			prioSeg = lipgloss.NewStyle().Foreground(lipgloss.Color(priorityColor(int(t.Priority)))).Render(prioStr)
 		}
-		idx := t.Identifier
-		if idx == "" {
-			idx = fmt.Sprintf("#%d", t.Index)
-		}
-
 		// Compute the visible width consumed by the fixed (non-title) parts,
-		// using the PLAIN priority string (prioSeg has the same visible
-		// width as prioStr). Truncate the plain title to fit so that no later
-		// truncation ever touches the embedded ANSI codes.
+		// using PLAIN segments so that truncation never touches ANSI codes.
 		fixedW := lipgloss.Width(done) + 1 +
 			lipgloss.Width(prioStr) + 1 +
-			lipgloss.Width(idx) + 2 +
 			lipgloss.Width(project) + 2 +
 			2 + lipgloss.Width(due)
 		avail := textW - fixedW
@@ -198,38 +191,55 @@ func renderTasks(m *model, textW, textH int) string {
 
 		dueSeg := due
 		if !t.Done {
-			dueSeg = duePresentation(t, due)
+			dueSeg = duePresentation(t, due, m.currentTime())
 		}
 		projectSeg := ""
 		if project != "" {
 			projectSeg = project + "  "
 		}
-		line := rend(done) + " " + prioSeg + " " + rend(idx) + "  " + projectSeg + rend(title) + "  " + dueSeg
+		line := rend(done) + " " + prioSeg + " " + projectSeg + rend(title) + "  " + dueSeg
+		if t.Done {
+			line = lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Faint(true).Render(ansi.Strip(line))
+		}
 		lines = append(lines, line)
 	}
 
 	return fitBlock(lines, textW, textH)
 }
 
-func duePresentation(task vimkunja.Task, value string) string {
+func (m *model) currentTime() time.Time {
+	if m.now == nil {
+		return time.Now()
+	}
+	return m.now()
+}
+
+func duePresentation(task vimkunja.Task, value string, now time.Time) string {
 	due, ok := overviewDueDate(task)
 	if !ok {
 		return value
 	}
-	today := time.Now().Local().Truncate(24 * time.Hour)
-	color := ""
+	today := now.Local().Truncate(24 * time.Hour)
+	days := int(due.Sub(today).Hours() / 24)
+	label, color := value, ""
 	switch {
-	case due.Before(today):
-		color = "196" // overdue: red
-	case due.Equal(today) || due.Equal(today.AddDate(0, 0, 1)):
-		color = "208" // today/tomorrow: orange
-	case due.Before(today.AddDate(0, 0, 8)):
-		color = "220" // 2-7 days: yellow
+	case days < 0:
+		label, color = fmt.Sprintf("%d days overdue", -days), "196"
+	case days == 0:
+		label, color = "today", "208"
+	case days == 1:
+		label, color = "tomorrow", "208"
+	case days <= 7:
+		label, color = fmt.Sprintf("in %d days", days), "220"
+	case due.Year() == today.Year():
+		label = due.Format("02 Jan")
+	default:
+		label = due.Format("02 Jan 2006")
 	}
 	if color == "" {
-		return value
+		return label
 	}
-	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(value)
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(color)).Render(label)
 }
 
 type infoPane struct {
@@ -269,10 +279,14 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	due := e.draft.DueDate
 	if due == "" {
 		due = placeholderText("-")
+	} else if !(e.mode == editorInsert && e.field == fieldDueDate) {
+		due = ansi.Strip(duePresentation(vimkunja.Task{DueDate: due}, due, m.currentTime()))
 	}
-	priority := priorityName(e.draft.Priority)
+	priority := prioritySummary(e.draft.Priority)
 	if e.draft.Priority == 0 {
 		priority = placeholderText(priority)
+	} else {
+		priority = lipgloss.NewStyle().Foreground(lipgloss.Color(priorityColor(int(e.draft.Priority)))).Render(priority)
 	}
 	detailFocused := m.focus == paneDetail
 	// A Picker field is styled as one unit. Avoid nested placeholder styling
@@ -294,9 +308,11 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		renderField(fieldDueDate, "Due Date: ", m.editorText(fieldDueDate, due)),
 		renderField(fieldWorkflowStatus, "Status:   ", e.workflowStatusLabel()),
 		fmt.Sprintf("Done:     %s (read-only)", doneLabel(m, e.id)),
-		"",
-		renderField(fieldDescription, "Description:", ""),
 	)
+	if e.id != 0 && textH >= 12 && !e.isPickerMode() {
+		lines = append(lines, placeholderText(fmt.Sprintf("(DB-ID: %d, Task-Index: %d)", e.id, e.taskIndex)))
+	}
+	lines = append(lines, "", renderField(fieldDescription, "Description:", ""))
 	if e.mode == editorProjectPicker {
 		lines = append(lines, "  Filter: "+e.projectFilter)
 		matches := m.filteredProjects(e.projectFilter)
@@ -431,7 +447,14 @@ func cursorMarkedText(value string, cursor int) string {
 }
 
 func priorityName(priority int64) string {
-	return []string{"None", "Low", "Medium", "High", "Urgent", "Do now / Jetzt erledigen"}[clamp(int(priority), 0, 5)]
+	return []string{"None", "Low", "Medium", "High", "Urgent", "Do now"}[clamp(int(priority), 0, 5)]
+}
+
+func prioritySummary(priority int64) string {
+	if priority == 0 {
+		return "—"
+	}
+	return priorityName(priority)
 }
 
 func doneLabel(m *model, taskID int64) string {
