@@ -1239,6 +1239,9 @@ func (m *model) renderStatusBar(w int) string {
 	}
 
 	hint := "Ctrl+W cycles  •  Enter detail  •  q quit  •  :h help  •  j/k navigate  •  x toggle"
+	if m.focus == paneTasks && m.kanbanActive && !m.inOverview() {
+		hint = "Shift+H/L move bucket  •  m choose bucket  •  j/k navigate  •  x toggle  •  Ctrl+W cycles  •  :h help"
+	}
 	if m.focus == paneTasks && m.inOverview() {
 		hint = "Enter detail  •  o new task  •  s sort  •  f filter  •  - Overview  •  Space+a return"
 	}

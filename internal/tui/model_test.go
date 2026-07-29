@@ -577,6 +577,24 @@ func TestStartFooterAdvertisesHelpInsteadOfRefresh(t *testing.T) {
 	}
 }
 
+func TestKanbanFooterPrioritizesMoveActions(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.kanbanActive = true
+
+	footer := ansi.Strip(m.renderStatusBar(120))
+	for _, want := range []string{"Shift+H/L move bucket", "m choose bucket"} {
+		if !strings.Contains(footer, want) {
+			t.Fatalf("Kanban footer = %q, want %q", footer, want)
+		}
+	}
+	for _, unwanted := range []string{"Enter detail", "q quit"} {
+		if strings.Contains(footer, unwanted) {
+			t.Fatalf("Kanban footer = %q, must not prioritize %q", footer, unwanted)
+		}
+	}
+}
+
 func TestOverviewOpensFromProjectsPane(t *testing.T) {
 	store := &fakeStore{overviewTasks: []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "Open"}}}
 	m := testModel()
