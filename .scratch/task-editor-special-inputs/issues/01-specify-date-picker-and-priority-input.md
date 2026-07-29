@@ -16,4 +16,6 @@
 
 ## Further context
 
+M1 extracts one deliberately small input improvement into the task-metadata ticket: accept exactly eight due-date digits (`YYYYMMDD`) and normalize them to `YYYY-MM-DD`. This ticket retains date pickers, shortcuts, natural-language input (including German/English weekday terms), and richer Priority input.
+
 Archived source: `TUI_IDEA.md`, Edit-Mode special-input TODOs.
