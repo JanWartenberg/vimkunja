@@ -707,6 +707,28 @@ func TestOverviewFilterAndSortPicker(t *testing.T) {
 	}
 }
 
+func TestOverviewDueDescendingReversesUndatedTasksToo(t *testing.T) {
+	m := testModel()
+	m.taskScope = scopeOverview
+	m.focus = paneTasks
+	m.overviewTasks = []vimkunja.Task{
+		{ID: 1, Title: "Soon", DueDate: "2026-08-02"},
+		{ID: 2, Title: "No due date"},
+		{ID: 3, Title: "Later", DueDate: "2026-08-05"},
+	}
+	m.applyOverview()
+
+	m = pressKey(m, tea.Key{Code: 's', Text: "s"})
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	got := []string{m.tasks[0].Title, m.tasks[1].Title, m.tasks[2].Title}
+	want := []string{"No due date", "Later", "Soon"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("due descending = %v, want %v", got, want)
+		}
+	}
+}
+
 func TestTasksPaneKeepsSelectedTaskVisibleWithDetailOpen(t *testing.T) {
 	for _, scope := range []struct {
 		name      string
