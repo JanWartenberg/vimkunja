@@ -725,7 +725,7 @@ func TestOverviewAlignsPriorityProjectAndTitleColumns(t *testing.T) {
 	}
 }
 
-func TestOverviewDueDescendingKeepsUndatedTasksLast(t *testing.T) {
+func TestOverviewDueSortPlacesEarliestTasksFirst(t *testing.T) {
 	m := testModel()
 	m.taskScope = scopeOverview
 	m.focus = paneTasks
@@ -739,10 +739,10 @@ func TestOverviewDueDescendingKeepsUndatedTasksLast(t *testing.T) {
 	m = pressKey(m, tea.Key{Code: 's', Text: "s"})
 	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
 	got := []string{m.tasks[0].Title, m.tasks[1].Title, m.tasks[2].Title}
-	want := []string{"Later", "Soon", "No due date"}
+	want := []string{"Soon", "Later", "No due date"}
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("due descending = %v, want %v", got, want)
+			t.Fatalf("due sort = %v, want %v", got, want)
 		}
 	}
 }

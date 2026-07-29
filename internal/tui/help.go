@@ -51,7 +51,7 @@ var helpLines = []string{
 	"OVERVIEW NAVIGATION",
 	"  -                     Open Overview (never toggles)",
 	"  Space+a               Toggle Overview / remembered Project context",
-	"  s d/u/p/t             Overview sort: Due ↓/↑, Priority, Title",
+	"  s d/p/t               Overview sort: Due, Priority ↓, Title",
 	"  f o/a/v/t             Overview filter: open, all, overdue, due today",
 	"  :overview / :list     Open Overview / restore Project List",
 	"",

@@ -31,8 +31,7 @@ const (
 type overviewSort int
 
 const (
-	overviewDueAsc overviewSort = iota
-	overviewDueDesc
+	overviewDue overviewSort = iota
 	overviewPriorityDesc
 	overviewTitle
 )
@@ -217,10 +216,7 @@ func overviewLess(left, right vimkunja.Task, mode overviewSort) bool {
 		return leftHasDue
 	}
 	if leftHasDue && !leftDue.Equal(rightDue) {
-		if mode == overviewDueAsc {
-			return leftDue.Before(rightDue)
-		}
-		return leftDue.After(rightDue)
+		return leftDue.Before(rightDue)
 	}
 	return overviewPriorityThenTitle(left, right)
 }
@@ -258,9 +254,7 @@ func (m *model) updateOverviewPrompt(key string) bool {
 	if prompt == overviewPromptSort {
 		switch key {
 		case "d":
-			m.overviewSort = overviewDueDesc
-		case "u":
-			m.overviewSort = overviewDueAsc
+			m.overviewSort = overviewDue
 		case "p":
 			m.overviewSort = overviewPriorityDesc
 		case "t":
@@ -301,13 +295,13 @@ func (m *model) overviewFilterLabel() string {
 
 func (m *model) overviewSortLabel() string {
 	switch m.overviewSort {
-	case overviewDueAsc:
-		return "Due ↑"
+	case overviewDue:
+		return "Due"
 	case overviewPriorityDesc:
 		return "Priority ↓"
 	case overviewTitle:
 		return "Title"
 	default:
-		return "Due ↓"
+		return "Due"
 	}
 }

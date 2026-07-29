@@ -1288,7 +1288,7 @@ func (m *model) renderStatusBar(w int) string {
 		hint = "[VIEWS] l list  •  k Kanban  •  t table  •  g Gantt"
 	}
 	if m.overviewPrompt == overviewPromptSort {
-		hint = "SORT  d Due ↓  •  u Due ↑  •  p Priority ↓  •  t Title  •  Esc cancel"
+		hint = "SORT  d Due  •  p Priority ↓  •  t Title  •  Esc cancel"
 	}
 	if m.overviewPrompt == overviewPromptFilter {
 		hint = "FILTER  o open  •  a all  •  v overdue  •  t due today  •  Esc cancel"
