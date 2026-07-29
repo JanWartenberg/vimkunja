@@ -725,6 +725,24 @@ func TestOverviewAlignsPriorityProjectAndTitleColumns(t *testing.T) {
 	}
 }
 
+func TestOverviewAlignsDueDatesAfterLongestVisibleTitle(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.taskScope = scopeOverview
+	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
+	m.tasks = []vimkunja.Task{
+		{ID: 1, Title: "Short", Priority: 2, ProjectIdentifier: "VIM", DueDate: "2026-08-02"},
+		{ID: 2, Title: "A much longer title", Priority: 2, ProjectIdentifier: "VIM", DueDate: "2026-08-12"},
+	}
+
+	lines := strings.Split(ansi.Strip(renderTasks(m, 100, 4)), "\n")
+	first := strings.Index(lines[1], "tomorrow")
+	second := strings.Index(lines[2], "12 Aug")
+	if first < 0 || second < 0 || first != second {
+		t.Fatalf("Overview Due Date columns = %q, Due Date columns at %d and %d", lines[1:3], first, second)
+	}
+}
+
 func TestOverviewDueSortPlacesEarliestTasksFirst(t *testing.T) {
 	m := testModel()
 	m.taskScope = scopeOverview

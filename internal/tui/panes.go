@@ -55,6 +55,10 @@ func truncatePlain(s string, maxW int) string {
 	return string(r)
 }
 
+func padPlainRight(s string, width int) string {
+	return s + strings.Repeat(" ", max(0, width-lipgloss.Width(s)))
+}
+
 func renderProjects(m *model, textW, textH int) string {
 	header := lipgloss.NewStyle().Bold(true).Render(" Projects ")
 	focus := m.focus == paneProjects
@@ -124,6 +128,26 @@ func renderTasks(m *model, textW, textH int) string {
 	bottomMargin := min(2, max(0, visibleRows-1))
 	start := max(0, selected-visibleRows+1+bottomMargin)
 	end := min(len(m.tasks), start+visibleRows)
+	overviewTitleWidth := 0
+	if m.inOverview() {
+		dueWidth := 1
+		for _, task := range m.tasks[start:end] {
+			due := strings.TrimSpace(task.DueDate)
+			if due == "" {
+				due = "-"
+			}
+			if !task.Done {
+				due = ansi.Strip(duePresentation(task, due, m.currentTime()))
+			}
+			dueWidth = max(dueWidth, lipgloss.Width(due))
+		}
+		prefixWidth := lipgloss.Width("[ ]") + 1 + 6 + 1 + 8 + 2
+		titleLimit := max(1, textW-prefixWidth-2-dueWidth)
+		for _, task := range m.tasks[start:end] {
+			overviewTitleWidth = max(overviewTitleWidth, lipgloss.Width(task.Title))
+		}
+		overviewTitleWidth = min(overviewTitleWidth, titleLimit)
+	}
 	for i, t := range m.tasks[start:end] {
 		sel := start+i == selected
 		done := "[ ]"
@@ -156,14 +180,20 @@ func renderTasks(m *model, textW, textH int) string {
 		if !t.Done {
 			prioSeg = lipgloss.NewStyle().Foreground(lipgloss.Color(priorityColor(int(t.Priority)))).Render(prioStr)
 		}
-		// Compute the visible width consumed by the fixed (non-title) parts,
-		// using PLAIN segments so that truncation never touches ANSI codes.
-		fixedW := lipgloss.Width(done) + 1 +
-			lipgloss.Width(prioStr) + 1 +
-			lipgloss.Width(project) + 2 +
-			2 + lipgloss.Width(due)
-		avail := textW - fixedW
-		title := truncatePlain(t.Title, avail)
+		dueSeg := due
+		if !t.Done {
+			dueSeg = duePresentation(t, due, m.currentTime())
+		}
+		var title string
+		if m.inOverview() {
+			title = padPlainRight(truncatePlain(t.Title, overviewTitleWidth), overviewTitleWidth)
+		} else {
+			fixedW := lipgloss.Width(done) + 1 +
+				lipgloss.Width(prioStr) + 1 +
+				lipgloss.Width(project) + 2 +
+				2 + lipgloss.Width(ansi.Strip(dueSeg))
+			title = truncatePlain(t.Title, textW-fixedW)
+		}
 
 		// Style applied to the non-priority segments only. The priority keeps
 		// its own colour even when selected. Each segment is rendered from a
@@ -193,10 +223,6 @@ func renderTasks(m *model, textW, textH int) string {
 			return s
 		}
 
-		dueSeg := due
-		if !t.Done {
-			dueSeg = duePresentation(t, due, m.currentTime())
-		}
 		projectSeg := ""
 		if project != "" {
 			projectSeg = project + "  "
