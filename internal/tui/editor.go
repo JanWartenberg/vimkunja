@@ -20,6 +20,7 @@ const (
 	fieldPriority
 	fieldDueDate
 	fieldWorkflowStatus
+	fieldDone
 	fieldDescription
 )
 
@@ -66,7 +67,7 @@ func (m *model) openNewEditor() {
 func (m *model) openExistingEditor(task vimkunja.Task) {
 	draft := vimkunja.TaskDraft{
 		ID: task.ID, ProjectID: task.ProjectID, Title: task.Title,
-		Description: task.Description, Priority: task.Priority, DueDate: task.DueDate,
+		Description: task.Description, Priority: task.Priority, DueDate: task.DueDate, Done: task.Done,
 		CreatedByID: m.actorUserID,
 	}
 	m.editor = &taskEditor{id: task.ID, taskIndex: task.Index, draft: draft, original: draft, field: fieldTitle, workflowStatusLoading: true}
@@ -98,7 +99,8 @@ func (e *taskEditor) workflowStatusLabel() string {
 func (e *taskEditor) dirty() bool {
 	return e.draft.ProjectID != e.original.ProjectID || e.draft.Title != e.original.Title ||
 		e.draft.Description != e.original.Description || e.draft.Priority != e.original.Priority ||
-		e.draft.DueDate != e.original.DueDate || e.draft.WorkflowBucketID != e.original.WorkflowBucketID
+		e.draft.DueDate != e.original.DueDate || e.draft.WorkflowBucketID != e.original.WorkflowBucketID ||
+		e.draft.Done != e.original.Done
 }
 
 func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -152,6 +154,11 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.cursorVisible = true
 		return m, cursorBlinkCmd()
 	}
+	if s == "x" && e.field == fieldDone {
+		e.draft.Done = !e.draft.Done
+		e.draft.DoneSet = e.draft.Done != e.original.Done
+		return m, nil
+	}
 	if s == "i" {
 		switch e.field {
 		case fieldProject:
@@ -166,6 +173,8 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 				e.mode = editorWorkflowStatusPicker
 				e.workflowStatusIndex = e.workflowStatusPickerIndex()
 			}
+		case fieldDone:
+			return m, nil
 		default:
 			e.mode = editorInsert
 			if e.field == fieldDueDate && e.draft.DueDate == "" {
@@ -434,7 +443,11 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 func (m *model) moveField(delta int) {
 	e := m.editor
 	// The rendered form is vertical, so j/k and arrow up/down traverse fields.
-	e.field = editorField(clamp(int(e.field)+delta, int(fieldProject), int(fieldDescription)))
+	field := editorField(clamp(int(e.field)+delta, int(fieldProject), int(fieldDescription)))
+	if e.id == 0 && field == fieldDone {
+		field = editorField(clamp(int(field)+delta, int(fieldProject), int(fieldDescription)))
+	}
+	e.field = field
 }
 
 func (m *model) filteredProjects(filter string) []vimkunja.Project {

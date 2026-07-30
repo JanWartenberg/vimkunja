@@ -31,6 +31,7 @@ var helpLines = []string{
 	"  Project picker        Type to filter; j/k or arrows; Enter selects",
 	"  Priority picker       j/k or arrows; Enter selects",
 	"  Due date              YYYY-MM-DD (digits fill the mask)",
+	"  Done field            x toggles the draft value",
 	"",
 	"DESCRIPTION (NORMAL MODE)",
 	"  h l / Arrow keys      Move cursor left / right",

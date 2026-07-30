@@ -355,8 +355,14 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		renderField(fieldPriority, "Priority: ", priority),
 		renderField(fieldDueDate, "Due Date: ", m.editorText(fieldDueDate, due)),
 		renderField(fieldWorkflowStatus, "Status:   ", e.workflowStatusLabel()),
-		fmt.Sprintf("Done:     %s (read-only)", doneLabel(m, e.id)),
 	)
+	if e.id != 0 {
+		done := "[ ]"
+		if e.draft.Done {
+			done = "[x]"
+		}
+		lines = append(lines, renderField(fieldDone, "Done:     ", done))
+	}
 	if e.id != 0 && textH >= 12 && !e.isPickerMode() {
 		lines = append(lines, placeholderText(fmt.Sprintf("(DB-ID: %d, Task-Index: %d)", e.id, e.taskIndex)))
 	}
@@ -503,24 +509,6 @@ func prioritySummary(priority int64) string {
 		return "—"
 	}
 	return priorityName(priority)
-}
-
-func doneLabel(m *model, taskID int64) string {
-	if m.kanbanActive {
-		for _, bucket := range m.kanbanBoard.Buckets {
-			for _, task := range bucket.Tasks {
-				if task.ID == taskID && task.Done {
-					return "done"
-				}
-			}
-		}
-	}
-	for _, task := range m.tasks {
-		if task.ID == taskID && task.Done {
-			return "done"
-		}
-	}
-	return "open"
 }
 
 // compile-time assertion (in case we evolve Task struct)

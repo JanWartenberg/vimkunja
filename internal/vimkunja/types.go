@@ -92,5 +92,7 @@ type TaskDraft struct {
 	Priority         int64
 	DueDate          string
 	WorkflowBucketID int64
+	Done             bool
+	DoneSet          bool // Done participates in an existing Task update only when changed in the editor.
 	CreatedByID      int64
 }

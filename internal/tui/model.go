@@ -534,6 +534,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if m.editor != nil {
 			m.editor.id = typed.task.ID
 			m.editor.draft.ID = typed.task.ID
+			m.editor.draft.Done = typed.task.Done
+			m.editor.draft.DoneSet = false
 			m.editor.original = m.editor.draft
 			m.editor.mode = editorNormal
 			m.showDetail = true
@@ -1088,6 +1090,8 @@ func (m *model) editorCursorPosition() (int, int) {
 		row, labelWidth = 5, len([]rune("Due Date: "))
 	case fieldWorkflowStatus:
 		row, labelWidth = 6, len([]rune("Status:   "))
+	case fieldDone:
+		row, labelWidth = 7, len([]rune("Done:     "))
 	case fieldDescription:
 		return m.descriptionCursorPosition(w, h, topH)
 	default:
@@ -1106,7 +1110,10 @@ func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
 	contentH := max(4, h-3)
 	detailH := max(4, contentH-topH)
 	textH := detailH - 2
-	const precedingLines = 10 // header, form fields, and Description label
+	precedingLines := 10 // header, form fields, and Description label
+	if m.editor.id == 0 {
+		precedingLines-- // New Tasks omit the Done field.
+	}
 	available := max(1, textH-precedingLines)
 	description := wrapDescription(m.editor.draft.Description, textW)
 	start := 0

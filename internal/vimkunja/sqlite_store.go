@@ -705,29 +705,27 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 	}
 	defer tx.Rollback()
 
-	// Update done status, done_at timestamp, and ALWAYS bump 'updated' timestamp.
-	// This ensures server-fidelity: webhooks, sync, and external tools see the change.
+	if err := setTaskDoneState(ctx, tx, taskID, done); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit toggle task transaction: %w", err)
+	}
+	return nil
+}
+
+// setTaskDoneState changes the global Task Done state and its configured
+// workflow buckets within an existing transaction.
+func setTaskDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool) error {
 	var doneAt any
 	if done {
 		doneAt = time.Now()
-	} else {
-		doneAt = nil
 	}
-
-	// CRITICAL: Always bump 'updated' timestamp (Decision #2, SPEC_FUNDAMENT.md)
-	q := `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`
-	if _, err := tx.ExecContext(ctx, q, boolToInt(done), doneAt, time.Now(), taskID); err != nil {
-		return fmt.Errorf("toggle task done: %w", err)
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`, boolToInt(done), doneAt, time.Now(), taskID); err != nil {
+		return fmt.Errorf("set task done state: %w", err)
 	}
-
-	// A Task's Done state is global. Mirror it into every configured Done or
-	// Default Bucket so reopening cannot leave a Task assigned to Done.
 	if err := syncTaskBucketsForDoneState(ctx, tx, taskID, done); err != nil {
 		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit toggle task transaction: %w", err)
 	}
 	return nil
 }
@@ -893,6 +891,14 @@ func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, er
 		if err := tx.QueryRowContext(ctx, `SELECT done FROM tasks WHERE id = ?`, draft.ID).Scan(&done); err != nil {
 			return Task{}, fmt.Errorf("get updated task done state: %w", err)
 		}
+	}
+	// Done is applied last so its configured Done/Default Bucket rule wins
+	// over a simultaneously selected Workflow Status.
+	if draft.DoneSet {
+		if err := setTaskDoneState(ctx, tx, draft.ID, draft.Done); err != nil {
+			return Task{}, err
+		}
+		done = draft.Done
 	}
 	if err := tx.Commit(); err != nil {
 		return Task{}, fmt.Errorf("commit update task: %w", err)

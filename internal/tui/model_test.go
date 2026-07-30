@@ -130,7 +130,7 @@ func (f *fakeStore) UpdateTask(_ context.Context, draft vimkunja.TaskDraft) (vim
 	if f.updateErr != nil {
 		return vimkunja.Task{}, f.updateErr
 	}
-	return vimkunja.Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title}, nil
+	return vimkunja.Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title, Done: draft.Done}, nil
 }
 
 func TestErrorFooterClearsOnNextKey(t *testing.T) {
@@ -1074,6 +1074,60 @@ func TestOpeningTaskDetailLoadsWorkflowStatus(t *testing.T) {
 	}
 	if got, want := m.editor.workflowStatus.Buckets[0].Title, "To-Do"; got != want {
 		t.Fatalf("first workflow bucket = %q, want %q", got, want)
+	}
+}
+
+func TestDetailDoneFieldTogglesOnlyTheDraft(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.field = fieldWorkflowStatus
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.editor.field != fieldDone {
+		t.Fatalf("field after Workflow Status = %v, want Done", m.editor.field)
+	}
+	if detail := ansi.Strip(renderTaskDetail(m, 80, 20)); !strings.Contains(detail, "▸ Done:     [ ]") {
+		t.Fatalf("detail = %q, want focused open Done field", detail)
+	}
+	m = pressKey(m, tea.Key{Code: 'x', Text: "x"})
+	if !m.editor.draft.Done || !m.editor.draft.DoneSet || !m.editor.dirty() {
+		t.Fatalf("Done draft = %#v, want dirty done state", m.editor.draft)
+	}
+}
+
+func TestNewTaskDetailOmitsDoneField(t *testing.T) {
+	m := testModel()
+	m.openNewEditor()
+	m.editor.field = fieldWorkflowStatus
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.editor.field != fieldDescription {
+		t.Fatalf("field after Workflow Status = %v, want Description", m.editor.field)
+	}
+	if detail := ansi.Strip(renderTaskDetail(m, 80, 20)); strings.Contains(detail, "Done:") {
+		t.Fatalf("new task detail includes Done field: %q", detail)
+	}
+}
+
+func TestSavingDetailPersistsDoneWithOtherDraftChanges(t *testing.T) {
+	store := &fakeStore{}
+	m := NewModel(Config{Store: store}).(*model)
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.field = fieldDone
+	m = pressKey(m, tea.Key{Code: 'x', Text: "x"})
+	m.editor.draft.Title = "Renamed"
+
+	m, saveCmd := typeCommand(t, m, "w")
+	if saveCmd == nil {
+		t.Fatal(":w returned no save command")
+	}
+	updated, _ := m.Update(saveCmd())
+	m = updated.(*model)
+	if store.updatedDraft.Title != "Renamed" || !store.updatedDraft.Done || !store.updatedDraft.DoneSet {
+		t.Fatalf("saved draft = %#v, want renamed done Task", store.updatedDraft)
+	}
+	if m.editor == nil || m.editor.dirty() || m.editor.draft.DoneSet {
+		t.Fatalf("saved Done editor = %#v, want clean persisted Done state", m.editor)
 	}
 }
 
@@ -2043,8 +2097,8 @@ func TestNativeDescriptionCursorUsesTextPositionWithoutRenderedDuplicate(t *test
 		t.Fatalf("native description cursor still has rendered duplicate: %q", detail)
 	}
 	cursor := m.View().Cursor
-	if cursor == nil || cursor.Position != (tea.Position{X: 4, Y: 29}) {
-		t.Fatalf("description cursor = %#v, want text position (4,29)", cursor)
+	if cursor == nil || cursor.Position != (tea.Position{X: 4, Y: 28}) {
+		t.Fatalf("description cursor = %#v, want text position (4,28)", cursor)
 	}
 }
 

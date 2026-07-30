@@ -81,6 +81,75 @@ func TestUpdateTask_PersistsWorkflowStatusWithTaskFields(t *testing.T) {
 	}
 }
 
+func TestUpdateTaskPersistsDoneWithOtherFields(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title) VALUES (1, 'Project');
+		INSERT INTO project_views (id, project_id, title, view_kind, default_bucket_id, done_bucket_id) VALUES (10, 1, 'Board', 3, 10, 12);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES (10, 'To-Do', 10, 1), (12, 'Done', 10, 2);
+		INSERT INTO tasks (id, project_id, title, done, "index", created, updated, created_by_id) VALUES (1, 1, 'Old', 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
+		INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (1, 10, 10);
+	`)
+	if err != nil {
+		t.Fatalf("seed database: %v", err)
+	}
+
+	task, err := store.UpdateTask(context.Background(), TaskDraft{ID: 1, ProjectID: 1, Title: "Renamed", Done: true, DoneSet: true})
+	if err != nil {
+		t.Fatalf("update task: %v", err)
+	}
+	var done bool
+	var doneAt sql.NullTime
+	var bucketID int64
+	if err := store.db.QueryRow(`SELECT t.done, t.done_at, tb.bucket_id FROM tasks t JOIN task_buckets tb ON tb.task_id = t.id WHERE t.id = 1 AND tb.project_view_id = 10`).Scan(&done, &doneAt, &bucketID); err != nil {
+		t.Fatalf("read updated task: %v", err)
+	}
+	if task.Title != "Renamed" || !task.Done || !done || !doneAt.Valid || bucketID != 12 {
+		t.Fatalf("updated task = %#v; done:%v doneAt:%#v bucket:%d", task, done, doneAt, bucketID)
+	}
+
+	task, err = store.UpdateTask(context.Background(), TaskDraft{ID: 1, ProjectID: 1, Title: "Renamed", Done: false, DoneSet: true})
+	if err != nil {
+		t.Fatalf("reopen task: %v", err)
+	}
+	if err := store.db.QueryRow(`SELECT t.done, t.done_at, tb.bucket_id FROM tasks t JOIN task_buckets tb ON tb.task_id = t.id WHERE t.id = 1 AND tb.project_view_id = 10`).Scan(&done, &doneAt, &bucketID); err != nil {
+		t.Fatalf("read reopened task: %v", err)
+	}
+	if task.Done || done || doneAt.Valid || bucketID != 10 {
+		t.Fatalf("reopened task = %#v; done:%v doneAt:%#v bucket:%d", task, done, doneAt, bucketID)
+	}
+}
+
+func TestUpdateTaskRollsBackDoneWithOtherFieldsOnFailure(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title) VALUES (1, 'Project');
+		INSERT INTO project_views (id, project_id, title, view_kind, default_bucket_id, done_bucket_id) VALUES (10, 1, 'Board', 3, 10, 12);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES (10, 'To-Do', 10, 1), (12, 'Done', 10, 2);
+		INSERT INTO tasks (id, project_id, title, done, "index", created, updated, created_by_id) VALUES (1, 1, 'Old', 0, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
+		INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (1, 10, 10);
+	`)
+	if err != nil {
+		t.Fatalf("seed database: %v", err)
+	}
+
+	_, err = store.UpdateTask(context.Background(), TaskDraft{ID: 1, ProjectID: 1, Title: "Renamed", WorkflowBucketID: 999, Done: true, DoneSet: true})
+	if err == nil {
+		t.Fatal("update task succeeded with an invalid workflow bucket")
+	}
+	var title string
+	var done bool
+	var bucketID int64
+	if err := store.db.QueryRow(`SELECT t.title, t.done, tb.bucket_id FROM tasks t JOIN task_buckets tb ON tb.task_id = t.id WHERE t.id = 1 AND tb.project_view_id = 10`).Scan(&title, &done, &bucketID); err != nil {
+		t.Fatalf("read rolled-back task: %v", err)
+	}
+	if title != "Old" || done || bucketID != 10 {
+		t.Fatalf("partially saved task = title:%q done:%v bucket:%d", title, done, bucketID)
+	}
+}
+
 func TestUpdateTask_MovesToTargetProjectDefaults(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
