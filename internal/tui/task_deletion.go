@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vimkunja/vimkunja/internal/vimkunja"
+
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
@@ -15,11 +17,22 @@ import (
 // seam: callers only arm it from the Tasks Pane, while confirmation, Store
 // persistence, error feedback, and refresh remain centralized here.
 func (m *model) beginTaskDeletion() {
-	if m.taskSelected < 0 || m.taskSelected >= len(m.tasks) {
+	task, ok := m.selectedTaskForDeletion()
+	if !ok {
 		return
 	}
 	m.deleteConfirm = true
-	m.deleteTaskID = m.tasks[m.taskSelected].ID
+	m.deleteTaskID = task.ID
+}
+
+func (m *model) selectedTaskForDeletion() (vimkunja.Task, bool) {
+	if m.kanbanActive && !m.inOverview() {
+		return m.selectedKanbanTask()
+	}
+	if m.taskSelected < 0 || m.taskSelected >= len(m.tasks) {
+		return vimkunja.Task{}, false
+	}
+	return m.tasks[m.taskSelected], true
 }
 
 func (m *model) updateDeleteConfirmation(key string) (tea.Model, tea.Cmd) {
@@ -40,6 +53,15 @@ func (m *model) updateDeleteConfirmation(key string) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) deleteConfirmationTaskTitle() string {
+	if m.kanbanActive && !m.inOverview() {
+		for _, bucket := range m.kanbanBoard.Buckets {
+			for _, task := range bucket.Tasks {
+				if task.ID == m.deleteTaskID {
+					return truncatePlain(task.Title, 46)
+				}
+			}
+		}
+	}
 	for _, task := range m.tasks {
 		if task.ID == m.deleteTaskID {
 			return truncatePlain(task.Title, 46)

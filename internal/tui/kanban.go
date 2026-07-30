@@ -37,6 +37,7 @@ func (m *model) setKanbanBoard(board vimkunja.KanbanBoard) {
 	m.kanbanActive = true
 	m.kanbanBoard = board
 	m.currentViewID = board.View.ID
+	m.syncOpenDetailDoneState(board)
 
 	bucket := 0
 	if m.pendingKanbanBucketID != 0 {
@@ -87,6 +88,25 @@ func (m *model) setKanbanBoard(board vimkunja.KanbanBoard) {
 	m.ensureKanbanBucketVisible()
 }
 
+// syncOpenDetailDoneState keeps an open Detail Pane consistent with a
+// reloaded Board after a workflow move changes the global Done state.
+func (m *model) syncOpenDetailDoneState(board vimkunja.KanbanBoard) {
+	if m.editor == nil || m.editor.id == 0 {
+		return
+	}
+	for _, bucket := range board.Buckets {
+		for _, task := range bucket.Tasks {
+			if task.ID != m.editor.id {
+				continue
+			}
+			m.editor.draft.Done = task.Done
+			m.editor.original.Done = task.Done
+			m.editor.draft.DoneSet = false
+			return
+		}
+	}
+}
+
 func (m *model) activeKanbanBucket() (vimkunja.KanbanBucket, bool) {
 	if m.kanbanBucketSelected < 0 || m.kanbanBucketSelected >= len(m.kanbanBoard.Buckets) {
 		return vimkunja.KanbanBucket{}, false
@@ -106,6 +126,13 @@ func (m *model) updateKanbanKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	s := normalizeArrow(key.String())
 	if m.kanbanPicker {
 		return m.updateKanbanPicker(s)
+	}
+	if m.deleteArmed {
+		m.deleteArmed = false
+		if s == "d" {
+			m.beginTaskDeletion()
+		}
+		return m, nil
 	}
 
 	switch s {
@@ -131,6 +158,8 @@ func (m *model) updateKanbanKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return taskToggledMsg{err: m.store.ToggleTaskDone(ctx, task.ID, !task.Done)}
 			}
 		}
+	case "d":
+		m.deleteArmed = true
 	case "j":
 		if bucket, ok := m.activeKanbanBucket(); ok && len(bucket.Tasks) > 0 {
 			m.kanbanTaskSelected = clamp(m.kanbanTaskSelected+1, 0, len(bucket.Tasks)-1)
@@ -284,24 +313,32 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 		} else {
 			header = lipgloss.NewStyle().Bold(true).Render(header)
 		}
-		lines := []string{header}
+		lines := []string{header, ""}
 		for taskIndex, task := range bucket.Tasks {
-			prefix := "  "
-			if task.Done {
-				prefix = "✓ "
-			}
-			line := prefix + truncatePlain(task.Title, max(1, contentWidth-lipgloss.Width(prefix)))
-			if index == m.kanbanBucketSelected && taskIndex == m.kanbanTaskSelected {
-				line = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("205")).Render(line)
-			}
-			lines = append(lines, line)
+			lines = append(lines, renderKanbanTaskLine(task, index == m.kanbanBucketSelected && taskIndex == m.kanbanTaskSelected, contentWidth))
 		}
-		columns = append(columns, fitBlock(lines, columnWidth, textH))
+		content := fitBlock(lines, contentWidth, max(1, textH-2))
+		columns = append(columns, lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("245")).
+			Render(content))
 	}
 	if len(columns) == 0 {
 		return fitBlock([]string{" Kanban ", "  (no buckets)"}, textW, textH)
 	}
 	return fitBlock(strings.Split(lipgloss.JoinHorizontal(lipgloss.Top, columns...), "\n"), textW, textH)
+}
+
+func renderKanbanTaskLine(task vimkunja.Task, selected bool, contentWidth int) string {
+	prefix := " "
+	if task.Done {
+		prefix = "✓ "
+	}
+	title := truncatePlain(task.Title, max(1, contentWidth-lipgloss.Width(prefix)))
+	if selected {
+		title = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("205")).Render(title)
+	}
+	return prefix + title
 }
 
 func renderKanbanPicker(m *model, textW, textH int) string {

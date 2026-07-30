@@ -33,6 +33,7 @@ type fakeStore struct {
 	provisionCalls     int
 	workflowTaskID     int64
 	workflowBucketID   int64
+	workflowDone       map[int64]bool
 	updateErr          error
 	listTasksCalls     int
 	listTasksViewID    int64
@@ -99,6 +100,9 @@ func (f *fakeStore) SetTaskWorkflowStatus(_ context.Context, taskID, bucketID in
 		}
 	}
 	if found {
+		if done, ok := f.workflowDone[bucketID]; ok {
+			moved.Done = done
+		}
 		for i := range f.kanbanBoard.Buckets {
 			if f.kanbanBoard.Buckets[i].ID == bucketID {
 				f.kanbanBoard.Buckets[i].Tasks = append(f.kanbanBoard.Buckets[i].Tasks, moved)
@@ -160,6 +164,26 @@ func typeCommand(t *testing.T, m *model, input string) (*model, tea.Cmd) {
 	return updated.(*model), cmd
 }
 
+func TestKanbanBucketsHaveDimBordersAndBlankHeaderRow(t *testing.T) {
+	m := testModel()
+	m.kanbanActive = true
+	m.kanbanBoard = vimkunja.KanbanBoard{Buckets: []vimkunja.KanbanBucket{{
+		ID: 1, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 7, Title: "Open"}},
+	}}}
+
+	view := renderKanbanBoard(m, 25, 5)
+	lines := strings.Split(ansi.Strip(view), "\n")
+	if !strings.Contains(lines[0], "┌") || !strings.Contains(lines[4], "└") {
+		t.Fatalf("Kanban bucket lacks border: %q", view)
+	}
+	if !strings.Contains(lines[1], "To-Do") || strings.Contains(lines[2], "Open") || !strings.Contains(lines[3], "Open") {
+		t.Fatalf("Kanban bucket spacing = %q, want a blank row after the header", lines)
+	}
+	if !strings.Contains(view, "\x1b[38;5;245m") {
+		t.Fatalf("Kanban bucket border lacks dim white color: %q", view)
+	}
+}
+
 func TestKanbanBoardUsesAvailableWidthWhenAllBucketsFit(t *testing.T) {
 	m := testModel()
 	m.kanbanActive = true
@@ -168,7 +192,7 @@ func TestKanbanBoardUsesAvailableWidthWhenAllBucketsFit(t *testing.T) {
 		{ID: 2, Title: "Doing"},
 	}}
 
-	header := strings.Split(ansi.Strip(renderKanbanBoard(m, 80, 4)), "\n")[0]
+	header := strings.Split(ansi.Strip(renderKanbanBoard(m, 80, 4)), "\n")[1]
 	if columnStart := strings.Index(header, "Doing"); columnStart < 40 {
 		t.Fatalf("second Bucket starts at column %d, want a wide layout using the 80-column pane: %q", columnStart, header)
 	}
@@ -568,6 +592,37 @@ func TestKanbanAdjacentMoveKeepsMovedTaskSelected(t *testing.T) {
 	}
 }
 
+func TestMovingDoneKanbanTaskUpdatesOpenDetailDoneState(t *testing.T) {
+	store := &fakeStore{
+		workflowDone: map[int64]bool{101: false},
+		kanbanBoard: vimkunja.KanbanBoard{
+			Availability: vimkunja.KanbanBoardAvailable,
+			View:         vimkunja.ProjectView{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+			Buckets: []vimkunja.KanbanBucket{
+				{ID: 100, Title: "Done", Tasks: []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "Finished", Done: true}}},
+				{ID: 101, Title: "Doing"},
+			},
+		},
+	}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.setKanbanBoard(store.kanbanBoard)
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Finished", Done: true})
+	m.focus = paneTasks
+
+	updated, moveCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'L', Text: "L"}))
+	m = updated.(*model)
+	updated, reloadCmd := m.Update(moveCmd())
+	m = updated.(*model)
+	updated, _ = m.Update(reloadCmd())
+	m = updated.(*model)
+
+	if m.editor.draft.Done || m.editor.original.Done || m.editor.draft.DoneSet {
+		t.Fatalf("detail Done state after move = draft:%v original:%v changed:%v, want false, false, false", m.editor.draft.Done, m.editor.original.Done, m.editor.draft.DoneSet)
+	}
+}
+
 func TestStartFooterAdvertisesHelpInsteadOfRefresh(t *testing.T) {
 	footer := testModel().renderStatusBar(120)
 	if !strings.Contains(footer, ":h help") {
@@ -953,6 +1008,49 @@ func TestTaskDeletionRequiresConfirmationAndRefreshesAfterSuccess(t *testing.T) 
 	m = updated.(*model)
 	if store.deleteTaskID != 7 || m.deleteConfirm || refreshCmd == nil {
 		t.Fatalf("delete = id:%d confirm:%v refresh:%v", store.deleteTaskID, m.deleteConfirm, refreshCmd != nil)
+	}
+}
+
+func TestKanbanTaskDeletionUsesTheStandardConfirmation(t *testing.T) {
+	store := &fakeStore{}
+	m := testModel()
+	m.store = store
+	m.focus = paneTasks
+	m.kanbanActive = true
+	m.kanbanBoard = vimkunja.KanbanBoard{Buckets: []vimkunja.KanbanBucket{{ID: 1, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 7, Title: "Delete me"}}}}}
+
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	if !m.deleteConfirm || m.deleteTaskID != 7 {
+		t.Fatalf("Kanban delete confirmation = %v task=%d, want task 7", m.deleteConfirm, m.deleteTaskID)
+	}
+	if view := m.Render(); !strings.Contains(view, `Delete "Delete me"?`) {
+		t.Fatalf("Kanban delete modal = %q, want selected task title", view)
+	}
+	updated, deleteCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
+	m = updated.(*model)
+	updated, refreshCmd := m.Update(deleteCmd())
+	m = updated.(*model)
+	if store.deleteTaskID != 7 || m.deleteConfirm || refreshCmd == nil {
+		t.Fatalf("Kanban delete = id:%d confirm:%v refresh:%v", store.deleteTaskID, m.deleteConfirm, refreshCmd != nil)
+	}
+}
+
+func TestKanbanOpenTaskHasNoHighlightedIndentation(t *testing.T) {
+	m := testModel()
+	m.kanbanActive = true
+	m.kanbanBoard = vimkunja.KanbanBoard{Buckets: []vimkunja.KanbanBucket{{ID: 1, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 7, Title: "Open"}}}}}
+
+	line := strings.Split(ansi.Strip(renderKanbanBoard(m, 25, 5)), "\n")[3]
+	if !strings.HasPrefix(line, "│ Open") {
+		t.Fatalf("selected open Kanban task = %q, want an unhighlighted padding space before the title", line)
+	}
+}
+
+func TestKanbanOpenTaskPaddingIsNotHighlighted(t *testing.T) {
+	line := renderKanbanTaskLine(vimkunja.Task{Title: "Open"}, true, 20)
+	if !strings.HasPrefix(line, " ") || strings.Index(line, "\x1b") != 1 {
+		t.Fatalf("selected open Kanban task = %q, want a plain padding space before selection styling", line)
 	}
 }
 
@@ -2099,6 +2197,26 @@ func TestNativeDescriptionCursorUsesTextPositionWithoutRenderedDuplicate(t *test
 	cursor := m.View().Cursor
 	if cursor == nil || cursor.Position != (tea.Position{X: 4, Y: 28}) {
 		t.Fatalf("description cursor = %#v, want text position (4,28)", cursor)
+	}
+}
+
+func TestDescriptionCursorTracksNewDoneFieldAfterSavingNewTask(t *testing.T) {
+	m := NewModel(Config{Store: &fakeStore{}}).(*model)
+	m.width, m.height = 100, 40
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "Task"
+	m.editor.field = fieldDescription
+	m.editor.draft.Description = "hello"
+	m.editor.cursor = 2
+
+	m, saveCmd := typeCommand(t, m, "w")
+	updated, _ := m.Update(saveCmd())
+	m = updated.(*model)
+	cursor := m.View().Cursor
+	lines := strings.Split(ansi.Strip(m.Render()), "\n")
+	if cursor == nil || cursor.Position.Y >= len(lines) || !strings.Contains(lines[cursor.Position.Y], "hello") {
+		t.Fatalf("description cursor = %#v, rendered line = %q, want description text", cursor, lines[cursor.Position.Y])
 	}
 }
 

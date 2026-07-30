@@ -1113,6 +1113,8 @@ func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
 	precedingLines := 10 // header, form fields, and Description label
 	if m.editor.id == 0 {
 		precedingLines-- // New Tasks omit the Done field.
+	} else if textH >= 12 && !m.editor.isPickerMode() {
+		precedingLines++ // Existing Tasks include the debugging identifier row.
 	}
 	available := max(1, textH-precedingLines)
 	description := wrapDescription(m.editor.draft.Description, textW)
