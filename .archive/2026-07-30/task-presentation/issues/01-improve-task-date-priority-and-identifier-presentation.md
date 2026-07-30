@@ -8,12 +8,12 @@
 
 **Priority:** M1
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Implement concise Due Date presentation, including overdue and near-term dates.
-- [ ] Implement consistent named and colored Priority presentation in list and Detail Panes.
-- [ ] Implement the decided Project/Task identifier placement.
-- [ ] Preserve predictable truncation and avoid overflow in narrow Panes.
+- [x] Implement concise Due Date presentation, including overdue and near-term dates.
+- [x] Implement consistent named and colored Priority presentation in list and Detail Panes.
+- [x] Implement the decided Project/Task identifier placement.
+- [x] Preserve predictable truncation and avoid overflow in narrow Panes.
 
 ## Decisions — 2026-07-29
 
@@ -45,3 +45,9 @@
 ## Further context
 
 This consolidates the unresolved presentation questions from the former UX TODO. Existing title truncation and empty-description placeholders are already implemented and are not part of this ticket.
+
+## Comments
+
+### 2026-07-30 — Resolved
+
+Implemented by `85510c1`, `74a6277`, and the final narrow-pane and completed-Detail rendering audit. Narrow Panes now remove Project, then Due Date, then Priority metadata before truncating the Task title. `go test ./...` and `go vet ./...` pass.

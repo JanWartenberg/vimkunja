@@ -128,42 +128,7 @@ func renderTasks(m *model, textW, textH int) string {
 	bottomMargin := min(2, max(0, visibleRows-1))
 	start := max(0, selected-visibleRows+1+bottomMargin)
 	end := min(len(m.tasks), start+visibleRows)
-	overviewTitleWidth, taskListDueColumn := 0, 0
-	if m.inOverview() {
-		dueWidth := 1
-		for _, task := range m.tasks[start:end] {
-			due := strings.TrimSpace(task.DueDate)
-			if due == "" {
-				due = "-"
-			}
-			if !task.Done {
-				due = ansi.Strip(duePresentation(task, due, m.currentTime()))
-			}
-			dueWidth = max(dueWidth, lipgloss.Width(due))
-		}
-		prefixWidth := lipgloss.Width("[ ]") + 1 + 6 + 1 + 8 + 2
-		titleLimit := max(1, textW-prefixWidth-2-dueWidth)
-		for _, task := range m.tasks[start:end] {
-			overviewTitleWidth = max(overviewTitleWidth, lipgloss.Width(task.Title))
-		}
-		overviewTitleWidth = min(overviewTitleWidth, titleLimit)
-	} else {
-		dueWidth, widestDueColumn := 1, 0
-		for _, task := range m.tasks[start:end] {
-			due := strings.TrimSpace(task.DueDate)
-			if due == "" {
-				due = "-"
-			}
-			if !task.Done {
-				due = ansi.Strip(duePresentation(task, due, m.currentTime()))
-			}
-			dueWidth = max(dueWidth, lipgloss.Width(due))
-
-			prefixWidth := lipgloss.Width("[ ]") + 1 + 6 + 1
-			widestDueColumn = max(widestDueColumn, prefixWidth+lipgloss.Width(task.Title)+2)
-		}
-		taskListDueColumn = min(widestDueColumn, max(0, textW-dueWidth))
-	}
+	layout := taskMetadataLayoutForWidth(m.tasks[start:end], textW, m.inOverview(), m.currentTime())
 	for i, t := range m.tasks[start:end] {
 		sel := start+i == selected
 		done := "[ ]"
@@ -199,14 +164,7 @@ func renderTasks(m *model, textW, textH int) string {
 		if !t.Done {
 			dueSeg = duePresentation(t, due, m.currentTime())
 		}
-		var title string
-		if m.inOverview() {
-			title = padPlainRight(truncatePlain(t.Title, overviewTitleWidth), overviewTitleWidth)
-		} else {
-			prefixWidth := lipgloss.Width(done) + 1 + lipgloss.Width(prioStr) + 1
-			titleWidth := max(1, taskListDueColumn-prefixWidth-2)
-			title = padPlainRight(truncatePlain(t.Title, titleWidth), titleWidth)
-		}
+		title := padPlainRight(truncatePlain(t.Title, layout.titleWidth), layout.titleWidth)
 
 		// Style applied to the non-priority segments only. The priority keeps
 		// its own colour even when selected. Each segment is rendered from a
@@ -237,11 +195,18 @@ func renderTasks(m *model, textW, textH int) string {
 			return s
 		}
 
-		projectSeg := ""
-		if project != "" {
-			projectSeg = project + "  "
+		segments := []string{rend(done)}
+		if layout.showPriority {
+			segments = append(segments, prioSeg)
 		}
-		line := rend(done) + " " + prioSeg + " " + projectSeg + rend(title) + "  " + dueSeg
+		if layout.showProject && project != "" {
+			segments = append(segments, project)
+		}
+		segments = append(segments, rend(title))
+		if layout.showDue {
+			segments = append(segments, dueSeg)
+		}
+		line := strings.Join(segments, " ")
 		if t.Done {
 			line = lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Faint(true).Render(ansi.Strip(line))
 			if sel && focus {
@@ -260,6 +225,58 @@ func (m *model) currentTime() time.Time {
 		return time.Now()
 	}
 	return m.now()
+}
+
+type taskMetadataLayout struct {
+	titleWidth                int
+	showPriority, showProject bool
+	showDue                   bool
+}
+
+// taskMetadataLayoutForWidth preserves the title before optional metadata in
+// narrow Panes. Its shared layout keeps columns aligned across visible Tasks.
+func taskMetadataLayoutForWidth(tasks []vimkunja.Task, textW int, overview bool, now time.Time) taskMetadataLayout {
+	layout := taskMetadataLayout{showPriority: true, showProject: overview, showDue: true}
+	titleWidth, dueWidth := 1, 1
+	for _, task := range tasks {
+		titleWidth = max(titleWidth, lipgloss.Width(task.Title))
+		due := strings.TrimSpace(task.DueDate)
+		if due == "" {
+			due = "-"
+		}
+		if !task.Done {
+			due = ansi.Strip(duePresentation(task, due, now))
+		}
+		dueWidth = max(dueWidth, lipgloss.Width(due))
+	}
+	metadataWidth := func() int {
+		width := 0
+		if layout.showPriority {
+			width += 7 // six-character priority plus its preceding space
+		}
+		if layout.showProject {
+			width += 9 // eight-character project identifier plus its preceding space
+		}
+		if layout.showDue {
+			width += dueWidth + 1
+		}
+		return width
+	}
+	for textW < lipgloss.Width("[ ] ")+titleWidth+metadataWidth() {
+		switch {
+		case layout.showProject:
+			layout.showProject = false
+		case layout.showDue:
+			layout.showDue = false
+		case layout.showPriority:
+			layout.showPriority = false
+		default:
+			layout.titleWidth = max(1, textW-lipgloss.Width("[ ] "))
+			return layout
+		}
+	}
+	layout.titleWidth = titleWidth
+	return layout
 }
 
 func duePresentation(task vimkunja.Task, value string, now time.Time) string {
@@ -349,11 +366,17 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		}
 		return focusedField(label+value, active)
 	}
+	renderMetadata := func(field editorField, value string) string {
+		if e.draft.Done && !(detailFocused && e.field == field) {
+			return lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Faint(true).Render(ansi.Strip(value))
+		}
+		return value
+	}
 	lines = append(lines,
 		renderField(fieldProject, "Project:  ", projectName),
-		renderField(fieldTitle, "Title:    ", m.editorText(fieldTitle, e.draft.Title)),
-		renderField(fieldPriority, "Priority: ", priority),
-		renderField(fieldDueDate, "Due Date: ", m.editorText(fieldDueDate, due)),
+		renderField(fieldTitle, "Title:    ", renderMetadata(fieldTitle, m.editorText(fieldTitle, e.draft.Title))),
+		renderField(fieldPriority, "Priority: ", renderMetadata(fieldPriority, priority)),
+		renderField(fieldDueDate, "Due Date: ", renderMetadata(fieldDueDate, m.editorText(fieldDueDate, due))),
 		renderField(fieldWorkflowStatus, "Status:   ", e.workflowStatusLabel()),
 	)
 	if e.id != 0 {

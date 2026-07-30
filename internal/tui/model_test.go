@@ -691,6 +691,42 @@ func TestTaskListFormatsDueDatesRelativeToToday(t *testing.T) {
 	}
 }
 
+func TestNarrowTaskListDropsDueDateBeforeTruncatingTitle(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
+	m.tasks = []vimkunja.Task{{ID: 1, Title: "Important task", Priority: 3, DueDate: "2026-08-02"}}
+
+	line := strings.Split(ansi.Strip(renderTasks(m, 25, 3)), "\n")[1]
+	if !strings.Contains(line, "Important task") || !strings.Contains(line, "High") || strings.Contains(line, "tomorrow") {
+		t.Fatalf("narrow Task list = %q, want title and priority without Due Date", line)
+	}
+}
+
+func TestNarrowOverviewDropsProjectThenDueBeforeTruncatingTitle(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.taskScope = scopeOverview
+	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
+	m.tasks = []vimkunja.Task{{ID: 1, Title: "Important task", Priority: 3, ProjectIdentifier: "VIM", DueDate: "2026-08-02"}}
+
+	line := strings.Split(ansi.Strip(renderTasks(m, 25, 3)), "\n")[1]
+	if !strings.Contains(line, "Important task") || !strings.Contains(line, "High") || strings.Contains(line, "VIM") || strings.Contains(line, "tomorrow") {
+		t.Fatalf("narrow Overview = %q, want title and priority without Project or Due Date", line)
+	}
+}
+
+func TestCompletedDetailUsesNeutralMetadata(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, Title: "Completed", Priority: 3, DueDate: "2026-08-02", Done: true})
+	m.focus = paneTasks
+
+	view := renderTaskDetail(m, 80, 12)
+	if strings.Contains(view, "38;5;"+priorityColor(3)) || strings.Count(view, "38;5;245") < 3 {
+		t.Fatalf("completed Detail metadata lacks neutral styling: %q", view)
+	}
+}
+
 func TestTaskListUsesNamedPriority(t *testing.T) {
 	m := testModel()
 	m.focus = paneTasks
