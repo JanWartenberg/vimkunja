@@ -1245,9 +1245,9 @@ func (m *model) renderStatusBar(w int) string {
 		hint = "Shift+H/L move bucket  •  m choose bucket  •  j/k navigate  •  x toggle  •  Ctrl+W cycles  •  :h help"
 	}
 	if m.focus == paneTasks && m.inOverview() {
-		hint = "Enter detail  •  o new task  •  s sort  •  f filter  •  - Overview  •  Space+a return"
+		hint = "Enter detail  •  o new task  •  s sort  •  f filter  •  Space+a return"
 	}
-	if (m.focus == paneProjects || m.focus == paneTasks) && w >= 100 {
+	if (m.focus == paneProjects || m.focus == paneTasks) && !m.inOverview() && w >= 100 {
 		hint += "  •  o new task"
 	}
 	if m.focus == paneDetail {

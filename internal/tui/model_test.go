@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 	apperrors "github.com/vimkunja/vimkunja/internal/errors"
 	"github.com/vimkunja/vimkunja/internal/vimkunja"
@@ -740,6 +741,101 @@ func TestOverviewAlignsDueDatesAfterLongestVisibleTitle(t *testing.T) {
 	second := strings.Index(lines[2], "12 Aug")
 	if first < 0 || second < 0 || first != second {
 		t.Fatalf("Overview Due Date columns = %q, Due Date columns at %d and %d", lines[1:3], first, second)
+	}
+}
+
+func TestTaskListAlignsDueDatesAfterLongestVisibleTitle(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
+	m.tasks = []vimkunja.Task{
+		{ID: 1, Title: "Short", Priority: 2, DueDate: "2026-08-02"},
+		{ID: 2, Title: "A much longer title", Priority: 5, DueDate: "2026-08-12"},
+	}
+
+	lines := strings.Split(ansi.Strip(renderTasks(m, 100, 4)), "\n")
+	first := strings.Index(lines[1], "tomorrow")
+	second := strings.Index(lines[2], "12 Aug")
+	if first < 0 || second < 0 || first != second {
+		t.Fatalf("Task list Due Date columns = %q, Due Date columns at %d and %d", lines[1:3], first, second)
+	}
+}
+
+func TestTaskListAlignsPriorityAndTitleColumns(t *testing.T) {
+	m := testModel()
+	m.tasks = []vimkunja.Task{
+		{ID: 1, Title: "Shared title", Priority: 0},
+		{ID: 2, Title: "Shared title", Priority: 3},
+	}
+
+	lines := strings.Split(ansi.Strip(renderTasks(m, 100, 4)), "\n")
+	first := strings.Index(lines[1], "Shared title")
+	second := strings.Index(lines[2], "Shared title")
+	if first < 0 || second < 0 || lipgloss.Width(lines[1][:first]) != lipgloss.Width(lines[2][:second]) {
+		t.Fatalf("Task list title columns = %q, title columns at %d and %d", lines[1:3], first, second)
+	}
+}
+
+func TestFocusedTaskListHighlightsDueDateWithoutUnderline(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
+	m.tasks = []vimkunja.Task{{ID: 1, Title: "Launch", DueDate: "2026-08-02"}}
+
+	line := strings.Split(renderTasks(m, 100, 3), "\n")[1]
+	if strings.Contains(line, ";4;") || strings.Contains(line, "[4;") {
+		t.Fatalf("focused task list task is underlined: %q", line)
+	}
+	if !strings.Contains(line, "\x1b[1;38;5;205mtomorrow\x1b[m") {
+		t.Fatalf("focused task list due date lacks selection color: %q", line)
+	}
+}
+
+func TestTaskPaneLabelsProjectTasks(t *testing.T) {
+	m := testModel()
+	if header := ansi.Strip(strings.Split(renderTasks(m, 80, 3), "\n")[0]); !strings.Contains(header, "Project Tasks") {
+		t.Fatalf("Tasks Pane header = %q, want Project Tasks", header)
+	}
+}
+
+func TestOverviewStatusBarHasNoDuplicateOrReturnToOverviewHint(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.taskScope = scopeOverview
+
+	status := ansi.Strip(m.renderStatusBar(140))
+	if strings.Count(status, "o new task") != 1 {
+		t.Fatalf("Overview status = %q, want one new-task hint", status)
+	}
+	if strings.Contains(status, "- Overview") {
+		t.Fatalf("Overview status = %q, must not offer opening the current Overview", status)
+	}
+}
+
+func TestFocusedOverviewTaskHighlightsDueDateWithoutUnderline(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.taskScope = scopeOverview
+	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
+	m.tasks = []vimkunja.Task{{ID: 1, Title: "Launch", ProjectIdentifier: "VIM", DueDate: "2026-08-02"}}
+
+	line := strings.Split(renderTasks(m, 100, 3), "\n")[1]
+	if strings.Contains(line, "\x1b[4m") {
+		t.Fatalf("focused overview task is underlined: %q", line)
+	}
+	if !strings.Contains(line, "\x1b[1;38;5;205mtomorrow\x1b[m") {
+		t.Fatalf("focused overview due date lacks selection color: %q", line)
+	}
+}
+
+func TestFocusedDoneTaskUsesAccentChevrons(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.tasks = []vimkunja.Task{{ID: 1, Title: "Completed", Done: true}}
+
+	line := strings.Split(renderTasks(m, 80, 3), "\n")[1]
+	if !strings.Contains(line, "\x1b[38;5;205m> \x1b[m") || !strings.Contains(line, "\x1b[38;5;205m <\x1b[m") {
+		t.Fatalf("focused completed task lacks accent chevrons: %q", line)
 	}
 }
 

@@ -102,7 +102,7 @@ func renderTasks(m *model, textW, textH int) string {
 	if m.kanbanActive && !m.inOverview() {
 		return renderKanbanBoard(m, textW, textH)
 	}
-	headerText := " Tasks (list) "
+	headerText := " Project Tasks "
 	if m.inOverview() {
 		headerText = fmt.Sprintf(" Overview · %s · %s ", m.overviewSortLabel(), m.overviewFilterLabel())
 	}
@@ -128,7 +128,7 @@ func renderTasks(m *model, textW, textH int) string {
 	bottomMargin := min(2, max(0, visibleRows-1))
 	start := max(0, selected-visibleRows+1+bottomMargin)
 	end := min(len(m.tasks), start+visibleRows)
-	overviewTitleWidth := 0
+	overviewTitleWidth, taskListDueColumn := 0, 0
 	if m.inOverview() {
 		dueWidth := 1
 		for _, task := range m.tasks[start:end] {
@@ -147,6 +147,22 @@ func renderTasks(m *model, textW, textH int) string {
 			overviewTitleWidth = max(overviewTitleWidth, lipgloss.Width(task.Title))
 		}
 		overviewTitleWidth = min(overviewTitleWidth, titleLimit)
+	} else {
+		dueWidth, widestDueColumn := 1, 0
+		for _, task := range m.tasks[start:end] {
+			due := strings.TrimSpace(task.DueDate)
+			if due == "" {
+				due = "-"
+			}
+			if !task.Done {
+				due = ansi.Strip(duePresentation(task, due, m.currentTime()))
+			}
+			dueWidth = max(dueWidth, lipgloss.Width(due))
+
+			prefixWidth := lipgloss.Width("[ ]") + 1 + 6 + 1
+			widestDueColumn = max(widestDueColumn, prefixWidth+lipgloss.Width(task.Title)+2)
+		}
+		taskListDueColumn = min(widestDueColumn, max(0, textW-dueWidth))
 	}
 	for i, t := range m.tasks[start:end] {
 		sel := start+i == selected
@@ -168,9 +184,8 @@ func renderTasks(m *model, textW, textH int) string {
 				project = fmt.Sprintf("%d", t.ProjectID)
 			}
 		}
-		prioStr := prioritySummary(t.Priority)
+		prioStr := padPlainRight(prioritySummary(t.Priority), 6)
 		if m.inOverview() {
-			prioStr = fmt.Sprintf("%-6s", prioStr)
 			project = fmt.Sprintf("%-8s", truncatePlain(project, 8))
 		}
 		// Priority segment: colored only when not done. Rendered once from a
@@ -188,11 +203,9 @@ func renderTasks(m *model, textW, textH int) string {
 		if m.inOverview() {
 			title = padPlainRight(truncatePlain(t.Title, overviewTitleWidth), overviewTitleWidth)
 		} else {
-			fixedW := lipgloss.Width(done) + 1 +
-				lipgloss.Width(prioStr) + 1 +
-				lipgloss.Width(project) + 2 +
-				2 + lipgloss.Width(ansi.Strip(dueSeg))
-			title = truncatePlain(t.Title, textW-fixedW)
+			prefixWidth := lipgloss.Width(done) + 1 + lipgloss.Width(prioStr) + 1
+			titleWidth := max(1, taskListDueColumn-prefixWidth-2)
+			title = padPlainRight(truncatePlain(t.Title, titleWidth), titleWidth)
 		}
 
 		// Style applied to the non-priority segments only. The priority keeps
@@ -201,9 +214,10 @@ func renderTasks(m *model, textW, textH int) string {
 		var segStyle *lipgloss.Style
 		switch {
 		case sel && focus:
-			s := lipgloss.NewStyle().Bold(true).Underline(true)
+			s := lipgloss.NewStyle().Bold(true)
 			if !t.Done {
 				s = s.Foreground(lipgloss.Color("205"))
+				dueSeg = s.Render(ansi.Strip(dueSeg))
 			}
 			segStyle = &s
 		case sel:
@@ -230,6 +244,10 @@ func renderTasks(m *model, textW, textH int) string {
 		line := rend(done) + " " + prioSeg + " " + projectSeg + rend(title) + "  " + dueSeg
 		if t.Done {
 			line = lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Faint(true).Render(ansi.Strip(line))
+			if sel && focus {
+				chevron := lipgloss.NewStyle().Foreground(lipgloss.Color(selectionAccent))
+				line = chevron.Render("> ") + line + chevron.Render(" <")
+			}
 		}
 		lines = append(lines, line)
 	}
