@@ -13,8 +13,8 @@
 - [ ] Read and display Labels assigned to a Task.
 - [ ] Define a keyboard Picker/search flow for assigning and removing existing Labels.
 - [ ] Decide whether creating, editing, and deleting Labels belongs to this feature or later work.
-- [ ] Keep Labels available as future global-search and filter terms.
+- [ ] Reuse the Global Search ticket's Label discovery and label-filtered Overview scope for existing-Label navigation; keep mutation UI here.
 
 ## Further context
 
-Archived source: `SPEC_FUNDAMENT.md`, “Labels (später)”.
+Archived source: `SPEC_FUNDAMENT.md`, “Labels (später)”. Global Search owns read-only Label discovery and opening the label-filtered Overview; this ticket owns Task Detail Label display, assignment, and removal.

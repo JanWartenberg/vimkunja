@@ -47,6 +47,18 @@ A Task context consists of a Scope (`Overview` or the current Project) and a Vie
 
 The Project View switcher is visible above the Tasks Pane only outside Overview and lists only Views available to the current Project. If the remembered View is unavailable, restoring a Project uses List View.
 
+## Search
+
+| Binding | Action | Status |
+| --- | --- | --- |
+| `Space+f` | Open the global Search overlay above the current context. | Agreed |
+| Arrows / `Ctrl+N` / `Ctrl+P` | Select the preceding/following global Search result while its input accepts text. | Agreed |
+| `Enter` | Activate the selected global result: open a Task Detail, enter a Project List View, or open a Label-filtered Overview. | Agreed |
+| `Esc` | Close global Search and restore its pre-search context. | Agreed |
+| `Ctrl+O` | Return from an activated global result to the latest session-local Search snapshot. | Agreed |
+| `/` | Search within the focused Pane; local-search implementation is deferred. | Agreed |
+| `n` / `N` | Repeat the next/previous local-search match; deferred with local search. | Agreed |
+
 ## Tasks Pane
 
 | Binding | Action | Status |

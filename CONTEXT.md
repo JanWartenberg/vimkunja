@@ -30,6 +30,15 @@ The initial named Views, each representing Tasks in a different form. Future Vie
 **Manual Kanban View**:
 A Kanban View with Vikunja's `bucket_configuration_mode=manual`. Its persisted Buckets accept direct Task moves. _Avoid_: filter-configured Kanban View, which derives Buckets from filters and is outside the initial Board scope.
 
+**Global Search**:
+A cross-data query that returns typed matches from the locally browsable database. It is distinct from a Local Search and can activate a Task, Project, or Label-filtered Overview.
+
+**Local Search**:
+A future query constrained to the currently focused Pane or its content. _Avoid_: Global Search.
+
+**Label-filtered Overview**:
+An Overview scope limited to Tasks assigned one Label. Its Label constraint composes with the Overview status filter. _Avoid_: Label View.
+
 ## Rich-text descriptions
 
 **Description**:
