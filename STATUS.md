@@ -10,6 +10,7 @@ MVP und **M1 – Daily Driver** sind abgeschlossen: tägliche Aufgabenverwaltung
 - Workflow-Status und Done-Toggle im Detail sowie Done-/Default-Bucket-Synchronisierung
 - Einheitliche Due-Date-, Priority- und Identifier-Darstellung in Liste, Overview und Detail
 - List-, Overview- und Kanban-Views mit Vim-Navigation, Pane-Fokus, Ex-Commands, Help, Fehlerlog und Leader-Key
+- Separates englisches Keystroke-Tutorial mit bei jedem Start frisch erzeugter, temporärer SQLite-Datenbank
 - `go test ./...` grün
 
 ## Aktuelle Tickets

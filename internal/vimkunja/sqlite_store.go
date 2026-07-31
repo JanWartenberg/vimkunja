@@ -28,6 +28,16 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	return &SQLiteStore{db: db}, nil
 }
 
+// Close releases the database connection. Normal Vimkunja sessions may rely
+// on process cleanup; short-lived users such as the tutorial need an explicit
+// close so their temporary database can also be removed on Windows.
+func (s *SQLiteStore) Close() error {
+	if s == nil || s.db == nil {
+		return nil
+	}
+	return s.db.Close()
+}
+
 const (
 	viewKindList   = 0
 	viewKindGantt  = 1

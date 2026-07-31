@@ -11,6 +11,14 @@ go run ./cmd/vimkunja --db internal/db/vikunja.db
 
 Der Datenbankpfad muss existieren und lesbar sein. Vimkunja greift direkt auf die lokale SQLite-Datenbank zu; es gibt keinen REST-Modus.
 
+### Interactive keystroke tutorial
+
+```bash
+go run ./cmd/vimkunja-tutorial
+```
+
+The separate tutorial executable runs the real Vimkunja UI and guides through every currently implemented feature group in English. Every run creates a freshly seeded SQLite database in the operating system's temporary directory. The tutorial accepts no database path, never opens `internal/db/vikunja.db` or another user database, and deletes its disposable database on exit.
+
 ## 2. Bedienung und Details
 
 - `hjkl`, `gg` / `G`, `Ctrl+D` / `Ctrl+U` – Navigation
