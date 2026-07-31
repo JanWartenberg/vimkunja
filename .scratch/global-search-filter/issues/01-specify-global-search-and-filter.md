@@ -6,7 +6,7 @@
 
 **Category:** enhancement
 
-**Priority:** Medium
+**Priority:** High
 
 **Status:** needs-triage
 
