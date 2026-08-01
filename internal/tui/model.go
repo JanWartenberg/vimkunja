@@ -69,6 +69,7 @@ type model struct {
 	lastProjectPaneCollapsed bool
 	leaderTimeout            time.Duration
 	gArmed                   bool
+	zArmed                   bool
 	neighbors                map[paneID]paneNeighbors
 
 	lastErr string
@@ -79,9 +80,11 @@ type model struct {
 	commands     *CommandRegistry
 
 	// Projects pane
-	projects        []vimkunja.Project
-	projectSelected int
-	projectLoading  bool
+	projects             []vimkunja.Project
+	projectTree          projectTree
+	projectSelected      int
+	projectViewportStart int
+	projectLoading       bool
 
 	// Views (derived from selected project)
 	projectViews           []vimkunja.ProjectView
@@ -176,6 +179,9 @@ type (
 		projects []vimkunja.Project
 		err      error
 	}
+	projectMovedMsg struct {
+		err error
+	}
 	viewsLoadedMsg struct {
 		views []vimkunja.ProjectView
 		err   error
@@ -220,16 +226,24 @@ type (
 
 func (m *model) Init() tea.Cmd {
 	m.projectLoading = true
-	return m.loadProjects(1)
+	return m.loadProjects()
 }
 
-func (m *model) loadProjects(page int) tea.Cmd {
+func (m *model) loadProjects() tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 
-		items, _, err := m.store.ListProjects(ctx, page, 200)
+		items, err := m.store.ListProjects(ctx)
 		return projectsLoadedMsg{projects: items, err: err}
+	}
+}
+
+func (m *model) moveProject(projectID int64, direction vimkunja.ProjectMoveDirection) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
+		defer cancel()
+		return projectMovedMsg{err: m.store.MoveProjectAmongSiblings(ctx, projectID, direction)}
 	}
 }
 
@@ -425,20 +439,39 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		oldRows := m.projectTree.visibleRows()
+		oldIndex := m.projectSelected
+		oldSelectedID := int64(0)
+		if oldIndex >= 0 && oldIndex < len(oldRows) {
+			oldSelectedID = oldRows[oldIndex].Project.ID
+		} else if m.currentProjectID != 0 {
+			oldSelectedID = m.currentProjectID
+		}
+		collapsed := m.projectTree.collapsedState()
 		m.projects = typed.projects
+		m.projectTree = newProjectTree(m.projects, collapsed)
 		if len(m.projects) == 0 {
+			m.projectSelected = 0
+			m.projectViewportStart = 0
+			m.currentProjectID = 0
+			m.currentViewID = 0
+			m.projectViews = nil
+			m.viewLoading = false
+			m.tasks = nil
+			m.taskLoading = false
+			m.kanbanActive = false
+			m.kanbanBoard = vimkunja.KanbanBoard{}
 			m.lastErr = "No projects returned."
 			return m, nil
 		}
 
-		if m.initialProjectID != 0 {
-			idx := m.findProjectIndex(m.initialProjectID)
-			if idx >= 0 {
-				m.projectSelected = idx
-			}
+		targetID := oldSelectedID
+		if m.initialProjectID != 0 && len(oldRows) == 0 {
+			targetID = m.initialProjectID
 		}
-		m.projectSelected = clamp(m.projectSelected, 0, len(m.projects)-1)
-		m.currentProjectID = m.projects[m.projectSelected].ID
+		m.restoreProjectSelection(targetID, oldRows, oldIndex)
+		selected, _ := m.selectedProject()
+		m.currentProjectID = selected.ID
 
 		// Initial load: either direct view tasks or derive list view.
 		if m.initialViewID != 0 {
@@ -449,6 +482,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.viewLoading = true
 		return m, m.loadViews(m.currentProjectID)
+
+	case projectMovedMsg:
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		return m, m.loadProjects()
 
 	case viewsLoadedMsg:
 		m.viewLoading = false
@@ -787,6 +827,37 @@ func (m *model) focusNeighborDownOrStay() paneID {
 func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	s := normalizeArrow(k.String())
 
+	if m.zArmed {
+		m.zArmed = false
+		selected, ok := m.selectedProject()
+		if !ok {
+			return m, nil
+		}
+		switch s {
+		case "o":
+			m.projectTree.expand(selected.ID)
+		case "c":
+			m.projectTree.collapse(selected.ID)
+		case "a":
+			m.projectTree.toggle(selected.ID)
+		case "M":
+			rootID := selected.ID
+			for {
+				parentID, exists := m.projectTree.parentID(rootID)
+				if !exists {
+					break
+				}
+				rootID = parentID
+			}
+			m.projectTree.collapseAll()
+			m.projectSelected = m.findVisibleProjectIndex(rootID)
+		case "R":
+			m.projectTree.expandAll()
+			m.projectSelected = m.findVisibleProjectIndex(selected.ID)
+		}
+		return m, nil
+	}
+
 	// `gg` prefix: first g arms, second g jumps to top.
 	if m.gArmed {
 		m.gArmed = false
@@ -797,7 +868,8 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// otherwise fall through with the resolved key
 	}
 
-	last := max(0, len(m.projects)-1)
+	rows := m.projectRows()
+	last := max(0, len(rows)-1)
 	switch s {
 	case "q":
 		return m, tea.Quit
@@ -817,10 +889,50 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "r":
 		m.lastErr = ""
 		m.projectLoading = true
-		return m, m.loadProjects(1)
+		return m, m.loadProjects()
 	case "g":
 		m.gArmed = true
 		return m, nil
+	case "z":
+		m.zArmed = true
+		return m, nil
+	case "h":
+		if m.projectSelected < 0 || m.projectSelected >= len(rows) {
+			return m, nil
+		}
+		row := rows[m.projectSelected]
+		if row.HasChildren && row.Expanded {
+			m.projectTree.collapse(row.Project.ID)
+			return m, nil
+		}
+		if parentID, ok := m.projectTree.parentID(row.Project.ID); ok {
+			m.projectSelected = m.findVisibleProjectIndex(parentID)
+			return m, m.onProjectSelectionChanged()
+		}
+		return m, nil
+	case "l":
+		if m.projectSelected < 0 || m.projectSelected >= len(rows) {
+			return m, nil
+		}
+		row := rows[m.projectSelected]
+		if row.HasChildren && !row.Expanded {
+			m.projectTree.expand(row.Project.ID)
+			return m, nil
+		}
+		if childID, ok := m.projectTree.firstChildID(row.Project.ID); ok {
+			m.projectSelected = m.findVisibleProjectIndex(childID)
+			return m, m.onProjectSelectionChanged()
+		}
+		return m, nil
+	case "J", "K":
+		if m.projectSelected < 0 || m.projectSelected >= len(rows) || rows[m.projectSelected].Recovery {
+			return m, nil
+		}
+		direction := vimkunja.ProjectMoveNext
+		if s == "K" {
+			direction = vimkunja.ProjectMovePrevious
+		}
+		return m, m.moveProject(rows[m.projectSelected].Project.ID, direction)
 	case "G", "end":
 		m.projectSelected = last
 		return m, m.onProjectSelectionChanged()
@@ -997,13 +1109,61 @@ func (m *model) updateInfoPaneScrollKeys(pane *infoPane, k tea.KeyMsg) (tea.Mode
 	return m, nil
 }
 
+func (m *model) projectRows() []projectTreeRow {
+	if !m.projectTree.initialized() && len(m.projects) > 0 {
+		m.projectTree = newProjectTree(m.projects, nil)
+	}
+	return m.projectTree.visibleRows()
+}
+
+func (m *model) selectedProject() (vimkunja.Project, bool) {
+	rows := m.projectRows()
+	if m.projectSelected < 0 || m.projectSelected >= len(rows) {
+		return vimkunja.Project{}, false
+	}
+	return rows[m.projectSelected].Project, true
+}
+
+func (m *model) restoreProjectSelection(targetID int64, oldRows []projectTreeRow, oldIndex int) {
+	if targetID != 0 {
+		m.projectTree.reveal(targetID)
+		if index := m.findVisibleProjectIndex(targetID); index >= 0 {
+			m.projectSelected = index
+			return
+		}
+	}
+	for i := oldIndex + 1; i < len(oldRows); i++ {
+		if index := m.findVisibleProjectIndex(oldRows[i].Project.ID); index >= 0 {
+			m.projectSelected = index
+			return
+		}
+	}
+	for i := min(oldIndex-1, len(oldRows)-1); i >= 0; i-- {
+		if index := m.findVisibleProjectIndex(oldRows[i].Project.ID); index >= 0 {
+			m.projectSelected = index
+			return
+		}
+	}
+	m.projectSelected = 0
+}
+
+func (m *model) findVisibleProjectIndex(id int64) int {
+	for i, row := range m.projectTree.visibleRows() {
+		if row.Project.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
 func (m *model) onProjectSelectionChanged() tea.Cmd {
 	m.kanbanActive = false
 	m.kanbanBoard = vimkunja.KanbanBoard{}
-	if len(m.projects) == 0 || m.inOverview() {
+	selected, ok := m.selectedProject()
+	if !ok || m.inOverview() {
 		return nil
 	}
-	m.currentProjectID = m.projects[m.projectSelected].ID
+	m.currentProjectID = selected.ID
 	m.currentViewID = 0
 	m.tasks = nil
 	m.taskSelected = 0
@@ -1014,12 +1174,11 @@ func (m *model) onProjectSelectionChanged() tea.Cmd {
 }
 
 func (m *model) findProjectIndex(id int64) int {
-	for i, p := range m.projects {
-		if p.ID == id {
-			return i
-		}
+	if !m.projectTree.contains(id) && len(m.projects) > 0 {
+		m.projectTree = newProjectTree(m.projects, m.projectTree.collapsedState())
 	}
-	return -1
+	m.projectTree.reveal(id)
+	return m.findVisibleProjectIndex(id)
 }
 
 func (m *model) pickManualKanbanViewIndex() int {
@@ -1250,6 +1409,9 @@ func (m *model) renderStatusBar(w int) string {
 	}
 
 	hint := "Ctrl+W cycles  •  Enter detail  •  q quit  •  :h help  •  j/k navigate  •  x toggle"
+	if m.focus == paneProjects {
+		hint = "j/k select  •  h/l fold/tree  •  z fold commands  •  Shift+J/K reorder  •  r reload  •  :h help"
+	}
 	if m.focus == paneTasks && m.kanbanActive && !m.inOverview() {
 		hint = "Shift+H/L move bucket  •  m choose bucket  •  j/k navigate  •  x toggle  •  Ctrl+W cycles  •  :h help"
 	}

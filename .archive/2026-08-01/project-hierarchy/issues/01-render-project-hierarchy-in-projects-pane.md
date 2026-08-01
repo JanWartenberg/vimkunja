@@ -2,18 +2,18 @@
 
 **What to build:** The Projects Pane represents Vikunja's Project parent/child hierarchy through clear keyboard-navigable indentation.
 
-**Implementation prerequisites:** Needs confirmation of the available schema fields and specification of collapse, ordering, and selection semantics.
+**Implementation prerequisites:** Met — schema fields were confirmed and collapse, ordering, and selection semantics are captured in the Agent Brief below.
 
 **Category:** enhancement
 
 **Priority:** High
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Read parent relationships from the existing Vikunja schema without changing it.
-- [ ] Define root order, child order, indentation, and handling of missing or cyclic parents.
-- [ ] Decide whether branches can collapse and how that interacts with `j/k`, `gg/G`, and filtering.
-- [ ] Preserve a stable Project selection when the hierarchy refreshes.
+- [x] Read parent relationships from the existing Vikunja schema without changing it.
+- [x] Define root order, child order, indentation, and handling of missing or cyclic parents.
+- [x] Decide whether branches can collapse and how that interacts with `j/k`, `gg/G`, and filtering.
+- [x] Preserve a stable Project selection when the hierarchy refreshes.
 
 ## Further context
 
@@ -21,7 +21,7 @@ Archived source: `SPEC_FUNDAMENT.md`, “Project View should reflect the hierarc
 
 ## Related follow-up
 
-- [Diagnose and repair malformed Project hierarchy data](02-diagnose-and-repair-malformed-project-hierarchies.md) — low-priority diagnostic and repair workflow.
+- [Diagnose and repair malformed Project hierarchy data](../../../../.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) — low-priority diagnostic and repair workflow.
 
 ## Comments
 
@@ -54,13 +54,13 @@ Refresh retains selection by Project ID and expands ancestor branches necessary 
 - The Projects-Pane model and key handling — keep selection by Project ID, own the viewport, execute folding/tree navigation, and delegate persistence to the Store.
 
 **Acceptance criteria:**
-- [ ] A multi-level valid hierarchy renders in position/ID sibling order with the specified indentation, branch markers, selected-row presentation, and viewport behavior.
-- [ ] All fold commands and `h/l` follow the specified behavior; fold state survives refresh in a session but not restart.
-- [ ] Navigation commands operate only over visible rows, and refresh preserves/reveals the selected Project or uses the defined disappearance fallback.
-- [ ] `Shift+J/K` only reorder siblings, retain a parent subtree, persist compatible positions transactionally, and leave the display unchanged on write failure.
-- [ ] Null/zero parents are roots; missing, negative, self-referential, and cyclic inputs terminate safely and appear once as marked recovery roots.
-- [ ] Store and model tests cover valid nesting, ordering ties, folding/navigation, refresh selection, disappearance, malformed data, and sibling reordering.
-- [ ] No Vikunja schema change is made.
+- [x] A multi-level valid hierarchy renders in position/ID sibling order with the specified indentation, branch markers, selected-row presentation, and viewport behavior.
+- [x] All fold commands and `h/l` follow the specified behavior; fold state survives refresh in a session but not restart.
+- [x] Navigation commands operate only over visible rows, and refresh preserves/reveals the selected Project or uses the defined disappearance fallback.
+- [x] `Shift+J/K` only reorder siblings, retain a parent subtree, persist compatible positions transactionally, and leave the display unchanged on write failure.
+- [x] Null/zero parents are roots; missing, negative, self-referential, and cyclic inputs terminate safely and appear once as marked recovery roots.
+- [x] Store and model tests cover valid nesting, ordering ties, folding/navigation, refresh selection, disappearance, malformed data, and sibling reordering.
+- [x] No Vikunja schema change is made.
 
 **Out of scope:**
 - Filtering the Projects Pane; the global-search/filter ticket owns that contract.

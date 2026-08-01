@@ -32,7 +32,10 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			identifier TEXT,
 			title TEXT,
 			description TEXT,
+			parent_project_id INTEGER,
+			position REAL,
 			is_archived INTEGER DEFAULT 0,
+			updated DATETIME DEFAULT CURRENT_TIMESTAMP,
 			owner_id INTEGER DEFAULT 1
 		);
 
@@ -507,6 +510,95 @@ func TestToggleTaskDone_MovesTaskToEachViewsDefaultBucketWhenUndone(t *testing.T
 	}
 }
 
+func TestMoveProjectAmongSiblingsRollsBackEveryPositionOnFailure(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title, parent_project_id, position) VALUES
+			(1, 'First', 0, 100), (2, 'Second', 0, 200);
+		CREATE TRIGGER reject_second_project_position
+		BEFORE UPDATE OF position ON projects
+		WHEN OLD.id = 2
+		BEGIN
+			SELECT RAISE(ABORT, 'position rejected');
+		END;
+	`)
+	if err != nil {
+		t.Fatalf("seed Projects: %v", err)
+	}
+
+	if err := store.MoveProjectAmongSiblings(context.Background(), 1, ProjectMoveNext); err == nil {
+		t.Fatal("move Project succeeded despite rejected sibling update")
+	}
+	projects, err := store.ListProjects(context.Background())
+	if err != nil {
+		t.Fatalf("list Projects: %v", err)
+	}
+	if projects[0].Position != 100 || projects[1].Position != 200 {
+		t.Fatalf("positions after failed move = %v, %v; want original transaction", projects[0].Position, projects[1].Position)
+	}
+}
+
+func TestMoveProjectAmongSiblingsPersistsOnlySiblingOrder(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title, parent_project_id, position) VALUES
+			(1, 'Root', 0, 10),
+			(2, 'First child', 1, 100),
+			(3, 'Second child', 1, 200),
+			(4, 'Other root', 0, 20);
+	`)
+	if err != nil {
+		t.Fatalf("insert Projects: %v", err)
+	}
+
+	if err := store.MoveProjectAmongSiblings(context.Background(), 3, ProjectMovePrevious); err != nil {
+		t.Fatalf("move Project: %v", err)
+	}
+	projects, err := store.ListProjects(context.Background())
+	if err != nil {
+		t.Fatalf("list Projects: %v", err)
+	}
+	positions := make(map[int64]float64, len(projects))
+	for _, project := range projects {
+		positions[project.ID] = project.Position
+	}
+	if positions[3] != 100 || positions[2] != 200 {
+		t.Fatalf("child positions = first:%v second:%v, want moved order 3 then 2", positions[2], positions[3])
+	}
+	if positions[1] != 10 || positions[4] != 20 {
+		t.Fatalf("root positions changed: %v", positions)
+	}
+}
+
+func TestListProjects_ReturnsHierarchyFieldsAndNormalizesNullParent(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title, parent_project_id, position) VALUES
+			(1, 'Root', NULL, 20),
+			(2, 'Child', 1, 10);
+	`)
+	if err != nil {
+		t.Fatalf("insert Projects: %v", err)
+	}
+
+	projects, err := store.ListProjects(context.Background())
+	if err != nil {
+		t.Fatalf("list Projects: %v", err)
+	}
+	if got, want := projects, []Project{
+		{ID: 1, Title: "Root", ParentProjectID: 0, Position: 20},
+		{ID: 2, Title: "Child", ParentProjectID: 1, Position: 10},
+	}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Projects = %#v, want %#v", got, want)
+	}
+}
+
 func TestListProjects_ExcludesArchived(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
@@ -522,7 +614,7 @@ func TestListProjects_ExcludesArchived(t *testing.T) {
 		t.Fatalf("insert projects: %v", err)
 	}
 
-	projects, _, err := store.ListProjects(ctx, 1, 50)
+	projects, err := store.ListProjects(ctx)
 	if err != nil {
 		t.Fatalf("list projects: %v", err)
 	}
@@ -535,41 +627,24 @@ func TestListProjects_ExcludesArchived(t *testing.T) {
 	}
 }
 
-func TestListProjects_Pagination(t *testing.T) {
+func TestListProjects_ReturnsCompleteActiveSet(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
 
 	ctx := context.Background()
 
-	// Insert 5 projects
-	for i := 1; i <= 5; i++ {
-		_, err := store.db.Exec(`INSERT INTO projects (id, title) VALUES (?, ?)`, i, "Project "+string(rune('A'+i-1)))
-		if err != nil {
-			t.Fatalf("insert project %d: %v", i, err)
+	for i := 1; i <= 205; i++ {
+		if _, err := store.db.Exec(`INSERT INTO projects (id, title) VALUES (?, ?)`, i, "Project"); err != nil {
+			t.Fatalf("insert Project %d: %v", i, err)
 		}
 	}
 
-	// Fetch page 1 (2 per page)
-	projects, totalPages, err := store.ListProjects(ctx, 1, 2)
+	projects, err := store.ListProjects(ctx)
 	if err != nil {
-		t.Fatalf("list projects page 1: %v", err)
+		t.Fatalf("list Projects: %v", err)
 	}
-
-	if len(projects) != 2 {
-		t.Errorf("expected 2 projects on page 1, got %d", len(projects))
-	}
-	if totalPages != 3 {
-		t.Errorf("expected 3 total pages, got %d", totalPages)
-	}
-
-	// Fetch page 2
-	projects, _, err = store.ListProjects(ctx, 2, 2)
-	if err != nil {
-		t.Fatalf("list projects page 2: %v", err)
-	}
-
-	if len(projects) != 2 {
-		t.Errorf("expected 2 projects on page 2, got %d", len(projects))
+	if len(projects) != 205 {
+		t.Fatalf("Projects = %d, want complete active set of 205", len(projects))
 	}
 }
 
@@ -620,7 +695,7 @@ func TestListProjectsAndTasks_HandleNullableFields(t *testing.T) {
 		t.Fatalf("insert test data: %v", err)
 	}
 
-	projects, _, err := store.ListProjects(context.Background(), 1, 50)
+	projects, err := store.ListProjects(context.Background())
 	if err != nil {
 		t.Fatalf("list projects with NULL fields: %v", err)
 	}

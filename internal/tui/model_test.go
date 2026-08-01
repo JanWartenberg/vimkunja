@@ -3,6 +3,8 @@ package tui
 import (
 	"context"
 	"errors"
+	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -16,35 +18,73 @@ import (
 )
 
 type fakeStore struct {
-	toggleErr          error
-	toggleTaskID       int64
-	toggleDone         bool
-	deleteErr          error
-	deleteTaskID       int64
-	workflowStatus     vimkunja.WorkflowStatus
-	workflowStatusErr  error
-	kanbanBoard        vimkunja.KanbanBoard
-	kanbanBoards       map[int64]vimkunja.KanbanBoard
-	kanbanBoardErr     error
-	views              []vimkunja.ProjectView
-	viewsByProject     map[int64][]vimkunja.ProjectView
-	provisionedBoard   vimkunja.KanbanBoard
-	provisionErr       error
-	provisionCalls     int
-	workflowTaskID     int64
-	workflowBucketID   int64
-	workflowDone       map[int64]bool
-	updateErr          error
-	listTasksCalls     int
-	listTasksViewID    int64
-	overviewTasks      []vimkunja.Task
-	overviewTasksCalls int
-	createdDraft       vimkunja.TaskDraft
-	updatedDraft       vimkunja.TaskDraft
+	projects             []vimkunja.Project
+	projectMoveErr       error
+	movedProjectID       int64
+	projectMoveDirection vimkunja.ProjectMoveDirection
+	toggleErr            error
+	toggleTaskID         int64
+	toggleDone           bool
+	deleteErr            error
+	deleteTaskID         int64
+	workflowStatus       vimkunja.WorkflowStatus
+	workflowStatusErr    error
+	kanbanBoard          vimkunja.KanbanBoard
+	kanbanBoards         map[int64]vimkunja.KanbanBoard
+	kanbanBoardErr       error
+	views                []vimkunja.ProjectView
+	viewsByProject       map[int64][]vimkunja.ProjectView
+	provisionedBoard     vimkunja.KanbanBoard
+	provisionErr         error
+	provisionCalls       int
+	workflowTaskID       int64
+	workflowBucketID     int64
+	workflowDone         map[int64]bool
+	updateErr            error
+	listTasksCalls       int
+	listTasksViewID      int64
+	overviewTasks        []vimkunja.Task
+	overviewTasksCalls   int
+	createdDraft         vimkunja.TaskDraft
+	updatedDraft         vimkunja.TaskDraft
 }
 
-func (f *fakeStore) ListProjects(context.Context, int, int) ([]vimkunja.Project, int, error) {
-	return nil, 0, nil
+func (f *fakeStore) ListProjects(context.Context) ([]vimkunja.Project, error) {
+	return append([]vimkunja.Project(nil), f.projects...), nil
+}
+
+func (f *fakeStore) MoveProjectAmongSiblings(_ context.Context, projectID int64, direction vimkunja.ProjectMoveDirection) error {
+	f.movedProjectID = projectID
+	f.projectMoveDirection = direction
+	if f.projectMoveErr != nil {
+		return f.projectMoveErr
+	}
+	selected := -1
+	for i, project := range f.projects {
+		if project.ID == projectID {
+			selected = i
+			break
+		}
+	}
+	if selected < 0 {
+		return nil
+	}
+	target := -1
+	for i, project := range f.projects {
+		if project.ParentProjectID != f.projects[selected].ParentProjectID {
+			continue
+		}
+		if direction == vimkunja.ProjectMovePrevious && project.Position < f.projects[selected].Position && (target < 0 || project.Position > f.projects[target].Position) {
+			target = i
+		}
+		if direction == vimkunja.ProjectMoveNext && project.Position > f.projects[selected].Position && (target < 0 || project.Position < f.projects[target].Position) {
+			target = i
+		}
+	}
+	if target >= 0 {
+		f.projects[selected].Position, f.projects[target].Position = f.projects[target].Position, f.projects[selected].Position
+	}
+	return nil
 }
 
 func (f *fakeStore) ListViews(_ context.Context, projectID int64, _ int, _ int) ([]vimkunja.ProjectView, int, error) {
@@ -135,6 +175,221 @@ func (f *fakeStore) UpdateTask(_ context.Context, draft vimkunja.TaskDraft) (vim
 		return vimkunja.Task{}, f.updateErr
 	}
 	return vimkunja.Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title, Done: draft.Done}, nil
+}
+
+func TestProjectsPaneRefreshToEmptyClearsStaleProjectContext(t *testing.T) {
+	m := testModel()
+	updated, _ := m.Update(projectsLoadedMsg{projects: []vimkunja.Project{{ID: 1, Title: "Only Project"}}})
+	m = updated.(*model)
+	m.tasks = []vimkunja.Task{{ID: 1, ProjectID: 1, Title: "Stale Task"}}
+	m.projectViews = []vimkunja.ProjectView{{ID: 10, Title: "List"}}
+	m.currentViewID = 10
+
+	updated, _ = m.Update(projectsLoadedMsg{})
+	m = updated.(*model)
+	if m.currentProjectID != 0 || m.currentViewID != 0 || len(m.tasks) != 0 || len(m.projectViews) != 0 {
+		t.Fatalf("empty refresh retained stale context: Project:%d View:%d Tasks:%v Views:%v", m.currentProjectID, m.currentViewID, m.tasks, m.projectViews)
+	}
+	if !strings.Contains(ansi.Strip(renderProjects(m, 24, 4)), "(no projects)") {
+		t.Fatalf("empty refresh did not render Projects empty state: %q", renderProjects(m, 24, 4))
+	}
+}
+
+func TestProjectsPaneViewportKeepsSelectionVisible(t *testing.T) {
+	m := testModel()
+	projects := make([]vimkunja.Project, 10)
+	for i := range projects {
+		projects[i] = vimkunja.Project{ID: int64(i + 1), Title: fmt.Sprintf("Project %d", i+1), Position: float64(i + 1)}
+	}
+	updated, _ := m.Update(projectsLoadedMsg{projects: projects})
+	m = updated.(*model)
+	m.projectSelected = 9
+
+	view := ansi.Strip(renderProjects(m, 24, 5))
+	if !strings.Contains(view, "> Project 10 <") || strings.Contains(view, "Project 1\n") || m.projectViewportStart != 6 {
+		t.Fatalf("Projects viewport = start:%d view:%q, want final four rows with Project 10 selected", m.projectViewportStart, view)
+	}
+}
+
+func TestProjectsPaneRefreshRetainsSelectionByIDAndUsesFormerPositionFallback(t *testing.T) {
+	m := testModel()
+	updated, _ := m.Update(projectsLoadedMsg{projects: []vimkunja.Project{
+		{ID: 1, Title: "First", Position: 1},
+		{ID: 2, Title: "Selected", Position: 2},
+		{ID: 3, Title: "Next", Position: 3},
+	}})
+	m = updated.(*model)
+	m.projectSelected = 1
+
+	updated, _ = m.Update(projectsLoadedMsg{projects: []vimkunja.Project{
+		{ID: 3, Title: "Next", Position: 1},
+		{ID: 2, Title: "Selected", Position: 2},
+		{ID: 1, Title: "First", Position: 3},
+	}})
+	m = updated.(*model)
+	if selected, _ := m.selectedProject(); selected.ID != 2 {
+		t.Fatalf("refresh selected Project %d, want retained ID 2", selected.ID)
+	}
+
+	updated, _ = m.Update(projectsLoadedMsg{projects: []vimkunja.Project{
+		{ID: 1, Title: "First", Position: 1},
+		{ID: 3, Title: "Next", Position: 2},
+	}})
+	m = updated.(*model)
+	if selected, _ := m.selectedProject(); selected.ID != 1 {
+		t.Fatalf("refresh after deletion selected Project %d, want next former row 1", selected.ID)
+	}
+
+	m.projectSelected = 1 // Project 3 is now the last visible row.
+	updated, _ = m.Update(projectsLoadedMsg{projects: []vimkunja.Project{{ID: 1, Title: "First", Position: 1}}})
+	m = updated.(*model)
+	if selected, _ := m.selectedProject(); selected.ID != 1 {
+		t.Fatalf("refresh after deleting last row selected Project %d, want preceding row 1", selected.ID)
+	}
+}
+
+func TestProjectsPaneSiblingMovePersistsThenReloadsWithoutOptimisticRedraw(t *testing.T) {
+	store := &fakeStore{projects: []vimkunja.Project{
+		{ID: 1, Title: "Root", Position: 1},
+		{ID: 2, Title: "First", ParentProjectID: 1, Position: 1},
+		{ID: 3, Title: "Second", ParentProjectID: 1, Position: 2},
+	}}
+	m := NewModel(Config{Store: store}).(*model)
+	updated, _ := m.Update(projectsLoadedMsg{projects: store.projects})
+	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'J', Text: "J"}))
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("Shift+J returned no persistence command")
+	}
+	if got, want := visibleProjectIDs(m.projectTree), []int64{1, 2, 3}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Project order changed before persistence: %v, want %v", got, want)
+	}
+
+	updated, reload := m.Update(cmd())
+	m = updated.(*model)
+	if store.movedProjectID != 2 || store.projectMoveDirection != vimkunja.ProjectMoveNext || reload == nil {
+		t.Fatalf("move call = Project:%d direction:%d reload:%v", store.movedProjectID, store.projectMoveDirection, reload != nil)
+	}
+	if got := visibleProjectIDs(m.projectTree); !reflect.DeepEqual(got, []int64{1, 2, 3}) {
+		t.Fatalf("Project order changed before reload: %v", got)
+	}
+	updated, _ = m.Update(reload())
+	m = updated.(*model)
+	selected, _ := m.selectedProject()
+	if got, want := visibleProjectIDs(m.projectTree), []int64{1, 3, 2}; !reflect.DeepEqual(got, want) || selected.ID != 2 {
+		t.Fatalf("reloaded move = rows:%v selected:%d, want rows:%v selected:2", got, selected.ID, want)
+	}
+}
+
+func TestProjectsPaneSiblingMoveFailureRetainsDisplay(t *testing.T) {
+	store := &fakeStore{projectMoveErr: errors.New("database is locked")}
+	m := testModel()
+	m.store = store
+	updated, _ := m.Update(projectsLoadedMsg{projects: []vimkunja.Project{
+		{ID: 1, Title: "First", Position: 1}, {ID: 2, Title: "Second", Position: 2},
+	}})
+	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'K', Text: "K"}))
+	m = updated.(*model)
+	updated, reload := m.Update(cmd())
+	m = updated.(*model)
+	if reload != nil || m.lastErr != "database is locked" || !reflect.DeepEqual(visibleProjectIDs(m.projectTree), []int64{1, 2}) {
+		t.Fatalf("failed move = reload:%v error:%q rows:%v", reload != nil, m.lastErr, visibleProjectIDs(m.projectTree))
+	}
+}
+
+func TestProjectsPaneTreeKeysNavigateAndFoldVisibleRows(t *testing.T) {
+	m := testModel()
+	updated, _ := m.Update(projectsLoadedMsg{projects: []vimkunja.Project{
+		{ID: 1, Title: "Root", Position: 1},
+		{ID: 2, Title: "Child", ParentProjectID: 1, Position: 1},
+		{ID: 3, Title: "Grandchild", ParentProjectID: 2, Position: 1},
+		{ID: 4, Title: "Other root", Position: 2},
+	}})
+	m = updated.(*model)
+
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	if selected, _ := m.selectedProject(); selected.ID != 2 {
+		t.Fatalf("l on open branch selected Project %d, want first child 2", selected.ID)
+	}
+	m = pressKey(m, tea.Key{Code: 'h', Text: "h"})
+	if selected, _ := m.selectedProject(); selected.ID != 2 || !m.projectTree.collapsed[2] {
+		t.Fatalf("first h should close selected branch 2; selected:%d collapsed:%v", selected.ID, m.projectTree.collapsed)
+	}
+	m = pressKey(m, tea.Key{Code: 'h', Text: "h"})
+	if selected, _ := m.selectedProject(); selected.ID != 1 {
+		t.Fatalf("second h on closed child selected Project %d, want parent 1", selected.ID)
+	}
+
+	m = pressKey(pressKey(m, tea.Key{Code: 'z', Text: "z"}), tea.Key{Code: 'c', Text: "c"})
+	if got, want := visibleProjectIDs(m.projectTree), []int64{1, 4}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("zc rows = %v, want %v", got, want)
+	}
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	if selected, _ := m.selectedProject(); selected.ID != 1 {
+		t.Fatalf("first l on closed branch selected %d, want branch to stay selected", selected.ID)
+	}
+	if got, want := visibleProjectIDs(m.projectTree), []int64{1, 2, 4}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("first l did not open branch: rows %v, want %v", got, want)
+	}
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	if selected, _ := m.selectedProject(); selected.ID != 2 {
+		t.Fatalf("second l selected %d, want child 2", selected.ID)
+	}
+	m = pressKey(pressKey(m, tea.Key{Code: 'z', Text: "z"}), tea.Key{Code: 'o', Text: "o"})
+	if got := visibleProjectIDs(m.projectTree); len(got) != 4 {
+		t.Fatalf("zo did not open child branch: %v", got)
+	}
+	m = pressKey(pressKey(m, tea.Key{Code: 'z', Text: "z"}), tea.Key{Code: 'a', Text: "a"})
+	if got, want := visibleProjectIDs(m.projectTree), []int64{1, 2, 4}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("za rows = %v, want %v", got, want)
+	}
+	m = pressKey(pressKey(m, tea.Key{Code: 'z', Text: "z"}), tea.Key{Code: 'R', Text: "R"})
+	if selected, _ := m.selectedProject(); selected.ID != 2 || len(visibleProjectIDs(m.projectTree)) != 4 {
+		t.Fatalf("zR did not expand all and retain selection: selected:%d rows:%v", selected.ID, visibleProjectIDs(m.projectTree))
+	}
+	m = pressKey(pressKey(m, tea.Key{Code: 'z', Text: "z"}), tea.Key{Code: 'M', Text: "M"})
+	if selected, _ := m.selectedProject(); selected.ID != 1 || !reflect.DeepEqual(visibleProjectIDs(m.projectTree), []int64{1, 4}) {
+		t.Fatalf("zM did not collapse all to selected root: selected:%d rows:%v", selected.ID, visibleProjectIDs(m.projectTree))
+	}
+}
+
+func TestProjectsPaneMarksMalformedProjectsAsRecoveryRoots(t *testing.T) {
+	m := testModel()
+	updated, _ := m.Update(projectsLoadedMsg{projects: []vimkunja.Project{
+		{ID: 1, Title: "Valid", Position: 1},
+		{ID: 2, Title: "Orphan", ParentProjectID: 99, Position: 2},
+	}})
+	m = updated.(*model)
+
+	view := ansi.Strip(renderProjects(m, 24, 5))
+	if !strings.Contains(view, "! Orphan") {
+		t.Fatalf("recovery marker missing from Projects Pane: %q", view)
+	}
+}
+
+func TestProjectsPaneRendersHierarchyAndSelectedProject(t *testing.T) {
+	m := testModel()
+	updated, _ := m.Update(projectsLoadedMsg{projects: []vimkunja.Project{
+		{ID: 2, Identifier: "CHILD", ParentProjectID: 1, Position: 1},
+		{ID: 1, Identifier: "ROOT", Position: 1},
+	}})
+	m = updated.(*model)
+
+	view := ansi.Strip(renderProjects(m, 24, 6))
+	if !strings.Contains(view, "▾ > ROOT <") {
+		t.Fatalf("selected root presentation missing from Projects Pane: %q", view)
+	}
+	if !strings.Contains(view, "    CHILD") {
+		t.Fatalf("indented child missing from Projects Pane: %q", view)
+	}
+	if strings.Contains(view, "[X]") {
+		t.Fatalf("legacy selection marker remains in Projects Pane: %q", view)
+	}
 }
 
 func TestErrorFooterClearsOnNextKey(t *testing.T) {
@@ -1933,6 +2188,15 @@ func TestHomeEndAliasesScrollInformationalPanes(t *testing.T) {
 				t.Fatalf("offset after Home = %d, want 0", got)
 			}
 		})
+	}
+}
+
+func TestHelpDocumentsProjectHierarchyBindings(t *testing.T) {
+	help := strings.Join(helpLines, "\n")
+	for _, binding := range []string{"zo / zc / za", "zM / zR", "Shift+J / Shift+K"} {
+		if !strings.Contains(help, binding) {
+			t.Fatalf("help does not document Project hierarchy binding %q", binding)
+		}
 	}
 }
 

@@ -23,6 +23,8 @@ The separate tutorial executable runs the real Vimkunja UI and guides through ev
 
 - `hjkl`, `gg` / `G`, `Ctrl+D` / `Ctrl+U` – Navigation
 - `Ctrl+W h/j/k/l` – Pane-Fokus wechseln
+- Im Projects Pane: `h/l` Hierarchie schließen/öffnen bzw. Parent/Child wählen, `zo/zc/za` falten, `zM/zR` alles schließen/öffnen
+- Im Projects Pane: `Shift+J/K` Project unter seinen Geschwistern verschieben
 - `Enter` – Task-Detail öffnen
 - `x` – Task in den Done- bzw. Default-Bucket togglen
 - `o` / `:new` – neuen Task anlegen
@@ -44,6 +46,6 @@ go test ./...
 
 ## 3. Ausblick / Vision
 
-Das Fundament ist abgeschlossen: List View, Editor, Workflow-Status, Fehleranzeige, Vim-artige Pane-Navigation und die einzelne manuelle Kanban View sind verifiziert. Weitere Views sowie Bucket-Verwaltung bleiben im Backlog.
+Das Fundament ist abgeschlossen: List View, Editor, Workflow-Status, Fehleranzeige, Vim-artige Pane-Navigation, die einzelne manuelle Kanban View und die hierarchische Projects Pane sind verifiziert. Weitere Views sowie Bucket-Verwaltung bleiben im Backlog.
 
 Der aktuelle, priorisierbare Backlog liegt in `.scratch/`; der Kurzstatus mit Verweisen steht in [STATUS.md](STATUS.md). Abgeschlossene Anforderungen und Implementierungsdetails liegen im [Archiv](.archive/).

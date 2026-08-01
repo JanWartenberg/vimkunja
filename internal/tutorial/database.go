@@ -91,7 +91,10 @@ CREATE TABLE projects (
     identifier TEXT,
     title TEXT NOT NULL,
     description TEXT,
+    parent_project_id INTEGER,
+    position REAL,
     is_archived INTEGER DEFAULT 0,
+    updated DATETIME DEFAULT CURRENT_TIMESTAMP,
     owner_id INTEGER DEFAULT 1
 );
 CREATE TABLE project_views (
@@ -155,10 +158,10 @@ func seedTutorialDatabase(db *sql.DB) error {
 	defer tx.Rollback()
 
 	const fixedSeed = `
-INSERT INTO projects (id, identifier, title, description, owner_id) VALUES
-    (1, 'LEARN', 'Learn Vimkunja', 'The guided workshop project.', 1),
-    (2, 'HOME', 'Home', 'A second project for cross-project examples.', 1),
-    (3, 'TRIP', 'Plan a Trip', 'This project intentionally starts without a Kanban View.', 1);
+INSERT INTO projects (id, identifier, title, description, parent_project_id, position, owner_id) VALUES
+    (1, 'LEARN', 'Learn Vimkunja', 'The guided workshop project.', 0, 100, 1),
+    (2, 'HOME', 'Home', 'A second project for cross-project examples.', 0, 200, 1),
+    (3, 'TRIP', 'Plan a Trip', 'This project intentionally starts without a Kanban View.', 0, 300, 1);
 
 INSERT INTO project_views (id, project_id, title, view_kind, position, default_bucket_id, done_bucket_id, bucket_configuration_mode) VALUES
     (11, 1, 'List',   0, 100, NULL, NULL, 0),

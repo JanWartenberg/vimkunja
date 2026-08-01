@@ -23,7 +23,7 @@ func TestDemoDatabaseIsFreshMutableAndDisposable(t *testing.T) {
 		t.Fatalf("temporary database does not exist: %v", err)
 	}
 
-	projects, _, err := database.Store.ListProjects(context.Background(), 1, 100)
+	projects, err := database.Store.ListProjects(context.Background())
 	if err != nil {
 		t.Fatalf("ListProjects: %v", err)
 	}

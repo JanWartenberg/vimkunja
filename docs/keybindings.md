@@ -59,6 +59,22 @@ The Project View switcher is visible above the Tasks Pane only outside Overview 
 | `/` | Search within the focused Pane; local-search implementation is deferred. | Agreed |
 | `n` / `N` | Repeat the next/previous local-search match; deferred with local search. | Agreed |
 
+## Projects Pane
+
+The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation operates on visible rows; folded descendants are skipped.
+
+| Binding | Action | Status |
+| --- | --- | --- |
+| `j/k`, arrows | Select the next/previous visible Project. | Implemented |
+| `gg/G`, `Home/End` | Select the first/last visible Project. | Implemented |
+| `Ctrl+D` / `Ctrl+U` | Move by approximately half the visible Pane height. | Implemented |
+| `h` | Close an open branch; on a closed branch or leaf, select its parent. | Implemented |
+| `l` | Open a closed branch; on an open branch, select its first child. | Implemented |
+| `zo` / `zc` / `za` | Open, close, or toggle the selected branch. | Implemented |
+| `zM` / `zR` | Close or open every branch. | Implemented |
+| `Shift+J` / `Shift+K` | Move the selected Project down/up among its persisted siblings. | Implemented |
+| `r` | Reload the complete active Project hierarchy. | Implemented |
+
 ## Tasks Pane
 
 | Binding | Action | Status |

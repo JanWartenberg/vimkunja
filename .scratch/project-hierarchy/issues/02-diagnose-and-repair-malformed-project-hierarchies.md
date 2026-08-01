@@ -4,7 +4,7 @@
 
 **What to build:** A Vimkunja user can understand and safely resolve malformed Vikunja Project parent relationships discovered by the Projects Pane.
 
-**Implementation prerequisites:** The Project hierarchy read model and its `!`-marked recovery-root rendering must be implemented first.
+**Implementation prerequisites:** Met — the Project hierarchy read model and its `!`-marked recovery-root rendering were implemented and archived on 2026-08-01.
 
 **Category:** enhancement
 

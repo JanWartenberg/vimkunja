@@ -75,35 +75,15 @@ func viewKindToString(v int) string {
 	}
 }
 
-func (s *SQLiteStore) ListProjects(ctx context.Context, page, perPage int) ([]Project, int, error) {
-	if page < 1 {
-		page = 1
-	}
-	if perPage <= 0 {
-		perPage = 50
-	}
-	offset := (page - 1) * perPage
-
-	var total int
-	// Exclude archived projects like the API default.
-	qTotal := `SELECT COUNT(1) FROM projects WHERE (is_archived = 0 OR is_archived IS NULL)`
-	if err := s.db.QueryRowContext(ctx, qTotal).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count projects: %w", err)
-	}
-	totalPages := 0
-	if perPage > 0 {
-		totalPages = (total + perPage - 1) / perPage
-	}
-
-	q := `SELECT id, identifier, title, description
+func (s *SQLiteStore) ListProjects(ctx context.Context) ([]Project, error) {
+	q := `SELECT id, identifier, title, description, parent_project_id, position
 		FROM projects
 		WHERE (is_archived = 0 OR is_archived IS NULL)
-		ORDER BY id
-		LIMIT ? OFFSET ?`
+		ORDER BY id`
 
-	rows, err := s.db.QueryContext(ctx, q, perPage, offset)
+	rows, err := s.db.QueryContext(ctx, q)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list projects: %w", err)
+		return nil, fmt.Errorf("list projects: %w", err)
 	}
 	defer rows.Close()
 
@@ -111,8 +91,10 @@ func (s *SQLiteStore) ListProjects(ctx context.Context, page, perPage int) ([]Pr
 	for rows.Next() {
 		var p Project
 		var identifier, description sql.NullString
-		if err := rows.Scan(&p.ID, &identifier, &p.Title, &description); err != nil {
-			return nil, 0, fmt.Errorf("scan project: %w", err)
+		var parentProjectID sql.NullInt64
+		var position sql.NullFloat64
+		if err := rows.Scan(&p.ID, &identifier, &p.Title, &description, &parentProjectID, &position); err != nil {
+			return nil, fmt.Errorf("scan project: %w", err)
 		}
 		if identifier.Valid {
 			p.Identifier = identifier.String
@@ -120,12 +102,109 @@ func (s *SQLiteStore) ListProjects(ctx context.Context, page, perPage int) ([]Pr
 		if description.Valid {
 			p.Description = description.String
 		}
+		if parentProjectID.Valid {
+			p.ParentProjectID = parentProjectID.Int64
+		}
+		if position.Valid {
+			p.Position = position.Float64
+		}
 		out = append(out, p)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("iterate projects: %w", err)
+		return nil, fmt.Errorf("iterate projects: %w", err)
 	}
-	return out, totalPages, nil
+	return out, nil
+}
+
+func (s *SQLiteStore) MoveProjectAmongSiblings(ctx context.Context, projectID int64, direction ProjectMoveDirection) error {
+	if direction != ProjectMovePrevious && direction != ProjectMoveNext {
+		return fmt.Errorf("move Project: invalid direction %d", direction)
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("move Project: begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	var parentProjectID sql.NullInt64
+	if err := tx.QueryRowContext(ctx, `
+		SELECT parent_project_id
+		FROM projects
+		WHERE id = ? AND (is_archived = 0 OR is_archived IS NULL)
+	`, projectID).Scan(&parentProjectID); err != nil {
+		return fmt.Errorf("move Project: load Project: %w", err)
+	}
+	parentID := int64(0)
+	if parentProjectID.Valid {
+		parentID = parentProjectID.Int64
+	}
+
+	rows, err := tx.QueryContext(ctx, `
+		SELECT id, position
+		FROM projects
+		WHERE COALESCE(parent_project_id, 0) = ?
+			AND (is_archived = 0 OR is_archived IS NULL)
+		ORDER BY position ASC, id ASC
+	`, parentID)
+	if err != nil {
+		return fmt.Errorf("move Project: list siblings: %w", err)
+	}
+	type sibling struct {
+		id       int64
+		position sql.NullFloat64
+	}
+	var siblings []sibling
+	selected := -1
+	for rows.Next() {
+		var candidate sibling
+		if err := rows.Scan(&candidate.id, &candidate.position); err != nil {
+			rows.Close()
+			return fmt.Errorf("move Project: scan sibling: %w", err)
+		}
+		if candidate.id == projectID {
+			selected = len(siblings)
+		}
+		siblings = append(siblings, candidate)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("move Project: close siblings: %w", err)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("move Project: iterate siblings: %w", err)
+	}
+	if selected < 0 {
+		return fmt.Errorf("move Project: Project %d is not in its sibling group", projectID)
+	}
+	target := selected + int(direction)
+	if target < 0 || target >= len(siblings) {
+		return nil
+	}
+
+	positions := make([]float64, len(siblings))
+	strictPositions := true
+	for i, candidate := range siblings {
+		if !candidate.position.Valid || (i > 0 && candidate.position.Float64 <= positions[i-1]) {
+			strictPositions = false
+		}
+		positions[i] = candidate.position.Float64
+	}
+	if !strictPositions {
+		for i := range positions {
+			positions[i] = float64(i+1) * 65536
+		}
+	}
+	siblings[selected], siblings[target] = siblings[target], siblings[selected]
+	movedAt := time.Now()
+	for i, candidate := range siblings {
+		if _, err := tx.ExecContext(ctx, `UPDATE projects SET position = ?, updated = ? WHERE id = ?`, positions[i], movedAt, candidate.id); err != nil {
+			return fmt.Errorf("move Project: persist sibling positions: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("move Project: commit: %w", err)
+	}
+	return nil
 }
 
 func (s *SQLiteStore) ListViews(ctx context.Context, projectID int64, page, perPage int) ([]ProjectView, int, error) {

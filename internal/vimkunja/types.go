@@ -2,11 +2,21 @@ package vimkunja
 
 // Project represents a Vikunja project (formerly called "list" in older versions).
 type Project struct {
-	ID          int64  `json:"id"`
-	Identifier  string `json:"identifier"`
-	Title       string `json:"name"`
-	Description string `json:"description"`
+	ID              int64   `json:"id"`
+	Identifier      string  `json:"identifier"`
+	Title           string  `json:"name"`
+	Description     string  `json:"description"`
+	ParentProjectID int64   `json:"parent_project_id"`
+	Position        float64 `json:"position"`
 }
+
+// ProjectMoveDirection identifies one adjacent move within a Project's siblings.
+type ProjectMoveDirection int
+
+const (
+	ProjectMovePrevious ProjectMoveDirection = -1
+	ProjectMoveNext     ProjectMoveDirection = 1
+)
 
 // ProjectView represents a view within a project (Kanban, List, Table, Gantt, etc.).
 type ProjectView struct {

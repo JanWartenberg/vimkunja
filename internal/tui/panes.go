@@ -69,25 +69,44 @@ func renderProjects(m *model, textW, textH int) string {
 		lines = append(lines, "  loading...")
 		return fitBlock(lines, textW, textH)
 	}
-	if len(m.projects) == 0 {
+	rows := m.projectRows()
+	if len(rows) == 0 {
 		lines = append(lines, "  (no projects)")
 		return fitBlock(lines, textW, textH)
 	}
 
-	for i, p := range m.projects {
-		sel := i == m.projectSelected
+	visibleRows := max(0, textH-1)
+	selected := clamp(m.projectSelected, 0, len(rows)-1)
+	m.projectViewportStart = clamp(m.projectViewportStart, 0, max(0, len(rows)-visibleRows))
+	if selected < m.projectViewportStart {
+		m.projectViewportStart = selected
+	} else if visibleRows > 0 && selected >= m.projectViewportStart+visibleRows {
+		m.projectViewportStart = selected - visibleRows + 1
+	}
+	end := min(len(rows), m.projectViewportStart+visibleRows)
+	for i, row := range rows[m.projectViewportStart:end] {
+		rowIndex := m.projectViewportStart + i
+		sel := rowIndex == selected
 		marker := "  "
+		switch {
+		case row.Recovery:
+			marker = "! "
+		case row.HasChildren && row.Expanded:
+			marker = "▾ "
+		case row.HasChildren:
+			marker = "▸ "
+		}
+		label := row.Project.Identifier
+		if label == "" {
+			label = strings.TrimSpace(row.Project.Title)
+		}
+		if label == "" {
+			label = fmt.Sprintf("%d", row.Project.ID)
+		}
 		if sel {
-			marker = "[X]"
+			label = "> " + label + " <"
 		}
-		id := p.Identifier
-		if id == "" {
-			id = strings.TrimSpace(p.Title)
-		}
-		if id == "" {
-			id = fmt.Sprintf("%d", p.ID)
-		}
-		line := fmt.Sprintf("%s %s", marker, id)
+		line := strings.Repeat("  ", row.Depth) + marker + label
 		line = truncatePlain(line, textW)
 		if sel && focus {
 			line = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).Render(line)

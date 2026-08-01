@@ -7,7 +7,8 @@ import "context"
 //
 // All pagination parameters are 1-based.
 type Store interface {
-	ListProjects(ctx context.Context, page, perPage int) ([]Project, int, error)
+	ListProjects(ctx context.Context) ([]Project, error)
+	MoveProjectAmongSiblings(ctx context.Context, projectID int64, direction ProjectMoveDirection) error
 	ListViews(ctx context.Context, projectID int64, page, perPage int) ([]ProjectView, int, error)
 	ListTasksInView(ctx context.Context, projectID, viewID int64, page, perPage int) ([]Task, int, error)
 	LoadManualKanbanBoard(ctx context.Context, projectID int64) (KanbanBoard, error)
