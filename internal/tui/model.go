@@ -79,15 +79,19 @@ type model struct {
 	commandInput string
 	commands     *CommandRegistry
 
-	searchOpen     bool
-	searchInput    string
-	searchResults  []vimkunja.SearchResult
-	searchSelected int
-	searchViewport int
-	searchRequest  uint64
-	searchLoading  bool
-	searchOrigin   *searchOrigin
-	searchReturn   *searchReturn
+	searchOpen         bool
+	searchMode         searchInputMode
+	searchCommandMode  bool
+	searchCommandInput string
+	searchGArmed       bool
+	searchInput        string
+	searchResults      []vimkunja.SearchResult
+	searchSelected     int
+	searchViewport     int
+	searchRequest      uint64
+	searchLoading      bool
+	searchOrigin       *searchOrigin
+	searchReturn       *searchReturn
 
 	// Projects pane
 	projects             []vimkunja.Project
@@ -1501,7 +1505,14 @@ func (m *model) renderStatusBar(w int) string {
 		hint = "q/esc close pane"
 	}
 	if m.searchOpen {
-		hint = fmt.Sprintf("SEARCH  %s_  •  ↑/↓ select  •  Enter open  •  Esc cancel", m.searchInput)
+		hint = fmt.Sprintf("SEARCH [%s]  %s", m.searchModeLabel(), m.searchInput)
+		if m.searchCommandMode {
+			hint = fmt.Sprintf("SEARCH COMMAND  :%s_", m.searchCommandInput)
+		} else if m.searchMode == searchInsertMode {
+			hint += "_  •  Esc NORMAL"
+		} else {
+			hint += "  •  j/k navigate  •  i/a edit  •  :q / Esc close"
+		}
 	}
 	if m.commandMode {
 		hint = fmt.Sprintf(":%s_", m.commandInput)

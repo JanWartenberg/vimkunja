@@ -51,10 +51,14 @@ The Project View switcher is visible above the Tasks Pane only outside Overview 
 
 | Binding | Action | Status |
 | --- | --- | --- |
-| `Space+f` / `:search` | Open the global Search overlay above the current context. | Implemented |
-| Arrows / `Ctrl+N` / `Ctrl+P` | Select the preceding/following global Search result while its input accepts text. | Implemented |
+| `Space+f` / `:search` | Open the global Search overlay above the current context in Insert Mode. | Implemented |
+| Insert Mode: Arrows / `Ctrl+N` / `Ctrl+P` | Select the preceding/following global Search result while editing the query. | Implemented |
+| Insert Mode: `Esc` | Leave query input and enter Search Normal Mode. | Implemented |
+| Search Normal Mode: `j/k`, `gg/G`, `Ctrl+D/U` | Navigate the result list. | Implemented |
+| Search Normal Mode: `i` / `a` | Return to query input. | Implemented |
 | `Enter` | Activate the selected global result: open a Task Detail, enter a Project List View, or open a Label-filtered Overview. | Implemented |
-| `Esc` | Close global Search and restore its pre-search context. | Implemented |
+| Search Normal Mode: `Esc` / `:q` | Close global Search and restore its pre-search context. | Implemented |
+| Search Normal Mode: `:qa` | Quit Vimkunja completely. | Implemented |
 | `Ctrl+O` | Return from an activated global result to the latest session-local Search snapshot. | Implemented |
 | `/` | Search within the focused Pane; local-search implementation is deferred. | Agreed |
 | `n` / `N` | Repeat the next/previous local-search match; deferred with local search. | Agreed |

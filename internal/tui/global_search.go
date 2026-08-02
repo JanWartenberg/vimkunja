@@ -13,6 +13,13 @@ import (
 	"github.com/vimkunja/vimkunja/internal/vimkunja"
 )
 
+type searchInputMode int
+
+const (
+	searchInsertMode searchInputMode = iota
+	searchNormalMode
+)
+
 type searchOrigin struct {
 	focus                                    paneID
 	projectsPaneCollapsed, projectsPaneAuto  bool
@@ -43,6 +50,7 @@ type searchOrigin struct {
 type searchReturn struct {
 	origin   searchOrigin
 	input    string
+	mode     searchInputMode
 	results  []vimkunja.SearchResult
 	selected int
 	viewport int
@@ -58,6 +66,10 @@ func (m *model) openSearch() {
 	origin := m.captureSearchOrigin()
 	m.searchOrigin = &origin
 	m.searchOpen = true
+	m.searchMode = searchInsertMode
+	m.searchCommandMode = false
+	m.searchCommandInput = ""
+	m.searchGArmed = false
 	m.searchInput = ""
 	m.searchResults = nil
 	m.searchSelected = 0
@@ -66,11 +78,22 @@ func (m *model) openSearch() {
 }
 
 func (m *model) updateSearchKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.searchCommandMode {
+		return m.updateSearchCommandKeys(key)
+	}
+	if m.searchMode == searchNormalMode {
+		return m.updateSearchNormalKeys(key)
+	}
+	return m.updateSearchInsertKeys(key)
+}
+
+func (m *model) updateSearchInsertKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch strings.ToLower(key.String()) {
 	case "enter":
 		return m, m.activateSelectedSearchResult()
 	case "esc":
-		m.closeSearch()
+		m.searchMode = searchNormalMode
+		m.searchGArmed = false
 		return m, nil
 	case "backspace":
 		runes := []rune(m.searchInput)
@@ -92,6 +115,75 @@ func (m *model) updateSearchKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *model) updateSearchNormalKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	value := key.String()
+	if m.searchGArmed {
+		m.searchGArmed = false
+		if value == "g" {
+			m.searchSelected, m.searchViewport = 0, 0
+		}
+		return m, nil
+	}
+	switch value {
+	case "esc":
+		m.closeSearch()
+	case "i", "a":
+		m.searchMode = searchInsertMode
+	case ":":
+		m.searchCommandMode = true
+		m.searchCommandInput = ""
+	case "j", "down", "ctrl+n":
+		m.moveSearchSelection(1)
+	case "k", "up", "ctrl+p":
+		m.moveSearchSelection(-1)
+	case "g":
+		m.searchGArmed = true
+	case "G", "end":
+		m.searchSelected = max(0, len(m.searchResults)-1)
+		m.moveSearchSelection(0)
+	case "ctrl+d", "pgdown", "pagedown":
+		m.moveSearchSelection(m.searchVisibleResultRows() / 2)
+	case "ctrl+u", "pgup", "pageup":
+		m.moveSearchSelection(-m.searchVisibleResultRows() / 2)
+	case "enter":
+		return m, m.activateSelectedSearchResult()
+	}
+	return m, nil
+}
+
+func (m *model) updateSearchCommandKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch strings.ToLower(key.String()) {
+	case "esc":
+		m.searchCommandMode = false
+		m.searchCommandInput = ""
+		return m, nil
+	case "backspace":
+		runes := []rune(m.searchCommandInput)
+		if len(runes) > 0 {
+			m.searchCommandInput = string(runes[:len(runes)-1])
+		}
+		return m, nil
+	case "enter":
+		command := strings.ToLower(strings.TrimSpace(m.searchCommandInput))
+		m.searchCommandMode = false
+		m.searchCommandInput = ""
+		switch command {
+		case "q", "quit":
+			m.closeSearch()
+		case "qa", "quitall", "qa!", "quitall!":
+			return m, tea.Quit
+		case "":
+		default:
+			m.recordError(fmt.Errorf("unknown Search command: %s", command))
+		}
+		return m, nil
+	}
+	if text := key.Key().Text; text != "" {
+		m.searchCommandInput += text
+	}
+	return m, nil
+}
+
 func (m *model) activateSelectedSearchResult() tea.Cmd {
 	if m.searchSelected < 0 || m.searchSelected >= len(m.searchResults) {
 		return nil
@@ -101,6 +193,7 @@ func (m *model) activateSelectedSearchResult() tea.Cmd {
 		m.searchReturn = &searchReturn{
 			origin:   *m.searchOrigin,
 			input:    m.searchInput,
+			mode:     m.searchMode,
 			results:  append([]vimkunja.SearchResult(nil), m.searchResults...),
 			selected: m.searchSelected,
 			viewport: m.searchViewport,
@@ -108,6 +201,8 @@ func (m *model) activateSelectedSearchResult() tea.Cmd {
 	}
 	m.searchOrigin = nil
 	m.searchOpen = false
+	m.searchCommandMode = false
+	m.searchGArmed = false
 	m.searchLoading = false
 	m.searchRequest++
 	switch result.Kind {
@@ -157,6 +252,10 @@ func (m *model) closeSearch() {
 	}
 	m.searchOrigin = nil
 	m.searchOpen = false
+	m.searchMode = searchInsertMode
+	m.searchCommandMode = false
+	m.searchCommandInput = ""
+	m.searchGArmed = false
 	m.searchInput = ""
 	m.searchResults = nil
 	m.searchSelected = 0
@@ -209,6 +308,10 @@ func (m *model) restoreLastSearch() tea.Cmd {
 	origin := snapshot.origin
 	m.searchOrigin = &origin
 	m.searchOpen, m.searchInput = true, snapshot.input
+	m.searchMode = snapshot.mode
+	m.searchCommandMode = false
+	m.searchCommandInput = ""
+	m.searchGArmed = false
 	m.searchResults = append([]vimkunja.SearchResult(nil), snapshot.results...)
 	m.searchSelected, m.searchViewport = snapshot.selected, snapshot.viewport
 	m.searchLoading = false
@@ -245,8 +348,11 @@ func (m *model) moveSearchSelection(delta int) {
 	if m.searchSelected < m.searchViewport {
 		m.searchViewport = m.searchSelected
 	}
-	if m.searchSelected >= m.searchViewport+m.searchVisibleResultRows() {
-		m.searchViewport = m.searchSelected - m.searchVisibleResultRows() + 1
+	// Result heights vary: Description entries consume two physical lines and
+	// each newly visible kind needs a group heading. Advance the viewport only
+	// until the selected result fits in the actual rendered window.
+	for m.searchSelected >= m.searchResultEnd(m.searchViewport) && m.searchViewport < m.searchSelected {
+		m.searchViewport++
 	}
 }
 
@@ -266,23 +372,80 @@ func searchModalHeight(viewportHeight int) int {
 	return max(1, viewportHeight*80/100)
 }
 
-func (m *model) searchVisibleResultRows() int {
-	if m.height <= 0 {
-		return 8
+func (m *model) searchResultLineBudget() int {
+	viewportHeight := m.height
+	if viewportHeight <= 0 {
+		viewportHeight = 30
 	}
-	// Header, input, separator, borders, and padding consume roughly seven
-	// rows of the modal's outer height.
-	return max(8, searchModalHeight(m.height)-7)
+	// Header, input, separator, borders, and padding consume eleven rows.
+	// lipgloss Height is a minimum: leaving this final row free prevents a
+	// full result window from expanding the otherwise fixed-height modal.
+	budget := searchModalHeight(viewportHeight) - 11
+	if m.searchCommandMode {
+		// The local : prompt consumes two additional body rows.
+		budget -= 2
+	}
+	return max(1, budget)
+}
+
+func (m *model) searchVisibleResultRows() int {
+	// A page movement is approximate; rendering uses searchResultEnd below for
+	// the exact physical-line limit.
+	return max(1, m.searchResultLineBudget()/2)
+}
+
+// searchResultEnd returns the exclusive end of the result window beginning at
+// start. It budgets rendered lines, rather than result count: Description
+// snippets need a second line and each kind transition needs a heading.
+func (m *model) searchResultEnd(start int) int {
+	start = clamp(start, 0, len(m.searchResults))
+	used := 0
+	lastKind := vimkunja.SearchResultKind(-1)
+	for index := start; index < len(m.searchResults); index++ {
+		result := m.searchResults[index]
+		needed := 1
+		if result.Kind != lastKind {
+			needed++
+		}
+		if result.Snippet != "" {
+			needed++
+		}
+		if used+needed > m.searchResultLineBudget() {
+			break
+		}
+		used += needed
+		lastKind = result.Kind
+		start = index + 1
+	}
+	return start
+}
+
+func (m *model) searchModeLabel() string {
+	if m.searchMode == searchNormalMode {
+		return "NORMAL"
+	}
+	return "INSERT"
 }
 
 func (m *model) renderSearchOverlay(background string, width int) string {
 	modalWidth := searchModalWidth(width)
-	modalHeight := searchModalHeight(len(strings.Split(background, "\n")))
+	viewportHeight := m.height
+	if viewportHeight <= 0 {
+		viewportHeight = len(strings.Split(background, "\n"))
+	}
+	modalHeight := searchModalHeight(viewportHeight)
 	contentWidth := max(1, modalWidth-6)
+	query := fmt.Sprintf("Search: %s", m.searchInput)
+	if m.searchMode == searchInsertMode {
+		query += "_"
+	}
 	body := []string{
-		lipgloss.NewStyle().Bold(true).Render("GLOBAL SEARCH"),
-		fmt.Sprintf("Search: %s", m.searchInput),
+		lipgloss.NewStyle().Bold(true).Render("GLOBAL SEARCH · " + m.searchModeLabel()),
+		query,
 		"",
+	}
+	if m.searchCommandMode {
+		body = append(body, fmt.Sprintf(":%s_", m.searchCommandInput), "")
 	}
 	switch {
 	case strings.TrimSpace(m.searchInput) == "":
@@ -306,7 +469,7 @@ func (m *model) renderSearchOverlay(background string, width int) string {
 
 func (m *model) renderSearchResults(width int) []string {
 	start := clamp(m.searchViewport, 0, max(0, len(m.searchResults)-1))
-	end := min(len(m.searchResults), start+m.searchVisibleResultRows())
+	end := m.searchResultEnd(start)
 	var lines []string
 	lastKind := vimkunja.SearchResultKind(-1)
 	for index := start; index < end; index++ {

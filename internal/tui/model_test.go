@@ -445,8 +445,156 @@ func TestGlobalSearchOpensBlankOverlayAndEscapeRestoresOrigin(t *testing.T) {
 	}
 
 	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if !m.searchOpen || m.searchMode != searchNormalMode {
+		t.Fatalf("first Esc = open:%v mode:%v, want Search NORMAL", m.searchOpen, m.searchMode)
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
 	if m.searchOpen || m.focus != paneProjects || m.currentProjectID != 1 {
-		t.Fatalf("Esc did not restore search origin: open=%v focus=%v project=%d", m.searchOpen, m.focus, m.currentProjectID)
+		t.Fatalf("second Esc did not restore search origin: open=%v focus=%v project=%d", m.searchOpen, m.focus, m.currentProjectID)
+	}
+}
+
+func TestGlobalSearchModalKeepsItsBottomBorderWithManyDescriptionResults(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 30
+	m.searchOpen = true
+	m.searchMode = searchInsertMode
+	m.searchInput = "f"
+	for i := 0; i < 17; i++ {
+		m.searchResults = append(m.searchResults, vimkunja.SearchResult{
+			Kind: vimkunja.SearchDescriptionResult, Primary: "Task", Snippet: "A matching Description preview",
+		})
+	}
+	background := strings.Repeat(strings.Repeat(" ", 100)+"\n", 29) + strings.Repeat(" ", 100)
+	overlay := ansi.Strip(m.renderSearchOverlay(background, 100))
+	if !strings.Contains(overlay, "┛") {
+		t.Fatalf("crowded Search overlay has no bottom border: %q", overlay)
+	}
+}
+
+func TestGlobalSearchUsesAvailableRowsForLaterResultGroups(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 30
+	m.searchOpen = true
+	m.searchInput = "f"
+	for i := 0; i < 7; i++ {
+		m.searchResults = append(m.searchResults, vimkunja.SearchResult{Kind: vimkunja.SearchTaskResult, Primary: "Task"})
+	}
+	m.searchResults = append(m.searchResults,
+		vimkunja.SearchResult{Kind: vimkunja.SearchLabelResult, Primary: "Label"},
+		vimkunja.SearchResult{Kind: vimkunja.SearchDescriptionResult, Primary: "Described Task", Snippet: "Matching Description"},
+	)
+	rendered := ansi.Strip(m.renderSearchOverlay(strings.Repeat(strings.Repeat(" ", 100)+"\n", 29)+strings.Repeat(" ", 100), 100))
+	if !strings.Contains(rendered, "DESCRIPTIONS") {
+		t.Fatalf("Search left room unused instead of rendering later result groups: %q", rendered)
+	}
+}
+
+func TestGlobalSearchModalHeightDoesNotDependOnResultCount(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 30
+	m.searchOpen = true
+	m.searchInput = "f"
+	background := strings.Repeat(strings.Repeat(" ", 100)+"\n", 29) + strings.Repeat(" ", 100)
+
+	emptyOverlay := ansi.Strip(m.renderSearchOverlay(background, 100))
+	emptyTop, emptyBottom := searchModalTopRow(emptyOverlay), searchModalBottomRow(emptyOverlay)
+	for i := 0; i < 17; i++ {
+		m.searchResults = append(m.searchResults, vimkunja.SearchResult{Kind: vimkunja.SearchDescriptionResult, Primary: "Task", Snippet: "Preview"})
+	}
+	crowdedOverlay := ansi.Strip(m.renderSearchOverlay(background, 100))
+	crowdedTop, crowdedBottom := searchModalTopRow(crowdedOverlay), searchModalBottomRow(crowdedOverlay)
+	if emptyTop < 0 || crowdedTop != emptyTop || emptyBottom < 0 || crowdedBottom != emptyBottom {
+		t.Fatalf("Search modal bounds = empty:%d-%d crowded:%d-%d, want a stable viewport-derived size", emptyTop, emptyBottom, crowdedTop, crowdedBottom)
+	}
+}
+
+func searchModalTopRow(rendered string) int {
+	for row, line := range strings.Split(rendered, "\n") {
+		if strings.Contains(line, "┏") {
+			return row
+		}
+	}
+	return -1
+}
+
+func searchModalBottomRow(rendered string) int {
+	for row, line := range strings.Split(rendered, "\n") {
+		if strings.Contains(line, "┛") {
+			return row
+		}
+	}
+	return -1
+}
+
+func TestGlobalSearchModalBoundsStayFixedAtFullResultLineBudget(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 240, 65
+	m.searchOpen = true
+	m.searchInput = "f"
+	background := strings.Repeat(strings.Repeat(" ", m.width)+"\n", m.height-1) + strings.Repeat(" ", m.width)
+	emptyOverlay := ansi.Strip(m.renderSearchOverlay(background, m.width))
+	for i := 0; i < 26; i++ {
+		m.searchResults = append(m.searchResults, vimkunja.SearchResult{Kind: vimkunja.SearchTaskResult, Primary: "Task"})
+	}
+	for i := 0; i < 7; i++ {
+		m.searchResults = append(m.searchResults, vimkunja.SearchResult{Kind: vimkunja.SearchDescriptionResult, Primary: "Task", Snippet: "Description"})
+	}
+	fullOverlay := ansi.Strip(m.renderSearchOverlay(background, m.width))
+	if searchModalTopRow(fullOverlay) != searchModalTopRow(emptyOverlay) || searchModalBottomRow(fullOverlay) != searchModalBottomRow(emptyOverlay) {
+		t.Fatalf("full Search results changed modal bounds: empty %d-%d, full %d-%d", searchModalTopRow(emptyOverlay), searchModalBottomRow(emptyOverlay), searchModalTopRow(fullOverlay), searchModalBottomRow(fullOverlay))
+	}
+}
+
+func TestGlobalSearchNormalModeNavigatesAndLocalQuitClosesOnlySearch(t *testing.T) {
+	m := testModel()
+	m.searchOpen = true
+	m.searchMode = searchNormalMode
+	m.searchResults = []vimkunja.SearchResult{
+		{Kind: vimkunja.SearchTaskResult, Primary: "First"},
+		{Kind: vimkunja.SearchTaskResult, Primary: "Second"},
+	}
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.searchSelected != 1 {
+		t.Fatalf("Normal j selected %d, want second result", m.searchSelected)
+	}
+	m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+	m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+	if m.searchSelected != 0 {
+		t.Fatalf("Normal gg selected %d, want first result", m.searchSelected)
+	}
+	m = pressKey(m, tea.Key{Code: 'G', Text: "G"})
+	if m.searchSelected != 1 {
+		t.Fatalf("Normal G selected %d, want last result", m.searchSelected)
+	}
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	if m.searchMode != searchInsertMode {
+		t.Fatalf("Normal i mode = %v, want Insert", m.searchMode)
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	m = pressKey(m, tea.Key{Code: 'q', Text: "q"})
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if cmd != nil || m.searchOpen {
+		t.Fatalf("Search :q = open:%v cmd:%v, want only Search closed", m.searchOpen, cmd != nil)
+	}
+}
+
+func TestGlobalSearchLocalQuitAllQuitsVimkunja(t *testing.T) {
+	m := testModel()
+	m.searchOpen = true
+	m.searchMode = searchNormalMode
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	m = pressKey(m, tea.Key{Code: 'q', Text: "q"})
+	m = pressKey(m, tea.Key{Code: 'a', Text: "a"})
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("Search :qa returned no quit command")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatalf("Search :qa command returned %T, want tea.QuitMsg", cmd())
 	}
 }
 
@@ -561,8 +709,12 @@ func TestGlobalSearchCtrlORestoresSnapshotAndEscapeReturnsToOrigin(t *testing.T)
 		t.Fatalf("Ctrl+O Search snapshot = open:%v query:%q results:%#v", m.searchOpen, m.searchInput, m.searchResults)
 	}
 	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if !m.searchOpen || m.searchMode != searchNormalMode {
+		t.Fatalf("first Esc after Ctrl+O = open:%v mode:%v, want Search NORMAL", m.searchOpen, m.searchMode)
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
 	if m.searchOpen || m.inOverview() || m.currentProjectID != 1 || m.currentViewID != 5 || len(m.tasks) != 1 || m.tasks[0].ID != 1 || m.focus != paneTasks {
-		t.Fatalf("Esc after Ctrl+O origin = open:%v scope:%v project:%d view:%d tasks:%#v focus:%v", m.searchOpen, m.taskScope, m.currentProjectID, m.currentViewID, m.tasks, m.focus)
+		t.Fatalf("second Esc after Ctrl+O origin = open:%v scope:%v project:%d view:%d tasks:%#v focus:%v", m.searchOpen, m.taskScope, m.currentProjectID, m.currentViewID, m.tasks, m.focus)
 	}
 }
 

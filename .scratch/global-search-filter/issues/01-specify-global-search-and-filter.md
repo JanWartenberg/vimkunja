@@ -45,7 +45,7 @@ Render nonempty groups in this order: Tasks, Labels, Descriptions, Projects. Row
 
 `Enter` activates the selected result: a Task or Description opens the owning Project’s List View with that Task selected in the Task Detail Pane; a Project enters its List View; a Label opens a reusable label-filtered Overview scope. That scope lists Tasks carrying the Label and composes with the existing Overview status filter, initially `open`; its header exposes both constraints. The global Search must provide the read-only Label and Task-query capability needed for this navigation, but does not add Label mutation UI.
 
-While the input accepts text, arrow keys and `Ctrl+N`/`Ctrl+P` select results. `n/N` remain reserved for future local-search repeat behavior. `Esc` closes the overlay and restores the exact pre-search context. After result activation, `Ctrl+O` returns to the latest session-local Search snapshot, restoring its query, result set, selected row, and scroll position; `Esc` from that restored overlay returns to the original context. Respect existing unsaved-edit protection.
+Search opens in Insert Mode. While the input accepts text, arrow keys and `Ctrl+N`/`Ctrl+P` select results. `Esc` enters Search Normal Mode; there, `j/k`, `gg/G`, and `Ctrl+D`/`Ctrl+U` navigate results, while `i`/`a` return to query input. `Esc` or the search-local `:q` from Search Normal Mode closes the overlay and restores the exact pre-search context; search-local `:qa` quits Vimkunja completely. `n/N` remain reserved for future local-search repeat behavior. After result activation, `Ctrl+O` returns to the latest session-local Search snapshot, restoring its query, result set, selected row, and scroll position; `Esc` from that restored overlay first enters Search Normal Mode, then closes to the original context. Respect existing unsaved-edit protection.
 
 Keep the overlay open on empty results or an unexpected search error, with clearly distinct states. Retain the query and last valid results on error, and discard asynchronous responses that no longer match the current query.
 
@@ -56,7 +56,7 @@ Keep the overlay open on empty results or an unexpected search error, with clear
 - Search-overlay and Overview state — preserve origin/return snapshots, route typed result activation, and compose Label and status constraints.
 
 **Acceptance criteria:**
-- [ ] `Space+f` opens a live global Search overlay over every eligible normal context; blank query, no-result, and unexpected-error states are distinct and `Esc` restores the origin.
+- [ ] `Space+f` opens a live global Search overlay over every eligible normal context in Insert Mode; blank query, no-result, and unexpected-error states are distinct, and Search Normal Mode `Esc` or `:q` restores the origin.
 - [ ] Search consults the complete locally browsable data set rather than only loaded pages, respects ordinary archive visibility, and exposes no raw HTML.
 - [ ] Matching, groups, group order, row ordering, and visible match highlighting follow the specified V1 contract.
 - [ ] Description hits show Task and Project context plus a bounded wrapping plain-text excerpt around the match.
