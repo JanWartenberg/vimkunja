@@ -79,6 +79,16 @@ type model struct {
 	commandInput string
 	commands     *CommandRegistry
 
+	searchOpen     bool
+	searchInput    string
+	searchResults  []vimkunja.SearchResult
+	searchSelected int
+	searchViewport int
+	searchRequest  uint64
+	searchLoading  bool
+	searchOrigin   *searchOrigin
+	searchReturn   *searchReturn
+
 	// Projects pane
 	projects             []vimkunja.Project
 	projectTree          projectTree
@@ -109,6 +119,7 @@ type model struct {
 	taskLoading    bool
 	taskScope      taskScope
 	overviewTasks  []vimkunja.Task
+	overviewLabel  vimkunja.Label
 	overviewFilter overviewFilter
 	overviewSort   overviewSort
 	overviewPrompt overviewPrompt
@@ -118,12 +129,13 @@ type model struct {
 	helpPane   *infoPane
 	infoPane   *infoPane
 
-	currentProjectID int64
-	actorUserID      int64
-	pendingTaskID    int64
-	quitAfterSave    bool
-	editor           *taskEditor
-	cursorVisible    bool
+	currentProjectID          int64
+	actorUserID               int64
+	pendingTaskID             int64
+	pendingSearchDetailTaskID int64
+	quitAfterSave             bool
+	editor                    *taskEditor
+	cursorVisible             bool
 
 	initialProjectID int64
 	initialViewID    int64
@@ -213,6 +225,12 @@ type (
 		taskID int64
 		status vimkunja.WorkflowStatus
 		err    error
+	}
+	searchLoadedMsg struct {
+		request uint64
+		query   string
+		results []vimkunja.SearchResult
+		err     error
 	}
 	taskSavedMsg struct {
 		task       vimkunja.Task
@@ -321,11 +339,18 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		k := key.String()
 		kLower := strings.ToLower(k)
 
+		if !m.searchOpen && kLower == "ctrl+o" && m.searchReturn != nil {
+			return m, m.restoreLastSearch()
+		}
+
 		// Quit
 		if kLower == "ctrl+c" {
 			return m, tea.Quit
 		}
 
+		if m.searchOpen {
+			return m.updateSearchKeys(key)
+		}
 		if m.commandMode {
 			return m.updateCommandModeKey(key)
 		}
@@ -350,6 +375,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.leaderArmed {
 			m.leaderArmed = false
 			switch k {
+			case "f":
+				m.openSearch()
 			case "v":
 				m.viewSwitchArmed = true
 			case "o":
@@ -534,6 +561,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ctrlWArmed = false
 		return m, nil
 
+	case searchLoadedMsg:
+		if !m.searchOpen || typed.request != m.searchRequest || typed.query != m.searchInput {
+			return m, nil
+		}
+		m.searchLoading = false
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		m.searchResults = typed.results
+		m.searchSelected = clamp(m.searchSelected, 0, max(0, len(m.searchResults)-1))
+		m.searchViewport = clamp(m.searchViewport, 0, max(0, len(m.searchResults)-1))
+		return m, nil
+
 	case cursorBlinkMsg:
 		if m.focus == paneDetail && m.editor != nil && m.editor.mode == editorInsert {
 			m.cursorVisible = !m.cursorVisible
@@ -686,6 +727,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.pendingTaskID = 0
+		}
+		if m.pendingSearchDetailTaskID != 0 {
+			taskID := m.pendingSearchDetailTaskID
+			m.pendingSearchDetailTaskID = 0
+			for _, task := range m.tasks {
+				if task.ID == taskID {
+					m.openExistingEditor(task)
+					return m, m.loadWorkflowStatus(task.ProjectID, task.ID)
+				}
+			}
 		}
 		return m, nil
 	}
@@ -1389,6 +1440,9 @@ func (m *model) Render() string {
 	if m.deleteConfirm {
 		content = m.renderDeleteConfirmationModal(content, w)
 	}
+	if m.searchOpen {
+		content = m.renderSearchOverlay(content, w)
+	}
 	status := m.renderStatusBar(w)
 	return lipgloss.JoinVertical(lipgloss.Top, content, status)
 }
@@ -1445,6 +1499,9 @@ func (m *model) renderStatusBar(w int) string {
 	}
 	if m.focus == paneInfo {
 		hint = "q/esc close pane"
+	}
+	if m.searchOpen {
+		hint = fmt.Sprintf("SEARCH  %s_  •  ↑/↓ select  •  Enter open  •  Esc cancel", m.searchInput)
 	}
 	if m.commandMode {
 		hint = fmt.Sprintf(":%s_", m.commandInput)

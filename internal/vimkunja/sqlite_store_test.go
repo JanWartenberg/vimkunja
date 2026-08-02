@@ -106,6 +106,48 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 	return store, cleanup
 }
 
+func TestLoadSearchDataAndListTasksForLabelExcludeArchivedProjects(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	if _, err := store.db.Exec(`
+		CREATE TABLE labels (id INTEGER PRIMARY KEY, title TEXT);
+		CREATE TABLE label_tasks (label_id INTEGER, task_id INTEGER);
+		INSERT INTO projects (id, identifier, title, is_archived) VALUES
+			(1, 'HOME', 'Home', 0),
+			(2, 'OLD', 'Archived', 1);
+		INSERT INTO tasks (id, project_id, title, description, done) VALUES
+			(11, 1, 'Buy coffee', '<p>Beans for breakfast</p>', 0),
+			(12, 2, 'Buy coffee later', '<p>Hidden</p>', 0);
+		INSERT INTO labels (id, title) VALUES (3, 'Errands'), (4, 'Unused');
+		INSERT INTO label_tasks (label_id, task_id) VALUES (3, 11), (3, 12);
+	`); err != nil {
+		t.Fatalf("seed search data: %v", err)
+	}
+
+	data, err := store.LoadSearchData(context.Background())
+	if err != nil {
+		t.Fatalf("load search data: %v", err)
+	}
+	if got, want := data.Projects, []Project{{ID: 1, Identifier: "HOME", Title: "Home"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("search projects = %#v, want %#v", got, want)
+	}
+	if got, want := data.Tasks, []Task{{ID: 11, ProjectID: 1, ProjectIdentifier: "HOME", ProjectTitle: "Home", Title: "Buy coffee", Description: "<p>Beans for breakfast</p>"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("search tasks = %#v, want %#v", got, want)
+	}
+	if got, want := data.Labels, []Label{{ID: 3, Title: "Errands"}, {ID: 4, Title: "Unused"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("search labels = %#v, want %#v", got, want)
+	}
+
+	tasks, pages, err := store.ListTasksForLabel(context.Background(), 3, 1, 20)
+	if err != nil {
+		t.Fatalf("list label tasks: %v", err)
+	}
+	if pages != 1 || len(tasks) != 1 || tasks[0].ID != 11 || tasks[0].ProjectTitle != "Home" {
+		t.Fatalf("label tasks = %#v, pages = %d; want only active task 11", tasks, pages)
+	}
+}
+
 func TestProvisionStandardManualKanbanView_AssignsTasksByDoneState(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()

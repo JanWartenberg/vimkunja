@@ -396,6 +396,142 @@ func (s *SQLiteStore) ListOverviewTasks(ctx context.Context, page, perPage int) 
 	return out, totalPages, nil
 }
 
+// LoadSearchData returns every non-archived Project and its Tasks plus all
+// existing Labels. It is intentionally unpaged: Global Search owns a complete
+// locally browsable corpus rather than whichever Task page happens to be open.
+func (s *SQLiteStore) LoadSearchData(ctx context.Context) (SearchData, error) {
+	projects, err := s.ListProjects(ctx)
+	if err != nil {
+		return SearchData{}, err
+	}
+
+	rows, err := s.db.QueryContext(ctx, `SELECT
+		t.id, t.project_id, p.identifier, p.title, t.title, t.done, t.due_date,
+		t.priority, t."index", t.description
+		FROM tasks t JOIN projects p ON p.id = t.project_id
+		WHERE (p.is_archived = 0 OR p.is_archived IS NULL)
+		ORDER BY t.id ASC`)
+	if err != nil {
+		return SearchData{}, fmt.Errorf("list search tasks: %w", err)
+	}
+	defer rows.Close()
+
+	var tasks []Task
+	for rows.Next() {
+		var task Task
+		var projectIdentifier, projectTitle, description sql.NullString
+		var dueDate sql.NullTime
+		var index sql.NullInt64
+		if err := rows.Scan(&task.ID, &task.ProjectID, &projectIdentifier, &projectTitle, &task.Title, &task.Done, &dueDate, &task.Priority, &index, &description); err != nil {
+			return SearchData{}, fmt.Errorf("scan search task: %w", err)
+		}
+		if projectIdentifier.Valid {
+			task.ProjectIdentifier = projectIdentifier.String
+		}
+		if projectTitle.Valid {
+			task.ProjectTitle = projectTitle.String
+		}
+		if dueDate.Valid {
+			task.DueDate = dueDate.Time.Format("2006-01-02")
+		}
+		if index.Valid {
+			task.Index = index.Int64
+		}
+		if description.Valid {
+			task.Description = description.String
+		}
+		tasks = append(tasks, task)
+	}
+	if err := rows.Err(); err != nil {
+		return SearchData{}, fmt.Errorf("iterate search tasks: %w", err)
+	}
+
+	labelRows, err := s.db.QueryContext(ctx, `SELECT id, title FROM labels ORDER BY id ASC`)
+	if err != nil {
+		return SearchData{}, fmt.Errorf("list Labels: %w", err)
+	}
+	defer labelRows.Close()
+	var labels []Label
+	for labelRows.Next() {
+		var label Label
+		if err := labelRows.Scan(&label.ID, &label.Title); err != nil {
+			return SearchData{}, fmt.Errorf("scan Label: %w", err)
+		}
+		labels = append(labels, label)
+	}
+	if err := labelRows.Err(); err != nil {
+		return SearchData{}, fmt.Errorf("iterate Labels: %w", err)
+	}
+	return SearchData{Projects: projects, Tasks: tasks, Labels: labels}, nil
+}
+
+// ListTasksForLabel returns non-archived Tasks associated with one existing
+// Label, including Project metadata required by the Overview View.
+func (s *SQLiteStore) ListTasksForLabel(ctx context.Context, labelID int64, page, perPage int) ([]Task, int, error) {
+	if page < 1 {
+		page = 1
+	}
+	if perPage <= 0 {
+		perPage = 200
+	}
+	offset := (page - 1) * perPage
+
+	var total int
+	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(1)
+		FROM label_tasks lt
+		JOIN tasks t ON t.id = lt.task_id
+		JOIN projects p ON p.id = t.project_id
+		WHERE lt.label_id = ? AND (p.is_archived = 0 OR p.is_archived IS NULL)`, labelID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count Label Tasks: %w", err)
+	}
+	totalPages := (total + perPage - 1) / perPage
+	rows, err := s.db.QueryContext(ctx, `SELECT
+		t.id, t.project_id, p.identifier, p.title, t.title, t.done, t.due_date,
+		t.priority, t."index", t.description
+		FROM label_tasks lt
+		JOIN tasks t ON t.id = lt.task_id
+		JOIN projects p ON p.id = t.project_id
+		WHERE lt.label_id = ? AND (p.is_archived = 0 OR p.is_archived IS NULL)
+		ORDER BY t.due_date IS NULL ASC, t.due_date ASC, t.priority DESC,
+			p.identifier COLLATE NOCASE ASC, t.title COLLATE NOCASE ASC, t.id ASC
+		LIMIT ? OFFSET ?`, labelID, perPage, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list Label Tasks: %w", err)
+	}
+	defer rows.Close()
+
+	var tasks []Task
+	for rows.Next() {
+		var task Task
+		var projectIdentifier, projectTitle, description sql.NullString
+		var dueDate sql.NullTime
+		var index sql.NullInt64
+		if err := rows.Scan(&task.ID, &task.ProjectID, &projectIdentifier, &projectTitle, &task.Title, &task.Done, &dueDate, &task.Priority, &index, &description); err != nil {
+			return nil, 0, fmt.Errorf("scan Label Task: %w", err)
+		}
+		if projectIdentifier.Valid {
+			task.ProjectIdentifier = projectIdentifier.String
+		}
+		if projectTitle.Valid {
+			task.ProjectTitle = projectTitle.String
+		}
+		if dueDate.Valid {
+			task.DueDate = dueDate.Time.Format("2006-01-02")
+		}
+		if index.Valid {
+			task.Index = index.Int64
+		}
+		if description.Valid {
+			task.Description = description.String
+		}
+		tasks = append(tasks, task)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate Label Tasks: %w", err)
+	}
+	return tasks, totalPages, nil
+}
+
 // ProvisionStandardManualKanbanView creates Vimkunja's upstream-compatible
 // manual Kanban template. Existing completed Tasks deliberately start in Done;
 // open Tasks start in To-Do so the global Done state remains consistent.

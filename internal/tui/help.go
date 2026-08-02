@@ -50,6 +50,8 @@ var helpLines = []string{
 	"",
 	"COMMANDS",
 	"  :h / :help            Open this help pane",
+	"  Space+f / :search     Open Global Search",
+	"  Search: arrows/Ctrl+N/P select; Enter open; Esc cancel; Ctrl+O return",
 	"  Space+o               Toggle projects pane",
 	"  :errors               Open session error log",
 	"  :q / :quit            Close current pane or quit",

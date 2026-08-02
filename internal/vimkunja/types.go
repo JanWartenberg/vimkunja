@@ -10,6 +10,21 @@ type Project struct {
 	Position        float64 `json:"position"`
 }
 
+// Label is an existing Vikunja label. Search can discover Labels but does not
+// create or mutate them.
+type Label struct {
+	ID    int64
+	Title string
+}
+
+// SearchData is the complete locally browsable data set used by Global Search.
+// It deliberately excludes archived Projects and their Tasks.
+type SearchData struct {
+	Projects []Project
+	Tasks    []Task
+	Labels   []Label
+}
+
 // ProjectMoveDirection identifies one adjacent move within a Project's siblings.
 type ProjectMoveDirection int
 

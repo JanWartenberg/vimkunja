@@ -34,6 +34,7 @@ type fakeStore struct {
 	kanbanBoardErr       error
 	views                []vimkunja.ProjectView
 	viewsByProject       map[int64][]vimkunja.ProjectView
+	tasksByView          map[int64][]vimkunja.Task
 	provisionedBoard     vimkunja.KanbanBoard
 	provisionErr         error
 	provisionCalls       int
@@ -45,6 +46,10 @@ type fakeStore struct {
 	listTasksViewID      int64
 	overviewTasks        []vimkunja.Task
 	overviewTasksCalls   int
+	searchData           vimkunja.SearchData
+	searchErr            error
+	labelTasks           map[int64][]vimkunja.Task
+	labelTasksErr        error
 	createdDraft         vimkunja.TaskDraft
 	updatedDraft         vimkunja.TaskDraft
 }
@@ -97,7 +102,7 @@ func (f *fakeStore) ListViews(_ context.Context, projectID int64, _ int, _ int) 
 func (f *fakeStore) ListTasksInView(_ context.Context, _ int64, viewID int64, _ int, _ int) ([]vimkunja.Task, int, error) {
 	f.listTasksCalls++
 	f.listTasksViewID = viewID
-	return nil, 0, nil
+	return append([]vimkunja.Task(nil), f.tasksByView[viewID]...), 0, nil
 }
 
 func (f *fakeStore) LoadManualKanbanBoard(_ context.Context, projectID int64) (vimkunja.KanbanBoard, error) {
@@ -115,6 +120,14 @@ func (f *fakeStore) ProvisionStandardManualKanbanView(context.Context, int64) (v
 func (f *fakeStore) ListOverviewTasks(context.Context, int, int) ([]vimkunja.Task, int, error) {
 	f.overviewTasksCalls++
 	return f.overviewTasks, 0, nil
+}
+
+func (f *fakeStore) LoadSearchData(context.Context) (vimkunja.SearchData, error) {
+	return f.searchData, f.searchErr
+}
+
+func (f *fakeStore) ListTasksForLabel(_ context.Context, labelID int64, _ int, _ int) ([]vimkunja.Task, int, error) {
+	return append([]vimkunja.Task(nil), f.labelTasks[labelID]...), 0, f.labelTasksErr
 }
 
 func (f *fakeStore) GetTaskWorkflowStatus(context.Context, int64, int64) (vimkunja.WorkflowStatus, error) {
@@ -417,6 +430,200 @@ func typeCommand(t *testing.T, m *model, input string) (*model, tea.Cmd) {
 	}
 	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
 	return updated.(*model), cmd
+}
+
+func TestGlobalSearchOpensBlankOverlayAndEscapeRestoresOrigin(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 30
+	m.focus = paneProjects
+	m.currentProjectID = 1
+
+	m = pressKey(m, tea.Key{Code: ' ', Text: " "})
+	m = pressKey(m, tea.Key{Code: 'f', Text: "f"})
+	if !m.searchOpen || !strings.Contains(ansi.Strip(m.Render()), "GLOBAL SEARCH") || !strings.Contains(ansi.Strip(m.Render()), "Type to search") {
+		t.Fatalf("blank Global Search overlay = %q", m.Render())
+	}
+
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if m.searchOpen || m.focus != paneProjects || m.currentProjectID != 1 {
+		t.Fatalf("Esc did not restore search origin: open=%v focus=%v project=%d", m.searchOpen, m.focus, m.currentProjectID)
+	}
+}
+
+func TestGlobalSearchQueriesAndRendersTypedResults(t *testing.T) {
+	store := &fakeStore{searchData: vimkunja.SearchData{Tasks: []vimkunja.Task{{
+		ID: 7, ProjectID: 1, ProjectIdentifier: "HOME", ProjectTitle: "Home", Title: "Buy coffee", Description: "<p>Fresh coffee beans</p>",
+	}}}}
+	m := NewModel(Config{Store: store}).(*model)
+	m.width, m.height = 100, 30
+
+	m = pressKey(m, tea.Key{Code: ' ', Text: " "})
+	m = pressKey(m, tea.Key{Code: 'f', Text: "f"})
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Text: "coffee"}))
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("search input returned no query command")
+	}
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if len(m.searchResults) != 2 || m.searchResults[0].Kind != vimkunja.SearchTaskResult || m.searchResults[1].Kind != vimkunja.SearchDescriptionResult {
+		t.Fatalf("search results = %#v, want Task and Description hits", m.searchResults)
+	}
+	view := ansi.Strip(m.Render())
+	if !strings.Contains(view, "TASKS") || !strings.Contains(view, "DESCRIPTIONS") || strings.Contains(view, "<p>") {
+		t.Fatalf("Global Search render = %q, want typed groups without HTML", view)
+	}
+}
+
+func TestGlobalSearchLabelActivationOpensComposedOverview(t *testing.T) {
+	store := &fakeStore{labelTasks: map[int64][]vimkunja.Task{21: {
+		{ID: 1, Title: "Open errand", Done: false},
+		{ID: 2, Title: "Done errand", Done: true},
+	}}}
+	m := NewModel(Config{Store: store}).(*model)
+	m.searchOpen = true
+	m.searchResults = []vimkunja.SearchResult{{Kind: vimkunja.SearchLabelResult, LabelID: 21, Primary: "Errands"}}
+
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if cmd == nil || !m.inOverview() || m.overviewLabel.ID != 21 || m.overviewFilter != overviewOpen {
+		t.Fatalf("Label activation = scope:%v label:%#v filter:%v cmd:%v", m.taskScope, m.overviewLabel, m.overviewFilter, cmd != nil)
+	}
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if len(m.tasks) != 1 || m.tasks[0].ID != 1 {
+		t.Fatalf("open Label Overview tasks = %#v, want only open Label task", m.tasks)
+	}
+
+	m = pressKey(m, tea.Key{Code: 'f', Text: "f"})
+	m = pressKey(m, tea.Key{Code: 'a', Text: "a"})
+	if len(m.tasks) != 2 {
+		t.Fatalf("all Label Overview tasks = %#v, want both Label tasks", m.tasks)
+	}
+	if header := ansi.Strip(renderTasks(m, 90, 10)); !strings.Contains(header, "Errands") || !strings.Contains(header, "all") {
+		t.Fatalf("Label Overview header = %q, want Label and status constraints", header)
+	}
+}
+
+func TestGlobalSearchTaskActivationOpensOwningProjectTaskDetail(t *testing.T) {
+	store := &fakeStore{
+		viewsByProject: map[int64][]vimkunja.ProjectView{2: {{ID: 5, ViewKind: "list"}}},
+		tasksByView:    map[int64][]vimkunja.Task{5: {{ID: 7, ProjectID: 2, Title: "Buy coffee"}}},
+	}
+	m := NewModel(Config{Store: store}).(*model)
+	m.projects = []vimkunja.Project{{ID: 1, Title: "Old"}, {ID: 2, Title: "Home"}}
+	m.searchOpen = true
+	m.searchResults = []vimkunja.SearchResult{{Kind: vimkunja.SearchTaskResult, TaskID: 7, ProjectID: 2, Primary: "Buy coffee"}}
+
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("Task activation returned no Project View load")
+	}
+	updated, cmd = m.Update(cmd())
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("loaded Project View returned no Task load")
+	}
+	updated, cmd = m.Update(cmd())
+	m = updated.(*model)
+	if !m.showDetail || m.focus != paneDetail || m.editor == nil || m.editor.id != 7 || m.currentProjectID != 2 || m.currentViewID != 5 {
+		t.Fatalf("Task activation state = detail:%v focus:%v editor:%#v project:%d view:%d", m.showDetail, m.focus, m.editor, m.currentProjectID, m.currentViewID)
+	}
+}
+
+func TestGlobalSearchCtrlORestoresSnapshotAndEscapeReturnsToOrigin(t *testing.T) {
+	store := &fakeStore{
+		searchData: vimkunja.SearchData{Labels: []vimkunja.Label{{ID: 21, Title: "Errands"}}},
+		labelTasks: map[int64][]vimkunja.Task{21: {{ID: 2, Title: "Errand"}}},
+	}
+	m := NewModel(Config{Store: store}).(*model)
+	m.focus = paneTasks
+	m.currentProjectID, m.currentViewID = 1, 5
+	m.tasks = []vimkunja.Task{{ID: 1, Title: "Origin"}}
+
+	m = pressKey(m, tea.Key{Code: ' ', Text: " "})
+	m = pressKey(m, tea.Key{Code: 'f', Text: "f"})
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Text: "errands"}))
+	m = updated.(*model)
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if !m.inOverview() {
+		t.Fatal("Label activation did not leave the Search origin")
+	}
+
+	m = pressKey(m, tea.Key{Code: 'o', Mod: tea.ModCtrl})
+	if !m.searchOpen || m.searchInput != "errands" || len(m.searchResults) != 1 || m.searchResults[0].LabelID != 21 {
+		t.Fatalf("Ctrl+O Search snapshot = open:%v query:%q results:%#v", m.searchOpen, m.searchInput, m.searchResults)
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if m.searchOpen || m.inOverview() || m.currentProjectID != 1 || m.currentViewID != 5 || len(m.tasks) != 1 || m.tasks[0].ID != 1 || m.focus != paneTasks {
+		t.Fatalf("Esc after Ctrl+O origin = open:%v scope:%v project:%d view:%d tasks:%#v focus:%v", m.searchOpen, m.taskScope, m.currentProjectID, m.currentViewID, m.tasks, m.focus)
+	}
+}
+
+func TestSearchCommandOpensGlobalSearchOverlay(t *testing.T) {
+	m, cmd := typeCommand(t, testModel(), "search")
+	if !m.searchOpen || cmd != nil {
+		t.Fatalf(":search = open:%v cmd:%v, want an open overlay without a query", m.searchOpen, cmd != nil)
+	}
+}
+
+func TestGlobalSearchModalWidthUsesViewportProportionAndNarrowMargins(t *testing.T) {
+	if got := searchModalWidth(60); got != 56 {
+		t.Fatalf("narrow modal width = %d, want terminal width minus four", got)
+	}
+	if got := searchModalWidth(200); got != 188 {
+		t.Fatalf("wide modal width = %d, want 94%% of viewport", got)
+	}
+}
+
+func TestGlobalSearchModalHeightUsesEightyPercentOfViewport(t *testing.T) {
+	if got := searchModalHeight(50); got != 40 {
+		t.Fatalf("modal height = %d, want 80%% of viewport", got)
+	}
+}
+
+func TestGlobalSearchUsesPinkCursorAndYellowDescriptionHighlight(t *testing.T) {
+	m := testModel()
+	m.searchOpen = true
+	m.searchInput = "coffee"
+	m.searchResults = []vimkunja.SearchResult{{
+		Kind: vimkunja.SearchDescriptionResult, Primary: "Description task", Snippet: "Coffee notes", SnippetHighlights: []vimkunja.SearchHighlight{{Start: 0, End: 6}},
+	}}
+	lines := m.renderSearchResults(70)
+	if got := ansi.Strip(lines[1]); !strings.HasPrefix(got, "> Description task") {
+		t.Fatalf("selected search row = %q, want a > cursor", got)
+	}
+	if !strings.Contains(lines[1], "38;5;205") {
+		t.Fatalf("selected search cursor lacks pink selection color: %q", lines[1])
+	}
+	if !strings.Contains(lines[2], "38;5;229") {
+		t.Fatalf("Description match lacks inactive-selection yellow: %q", lines[2])
+	}
+}
+
+func TestGlobalSearchDiscardsStaleResponsesAndRetainsResultsOnError(t *testing.T) {
+	m := testModel()
+	m.searchOpen = true
+	m.searchInput = "new"
+	m.searchRequest = 2
+	m.searchResults = []vimkunja.SearchResult{{Kind: vimkunja.SearchTaskResult, TaskID: 2, Primary: "Newest"}}
+
+	updated, _ := m.Update(searchLoadedMsg{request: 1, query: "old", results: []vimkunja.SearchResult{{Primary: "Stale"}}})
+	m = updated.(*model)
+	if len(m.searchResults) != 1 || m.searchResults[0].Primary != "Newest" {
+		t.Fatalf("stale response replaced results: %#v", m.searchResults)
+	}
+	updated, _ = m.Update(searchLoadedMsg{request: 2, query: "new", err: errors.New("database unavailable")})
+	m = updated.(*model)
+	if len(m.searchResults) != 1 || m.searchResults[0].Primary != "Newest" || m.searchInput != "new" || m.lastErr != "database unavailable" {
+		t.Fatalf("error response state = results:%#v query:%q error:%q", m.searchResults, m.searchInput, m.lastErr)
+	}
 }
 
 func TestKanbanBucketsHaveDimBordersAndBlankHeaderRow(t *testing.T) {

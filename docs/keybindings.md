@@ -51,11 +51,11 @@ The Project View switcher is visible above the Tasks Pane only outside Overview 
 
 | Binding | Action | Status |
 | --- | --- | --- |
-| `Space+f` | Open the global Search overlay above the current context. | Agreed |
-| Arrows / `Ctrl+N` / `Ctrl+P` | Select the preceding/following global Search result while its input accepts text. | Agreed |
-| `Enter` | Activate the selected global result: open a Task Detail, enter a Project List View, or open a Label-filtered Overview. | Agreed |
-| `Esc` | Close global Search and restore its pre-search context. | Agreed |
-| `Ctrl+O` | Return from an activated global result to the latest session-local Search snapshot. | Agreed |
+| `Space+f` / `:search` | Open the global Search overlay above the current context. | Implemented |
+| Arrows / `Ctrl+N` / `Ctrl+P` | Select the preceding/following global Search result while its input accepts text. | Implemented |
+| `Enter` | Activate the selected global result: open a Task Detail, enter a Project List View, or open a Label-filtered Overview. | Implemented |
+| `Esc` | Close global Search and restore its pre-search context. | Implemented |
+| `Ctrl+O` | Return from an activated global result to the latest session-local Search snapshot. | Implemented |
 | `/` | Search within the focused Pane; local-search implementation is deferred. | Agreed |
 | `n` / `N` | Repeat the next/previous local-search match; deferred with local search. | Agreed |
 

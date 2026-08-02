@@ -124,6 +124,9 @@ func renderTasks(m *model, textW, textH int) string {
 	headerText := " Project Tasks "
 	if m.inOverview() {
 		headerText = fmt.Sprintf(" Overview · %s · %s ", m.overviewSortLabel(), m.overviewFilterLabel())
+		if m.overviewLabel.ID != 0 {
+			headerText = fmt.Sprintf(" Overview · Label: %s · %s · %s ", m.overviewLabel.Title, m.overviewSortLabel(), m.overviewFilterLabel())
+		}
 	}
 	header := lipgloss.NewStyle().Bold(true).Render(headerText)
 	focus := m.focus == paneTasks

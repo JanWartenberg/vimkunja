@@ -60,7 +60,14 @@ func (m *model) loadOverview() tea.Cmd {
 		perPage := max(200, m.perPage)
 		var all []vimkunja.Task
 		for page := 1; ; page++ {
-			items, totalPages, err := m.store.ListOverviewTasks(ctx, page, perPage)
+			var items []vimkunja.Task
+			var totalPages int
+			var err error
+			if m.overviewLabel.ID != 0 {
+				items, totalPages, err = m.store.ListTasksForLabel(ctx, m.overviewLabel.ID, page, perPage)
+			} else {
+				items, totalPages, err = m.store.ListOverviewTasks(ctx, page, perPage)
+			}
 			if err != nil {
 				return overviewTasksLoadedMsg{err: err}
 			}
@@ -73,6 +80,14 @@ func (m *model) loadOverview() tea.Cmd {
 }
 
 func (m *model) openOverview() tea.Cmd {
+	return m.openOverviewForLabel(vimkunja.Label{})
+}
+
+func (m *model) openLabelOverview(label vimkunja.Label) tea.Cmd {
+	return m.openOverviewForLabel(label)
+}
+
+func (m *model) openOverviewForLabel(label vimkunja.Label) tea.Cmd {
 	if m.editor != nil && m.editor.dirty() {
 		m.recordError(errUnsavedNavigation)
 		return nil
@@ -86,6 +101,8 @@ func (m *model) openOverview() tea.Cmd {
 	}
 	m.lastProjectPaneCollapsed = m.projectsPaneCollapsed
 	m.taskScope = scopeOverview
+	m.overviewLabel = label
+	m.overviewFilter = overviewOpen
 	m.overviewPrompt = overviewPromptNone
 	m.showDetail = false
 	m.editor = nil
@@ -125,6 +142,7 @@ func (m *model) restoreProjectScope() tea.Cmd {
 		return nil
 	}
 	m.taskScope = scopeProject
+	m.overviewLabel = vimkunja.Label{}
 	m.overviewPrompt = overviewPromptNone
 	m.showDetail = false
 	m.projectsPaneCollapsed = m.lastProjectPaneCollapsed
