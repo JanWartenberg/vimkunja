@@ -2,7 +2,7 @@
 
 > This document defines Vimkunja's durable contract for reading, displaying, editing, and saving Vikunja Task Descriptions. It deliberately outlives the originating ticket: the contract may later inform terminal rich-text work outside Vimkunja, but it is currently specific to Vimkunja and does not define a new markup language.
 
-**Related ticket:** [01 — Render Vikunja HTML descriptions as readable terminal text](issues/01-render-vikunja-html-descriptions.md)
+**Related tickets:** M2 reader: [01 — Render Vikunja HTML descriptions as readable terminal text](issues/01-render-vikunja-html-descriptions.md); M3 structured reader/editor: [02 — Specify native Rich-Text Description rendering and editing](issues/02-specify-native-rich-text-description-rendering-and-editing.md)
 
 **Companion artifacts:** [Keybinding Contract](../../docs/keybindings.md), [TUI/Rich-text glossary](../../CONTEXT.md), [Vim Visual-Mode binding review](research-vim-visual-bindings.md), [Task Detail Done toggle](../task-detail-done-toggle/issues/01-toggle-task-done-from-detail-pane.md), [deferred Checkbox-list summary](../checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md), and [deferred independent Link label/URL editor](../link-label-and-url-editor/issues/01-evaluate-independent-link-label-url-editing.md).
 
