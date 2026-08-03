@@ -8,12 +8,12 @@
 
 **Priority:** High
 
-**Status:** ready-for-agent
+**Status:** implemented
 
-- [ ] Query the complete locally browsable SQLite data set rather than loaded Pane pages, without exposing raw Description HTML.
-- [ ] Render the specified typed groups, ordering, highlights, and Description context in a live overlay.
-- [ ] Route Task, Project, and Label activation; make Label activation open the reusable label-filtered Overview.
-- [ ] Preserve search-return snapshots and compose Label and Overview status constraints without adding persistent global filters.
+- [x] Query the complete locally browsable SQLite data set rather than loaded Pane pages, without exposing raw Description HTML.
+- [x] Render the specified typed groups, ordering, highlights, and Description context in a live overlay.
+- [x] Route Task, Project, and Label activation; make Label activation open the reusable label-filtered Overview.
+- [x] Preserve search-return snapshots and compose Label and Overview status constraints without adding persistent global filters.
 
 ## Further context
 
@@ -56,15 +56,15 @@ Keep the overlay open on empty results or an unexpected search error, with clear
 - Search-overlay and Overview state — preserve origin/return snapshots, route typed result activation, and compose Label and status constraints.
 
 **Acceptance criteria:**
-- [ ] `Space+f` opens a live global Search overlay over every eligible normal context in Insert Mode; blank query, no-result, and unexpected-error states are distinct, and Search Normal Mode `Esc` or `:q` restores the origin.
-- [ ] Search consults the complete locally browsable data set rather than only loaded pages, respects ordinary archive visibility, and exposes no raw HTML.
-- [ ] Matching, groups, group order, row ordering, and visible match highlighting follow the specified V1 contract.
-- [ ] Description hits show Task and Project context plus a bounded wrapping plain-text excerpt around the match.
-- [ ] Task/Description, Project, and Label activation perform their specified navigation; a Label opens an `open` label-filtered Overview and its status filter continues to compose normally.
-- [ ] Arrow keys and `Ctrl+N/P` navigate picker rows without preventing text entry; `n/N` have no global-search behavior.
-- [ ] `Ctrl+O` restores the latest Search snapshot after activation, including query, selection, and viewport; unsaved edits still block unsafe navigation.
-- [ ] Stale search responses cannot replace newer-query results; error responses retain the latest valid results and query.
-- [ ] Store/query and model-level tests cover each result kind, multi-term matching, empty/error/stale responses, Label scope composition, activation, and search return.
+- [x] `Space+f` opens a live global Search overlay over every eligible normal context in Insert Mode; blank query, no-result, and unexpected-error states are distinct, and Search Normal Mode `Esc` or `:q` restores the origin.
+- [x] Search consults the complete locally browsable data set rather than only loaded pages, respects ordinary archive visibility, and exposes no raw HTML.
+- [x] Matching, groups, group order, row ordering, and visible match highlighting follow the specified V1 contract.
+- [x] Description hits show Task and Project context plus a bounded wrapping plain-text excerpt around the match.
+- [x] Task/Description, Project, and Label activation perform their specified navigation; a Label opens an `open` label-filtered Overview and its status filter continues to compose normally.
+- [x] Arrow keys and `Ctrl+N/P` navigate picker rows without preventing text entry; `n/N` have no global-search behavior.
+- [x] `Ctrl+O` restores the latest Search snapshot after activation, including query, selection, and viewport; unsaved edits still block unsafe navigation.
+- [x] Stale search responses cannot replace newer-query results; error responses retain the latest valid results and query.
+- [x] Store/query and model-level tests cover each result kind, multi-term matching, empty/error/stale responses, Label scope composition, activation, and search return.
 
 **Out of scope:**
 - Future local `/` search and its `n/N` repeat behavior.

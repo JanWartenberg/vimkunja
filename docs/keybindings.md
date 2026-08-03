@@ -22,6 +22,7 @@ This document is maintained manually for now. Generating or deriving `help.go` f
 | `Space+o` | Toggle the Projects Pane, including while editing a Description | Implemented / agreed rich-text scope |
 | `:h` / `:help` | Open in-application help | Implemented |
 | `:errors` | Open the session error log | Implemented |
+| `:labels` | Open the global Label Overview from any normal context | Agreed; implementation pending |
 | `:q`, `:qa`, and force variants | Close a Pane or quit Vimkunja | Implemented |
 
 ## Task context and View navigation
@@ -113,6 +114,9 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `:q`, `:q!` | Close or discard the editor | Implemented |
 | `j/k` reaches Done after Workflow Status and before Description | Include Done in the field focus order | Agreed |
 | `x` while Done is focused | Toggle the enclosing Task's Done state | Agreed |
+| Labels field after Due Date | Show assigned Labels or `none` | Agreed; implementation pending |
+| `Space+l` | Open the Task's Label picker | Agreed; implementation pending |
+| Labels field: `h` / `l`, then `x` | Select an assigned Label and stage removal from this Task | Agreed; implementation pending |
 
 ## Description Normal Mode
 

@@ -1,8 +1,8 @@
 # 01 — Edit Task Titles inline in List and Kanban Views
 
-**What to build:** A selected Task title can be edited inline from List and future Kanban Views with Vim-like save and discard semantics.
+**What to build:** A selected Task title can be edited inline from List and Kanban Views with Vim-like save and discard semantics.
 
-**Implementation prerequisites:** Kanban integration depends on the Kanban View; List behavior still needs a focused specification.
+**Implementation prerequisites:** List and Kanban behavior still need a focused specification.
 
 **Category:** enhancement
 
