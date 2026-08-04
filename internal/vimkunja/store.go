@@ -16,6 +16,12 @@ type Store interface {
 	ListOverviewTasks(ctx context.Context, page, perPage int) ([]Task, int, error)
 	LoadSearchData(ctx context.Context) (SearchData, error)
 	ListTasksForLabel(ctx context.Context, labelID int64, page, perPage int) ([]Task, int, error)
+	ListLabels(ctx context.Context) ([]Label, error)
+	ListTaskLabels(ctx context.Context, taskID int64) ([]Label, error)
+	CreateLabel(ctx context.Context, title string, createdByID int64) (Label, error)
+	RenameLabel(ctx context.Context, labelID int64, title string) error
+	DeleteLabel(ctx context.Context, labelID int64) error
+	ReplaceTaskLabels(ctx context.Context, taskID int64, labelIDs []int64) error
 	GetTaskWorkflowStatus(ctx context.Context, projectID, taskID int64) (WorkflowStatus, error)
 	SetTaskWorkflowStatus(ctx context.Context, taskID, bucketID int64) error
 

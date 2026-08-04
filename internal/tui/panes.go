@@ -388,6 +388,20 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		}
 		return focusedField(label+value, active)
 	}
+	labels := "none"
+	if e.labelsLoading {
+		labels = "loading..."
+	} else if len(e.labels) > 0 {
+		titles := make([]string, 0, len(e.labels))
+		for i, label := range e.labels {
+			title := label.Title
+			if detailFocused && e.field == fieldLabels && i == clamp(e.labelSelected, 0, len(e.labels)-1) {
+				title = lipgloss.NewStyle().Underline(true).Render(title)
+			}
+			titles = append(titles, title)
+		}
+		labels = strings.Join(titles, ", ")
+	}
 	renderMetadata := func(field editorField, value string) string {
 		if e.draft.Done && !(detailFocused && e.field == field) {
 			return lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Faint(true).Render(ansi.Strip(value))
@@ -399,6 +413,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		renderField(fieldTitle, "Title:    ", renderMetadata(fieldTitle, m.editorText(fieldTitle, e.draft.Title))),
 		renderField(fieldPriority, "Priority: ", renderMetadata(fieldPriority, priority)),
 		renderField(fieldDueDate, "Due Date: ", renderMetadata(fieldDueDate, m.editorText(fieldDueDate, due))),
+		renderField(fieldLabels, "Labels:   ", renderMetadata(fieldLabels, labels)),
 		renderField(fieldWorkflowStatus, "Status:   ", e.workflowStatusLabel()),
 	)
 	if e.id != 0 {

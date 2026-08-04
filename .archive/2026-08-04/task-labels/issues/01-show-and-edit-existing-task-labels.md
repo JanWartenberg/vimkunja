@@ -52,14 +52,14 @@
 
 ## Acceptance criteria
 
-- [ ] Task Detail renders the `Labels:` field after Due Date; it displays assigned Labels or `none`, supports selecting an assigned Label, and stages direct `x` removal without deleting the global Label.
-- [ ] `Space+l` opens the unified picker for an open Task; it supports the specified input, autocomplete, navigation, assignment toggling, cancellation, and Task `:w`/`:q!` semantics.
-- [ ] A nonmatching picker entry creates a global Label immediately and stages its assignment; an exact normalized match reuses the existing Label and duplicate normalized titles are rejected on create and rename.
-- [ ] `:labels` opens the global Label Overview from every normal context, lists all Labels with total association counts, and `Enter` opens the existing label-filtered Overview.
-- [ ] Global creation (`o`), rename (`i`), and deletion (`dd`, then `y`) use the specified persistence and confirmation behavior; deletion removes associations but never Tasks.
-- [ ] Unassigned Labels remain listed and reusable; removing the last Task assignment neither prompts nor deletes the Label.
-- [ ] Store-level tests cover all Label reads and mutations, timestamp/actor fields, transactional replacement, duplicate handling, archived-Task counts, deletion effects, and external-deletion save failure.
-- [ ] TUI tests cover field order and rendering, picker navigation and draft behavior, global Overview navigation and return, immediate mutation feedback, confirmations, errors, and unchanged unsaved-edit protections.
+- [x] Task Detail renders the `Labels:` field after Due Date; it displays assigned Labels or `none`, supports selecting an assigned Label, and stages direct `x` removal without deleting the global Label.
+- [x] `Space+l` opens the unified picker for an open Task; it supports the specified input, autocomplete, navigation, assignment toggling, cancellation, and Task `:w`/`:q!` semantics.
+- [x] A nonmatching picker entry creates a global Label immediately and stages its assignment; an exact normalized match reuses the existing Label and duplicate normalized titles are rejected on create and rename.
+- [x] `:labels` opens the global Label Overview from every normal context, lists all Labels with total association counts, and `Enter` opens the existing label-filtered Overview.
+- [x] Global creation (`o`), rename (`i`), and deletion (`dd`, then `y`) use the specified persistence and confirmation behavior; deletion removes associations but never Tasks.
+- [x] Unassigned Labels remain listed and reusable; removing the last Task assignment neither prompts nor deletes the Label.
+- [x] Store-level tests cover all Label reads and mutations, timestamp/actor fields, transactional replacement, duplicate handling, archived-Task counts, deletion effects, and external-deletion save failure.
+- [x] TUI tests cover field order and rendering, picker navigation and draft behavior, global Overview navigation and return, immediate mutation feedback, confirmations, errors, and unchanged unsaved-edit protections.
 
 ## Out of scope
 

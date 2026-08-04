@@ -19,6 +19,7 @@ const (
 	fieldTitle
 	fieldPriority
 	fieldDueDate
+	fieldLabels
 	fieldWorkflowStatus
 	fieldDone
 	fieldDescription
@@ -48,6 +49,9 @@ type taskEditor struct {
 	priorityIndex         int
 	workflowStatusIndex   int
 	descScroll            int
+	labelSelected         int
+	labels                []vimkunja.Label
+	labelsLoading         bool
 	gArmed                bool
 	workflowStatus        vimkunja.WorkflowStatus
 	workflowStatusLoading bool
@@ -70,7 +74,7 @@ func (m *model) openExistingEditor(task vimkunja.Task) {
 		Description: task.Description, Priority: task.Priority, DueDate: task.DueDate, Done: task.Done,
 		CreatedByID: m.actorUserID,
 	}
-	m.editor = &taskEditor{id: task.ID, taskIndex: task.Index, draft: draft, original: draft, field: fieldTitle, workflowStatusLoading: true}
+	m.editor = &taskEditor{id: task.ID, taskIndex: task.Index, draft: draft, original: cloneTaskDraft(draft), field: fieldTitle, workflowStatusLoading: true, labelsLoading: true}
 	m.showDetail = true
 	m.focus = paneDetail
 }
@@ -100,7 +104,7 @@ func (e *taskEditor) dirty() bool {
 	return e.draft.ProjectID != e.original.ProjectID || e.draft.Title != e.original.Title ||
 		e.draft.Description != e.original.Description || e.draft.Priority != e.original.Priority ||
 		e.draft.DueDate != e.original.DueDate || e.draft.WorkflowBucketID != e.original.WorkflowBucketID ||
-		e.draft.Done != e.original.Done
+		e.draft.Done != e.original.Done || !sameLabelIDs(e.draft.LabelIDs, e.original.LabelIDs)
 }
 
 func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -159,6 +163,17 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		e.draft.DoneSet = e.draft.Done != e.original.Done
 		return m, nil
 	}
+	if e.field == fieldLabels {
+		switch s {
+		case "h", "left":
+			e.labelSelected = clamp(e.labelSelected-1, 0, max(0, len(e.labels)-1))
+		case "l", "right":
+			e.labelSelected = clamp(e.labelSelected+1, 0, max(0, len(e.labels)-1))
+		case "x":
+			m.removeSelectedEditorLabel()
+		}
+		return m, nil
+	}
 	if s == "i" {
 		switch e.field {
 		case fieldProject:
@@ -168,6 +183,8 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case fieldPriority:
 			e.mode = editorPriorityPicker
 			e.priorityIndex = int(e.draft.Priority)
+		case fieldLabels:
+			return m, m.openTaskLabelPicker()
 		case fieldWorkflowStatus:
 			if e.workflowStatus.Availability == vimkunja.WorkflowStatusAvailable && len(e.workflowStatus.Buckets) > 0 {
 				e.mode = editorWorkflowStatusPicker
@@ -469,6 +486,23 @@ func (m *model) projectPickerIndex(projectID int64, filter string) int {
 		}
 	}
 	return 0
+}
+
+func cloneTaskDraft(draft vimkunja.TaskDraft) vimkunja.TaskDraft {
+	draft.LabelIDs = append([]int64(nil), draft.LabelIDs...)
+	return draft
+}
+
+func sameLabelIDs(left, right []int64) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if left[i] != right[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func (e *taskEditor) fieldValue() string {

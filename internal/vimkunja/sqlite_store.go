@@ -532,6 +532,235 @@ func (s *SQLiteStore) ListTasksForLabel(ctx context.Context, labelID int64, page
 	return tasks, totalPages, nil
 }
 
+// ListLabels returns every global Label in alphabetical order. TaskCount includes
+// associations on archived Tasks because deleting a Label removes all of them.
+func (s *SQLiteStore) ListLabels(ctx context.Context) ([]Label, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT l.id, l.title, COUNT(lt.task_id)
+		FROM labels l
+		LEFT JOIN label_tasks lt ON lt.label_id = l.id
+		GROUP BY l.id, l.title
+		ORDER BY l.title COLLATE NOCASE ASC, l.id ASC`)
+	if err != nil {
+		return nil, fmt.Errorf("list Labels: %w", err)
+	}
+	defer rows.Close()
+
+	var labels []Label
+	for rows.Next() {
+		var label Label
+		if err := rows.Scan(&label.ID, &label.Title, &label.TaskCount); err != nil {
+			return nil, fmt.Errorf("scan Label: %w", err)
+		}
+		labels = append(labels, label)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate Labels: %w", err)
+	}
+	return labels, nil
+}
+
+// ListTaskLabels returns a Task's assigned Labels in the same stable order
+// used by the Task Detail field and picker.
+func (s *SQLiteStore) ListTaskLabels(ctx context.Context, taskID int64) ([]Label, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT l.id, l.title
+		FROM label_tasks lt JOIN labels l ON l.id = lt.label_id
+		WHERE lt.task_id = ?
+		ORDER BY l.title COLLATE NOCASE ASC, l.id ASC`, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("list Task Labels: %w", err)
+	}
+	defer rows.Close()
+
+	var labels []Label
+	for rows.Next() {
+		var label Label
+		if err := rows.Scan(&label.ID, &label.Title); err != nil {
+			return nil, fmt.Errorf("scan Task Label: %w", err)
+		}
+		labels = append(labels, label)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate Task Labels: %w", err)
+	}
+	return labels, nil
+}
+
+// CreateLabel persists one new Label for the active actor. It deliberately
+// rejects duplicate normalized titles instead of implicitly merging Labels.
+func (s *SQLiteStore) CreateLabel(ctx context.Context, title string, createdByID int64) (Label, error) {
+	title, err := validLabelTitle(title)
+	if err != nil {
+		return Label{}, err
+	}
+	if createdByID == 0 {
+		return Label{}, fmt.Errorf("create Label: active user is required")
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Label{}, fmt.Errorf("begin create Label transaction: %w", err)
+	}
+	defer tx.Rollback()
+	if err := ensureUniqueLabelTitle(ctx, tx, 0, title); err != nil {
+		return Label{}, err
+	}
+	now := time.Now()
+	result, err := tx.ExecContext(ctx, `INSERT INTO labels (title, created_by_id, created, updated)
+		VALUES (?, ?, ?, ?)`, title, createdByID, now, now)
+	if err != nil {
+		return Label{}, fmt.Errorf("insert Label: %w", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return Label{}, fmt.Errorf("get created Label id: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return Label{}, fmt.Errorf("commit create Label: %w", err)
+	}
+	return Label{ID: id, Title: title}, nil
+}
+
+// RenameLabel changes a Label title without changing its identity or Task
+// associations.
+func (s *SQLiteStore) RenameLabel(ctx context.Context, labelID int64, title string) error {
+	title, err := validLabelTitle(title)
+	if err != nil {
+		return err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin rename Label transaction: %w", err)
+	}
+	defer tx.Rollback()
+	if err := ensureUniqueLabelTitle(ctx, tx, labelID, title); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE labels SET title = ?, updated = ? WHERE id = ?`, title, time.Now(), labelID)
+	if err != nil {
+		return fmt.Errorf("rename Label: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("confirm Label rename: %w", err)
+	}
+	if affected != 1 {
+		return fmt.Errorf("Label %d not found", labelID)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit Label rename: %w", err)
+	}
+	return nil
+}
+
+// DeleteLabel removes one global Label and all of its Task associations, never
+// the Tasks themselves.
+func (s *SQLiteStore) DeleteLabel(ctx context.Context, labelID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin delete Label transaction: %w", err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM label_tasks WHERE label_id = ?`, labelID); err != nil {
+		return fmt.Errorf("delete Label associations: %w", err)
+	}
+	result, err := tx.ExecContext(ctx, `DELETE FROM labels WHERE id = ?`, labelID)
+	if err != nil {
+		return fmt.Errorf("delete Label: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("confirm Label deletion: %w", err)
+	}
+	if affected != 1 {
+		return fmt.Errorf("Label %d not found", labelID)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit Label deletion: %w", err)
+	}
+	return nil
+}
+
+// ReplaceTaskLabels atomically replaces every Label association for one Task.
+func (s *SQLiteStore) ReplaceTaskLabels(ctx context.Context, taskID int64, labelIDs []int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin replace Task Labels transaction: %w", err)
+	}
+	defer tx.Rollback()
+	if err := replaceTaskLabels(ctx, tx, taskID, labelIDs); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit replace Task Labels: %w", err)
+	}
+	return nil
+}
+
+func validLabelTitle(title string) (string, error) {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return "", fmt.Errorf("Label title is required")
+	}
+	return title, nil
+}
+
+func normalizedLabelTitle(title string) string {
+	return strings.ToLower(strings.TrimSpace(title))
+}
+
+func ensureUniqueLabelTitle(ctx context.Context, tx *sql.Tx, exceptID int64, title string) error {
+	var existingID int64
+	err := tx.QueryRowContext(ctx, `SELECT id FROM labels WHERE LOWER(TRIM(title)) = ? AND id != ? LIMIT 1`, normalizedLabelTitle(title), exceptID).Scan(&existingID)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("check duplicate Label title: %w", err)
+	}
+	return fmt.Errorf("Label title already exists")
+}
+
+func replaceTaskLabels(ctx context.Context, tx *sql.Tx, taskID int64, labelIDs []int64) error {
+	if taskID == 0 {
+		return fmt.Errorf("replace Task Labels: missing task id")
+	}
+	var taskExists int
+	if err := tx.QueryRowContext(ctx, `SELECT 1 FROM tasks WHERE id = ?`, taskID).Scan(&taskExists); err != nil {
+		if err == sql.ErrNoRows {
+			return fmt.Errorf("Task %d not found", taskID)
+		}
+		return fmt.Errorf("load Task for Label replacement: %w", err)
+	}
+	seen := make(map[int64]struct{}, len(labelIDs))
+	unique := make([]int64, 0, len(labelIDs))
+	for _, labelID := range labelIDs {
+		if labelID == 0 {
+			return fmt.Errorf("replace Task Labels: missing Label id")
+		}
+		if _, ok := seen[labelID]; ok {
+			continue
+		}
+		seen[labelID] = struct{}{}
+		var exists int
+		if err := tx.QueryRowContext(ctx, `SELECT 1 FROM labels WHERE id = ?`, labelID).Scan(&exists); err != nil {
+			if err == sql.ErrNoRows {
+				return fmt.Errorf("Label %d no longer exists", labelID)
+			}
+			return fmt.Errorf("validate Task Label: %w", err)
+		}
+		unique = append(unique, labelID)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM label_tasks WHERE task_id = ?`, taskID); err != nil {
+		return fmt.Errorf("remove Task Labels: %w", err)
+	}
+	now := time.Now()
+	for _, labelID := range unique {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO label_tasks (task_id, label_id, created) VALUES (?, ?, ?)`, taskID, labelID, now); err != nil {
+			return fmt.Errorf("assign Task Label: %w", err)
+		}
+	}
+	return nil
+}
+
 // ProvisionStandardManualKanbanView creates Vimkunja's upstream-compatible
 // manual Kanban template. Existing completed Tasks deliberately start in Done;
 // open Tasks start in To-Do so the global Done state remains consistent.
@@ -1057,6 +1286,11 @@ func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, er
 	if err := initializeViewAssignments(ctx, tx, id, draft.ProjectID); err != nil {
 		return Task{}, err
 	}
+	if draft.LabelIDsSet {
+		if err := replaceTaskLabels(ctx, tx, id, draft.LabelIDs); err != nil {
+			return Task{}, err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return Task{}, fmt.Errorf("commit create task: %w", err)
 	}
@@ -1124,6 +1358,11 @@ func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, er
 			return Task{}, err
 		}
 		done = draft.Done
+	}
+	if draft.LabelIDsSet {
+		if err := replaceTaskLabels(ctx, tx, draft.ID, draft.LabelIDs); err != nil {
+			return Task{}, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return Task{}, fmt.Errorf("commit update task: %w", err)

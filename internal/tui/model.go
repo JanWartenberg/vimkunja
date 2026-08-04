@@ -92,6 +92,7 @@ type model struct {
 	searchLoading      bool
 	searchOrigin       *searchOrigin
 	searchReturn       *searchReturn
+	labelUI            *labelUI
 
 	// Projects pane
 	projects             []vimkunja.Project
@@ -236,6 +237,20 @@ type (
 		results []vimkunja.SearchResult
 		err     error
 	}
+	labelsLoadedMsg struct {
+		labels []vimkunja.Label
+		err    error
+	}
+	taskLabelsLoadedMsg struct {
+		taskID int64
+		labels []vimkunja.Label
+		err    error
+	}
+	labelMutatedMsg struct {
+		mutation labelMutation
+		label    vimkunja.Label
+		err      error
+	}
 	taskSavedMsg struct {
 		task       vimkunja.Task
 		closeAfter bool
@@ -355,6 +370,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.searchOpen {
 			return m.updateSearchKeys(key)
 		}
+		if m.labelUI != nil {
+			return m.updateLabelUI(key)
+		}
 		if m.commandMode {
 			return m.updateCommandModeKey(key)
 		}
@@ -381,6 +399,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch k {
 			case "f":
 				m.openSearch()
+			case "l":
+				if m.focus == paneDetail && m.editor != nil {
+					return m, m.openTaskLabelPicker()
+				}
 			case "v":
 				m.viewSwitchArmed = true
 			case "o":
@@ -565,6 +587,54 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ctrlWArmed = false
 		return m, nil
 
+	case labelsLoadedMsg:
+		if m.labelUI == nil {
+			return m, nil
+		}
+		m.labelUI.loading = false
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		m.labelUI.labels = typed.labels
+		m.labelUI.selected = clamp(m.labelUI.selected, 0, max(0, len(m.labelUI.matches())-1))
+		return m, nil
+
+	case taskLabelsLoadedMsg:
+		if m.editor == nil || m.editor.id != typed.taskID {
+			return m, nil
+		}
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		m.editor.labelsLoading = false
+		if m.editor.draft.LabelIDsSet {
+			return m, nil
+		}
+		m.editor.labels = append([]vimkunja.Label(nil), typed.labels...)
+		m.editor.draft.LabelIDs = editorLabelIDs(m.editor.labels)
+		m.editor.draft.LabelIDsSet = false
+		m.editor.original = cloneTaskDraft(m.editor.draft)
+		return m, nil
+
+	case labelMutatedMsg:
+		if m.labelUI == nil {
+			return m, nil
+		}
+		m.labelUI.loading = false
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		if typed.mutation == labelCreatedForTask {
+			m.toggleEditorLabel(typed.label)
+			m.labelUI.input, m.labelUI.inputMode = "", false
+		} else {
+			m.labelUI.input, m.labelUI.inputMode, m.labelUI.deleteConfirm = "", false, false
+		}
+		return m, m.loadLabels()
+
 	case searchLoadedMsg:
 		if !m.searchOpen || typed.request != m.searchRequest || typed.query != m.searchInput {
 			return m, nil
@@ -621,7 +691,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.editor.draft.ID = typed.task.ID
 			m.editor.draft.Done = typed.task.Done
 			m.editor.draft.DoneSet = false
-			m.editor.original = m.editor.draft
+			m.editor.original = cloneTaskDraft(m.editor.draft)
 			m.editor.mode = editorNormal
 			m.showDetail = true
 			m.focus = paneDetail
@@ -738,7 +808,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for _, task := range m.tasks {
 				if task.ID == taskID {
 					m.openExistingEditor(task)
-					return m, m.loadWorkflowStatus(task.ProjectID, task.ID)
+					return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
 				}
 			}
 		}
@@ -1049,7 +1119,7 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.openExistingEditor(task)
-			return m, m.loadWorkflowStatus(task.ProjectID, task.ID)
+			return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
 		}
 		return m, nil
 	case "o":
@@ -1302,10 +1372,12 @@ func (m *model) editorCursorPosition() (int, int) {
 		row, labelWidth = 4, len([]rune("Priority: "))
 	case fieldDueDate:
 		row, labelWidth = 5, len([]rune("Due Date: "))
+	case fieldLabels:
+		row, labelWidth = 6, len([]rune("Labels:   "))
 	case fieldWorkflowStatus:
-		row, labelWidth = 6, len([]rune("Status:   "))
+		row, labelWidth = 7, len([]rune("Status:   "))
 	case fieldDone:
-		row, labelWidth = 7, len([]rune("Done:     "))
+		row, labelWidth = 8, len([]rune("Done:     "))
 	case fieldDescription:
 		return m.descriptionCursorPosition(w, h, topH)
 	default:
@@ -1324,7 +1396,7 @@ func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
 	contentH := max(4, h-3)
 	detailH := max(4, contentH-topH)
 	textH := detailH - 2
-	precedingLines := 10 // header, form fields, and Description label
+	precedingLines := 11 // header, form fields, and Description label
 	if m.editor.id == 0 {
 		precedingLines-- // New Tasks omit the Done field.
 	} else if textH >= 12 && !m.editor.isPickerMode() {
@@ -1446,6 +1518,9 @@ func (m *model) Render() string {
 	}
 	if m.searchOpen {
 		content = m.renderSearchOverlay(content, w)
+	}
+	if m.labelUI != nil {
+		content = m.renderLabelOverlay(content, w)
 	}
 	status := m.renderStatusBar(w)
 	return lipgloss.JoinVertical(lipgloss.Top, content, status)

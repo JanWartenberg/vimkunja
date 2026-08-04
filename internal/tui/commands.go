@@ -70,6 +70,7 @@ func newDefaultCommandRegistry() *CommandRegistry {
 	registry.Register("list", nil, listCommand)
 	registry.Register("kanban", nil, kanbanCommand)
 	registry.Register("search", nil, searchCommand)
+	registry.Register("labels", nil, labelsCommand)
 	registry.Register("table", nil, notYetImplementedCommand)
 	registry.Register("gantt", nil, notYetImplementedCommand)
 	return registry
@@ -164,6 +165,10 @@ func overviewCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 func searchCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	m.openSearch()
 	return m, nil
+}
+
+func labelsCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	return m, m.openGlobalLabelOverview()
 }
 
 func kanbanCommand(m *model, _ []string) (tea.Model, tea.Cmd) {

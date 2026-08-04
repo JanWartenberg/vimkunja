@@ -52,6 +52,55 @@ func TestCreateTask_InitializesDefaultsAndNullDueDate(t *testing.T) {
 	}
 }
 
+func TestTaskDraftLabelsPersistAtomicallyWithCreateAndUpdate(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	if _, err := store.db.Exec(`
+		CREATE TABLE labels (
+			id INTEGER PRIMARY KEY, title TEXT NOT NULL, description TEXT, hex_color TEXT,
+			created_by_id INTEGER NOT NULL, created DATETIME NOT NULL, updated DATETIME NOT NULL
+		);
+		CREATE TABLE label_tasks (
+			id INTEGER PRIMARY KEY, label_id INTEGER NOT NULL, task_id INTEGER NOT NULL, created DATETIME NOT NULL
+		);
+		INSERT INTO projects (id, title, owner_id) VALUES (1, 'Project', 7);
+		INSERT INTO labels (id, title, created_by_id, created, updated) VALUES
+			(10, 'First', 7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+			(11, 'Second', 7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+	`); err != nil {
+		t.Fatalf("seed labels: %v", err)
+	}
+
+	task, err := store.CreateTask(context.Background(), TaskDraft{ProjectID: 1, Title: "New", LabelIDs: []int64{10}, LabelIDsSet: true})
+	if err != nil {
+		t.Fatalf("create Task with Labels: %v", err)
+	}
+	labels, err := store.ListTaskLabels(context.Background(), task.ID)
+	if err != nil || len(labels) != 1 || labels[0].ID != 10 {
+		t.Fatalf("created Task Labels = %#v, %v", labels, err)
+	}
+
+	if _, err := store.UpdateTask(context.Background(), TaskDraft{ID: task.ID, ProjectID: 1, Title: "Renamed", LabelIDs: []int64{11}, LabelIDsSet: true}); err != nil {
+		t.Fatalf("update Task Labels: %v", err)
+	}
+	labels, err = store.ListTaskLabels(context.Background(), task.ID)
+	if err != nil || len(labels) != 1 || labels[0].ID != 11 {
+		t.Fatalf("updated Task Labels = %#v, %v", labels, err)
+	}
+
+	if _, err := store.UpdateTask(context.Background(), TaskDraft{ID: task.ID, ProjectID: 1, Title: "Must Roll Back", LabelIDs: []int64{999}, LabelIDsSet: true}); err == nil {
+		t.Fatal("update accepted a missing Label")
+	}
+	var title string
+	if err := store.db.QueryRow(`SELECT title FROM tasks WHERE id = ?`, task.ID).Scan(&title); err != nil {
+		t.Fatal(err)
+	}
+	labels, err = store.ListTaskLabels(context.Background(), task.ID)
+	if title != "Renamed" || err != nil || len(labels) != 1 || labels[0].ID != 11 {
+		t.Fatalf("failed Label update changed Task = title:%q Labels:%#v error:%v", title, labels, err)
+	}
+}
+
 func TestUpdateTask_PersistsWorkflowStatusWithTaskFields(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()

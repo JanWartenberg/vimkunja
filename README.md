@@ -36,7 +36,7 @@ The separate tutorial executable runs the real Vimkunja UI and guides through ev
 - `:kanban` oder `Space+v`, dann `k` – einzelne manuelle Kanban View öffnen oder nach Bestätigung standardkonform provisionieren
 - Im Kanban Board: `h/l` Buckets, `j/k` Karten, `Shift+H/L` Nachbar-Move, `m` Ziel-Bucket wählen
 
-Im Detail-pane können Project, Title, Priority, Due Date, Description und der Workflow-Status bearbeitet werden. Der Status verwendet die konfigurierten Buckets der eindeutigen Kanban View des Projects.
+Im Detail-pane können Project, Title, Priority, Due Date, Labels, Description und der Workflow-Status bearbeitet werden. `Space+l` öffnet den Label-Picker; `:labels` verwaltet globale Labels. Der Status verwendet die konfigurierten Buckets der eindeutigen Kanban View des Projects.
 
 Tests:
 

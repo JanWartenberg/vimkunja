@@ -141,7 +141,7 @@ func (m *model) updateKanbanKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if task, ok := m.selectedKanbanTask(); ok {
 			m.openExistingEditor(task)
-			return m, m.loadWorkflowStatus(task.ProjectID, task.ID)
+			return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
 		}
 	case "o":
 		m.openNewEditor()

@@ -10,11 +10,12 @@ type Project struct {
 	Position        float64 `json:"position"`
 }
 
-// Label is an existing Vikunja label. Search can discover Labels but does not
-// create or mutate them.
+// Label is a Vikunja label. TaskCount is populated only when listing Labels
+// for the global Label Overview.
 type Label struct {
-	ID    int64
-	Title string
+	ID        int64
+	Title     string
+	TaskCount int64
 }
 
 // SearchData is the complete locally browsable data set used by Global Search.
@@ -119,5 +120,7 @@ type TaskDraft struct {
 	WorkflowBucketID int64
 	Done             bool
 	DoneSet          bool // Done participates in an existing Task update only when changed in the editor.
+	LabelIDs         []int64
+	LabelIDsSet      bool // Labels participate only after the Detail has loaded or changed them.
 	CreatedByID      int64
 }

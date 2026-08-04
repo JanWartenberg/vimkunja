@@ -111,16 +111,24 @@ func TestLoadSearchDataAndListTasksForLabelExcludeArchivedProjects(t *testing.T)
 	defer cleanup()
 
 	if _, err := store.db.Exec(`
-		CREATE TABLE labels (id INTEGER PRIMARY KEY, title TEXT);
-		CREATE TABLE label_tasks (label_id INTEGER, task_id INTEGER);
+		CREATE TABLE labels (
+			id INTEGER PRIMARY KEY, title TEXT NOT NULL, description TEXT, hex_color TEXT,
+			created_by_id INTEGER NOT NULL, created DATETIME NOT NULL, updated DATETIME NOT NULL
+		);
+		CREATE TABLE label_tasks (
+			id INTEGER PRIMARY KEY, label_id INTEGER NOT NULL, task_id INTEGER NOT NULL, created DATETIME NOT NULL
+		);
 		INSERT INTO projects (id, identifier, title, is_archived) VALUES
 			(1, 'HOME', 'Home', 0),
 			(2, 'OLD', 'Archived', 1);
 		INSERT INTO tasks (id, project_id, title, description, done) VALUES
 			(11, 1, 'Buy coffee', '<p>Beans for breakfast</p>', 0),
 			(12, 2, 'Buy coffee later', '<p>Hidden</p>', 0);
-		INSERT INTO labels (id, title) VALUES (3, 'Errands'), (4, 'Unused');
-		INSERT INTO label_tasks (label_id, task_id) VALUES (3, 11), (3, 12);
+		INSERT INTO labels (id, title, created_by_id, created, updated) VALUES
+			(3, 'Errands', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+			(4, 'Unused', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+		INSERT INTO label_tasks (label_id, task_id, created) VALUES
+			(3, 11, CURRENT_TIMESTAMP), (3, 12, CURRENT_TIMESTAMP);
 	`); err != nil {
 		t.Fatalf("seed search data: %v", err)
 	}
@@ -145,6 +153,95 @@ func TestLoadSearchDataAndListTasksForLabelExcludeArchivedProjects(t *testing.T)
 	}
 	if pages != 1 || len(tasks) != 1 || tasks[0].ID != 11 || tasks[0].ProjectTitle != "Home" {
 		t.Fatalf("label tasks = %#v, pages = %d; want only active task 11", tasks, pages)
+	}
+}
+
+func TestSQLiteStoreManagesLabelsAndTaskAssignments(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	if _, err := store.db.Exec(`
+		CREATE TABLE labels (
+			id INTEGER PRIMARY KEY, title TEXT NOT NULL, description TEXT, hex_color TEXT,
+			created_by_id INTEGER NOT NULL, created DATETIME NOT NULL, updated DATETIME NOT NULL
+		);
+		CREATE TABLE label_tasks (
+			id INTEGER PRIMARY KEY, label_id INTEGER NOT NULL, task_id INTEGER NOT NULL, created DATETIME NOT NULL
+		);
+		INSERT INTO projects (id, title, is_archived) VALUES (1, 'Current', 0), (2, 'Archived', 1);
+		INSERT INTO tasks (id, project_id, title) VALUES (11, 1, 'Current task'), (12, 2, 'Archived task');
+		INSERT INTO labels (id, title, created_by_id, created, updated) VALUES
+			(1, 'Errands', 7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+			(2, 'Unused', 7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+		INSERT INTO label_tasks (id, label_id, task_id, created) VALUES
+			(1, 1, 11, CURRENT_TIMESTAMP), (2, 1, 12, CURRENT_TIMESTAMP);
+	`); err != nil {
+		t.Fatalf("seed labels: %v", err)
+	}
+
+	labels, err := store.ListLabels(context.Background())
+	if err != nil {
+		t.Fatalf("list Labels: %v", err)
+	}
+	if got, want := labels, []Label{{ID: 1, Title: "Errands", TaskCount: 2}, {ID: 2, Title: "Unused"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("labels = %#v, want %#v", got, want)
+	}
+
+	created, err := store.CreateLabel(context.Background(), "  Home  ", 9)
+	if err != nil {
+		t.Fatalf("create Label: %v", err)
+	}
+	if created.Title != "Home" || created.ID == 0 {
+		t.Fatalf("created Label = %#v", created)
+	}
+	var actorID int64
+	var createdAt, updatedAt time.Time
+	if err := store.db.QueryRow(`SELECT created_by_id, created, updated FROM labels WHERE id = ?`, created.ID).Scan(&actorID, &createdAt, &updatedAt); err != nil {
+		t.Fatalf("read created Label: %v", err)
+	}
+	if actorID != 9 || createdAt.IsZero() || updatedAt.IsZero() {
+		t.Fatalf("created Label metadata = actor:%d created:%v updated:%v", actorID, createdAt, updatedAt)
+	}
+	if _, err := store.CreateLabel(context.Background(), "home", 9); err == nil {
+		t.Fatal("duplicate normalized Label title was accepted")
+	}
+	if err := store.RenameLabel(context.Background(), created.ID, "Errands"); err == nil {
+		t.Fatal("rename accepted duplicate normalized Label title")
+	}
+	if err := store.RenameLabel(context.Background(), created.ID, "Household"); err != nil {
+		t.Fatalf("rename Label: %v", err)
+	}
+
+	if err := store.ReplaceTaskLabels(context.Background(), 11, []int64{created.ID}); err != nil {
+		t.Fatalf("replace Task Labels: %v", err)
+	}
+	assigned, err := store.ListTaskLabels(context.Background(), 11)
+	if err != nil {
+		t.Fatalf("list Task Labels: %v", err)
+	}
+	if got, want := assigned, []Label{{ID: created.ID, Title: "Household"}}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("assigned Labels = %#v, want %#v", got, want)
+	}
+	if err := store.ReplaceTaskLabels(context.Background(), 11, []int64{999}); err == nil {
+		t.Fatal("replace accepted a deleted or unknown Label")
+	}
+	assigned, err = store.ListTaskLabels(context.Background(), 11)
+	if err != nil || !reflect.DeepEqual(assigned, []Label{{ID: created.ID, Title: "Household"}}) {
+		t.Fatalf("failed replace changed assignments: %#v, %v", assigned, err)
+	}
+
+	if err := store.DeleteLabel(context.Background(), 1); err != nil {
+		t.Fatalf("delete Label: %v", err)
+	}
+	var associations, taskCount int
+	if err := store.db.QueryRow(`SELECT COUNT(*) FROM label_tasks WHERE label_id = 1`).Scan(&associations); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.db.QueryRow(`SELECT COUNT(*) FROM tasks WHERE id IN (11, 12)`).Scan(&taskCount); err != nil {
+		t.Fatal(err)
+	}
+	if associations != 0 || taskCount != 2 {
+		t.Fatalf("delete Label associations/tasks = %d/%d, want 0/2", associations, taskCount)
 	}
 }
 

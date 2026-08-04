@@ -143,6 +143,21 @@ CREATE TABLE task_positions (
     project_view_id INTEGER NOT NULL,
     position REAL,
     PRIMARY KEY (task_id, project_view_id)
+);
+CREATE TABLE labels (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    hex_color TEXT,
+    created_by_id INTEGER NOT NULL,
+    created DATETIME NOT NULL,
+    updated DATETIME NOT NULL
+);
+CREATE TABLE label_tasks (
+    id INTEGER PRIMARY KEY,
+    task_id INTEGER NOT NULL,
+    label_id INTEGER NOT NULL,
+    created DATETIME NOT NULL
 );`
 	if _, err := db.Exec(schema); err != nil {
 		return fmt.Errorf("create tutorial schema: %w", err)

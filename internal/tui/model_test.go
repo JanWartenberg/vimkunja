@@ -50,6 +50,13 @@ type fakeStore struct {
 	searchErr            error
 	labelTasks           map[int64][]vimkunja.Task
 	labelTasksErr        error
+	labels               []vimkunja.Label
+	taskLabels           map[int64][]vimkunja.Label
+	labelErr             error
+	createdLabelTitle    string
+	renamedLabelID       int64
+	renamedLabelTitle    string
+	deletedLabelID       int64
 	createdDraft         vimkunja.TaskDraft
 	updatedDraft         vimkunja.TaskDraft
 }
@@ -128,6 +135,62 @@ func (f *fakeStore) LoadSearchData(context.Context) (vimkunja.SearchData, error)
 
 func (f *fakeStore) ListTasksForLabel(_ context.Context, labelID int64, _ int, _ int) ([]vimkunja.Task, int, error) {
 	return append([]vimkunja.Task(nil), f.labelTasks[labelID]...), 0, f.labelTasksErr
+}
+
+func (f *fakeStore) ListLabels(context.Context) ([]vimkunja.Label, error) {
+	return append([]vimkunja.Label(nil), f.labels...), f.labelErr
+}
+
+func (f *fakeStore) ListTaskLabels(_ context.Context, taskID int64) ([]vimkunja.Label, error) {
+	return append([]vimkunja.Label(nil), f.taskLabels[taskID]...), f.labelErr
+}
+
+func (f *fakeStore) CreateLabel(_ context.Context, title string, _ int64) (vimkunja.Label, error) {
+	if f.labelErr != nil {
+		return vimkunja.Label{}, f.labelErr
+	}
+	f.createdLabelTitle = title
+	label := vimkunja.Label{ID: 99, Title: title}
+	f.labels = append(f.labels, label)
+	return label, nil
+}
+
+func (f *fakeStore) RenameLabel(_ context.Context, labelID int64, title string) error {
+	f.renamedLabelID, f.renamedLabelTitle = labelID, title
+	if f.labelErr == nil {
+		for i := range f.labels {
+			if f.labels[i].ID == labelID {
+				f.labels[i].Title = title
+			}
+		}
+	}
+	return f.labelErr
+}
+
+func (f *fakeStore) DeleteLabel(_ context.Context, labelID int64) error {
+	f.deletedLabelID = labelID
+	if f.labelErr == nil {
+		for i, label := range f.labels {
+			if label.ID == labelID {
+				f.labels = append(f.labels[:i], f.labels[i+1:]...)
+				break
+			}
+		}
+	}
+	return f.labelErr
+}
+func (f *fakeStore) ReplaceTaskLabels(_ context.Context, taskID int64, labelIDs []int64) error {
+	if f.labelErr == nil {
+		labels := make([]vimkunja.Label, 0, len(labelIDs))
+		for _, labelID := range labelIDs {
+			labels = append(labels, vimkunja.Label{ID: labelID})
+		}
+		if f.taskLabels == nil {
+			f.taskLabels = make(map[int64][]vimkunja.Label)
+		}
+		f.taskLabels[taskID] = labels
+	}
+	return f.labelErr
 }
 
 func (f *fakeStore) GetTaskWorkflowStatus(context.Context, int64, int64) (vimkunja.WorkflowStatus, error) {
@@ -1811,7 +1874,7 @@ func TestOpeningTaskDetailLoadsWorkflowStatus(t *testing.T) {
 	if !m.showDetail || loadStatus == nil {
 		t.Fatalf("opening detail = visible:%v command:%v, want detail and status load", m.showDetail, loadStatus != nil)
 	}
-	updated, _ = m.Update(loadStatus())
+	updated, _ = m.Update(workflowStatusLoadedMsg{taskID: 1, status: store.workflowStatus})
 	m = updated.(*model)
 
 	if m.editor.workflowStatusLoading {
@@ -1822,6 +1885,157 @@ func TestOpeningTaskDetailLoadsWorkflowStatus(t *testing.T) {
 	}
 	if got, want := m.editor.workflowStatus.Buckets[0].Title, "To-Do"; got != want {
 		t.Fatalf("first workflow bucket = %q, want %q", got, want)
+	}
+}
+
+func TestTaskDetailLabelsRenderAndStageRemovalInDraft(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.labels = []vimkunja.Label{{ID: 10, Title: "Errands"}, {ID: 11, Title: "Home"}}
+	m.syncEditorLabelDraft()
+	m.editor.original = cloneTaskDraft(m.editor.draft)
+	m.editor.field = fieldLabels
+
+	detail := ansi.Strip(renderTaskDetail(m, 80, 20))
+	if due, labels, status := strings.Index(detail, "Due Date:"), strings.Index(detail, "Labels:   Errands, Home"), strings.Index(detail, "Status:"); due < 0 || labels < due || status < labels {
+		t.Fatalf("Detail field order = %q, want Due Date, Labels, Status", detail)
+	}
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	m = pressKey(m, tea.Key{Code: 'x', Text: "x"})
+	if got := m.editor.draft.LabelIDs; !reflect.DeepEqual(got, []int64{10}) || !m.editor.dirty() {
+		t.Fatalf("staged Labels = %#v dirty:%v, want Errands only and dirty", got, m.editor.dirty())
+	}
+}
+
+func TestTaskLabelLoadKeepsDetailCleanUntilAnAssignmentChanges(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+
+	updated, _ := m.Update(taskLabelsLoadedMsg{taskID: 1, labels: []vimkunja.Label{{ID: 10, Title: "Existing"}}})
+	m = updated.(*model)
+	if m.editor.dirty() || m.editor.draft.LabelIDsSet || !reflect.DeepEqual(m.editor.draft.LabelIDs, []int64{10}) {
+		t.Fatalf("loaded Labels changed Detail draft = %#v dirty:%v", m.editor.draft, m.editor.dirty())
+	}
+}
+
+func TestTaskLabelLoadDoesNotOverwriteStagedDraft(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labels = []vimkunja.Label{{ID: 10, Title: "New"}}
+	m.syncEditorLabelDraft()
+
+	updated, _ := m.Update(taskLabelsLoadedMsg{taskID: 1, labels: []vimkunja.Label{{ID: 11, Title: "Stale"}}})
+	m = updated.(*model)
+	if got := m.editor.draft.LabelIDs; !reflect.DeepEqual(got, []int64{10}) {
+		t.Fatalf("loaded Labels overwrote staged draft: %#v", got)
+	}
+}
+
+func TestTaskLabelPickerCreatesAndStagesNewLabel(t *testing.T) {
+	store := &fakeStore{labels: []vimkunja.Label{{ID: 10, Title: "Errands"}}}
+	m := NewModel(Config{Store: store, ActorUserID: 7}).(*model)
+	m.focus = paneDetail
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.field = fieldLabels
+
+	m = pressKey(m, tea.Key{Code: ' ', Text: " "})
+	updated, loadCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'l', Text: "l"}))
+	m = updated.(*model)
+	updated, _ = m.Update(loadCmd())
+	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	for _, r := range "New" {
+		m = pressKey(m, tea.Key{Code: r, Text: string(r)})
+	}
+	updated, createCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	updated, reloadCmd := m.Update(createCmd())
+	m = updated.(*model)
+	if reloadCmd != nil {
+		updated, _ = m.Update(reloadCmd())
+		m = updated.(*model)
+	}
+	if got := m.editor.draft.LabelIDs; !reflect.DeepEqual(got, []int64{99}) || !m.editor.draft.LabelIDsSet || !m.editor.dirty() {
+		t.Fatalf("picker draft = %#v, want staged new Label", m.editor.draft)
+	}
+}
+
+func TestLabelsCommandRestoresTheExactPriorContext(t *testing.T) {
+	store := &fakeStore{labels: []vimkunja.Label{{ID: 10, Title: "Errands"}}}
+	m := NewModel(Config{Store: store}).(*model)
+	m.focus = paneTasks
+	m.tasks = []vimkunja.Task{{ID: 1, Title: "Keep selection"}}
+	m.taskSelected = 0
+
+	updated, loadCmd, err := m.commands.Execute(m, ":labels")
+	if err != nil || loadCmd == nil {
+		t.Fatalf(":labels = command:%v error:%v", loadCmd != nil, err)
+	}
+	m = updated.(*model)
+	updated, _ = m.Update(loadCmd())
+	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if m.labelUI != nil || m.focus != paneTasks || len(m.tasks) != 1 || m.tasks[0].Title != "Keep selection" {
+		t.Fatalf("restored context = labels:%v focus:%v tasks:%#v", m.labelUI != nil, m.focus, m.tasks)
+	}
+}
+
+func TestGlobalLabelOverviewCreatesRenamesAndDeletesLabels(t *testing.T) {
+	store := &fakeStore{labels: []vimkunja.Label{{ID: 10, Title: "Errands"}}}
+	m := NewModel(Config{Store: store, ActorUserID: 7}).(*model)
+	updated, loadCmd, err := m.commands.Execute(m, ":labels")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m = updated.(*model)
+	updated, _ = m.Update(loadCmd())
+	m = updated.(*model)
+
+	m = pressKey(m, tea.Key{Code: 'o', Text: "o"})
+	for _, r := range "New" {
+		m = pressKey(m, tea.Key{Code: r, Text: string(r)})
+	}
+	updated, createCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	updated, reloadCmd := m.Update(createCmd())
+	m = updated.(*model)
+	updated, _ = m.Update(reloadCmd())
+	m = updated.(*model)
+	if store.createdLabelTitle != "New" {
+		t.Fatalf("created Label = %q, want New", store.createdLabelTitle)
+	}
+
+	m.labelUI.selected = 0
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	for range "Errands" {
+		m = pressKey(m, tea.Key{Code: tea.KeyBackspace})
+	}
+	for _, r := range "Home" {
+		m = pressKey(m, tea.Key{Code: r, Text: string(r)})
+	}
+	updated, renameCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	updated, reloadCmd = m.Update(renameCmd())
+	m = updated.(*model)
+	updated, _ = m.Update(reloadCmd())
+	m = updated.(*model)
+	if store.renamedLabelID != 10 || store.renamedLabelTitle != "Home" {
+		t.Fatalf("rename = id:%d title:%q, want 10/Home", store.renamedLabelID, store.renamedLabelTitle)
+	}
+
+	m.labelUI.selected = 1
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	updated, deleteCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
+	m = updated.(*model)
+	updated, reloadCmd = m.Update(deleteCmd())
+	m = updated.(*model)
+	updated, _ = m.Update(reloadCmd())
+	m = updated.(*model)
+	if store.deletedLabelID != 99 {
+		t.Fatalf("deleted Label = %d, want 99", store.deletedLabelID)
 	}
 }
 
@@ -2854,8 +3068,8 @@ func TestNativeDescriptionCursorUsesTextPositionWithoutRenderedDuplicate(t *test
 		t.Fatalf("native description cursor still has rendered duplicate: %q", detail)
 	}
 	cursor := m.View().Cursor
-	if cursor == nil || cursor.Position != (tea.Position{X: 4, Y: 28}) {
-		t.Fatalf("description cursor = %#v, want text position (4,28)", cursor)
+	if cursor == nil || cursor.Position != (tea.Position{X: 4, Y: 29}) {
+		t.Fatalf("description cursor = %#v, want text position (4,29)", cursor)
 	}
 }
 
