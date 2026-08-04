@@ -46,7 +46,8 @@ Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End
 
 ### Meilenstein 4
 
-23. [Timeboxed Focus Plans brainstormen](.scratch/timeboxed-focus-plans/issues/01-brainstorm-timeboxed-focus-plans.md) – mögliche additive Vimkunja-Schicht für begrenzte, regelmäßige Aufmerksamkeit auf fortlaufende Projects; erst diskutieren und prototypisieren.
+23. [View- und Global-Search-Navigationsverlauf hinzufügen](.scratch/navigation-history/issues/01-add-view-and-search-navigation-history.md) – `Ctrl+O` zurück und `Ctrl+I` vor über semantische TUI-Kontexte; zunächst den Restore-Contract spezifizieren.
+24. [Timeboxed Focus Plans brainstormen](.scratch/timeboxed-focus-plans/issues/01-brainstorm-timeboxed-focus-plans.md) – mögliche additive Vimkunja-Schicht für begrenzte, regelmäßige Aufmerksamkeit auf fortlaufende Projects; erst diskutieren und prototypisieren.
 
 ## Dokumentation
 
