@@ -592,14 +592,17 @@ func (s *SQLiteStore) CreateLabel(ctx context.Context, title string, createdByID
 	if err != nil {
 		return Label{}, err
 	}
-	if createdByID == 0 {
-		return Label{}, fmt.Errorf("create Label: active user is required")
-	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return Label{}, fmt.Errorf("begin create Label transaction: %w", err)
 	}
 	defer tx.Rollback()
+	if createdByID == 0 {
+		createdByID, err = defaultLabelCreator(ctx, tx)
+		if err != nil {
+			return Label{}, err
+		}
+	}
 	if err := ensureUniqueLabelTitle(ctx, tx, 0, title); err != nil {
 		return Label{}, err
 	}
@@ -693,6 +696,17 @@ func (s *SQLiteStore) ReplaceTaskLabels(ctx context.Context, taskID int64, label
 		return fmt.Errorf("commit replace Task Labels: %w", err)
 	}
 	return nil
+}
+
+func defaultLabelCreator(ctx context.Context, tx *sql.Tx) (int64, error) {
+	var userID int64
+	if err := tx.QueryRowContext(ctx, `SELECT id FROM users ORDER BY id ASC LIMIT 1`).Scan(&userID); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("create Label: no Vikunja user is available")
+		}
+		return 0, fmt.Errorf("find default Label actor: %w", err)
+	}
+	return userID, nil
 }
 
 func validLabelTitle(title string) (string, error) {

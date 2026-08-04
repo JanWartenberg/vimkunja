@@ -245,6 +245,33 @@ func TestSQLiteStoreManagesLabelsAndTaskAssignments(t *testing.T) {
 	}
 }
 
+func TestCreateLabelUsesDefaultDatabaseUserWhenActorIsUnset(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	if _, err := store.db.Exec(`
+		CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT NOT NULL);
+		CREATE TABLE labels (
+			id INTEGER PRIMARY KEY, title TEXT NOT NULL, description TEXT, hex_color TEXT,
+			created_by_id INTEGER NOT NULL, created DATETIME NOT NULL, updated DATETIME NOT NULL
+		);
+		INSERT INTO users (id, username) VALUES (7, 'default-user');
+	`); err != nil {
+		t.Fatalf("seed default actor: %v", err)
+	}
+
+	label, err := store.CreateLabel(context.Background(), "Inbox", 0)
+	if err != nil {
+		t.Fatalf("create Label without explicit actor: %v", err)
+	}
+	var actorID int64
+	if err := store.db.QueryRow(`SELECT created_by_id FROM labels WHERE id = ?`, label.ID).Scan(&actorID); err != nil {
+		t.Fatal(err)
+	}
+	if actorID != 7 {
+		t.Fatalf("default Label actor = %d, want 7", actorID)
+	}
+}
+
 func TestProvisionStandardManualKanbanView_AssignsTasksByDoneState(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()

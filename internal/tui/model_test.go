@@ -1888,6 +1888,27 @@ func TestOpeningTaskDetailLoadsWorkflowStatus(t *testing.T) {
 	}
 }
 
+func TestLabelsFieldAllowsNavigationAndOpensPicker(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.field = fieldLabels
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.editor.field != fieldWorkflowStatus {
+		t.Fatalf("j from Labels field = %v, want Workflow Status", m.editor.field)
+	}
+	m = pressKey(m, tea.Key{Code: 'k', Text: "k"})
+	if m.editor.field != fieldLabels {
+		t.Fatalf("k from Workflow Status = %v, want Labels", m.editor.field)
+	}
+	updated, pickerCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'i', Text: "i"}))
+	m = updated.(*model)
+	if m.labelUI == nil || pickerCmd == nil {
+		t.Fatalf("i on Labels field = picker:%v command:%v, want open picker", m.labelUI != nil, pickerCmd != nil)
+	}
+}
+
 func TestTaskDetailLabelsRenderAndStageRemovalInDraft(t *testing.T) {
 	m := testModel()
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})

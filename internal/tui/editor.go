@@ -167,12 +167,14 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch s {
 		case "h", "left":
 			e.labelSelected = clamp(e.labelSelected-1, 0, max(0, len(e.labels)-1))
+			return m, nil
 		case "l", "right":
 			e.labelSelected = clamp(e.labelSelected+1, 0, max(0, len(e.labels)-1))
+			return m, nil
 		case "x":
 			m.removeSelectedEditorLabel()
+			return m, nil
 		}
-		return m, nil
 	}
 	if s == "i" {
 		switch e.field {
