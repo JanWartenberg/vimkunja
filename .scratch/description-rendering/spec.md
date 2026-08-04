@@ -24,7 +24,7 @@ Vikunja stores rich-text Task Descriptions as HTML. Vimkunja must provide a keyb
 
 1. Source HTML remains the persistence format. Vimkunja does not store an alternative format or change Vikunja's schema.
 2. Normal editing must not require the user to read or edit HTML source.
-3. Vimkunja uses a structured document model rather than lossy HTML-to-plain-text conversion.
+3. M2's reader-only phase may use a deliberately lossy HTML-to-plain-text projection for display. It never writes Source HTML. Native rendering, editing, and saving use a structured document model rather than lossy conversion.
 4. Existing opaque nodes must not be destroyed by an otherwise valid edit. They are visible but initially non-editable.
 5. Unsupported terminal presentation degrades to readable content; it must not display literal markup merely because it is unsupported. Unknown parseable HTML renders its text contents recursively without special formatting; structurally empty unsupported content displays a neutral unsupported-content hint.
 6. Native terminal formatting is semantic where possible. Terminal capabilities may affect visual fallback, but not the document's HTML meaning.
