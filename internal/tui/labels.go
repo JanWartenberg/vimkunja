@@ -295,7 +295,7 @@ func (m *model) createLabel(title string, mutation labelMutation) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := contextWithTimeout()
 		defer cancel()
-		label, err := m.store.CreateLabel(ctx, title, m.actorUserID)
+		label, err := m.store.CreateLabel(ctx, title)
 		return labelMutatedMsg{mutation: mutation, label: label, err: err}
 	}
 }

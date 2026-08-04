@@ -17,9 +17,8 @@ func main() {
 	}
 
 	app := tui.NewModel(tui.Config{
-		Store:       database.Store,
-		PerPage:     100,
-		ActorUserID: 1,
+		Store:   database.Store,
+		PerPage: 100,
 	})
 	program := tea.NewProgram(tutorial.NewModel(app))
 	_, runErr := program.Run()

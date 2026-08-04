@@ -126,7 +126,7 @@ func (m *model) closeTaskDetail() {
 }
 
 func (m *model) openOverviewNewEditor() {
-	draft := vimkunja.TaskDraft{CreatedByID: m.actorUserID}
+	draft := vimkunja.TaskDraft{}
 	m.editor = &taskEditor{
 		draft: draft, original: draft, field: fieldProject,
 		mode: editorProjectPicker, pickerIndex: m.projectPickerIndex(0, ""),

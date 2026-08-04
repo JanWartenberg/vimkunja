@@ -16,7 +16,6 @@ func main() {
 	projectIDFlag := flag.Int64("project-id", 0, "Optional: start with this project")
 	viewIDFlag := flag.Int64("view-id", 0, "Optional: start with this view")
 	perPageFlag := flag.Int("per-page", 100, "Tasks per page for list view")
-	userIDFlag := flag.Int64("user-id", 0, "Vikunja user ID for created tasks (defaults to the target project owner)")
 	flag.Parse()
 
 	// SQLite-only: always use local database file
@@ -32,7 +31,6 @@ func main() {
 		PerPage:          *perPageFlag,
 		InitialProjectID: *projectIDFlag,
 		InitialViewID:    *viewIDFlag,
-		ActorUserID:      *userIDFlag,
 	})
 
 	p := tea.NewProgram(m)

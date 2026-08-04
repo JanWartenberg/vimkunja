@@ -587,7 +587,7 @@ func (s *SQLiteStore) ListTaskLabels(ctx context.Context, taskID int64) ([]Label
 
 // CreateLabel persists one new Label for the active actor. It deliberately
 // rejects duplicate normalized titles instead of implicitly merging Labels.
-func (s *SQLiteStore) CreateLabel(ctx context.Context, title string, createdByID int64) (Label, error) {
+func (s *SQLiteStore) CreateLabel(ctx context.Context, title string) (Label, error) {
 	title, err := validLabelTitle(title)
 	if err != nil {
 		return Label{}, err
@@ -597,11 +597,9 @@ func (s *SQLiteStore) CreateLabel(ctx context.Context, title string, createdByID
 		return Label{}, fmt.Errorf("begin create Label transaction: %w", err)
 	}
 	defer tx.Rollback()
-	if createdByID == 0 {
-		createdByID, err = defaultLabelCreator(ctx, tx)
-		if err != nil {
-			return Label{}, err
-		}
+	createdByID, err := onlyLocalUser(ctx, tx)
+	if err != nil {
+		return Label{}, err
 	}
 	if err := ensureUniqueLabelTitle(ctx, tx, 0, title); err != nil {
 		return Label{}, err
@@ -698,15 +696,27 @@ func (s *SQLiteStore) ReplaceTaskLabels(ctx context.Context, taskID int64, label
 	return nil
 }
 
-func defaultLabelCreator(ctx context.Context, tx *sql.Tx) (int64, error) {
-	var userID int64
-	if err := tx.QueryRowContext(ctx, `SELECT id FROM users ORDER BY id ASC LIMIT 1`).Scan(&userID); err != nil {
-		if err == sql.ErrNoRows {
-			return 0, fmt.Errorf("create Label: no Vikunja user is available")
-		}
-		return 0, fmt.Errorf("find default Label actor: %w", err)
+func onlyLocalUser(ctx context.Context, tx *sql.Tx) (int64, error) {
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM users ORDER BY id ASC LIMIT 2`)
+	if err != nil {
+		return 0, fmt.Errorf("find local Vikunja user: %w", err)
 	}
-	return userID, nil
+	defer rows.Close()
+	var userIDs []int64
+	for rows.Next() {
+		var userID int64
+		if err := rows.Scan(&userID); err != nil {
+			return 0, fmt.Errorf("scan local Vikunja user: %w", err)
+		}
+		userIDs = append(userIDs, userID)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("iterate local Vikunja users: %w", err)
+	}
+	if len(userIDs) != 1 {
+		return 0, fmt.Errorf("create Label: expected exactly one local Vikunja user, found %d", len(userIDs))
+	}
+	return userIDs[0], nil
 }
 
 func validLabelTitle(title string) (string, error) {

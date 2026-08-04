@@ -41,7 +41,6 @@ type Config struct {
 
 	InitialProjectID    int64
 	InitialViewID       int64
-	ActorUserID         int64
 	LeaderTimeout       time.Duration
 	CtrlWTimeout        time.Duration
 	DisableCursorShapes bool
@@ -135,7 +134,6 @@ type model struct {
 	infoPane   *infoPane
 
 	currentProjectID          int64
-	actorUserID               int64
 	pendingTaskID             int64
 	pendingSearchDetailTaskID int64
 	quitAfterSave             bool
@@ -161,7 +159,6 @@ func NewModel(cfg Config) tea.Model {
 		disableCursorShapes: cfg.DisableCursorShapes,
 		now:                 time.Now,
 		initialProjectID:    cfg.InitialProjectID,
-		actorUserID:         cfg.ActorUserID,
 		leaderTimeout:       leaderTimeout,
 		ctrlWTimeout:        ctrlWTimeout,
 		initialViewID:       cfg.InitialViewID,

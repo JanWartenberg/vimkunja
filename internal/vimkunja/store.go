@@ -18,7 +18,7 @@ type Store interface {
 	ListTasksForLabel(ctx context.Context, labelID int64, page, perPage int) ([]Task, int, error)
 	ListLabels(ctx context.Context) ([]Label, error)
 	ListTaskLabels(ctx context.Context, taskID int64) ([]Label, error)
-	CreateLabel(ctx context.Context, title string, createdByID int64) (Label, error)
+	CreateLabel(ctx context.Context, title string) (Label, error)
 	RenameLabel(ctx context.Context, labelID int64, title string) error
 	DeleteLabel(ctx context.Context, labelID int64) error
 	ReplaceTaskLabels(ctx context.Context, taskID int64, labelIDs []int64) error

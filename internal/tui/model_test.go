@@ -145,7 +145,7 @@ func (f *fakeStore) ListTaskLabels(_ context.Context, taskID int64) ([]vimkunja.
 	return append([]vimkunja.Label(nil), f.taskLabels[taskID]...), f.labelErr
 }
 
-func (f *fakeStore) CreateLabel(_ context.Context, title string, _ int64) (vimkunja.Label, error) {
+func (f *fakeStore) CreateLabel(_ context.Context, title string) (vimkunja.Label, error) {
 	if f.labelErr != nil {
 		return vimkunja.Label{}, f.labelErr
 	}
@@ -1955,7 +1955,7 @@ func TestTaskLabelLoadDoesNotOverwriteStagedDraft(t *testing.T) {
 
 func TestTaskLabelPickerCreatesAndStagesNewLabel(t *testing.T) {
 	store := &fakeStore{labels: []vimkunja.Label{{ID: 10, Title: "Errands"}}}
-	m := NewModel(Config{Store: store, ActorUserID: 7}).(*model)
+	m := NewModel(Config{Store: store}).(*model)
 	m.focus = paneDetail
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
 	m.editor.labelsLoading = false
@@ -2005,7 +2005,7 @@ func TestLabelsCommandRestoresTheExactPriorContext(t *testing.T) {
 
 func TestGlobalLabelOverviewCreatesRenamesAndDeletesLabels(t *testing.T) {
 	store := &fakeStore{labels: []vimkunja.Label{{ID: 10, Title: "Errands"}}}
-	m := NewModel(Config{Store: store, ActorUserID: 7}).(*model)
+	m := NewModel(Config{Store: store}).(*model)
 	updated, loadCmd, err := m.commands.Execute(m, ":labels")
 	if err != nil {
 		t.Fatal(err)

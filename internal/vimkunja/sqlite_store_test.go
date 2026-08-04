@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -168,6 +169,8 @@ func TestSQLiteStoreManagesLabelsAndTaskAssignments(t *testing.T) {
 		CREATE TABLE label_tasks (
 			id INTEGER PRIMARY KEY, label_id INTEGER NOT NULL, task_id INTEGER NOT NULL, created DATETIME NOT NULL
 		);
+		CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT NOT NULL);
+		INSERT INTO users (id, username) VALUES (9, 'local-user');
 		INSERT INTO projects (id, title, is_archived) VALUES (1, 'Current', 0), (2, 'Archived', 1);
 		INSERT INTO tasks (id, project_id, title) VALUES (11, 1, 'Current task'), (12, 2, 'Archived task');
 		INSERT INTO labels (id, title, created_by_id, created, updated) VALUES
@@ -187,7 +190,7 @@ func TestSQLiteStoreManagesLabelsAndTaskAssignments(t *testing.T) {
 		t.Fatalf("labels = %#v, want %#v", got, want)
 	}
 
-	created, err := store.CreateLabel(context.Background(), "  Home  ", 9)
+	created, err := store.CreateLabel(context.Background(), "  Home  ")
 	if err != nil {
 		t.Fatalf("create Label: %v", err)
 	}
@@ -202,7 +205,7 @@ func TestSQLiteStoreManagesLabelsAndTaskAssignments(t *testing.T) {
 	if actorID != 9 || createdAt.IsZero() || updatedAt.IsZero() {
 		t.Fatalf("created Label metadata = actor:%d created:%v updated:%v", actorID, createdAt, updatedAt)
 	}
-	if _, err := store.CreateLabel(context.Background(), "home", 9); err == nil {
+	if _, err := store.CreateLabel(context.Background(), "home"); err == nil {
 		t.Fatal("duplicate normalized Label title was accepted")
 	}
 	if err := store.RenameLabel(context.Background(), created.ID, "Errands"); err == nil {
@@ -245,7 +248,7 @@ func TestSQLiteStoreManagesLabelsAndTaskAssignments(t *testing.T) {
 	}
 }
 
-func TestCreateLabelUsesDefaultDatabaseUserWhenActorIsUnset(t *testing.T) {
+func TestCreateLabelUsesTheOnlyDatabaseUser(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
 	if _, err := store.db.Exec(`
@@ -259,16 +262,22 @@ func TestCreateLabelUsesDefaultDatabaseUserWhenActorIsUnset(t *testing.T) {
 		t.Fatalf("seed default actor: %v", err)
 	}
 
-	label, err := store.CreateLabel(context.Background(), "Inbox", 0)
+	label, err := store.CreateLabel(context.Background(), "Inbox")
 	if err != nil {
-		t.Fatalf("create Label without explicit actor: %v", err)
+		t.Fatalf("create Label with the only database user: %v", err)
 	}
 	var actorID int64
 	if err := store.db.QueryRow(`SELECT created_by_id FROM labels WHERE id = ?`, label.ID).Scan(&actorID); err != nil {
 		t.Fatal(err)
 	}
 	if actorID != 7 {
-		t.Fatalf("default Label actor = %d, want 7", actorID)
+		t.Fatalf("Label actor = %d, want 7", actorID)
+	}
+	if _, err := store.db.Exec(`INSERT INTO users (id, username) VALUES (8, 'other-user')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.CreateLabel(context.Background(), "Ambiguous"); err == nil || !strings.Contains(err.Error(), "exactly one") {
+		t.Fatalf("multiple database users error = %v, want exactly-one-user error", err)
 	}
 }
 
