@@ -1983,6 +1983,41 @@ func TestTaskLabelPickerCreatesAndStagesNewLabel(t *testing.T) {
 	}
 }
 
+func TestLabelPickerKeepsBottomBorderWithManyLabels(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 30
+	labels := make([]vimkunja.Label, 55)
+	for i := range labels {
+		labels[i] = vimkunja.Label{ID: int64(i + 1), Title: fmt.Sprintf("Label %02d", i+1)}
+	}
+	m.labelUI = &labelUI{kind: labelUITaskPicker, labels: labels}
+	background := strings.Repeat(strings.Repeat(" ", 100)+"\n", 29) + strings.Repeat(" ", 100)
+
+	overlay := ansi.Strip(m.renderLabelOverlay(background, 100))
+	if top, bottom := searchModalTopRow(overlay), searchModalBottomRow(overlay); top < 0 || bottom < 0 || bottom >= 29 {
+		t.Fatalf("Label picker bounds = %d-%d, want a closed modal within the viewport", top, bottom)
+	}
+}
+
+func TestLabelPickerScrollsToKeepTheSelectedLabelVisible(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 30
+	labels := make([]vimkunja.Label, 55)
+	for i := range labels {
+		labels[i] = vimkunja.Label{ID: int64(i + 1), Title: fmt.Sprintf("Label %02d", i+1)}
+	}
+	m.labelUI = &labelUI{kind: labelUITaskPicker, labels: labels}
+	m.moveLabelSelection(54)
+
+	if m.labelUI.viewport == 0 {
+		t.Fatal("picker viewport did not advance for the selected Label")
+	}
+	rendered := ansi.Strip(strings.Join(m.renderLabelMatches(60), "\n"))
+	if !strings.Contains(rendered, "> Label 55") {
+		t.Fatalf("selected Label is not visible: %q", rendered)
+	}
+}
+
 func TestLabelsCommandRestoresTheExactPriorContext(t *testing.T) {
 	store := &fakeStore{labels: []vimkunja.Label{{ID: 10, Title: "Errands"}}}
 	m := NewModel(Config{Store: store}).(*model)

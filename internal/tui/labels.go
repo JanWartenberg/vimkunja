@@ -30,6 +30,7 @@ type labelUI struct {
 	kind          labelUIKind
 	labels        []vimkunja.Label
 	selected      int
+	viewport      int
 	input         string
 	inputMode     bool
 	inputAction   labelInputAction
@@ -141,7 +142,7 @@ func (m *model) updateLabelNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if ui.gArmed {
 		ui.gArmed = false
 		if s == "g" {
-			ui.selected = 0
+			ui.selected, ui.viewport = 0, 0
 		}
 		return m, nil
 	}
@@ -162,15 +163,16 @@ func (m *model) updateLabelNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "g":
 		ui.gArmed = true
 	case "j", "down":
-		ui.moveSelection(1)
+		m.moveLabelSelection(1)
 	case "k", "up":
-		ui.moveSelection(-1)
+		m.moveLabelSelection(-1)
 	case "G", "end":
 		ui.selected = max(0, len(ui.matches())-1)
+		m.moveLabelSelection(0)
 	case "ctrl+d", "pgdown", "pagedown":
-		ui.moveSelection(max(1, m.pageStep()/2))
+		m.moveLabelSelection(max(1, m.pageStep()/2))
 	case "ctrl+u", "pgup", "pageup":
-		ui.moveSelection(-max(1, m.pageStep()/2))
+		m.moveLabelSelection(-max(1, m.pageStep()/2))
 	case "i", "a":
 		if ui.kind == labelUIGlobalOverview {
 			if s != "i" {
@@ -248,20 +250,20 @@ func (m *model) updateLabelInput(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(runes) > 0 {
 			ui.input = string(runes[:len(runes)-1])
 		}
-		ui.selected = 0
+		ui.selected, ui.viewport = 0, 0
 		return m, nil
 	case "up", "ctrl+p":
-		ui.moveSelection(-1)
+		m.moveLabelSelection(-1)
 		return m, nil
 	case "down", "ctrl+n":
-		ui.moveSelection(1)
+		m.moveLabelSelection(1)
 		return m, nil
 	case "enter":
 		return m, m.confirmLabelInput()
 	}
 	if text := key.Key().Text; text != "" {
 		ui.input += text
-		ui.selected = 0
+		ui.selected, ui.viewport = 0, 0
 	}
 	return m, nil
 }
@@ -390,8 +392,38 @@ func (ui *labelUI) exactMatch() (vimkunja.Label, bool) {
 	return vimkunja.Label{}, false
 }
 
-func (ui *labelUI) moveSelection(delta int) {
-	ui.selected = clamp(ui.selected+delta, 0, max(0, len(ui.matches())-1))
+func (m *model) labelModalHeight() int {
+	viewportHeight := m.height
+	if viewportHeight <= 0 {
+		viewportHeight = 30
+	}
+	return searchModalHeight(viewportHeight)
+}
+
+func (m *model) labelResultLineBudget() int {
+	// The title, prompt/instructions, padding, borders, and one free line keep
+	// Lip Gloss' minimum Height from expanding the modal around long lists.
+	return max(1, m.labelModalHeight()-12)
+}
+
+func (m *model) labelResultEnd(start int) int {
+	matches := m.labelUI.matches()
+	start = clamp(start, 0, len(matches))
+	return min(len(matches), start+m.labelResultLineBudget())
+}
+
+func (m *model) moveLabelSelection(delta int) {
+	ui := m.labelUI
+	if ui == nil || len(ui.matches()) == 0 {
+		return
+	}
+	ui.selected = clamp(ui.selected+delta, 0, len(ui.matches())-1)
+	if ui.selected < ui.viewport {
+		ui.viewport = ui.selected
+	}
+	for ui.selected >= m.labelResultEnd(ui.viewport) && ui.viewport < ui.selected {
+		ui.viewport++
+	}
 }
 
 func normalizedLabelTitle(title string) string {
@@ -404,6 +436,7 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 		return background
 	}
 	modalWidth := min(60, max(36, width-8))
+	modalHeight := m.labelModalHeight()
 	bodyWidth := max(1, modalWidth-6)
 	title := "LABEL PICKER"
 	if ui.kind == labelUIGlobalOverview {
@@ -441,7 +474,7 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 		BorderForeground(lipgloss.Color("255")).
 		Padding(1, 2).
 		Width(modalWidth).
-		Height(max(1, min(18, m.height-6))).
+		Height(max(1, modalHeight-4)).
 		Render(strings.Join(body, "\n"))
 	return overlayModal(background, modal, width)
 }
@@ -452,10 +485,13 @@ func (m *model) renderLabelMatches(width int) []string {
 	if len(matches) == 0 {
 		return []string{"No matching Labels."}
 	}
-	lines := make([]string, 0, len(matches))
-	for i, label := range matches {
+	start := clamp(ui.viewport, 0, max(0, len(matches)-1))
+	end := m.labelResultEnd(start)
+	lines := make([]string, 0, end-start)
+	for index := start; index < end; index++ {
+		label := matches[index]
 		prefix := "  "
-		if i == ui.selected {
+		if index == ui.selected {
 			prefix = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(selectionAccent)).Render(">") + " "
 		}
 		line := prefix + truncatePlain(label.Title, max(1, width-lipgloss.Width(prefix)))
