@@ -243,6 +243,12 @@ type (
 		labels []vimkunja.Label
 		err    error
 	}
+	taskLabelsSavedMsg struct {
+		taskID     int64
+		labelIDs   []int64
+		closeAfter bool
+		err        error
+	}
 	labelMutatedMsg struct {
 		mutation labelMutation
 		label    vimkunja.Label
@@ -615,6 +621,31 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.editor.original = cloneTaskDraft(m.editor.draft)
 		return m, nil
 
+	case taskLabelsSavedMsg:
+		if m.labelUI != nil {
+			m.labelUI.loading = false
+		}
+		if m.editor == nil || m.editor.id != typed.taskID {
+			return m, nil
+		}
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		m.editor.draft.LabelIDs = append([]int64(nil), typed.labelIDs...)
+		m.editor.draft.LabelIDsSet = false
+		m.editor.original.LabelIDs = append([]int64(nil), typed.labelIDs...)
+		m.editor.original.LabelIDsSet = false
+		if m.labelUI != nil && m.labelUI.kind == labelUITaskPicker {
+			m.labelUI.labelSnapshot = append([]vimkunja.Label(nil), m.editor.labels...)
+			m.labelUI.labelIDsSnapshot = append([]int64(nil), typed.labelIDs...)
+			m.labelUI.labelsSetAtOpen = false
+			if typed.closeAfter {
+				m.closeLabelUI()
+			}
+		}
+		return m, nil
+
 	case labelMutatedMsg:
 		if m.labelUI == nil {
 			return m, nil
@@ -692,6 +723,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.editor.mode = editorNormal
 			m.showDetail = true
 			m.focus = paneDetail
+		}
+		if m.labelUI != nil && m.labelUI.kind == labelUITaskPicker && m.labelUI.closeAfterSave {
+			m.closeLabelUI()
 		}
 		if idx := m.findProjectIndex(typed.task.ProjectID); idx >= 0 {
 			m.projectSelected = idx
@@ -1335,7 +1369,7 @@ func (m *model) nativeEditorCursorActive() bool {
 }
 
 func (m *model) editorCursor() *tea.Cursor {
-	if !m.nativeEditorCursorActive() {
+	if !m.nativeEditorCursorActive() || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
 		return nil
 	}
 
@@ -1566,6 +1600,8 @@ func (m *model) renderStatusBar(w int) string {
 		}
 		if inputActive {
 			hint = "[" + mode + "]  Esc normal"
+		} else if m.editor != nil && m.editor.field == fieldLabels && !m.editor.labelsLoading && len(m.editor.labels) > 0 {
+			hint = "[" + mode + "]  h/l select Label  •  x remove Label  •  i pick/edit  •  :w save  •  :q close"
 		} else {
 			hint = "[" + mode + "]  i edit  •  :w save  •  :q close  •  Ctrl+W switch pane"
 		}

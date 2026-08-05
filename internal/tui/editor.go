@@ -147,6 +147,28 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.closeTaskDetail()
 		return m, nil
 	}
+	if e.field == fieldDescription && descriptionHasHTML(e.draft.Description) {
+		limit := m.readOnlyDescriptionScrollLimit()
+		switch s {
+		case "G", "end":
+			e.descScroll = limit
+		case "home":
+			e.descScroll = 0
+		case "j", "down":
+			e.descScroll = clamp(e.descScroll+1, 0, limit)
+		case "k", "up":
+			if e.descScroll == 0 {
+				m.moveField(-1)
+			} else {
+				e.descScroll--
+			}
+		case "ctrl+d", "pgdown", "pagedown":
+			e.descScroll = clamp(e.descScroll+m.pageStep(), 0, limit)
+		case "ctrl+u", "pgup", "pageup":
+			e.descScroll = clamp(e.descScroll-m.pageStep(), 0, limit)
+		}
+		return m, nil
+	}
 	if e.field == fieldDescription && (s == "I" || s == "A") {
 		if s == "I" {
 			e.cursor = e.lineStart()

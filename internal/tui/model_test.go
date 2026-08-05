@@ -1929,6 +1929,200 @@ func TestTaskDetailLabelsRenderAndStageRemovalInDraft(t *testing.T) {
 	}
 }
 
+func TestTaskDetailHighlightsOnlyTheSelectedLabel(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.labels = []vimkunja.Label{{ID: 10, Title: "Errands"}, {ID: 11, Title: "Home"}}
+	m.editor.field = fieldLabels
+	m.editor.labelSelected = 1
+
+	detail := renderTaskDetail(m, 80, 20)
+	selected := lipgloss.NewStyle().Foreground(lipgloss.Color(selectionAccent)).Bold(true).Render("Home")
+	if !strings.Contains(detail, selected) {
+		t.Fatalf("selected Label lacks its own highlight: %q", detail)
+	}
+	if strings.Contains(detail, "\x1b[38;5;205m▸ Labels:") {
+		t.Fatalf("Labels field is highlighted instead of only its selection: %q", detail)
+	}
+}
+
+func TestTaskLabelPickerRefusesQuitWithUnsavedLabelChanges(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.labels = []vimkunja.Label{{ID: 10, Title: "Errands"}}
+	m.syncEditorLabelDraft()
+	m.editor.original = cloneTaskDraft(m.editor.draft)
+	m.openTaskLabelPicker()
+	m.labelUI.loading = false
+	m.toggleEditorLabel(vimkunja.Label{ID: 11, Title: "Home"})
+
+	for _, key := range []tea.Key{{Code: ':', Text: ":"}, {Code: 'q', Text: "q"}, {Code: tea.KeyEnter}} {
+		m = pressKey(m, key)
+	}
+	if m.labelUI == nil || m.lastErr == "" {
+		t.Fatalf("Task Label Picker :q state = picker:%v error:%q, want retained changed picker", m.labelUI != nil, m.lastErr)
+	}
+}
+
+func TestTaskLabelPickerQuitClosesWhenLabelsAreUnchanged(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.labels = []vimkunja.Label{{ID: 10, Title: "Errands"}}
+	m.syncEditorLabelDraft()
+	m.openTaskLabelPicker()
+	m.labelUI.loading = false
+
+	for _, key := range []tea.Key{{Code: ':', Text: ":"}, {Code: 'q', Text: "q"}, {Code: tea.KeyEnter}} {
+		m = pressKey(m, key)
+	}
+	if m.labelUI != nil {
+		t.Fatal("Task Label Picker :q did not close an unchanged picker")
+	}
+}
+
+func TestTaskLabelPickerForceQuitRestoresOnlyItsLabelChanges(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.labels = []vimkunja.Label{{ID: 10, Title: "Errands"}}
+	m.syncEditorLabelDraft()
+	m.editor.original = cloneTaskDraft(m.editor.draft)
+	m.editor.draft.Title = "Unsaved title"
+	m.openTaskLabelPicker()
+	m.labelUI.loading = false
+	m.toggleEditorLabel(vimkunja.Label{ID: 10, Title: "Errands"})
+
+	for _, key := range []tea.Key{{Code: ':', Text: ":"}, {Code: 'q', Text: "q"}, {Code: '!', Text: "!"}, {Code: tea.KeyEnter}} {
+		m = pressKey(m, key)
+	}
+	if m.labelUI != nil || m.editor.draft.Title != "Unsaved title" || !reflect.DeepEqual(m.editor.draft.LabelIDs, []int64{10}) || !m.editor.dirty() {
+		t.Fatalf("Task Label Picker :q! state = picker:%v draft:%#v dirty:%v", m.labelUI != nil, m.editor.draft, m.editor.dirty())
+	}
+}
+
+func TestTaskLabelPickerWriteSavesOnlyLabelsAndKeepsOtherDraftChanges(t *testing.T) {
+	store := &fakeStore{}
+	m := NewModel(Config{Store: store}).(*model)
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.labels = []vimkunja.Label{{ID: 10, Title: "Errands"}}
+	m.syncEditorLabelDraft()
+	m.editor.original = cloneTaskDraft(m.editor.draft)
+	m.editor.draft.Title = "Unsaved title"
+	m.openTaskLabelPicker()
+	m.labelUI.loading = false
+	m.toggleEditorLabel(vimkunja.Label{ID: 11, Title: "Home"})
+
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	m = pressKey(m, tea.Key{Code: 'w', Text: "w"})
+	updated, saveCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if saveCmd == nil {
+		t.Fatal("Task Label Picker :w returned no label-save command")
+	}
+	updated, _ = m.Update(saveCmd())
+	m = updated.(*model)
+
+	if got := editorLabelIDs(store.taskLabels[1]); !reflect.DeepEqual(got, []int64{10, 11}) || store.updatedDraft.Title != "" {
+		t.Fatalf("Task Label Picker :w writes = labels:%#v task:%#v", got, store.updatedDraft)
+	}
+	if m.labelUI == nil || m.editor.draft.Title != "Unsaved title" || !m.editor.dirty() {
+		t.Fatalf("Task Label Picker :w state = picker:%v draft:%#v dirty:%v", m.labelUI != nil, m.editor.draft, m.editor.dirty())
+	}
+	for _, key := range []tea.Key{{Code: ':', Text: ":"}, {Code: 'q', Text: "q"}, {Code: tea.KeyEnter}} {
+		m = pressKey(m, key)
+	}
+	if m.labelUI != nil || m.editor.draft.Title != "Unsaved title" || !m.editor.dirty() {
+		t.Fatalf("Task Label Picker :w then :q state = picker:%v draft:%#v dirty:%v", m.labelUI != nil, m.editor.draft, m.editor.dirty())
+	}
+}
+
+func TestTaskLabelPickerWriteQuitSavesLabelsAndClosesPicker(t *testing.T) {
+	store := &fakeStore{}
+	m := NewModel(Config{Store: store}).(*model)
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.labels = []vimkunja.Label{{ID: 10, Title: "Errands"}}
+	m.syncEditorLabelDraft()
+	m.editor.original = cloneTaskDraft(m.editor.draft)
+	m.openTaskLabelPicker()
+	m.labelUI.loading = false
+	m.toggleEditorLabel(vimkunja.Label{ID: 11, Title: "Home"})
+
+	for _, key := range []tea.Key{{Code: ':', Text: ":"}, {Code: 'w', Text: "w"}, {Code: 'q', Text: "q"}} {
+		m = pressKey(m, key)
+	}
+	updated, saveCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if saveCmd == nil {
+		t.Fatal("Task Label Picker :wq returned no label-save command")
+	}
+	updated, _ = m.Update(saveCmd())
+	m = updated.(*model)
+
+	if m.labelUI != nil || !reflect.DeepEqual(editorLabelIDs(store.taskLabels[1]), []int64{10, 11}) {
+		t.Fatalf("Task Label Picker :wq state = picker:%v labels:%#v", m.labelUI != nil, store.taskLabels[1])
+	}
+}
+
+func TestTaskLabelPickerDelegatesWriteQuitAll(t *testing.T) {
+	store := &fakeStore{}
+	m := NewModel(Config{Store: store}).(*model)
+	m.projects = []vimkunja.Project{{ID: 1, Title: "Project"}}
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "Saved before quit"
+	m.labelUI = &labelUI{kind: labelUITaskPicker}
+
+	for _, key := range []tea.Key{
+		{Code: ':', Text: ":"},
+		{Code: 'w', Text: "w"},
+		{Code: 'q', Text: "q"},
+		{Code: 'a', Text: "a"},
+		{Code: tea.KeyEnter},
+	} {
+		m = pressKey(m, key)
+	}
+	if m.lastErr != "" {
+		t.Fatalf("Task Label Picker :wqa error = %q", m.lastErr)
+	}
+	if !m.quitAfterSave {
+		t.Fatal("Task Label Picker :wqa did not arm quit-after-save")
+	}
+}
+
+func TestDetailFooterExplainsSelectedLabelRemoval(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.labels = []vimkunja.Label{{ID: 10, Title: "Errands"}}
+	m.editor.field = fieldLabels
+
+	footer := ansi.Strip(m.renderStatusBar(120))
+	for _, hint := range []string{"h/l select Label", "x remove Label", "i pick/edit"} {
+		if !strings.Contains(footer, hint) {
+			t.Fatalf("Labels footer = %q, want %q", footer, hint)
+		}
+	}
+}
+
+func TestLabelsFieldOmitsTheNativeTextCursor(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.labels = []vimkunja.Label{{ID: 10, Title: "Errands"}}
+	m.editor.field = fieldLabels
+
+	if cursor := m.View().Cursor; cursor != nil {
+		t.Fatalf("Labels field has an unrelated native cursor: %#v", cursor)
+	}
+}
+
 func TestTaskLabelLoadKeepsDetailCleanUntilAnAssignmentChanges(t *testing.T) {
 	m := testModel()
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
@@ -2400,6 +2594,21 @@ func TestCommandForceQuitAllIgnoresUnsavedDetailChanges(t *testing.T) {
 				t.Fatalf(":%s command returned %T, want tea.QuitMsg", input, cmd())
 			}
 		})
+	}
+}
+
+func TestCommandQuitAllRefusesUnsavedDetailChanges(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "Unsaved"
+
+	m, cmd := typeCommand(t, m, "qa")
+	if cmd != nil {
+		t.Fatal(":qa returned a quit command despite unsaved Detail changes")
+	}
+	if !m.showDetail || m.editor == nil || m.lastErr == "" {
+		t.Fatalf(":qa state = detail:%v editor:%v error:%q, want retained dirty Detail", m.showDetail, m.editor != nil, m.lastErr)
 	}
 }
 

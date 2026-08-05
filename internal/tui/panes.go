@@ -386,6 +386,9 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		if e.isPickerMode() {
 			return label + pickerField(value, active)
 		}
+		if field == fieldLabels && active {
+			return label + value
+		}
 		return focusedField(label+value, active)
 	}
 	labels := "none"
@@ -396,7 +399,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		for i, label := range e.labels {
 			title := label.Title
 			if detailFocused && e.field == fieldLabels && i == clamp(e.labelSelected, 0, len(e.labels)-1) {
-				title = lipgloss.NewStyle().Underline(true).Render(title)
+				title = lipgloss.NewStyle().Foreground(lipgloss.Color(selectionAccent)).Bold(true).Render(title)
 			}
 			titles = append(titles, title)
 		}
@@ -457,10 +460,10 @@ func renderTaskDetail(m *model, textW, textH int) string {
 			}
 			lines = append(lines, prefix+bucket.Title)
 		}
-	} else if e.draft.Description == "" {
+	} else if description := descriptionTerminalText(e.draft.Description); description == "" {
 		lines = append(lines, placeholderText("  (no description)"))
 	} else {
-		desc := wrapDescription(e.draft.Description, textW)
+		desc := wrapDescription(description, textW)
 		start := 0
 		available := max(1, textH-len(lines))
 		if e.field == fieldDescription && len(desc) > available {
@@ -511,8 +514,28 @@ func wrapDescription(value string, width int) []descriptionLine {
 	return out
 }
 
+func (m *model) readOnlyDescriptionScrollLimit() int {
+	if m.editor == nil {
+		return 0
+	}
+	w, h := m.viewportSize()
+	textW := w - 4
+	contentH := max(4, h-3)
+	topH := m.detailPaneTop()
+	textH := max(4, contentH-topH) - 2
+	precedingLines := 11
+	if m.editor.id == 0 {
+		precedingLines--
+	} else if textH >= 12 && !m.editor.isPickerMode() {
+		precedingLines++
+	}
+	available := max(1, textH-precedingLines)
+	lines := wrapDescription(descriptionTerminalText(m.editor.draft.Description), textW)
+	return max(0, len(lines)-available)
+}
+
 func (m *model) editorDescriptionText(line descriptionLine) string {
-	if m.editor == nil || m.focus != paneDetail || m.editor.field != fieldDescription {
+	if m.editor == nil || m.focus != paneDetail || m.editor.field != fieldDescription || descriptionHasHTML(m.editor.draft.Description) {
 		return line.text
 	}
 	if m.editor.cursor < line.start || m.editor.cursor > line.end {

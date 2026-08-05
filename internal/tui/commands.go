@@ -59,7 +59,7 @@ func newDefaultCommandRegistry() *CommandRegistry {
 	registry.Register("q", []string{"quit"}, quitCommand)
 	registry.Register("q!", []string{"quit!"}, forceQuitCommand)
 	registry.Register("qa", []string{"quitall"}, quitAllCommand)
-	registry.Register("qa!", []string{"quitall!"}, quitAllCommand)
+	registry.Register("qa!", []string{"quitall!"}, forceQuitAllCommand)
 	registry.Register("new", nil, newTaskCommand)
 	registry.Register("w", []string{"write"}, writeCommand)
 	registry.Register("wq", nil, writeQuitCommand)
@@ -139,6 +139,14 @@ func writeQuitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 }
 
 func quitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if m.editor != nil && m.editor.dirty() {
+		m.recordError(fmt.Errorf("unsaved changes; use :wqa or :qa!"))
+		return m, nil
+	}
+	return m, tea.Quit
+}
+
+func forceQuitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	return m, tea.Quit
 }
 

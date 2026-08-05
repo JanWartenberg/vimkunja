@@ -42,6 +42,11 @@ type labelUI struct {
 	gArmed        bool
 	loading       bool
 	origin        *searchOrigin
+
+	labelSnapshot    []vimkunja.Label
+	labelIDsSnapshot []int64
+	labelsSetAtOpen  bool
+	closeAfterSave   bool
 }
 
 type labelMutation int
@@ -61,7 +66,13 @@ func (m *model) openTaskLabelPicker() tea.Cmd {
 		m.recordError(fmt.Errorf("Labels are still loading"))
 		return nil
 	}
-	m.labelUI = &labelUI{kind: labelUITaskPicker, labels: append([]vimkunja.Label(nil), m.editor.labels...)}
+	m.labelUI = &labelUI{
+		kind:             labelUITaskPicker,
+		labels:           append([]vimkunja.Label(nil), m.editor.labels...),
+		labelSnapshot:    append([]vimkunja.Label(nil), m.editor.labels...),
+		labelIDsSnapshot: append([]int64(nil), m.editor.draft.LabelIDs...),
+		labelsSetAtOpen:  m.editor.draft.LabelIDsSet,
+	}
 	return m.loadLabels()
 }
 
@@ -78,6 +89,23 @@ func (m *model) closeLabelUI() {
 	m.labelUI = nil
 }
 
+func (m *model) taskLabelPickerDirty() bool {
+	if m.labelUI == nil || m.labelUI.kind != labelUITaskPicker || m.editor == nil {
+		return false
+	}
+	return !sameLabelIDs(editorLabelIDs(m.editor.labels), editorLabelIDs(m.labelUI.labelSnapshot))
+}
+
+func (m *model) restoreTaskLabelPickerSnapshot() {
+	if m.labelUI == nil || m.labelUI.kind != labelUITaskPicker || m.editor == nil {
+		return
+	}
+	m.editor.labels = append([]vimkunja.Label(nil), m.labelUI.labelSnapshot...)
+	m.editor.draft.LabelIDs = append([]int64(nil), m.labelUI.labelIDsSnapshot...)
+	m.editor.draft.LabelIDsSet = m.labelUI.labelsSetAtOpen
+	m.editor.labelSelected = clamp(m.editor.labelSelected, 0, max(0, len(m.editor.labels)-1))
+}
+
 func (m *model) loadLabels() tea.Cmd {
 	if m.labelUI == nil {
 		return nil
@@ -88,6 +116,27 @@ func (m *model) loadLabels() tea.Cmd {
 		defer cancel()
 		labels, err := m.store.ListLabels(ctx)
 		return labelsLoadedMsg{labels: labels, err: err}
+	}
+}
+
+func (m *model) saveTaskPickerLabels(closeAfter bool) tea.Cmd {
+	if m.labelUI == nil || m.labelUI.kind != labelUITaskPicker || m.editor == nil {
+		return nil
+	}
+	if m.editor.id == 0 {
+		cmd := m.saveEditor(false)
+		if cmd != nil {
+			m.labelUI.closeAfterSave = closeAfter
+		}
+		return cmd
+	}
+	labelIDs := editorLabelIDs(m.editor.labels)
+	m.labelUI.loading = true
+	return func() tea.Msg {
+		ctx, cancel := contextWithTimeout()
+		defer cancel()
+		err := m.store.ReplaceTaskLabels(ctx, m.editor.id, labelIDs)
+		return taskLabelsSavedMsg{taskID: m.editor.id, labelIDs: labelIDs, closeAfter: closeAfter, err: err}
 	}
 }
 
@@ -222,9 +271,27 @@ func (m *model) updateLabelCommand(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		ui.commandMode, ui.commandInput = false, ""
 		switch command {
 		case "q", "quit":
+			if m.taskLabelPickerDirty() {
+				m.recordError(fmt.Errorf("unsaved Label changes; use :w or :q!"))
+				return m, nil
+			}
 			m.closeLabelUI()
-		case "qa", "quitall", "qa!", "quitall!":
-			return m, tea.Quit
+		case "q!", "quit!":
+			m.restoreTaskLabelPickerSnapshot()
+			m.closeLabelUI()
+		case "w", "write", "wq":
+			if ui.kind != labelUITaskPicker {
+				m.recordError(fmt.Errorf(":%s requires a task Label picker", command))
+				return m, nil
+			}
+			return m, m.saveTaskPickerLabels(command == "wq")
+		case "qa", "quitall", "qa!", "quitall!", "wqa":
+			updated, cmd, err := m.commands.Execute(m, command)
+			if err != nil {
+				m.recordError(err)
+				return m, nil
+			}
+			return updated, cmd
 		case "":
 		default:
 			m.recordError(fmt.Errorf("unknown Labels command: %s", command))
