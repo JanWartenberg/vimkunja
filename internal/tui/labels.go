@@ -538,7 +538,7 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 	}
 	modal := lipgloss.NewStyle().
 		Border(lipgloss.ThickBorder()).
-		BorderForeground(lipgloss.Color("255")).
+		BorderForeground(lipgloss.Color(tuiTheme.bright)).
 		Padding(1, 2).
 		Width(modalWidth).
 		Height(max(1, modalHeight-4)).
@@ -559,7 +559,7 @@ func (m *model) renderLabelMatches(width int) []string {
 		label := matches[index]
 		prefix := "  "
 		if index == ui.selected {
-			prefix = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(selectionAccent)).Render(">") + " "
+			prefix = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(">") + " "
 		}
 		line := prefix + truncatePlain(label.Title, max(1, width-lipgloss.Width(prefix)))
 		if ui.kind == labelUIGlobalOverview {

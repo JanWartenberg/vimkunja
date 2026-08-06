@@ -109,7 +109,7 @@ func renderProjects(m *model, textW, textH int) string {
 		line := strings.Repeat("  ", row.Depth) + marker + label
 		line = truncatePlain(line, textW)
 		if sel && focus {
-			line = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).Render(line)
+			line = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(line)
 		}
 		lines = append(lines, line)
 	}
@@ -196,18 +196,18 @@ func renderTasks(m *model, textW, textH int) string {
 		case sel && focus:
 			s := lipgloss.NewStyle().Bold(true)
 			if !t.Done {
-				s = s.Foreground(lipgloss.Color("205"))
+				s = s.Foreground(lipgloss.Color(tuiTheme.selectionAccent))
 				dueSeg = s.Render(ansi.Strip(dueSeg))
 			}
 			segStyle = &s
 		case sel:
 			s := lipgloss.NewStyle().Bold(true)
 			if !t.Done {
-				s = s.Foreground(lipgloss.Color("229"))
+				s = s.Foreground(lipgloss.Color(tuiTheme.inactiveSelection))
 			}
 			segStyle = &s
 		case t.Done:
-			s := lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Faint(true)
+			s := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true)
 			segStyle = &s
 		}
 		rend := func(s string) string {
@@ -230,9 +230,9 @@ func renderTasks(m *model, textW, textH int) string {
 		}
 		line := strings.Join(segments, " ")
 		if t.Done {
-			line = lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Faint(true).Render(ansi.Strip(line))
+			line = lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true).Render(ansi.Strip(line))
 			if sel && focus {
-				chevron := lipgloss.NewStyle().Foreground(lipgloss.Color(selectionAccent))
+				chevron := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent))
 				line = chevron.Render("> ") + line + chevron.Render(" <")
 			}
 		}
@@ -311,13 +311,13 @@ func duePresentation(task vimkunja.Task, value string, now time.Time) string {
 	label, color := value, ""
 	switch {
 	case days < 0:
-		label, color = fmt.Sprintf("%d days overdue", -days), "196"
+		label, color = fmt.Sprintf("%d days overdue", -days), tuiTheme.danger
 	case days == 0:
-		label, color = "today", "208"
+		label, color = "today", tuiTheme.dueSoon
 	case days == 1:
-		label, color = "tomorrow", "208"
+		label, color = "tomorrow", tuiTheme.dueSoon
 	case days <= 7:
-		label, color = fmt.Sprintf("in %d days", days), "220"
+		label, color = fmt.Sprintf("in %d days", days), tuiTheme.dueUpcoming
 	case due.Year() == today.Year():
 		label = due.Format("02 Jan")
 	default:
@@ -341,7 +341,7 @@ func renderInfoPane(pane *infoPane, textW, textH int) string {
 		return fitBlock([]string{"No information available."}, textW, textH)
 	}
 
-	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).Render(" " + pane.title + " ")
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(" " + pane.title + " ")
 	offset := clamp(pane.offset, 0, max(0, len(pane.lines)-1))
 	return fitBlock(append([]string{title, ""}, pane.lines[offset:]...), textW, textH)
 }
@@ -355,7 +355,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if e.id == 0 {
 		header = " NEW TASK "
 	}
-	lines := []string{lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(selectionAccent)).Render(header), ""}
+	lines := []string{lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(header), ""}
 	projectName := "(none)"
 	for _, p := range m.projects {
 		if p.ID == e.draft.ProjectID {
@@ -399,7 +399,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		for i, label := range e.labels {
 			title := label.Title
 			if detailFocused && e.field == fieldLabels && i == clamp(e.labelSelected, 0, len(e.labels)-1) {
-				title = lipgloss.NewStyle().Foreground(lipgloss.Color(selectionAccent)).Bold(true).Render(title)
+				title = lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Bold(true).Render(title)
 			}
 			titles = append(titles, title)
 		}
@@ -407,7 +407,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	}
 	renderMetadata := func(field editorField, value string) string {
 		if e.draft.Done && !(detailFocused && e.field == field) {
-			return lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Faint(true).Render(ansi.Strip(value))
+			return lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true).Render(ansi.Strip(value))
 		}
 		return value
 	}
@@ -433,33 +433,24 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if e.mode == editorProjectPicker {
 		lines = append(lines, "  Filter: "+e.projectFilter)
 		matches := m.filteredProjects(e.projectFilter)
-		if len(matches) == 0 {
-			lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Render("  No match found"))
-		} else {
-			for i, p := range matches {
-				prefix := "  "
-				if i == e.pickerIndex {
-					prefix = "▸ "
-				}
-				lines = append(lines, prefix+p.Title)
-			}
+		choices := make([]string, 0, len(matches))
+		for _, project := range matches {
+			choices = append(choices, project.Title)
 		}
+		selected := e.pickerIndex
+		if len(choices) == 0 {
+			choices = append(choices, lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Render("No match found"))
+			selected = -1
+		}
+		lines = append(lines, renderPickerChoices(choices, selected, tuiTheme.selectionAccent, "")...)
 	} else if e.mode == editorPriorityPicker {
-		for i := int64(0); i <= 5; i++ {
-			prefix := "  "
-			if int(i) == e.priorityIndex {
-				prefix = "▸ "
-			}
-			lines = append(lines, prefix+priorityName(i))
-		}
+		lines = append(lines, renderPriorityPicker(e)...)
 	} else if e.mode == editorWorkflowStatusPicker {
-		for i, bucket := range e.workflowStatus.Buckets {
-			prefix := "  "
-			if i == e.workflowStatusIndex {
-				prefix = "▸ "
-			}
-			lines = append(lines, prefix+bucket.Title)
+		choices := make([]string, 0, len(e.workflowStatus.Buckets))
+		for _, bucket := range e.workflowStatus.Buckets {
+			choices = append(choices, bucket.Title)
 		}
+		lines = append(lines, renderPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, "")...)
 	} else if description := descriptionTerminalText(e.draft.Description); description == "" {
 		lines = append(lines, placeholderText("  (no description)"))
 	} else {
@@ -476,8 +467,38 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	return fitBlock(lines, textW, textH)
 }
 
+// renderPriorityPicker keeps the picker visually separate from Description and
+// colours the active choice with the same semantic mapping used everywhere
+// else priorities are displayed.
+func renderPriorityPicker(e *taskEditor) []string {
+	choices := make([]string, len(tuiTheme.priority))
+	for priority := range tuiTheme.priority {
+		choices[priority] = priorityName(int64(priority))
+	}
+	return renderPickerChoices(choices, e.priorityIndex, priorityColor(e.priorityIndex), "")
+}
+
+// renderPickerChoices draws the common compact picker frame. All picker frames
+// use the terminal default colour; Project and Status use the normal selection
+// accent for their active choice, while Priority uses its semantic colour.
+func renderPickerChoices(choices []string, selected int, selectionColor, borderColor string) []string {
+	rows := make([]string, 0, len(choices))
+	for index, choice := range choices {
+		row := "  " + choice
+		if index == selected {
+			row = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(selectionColor)).Render("▸ " + choice)
+		}
+		rows = append(rows, row)
+	}
+	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1)
+	if borderColor != "" {
+		style = style.BorderForeground(lipgloss.Color(borderColor))
+	}
+	return strings.Split(style.Render(strings.Join(rows, "\n")), "\n")
+}
+
 func placeholderText(value string) string {
-	return lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Faint(true).Render(value)
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true).Render(value)
 }
 
 // editorText marks the character at the insertion point instead of inserting a
@@ -566,7 +587,7 @@ func normalCursorText(value string, cursor int) string {
 	if index == len(r) {
 		index--
 	}
-	block := lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("255")).Render(string(r[index]))
+	block := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.dark)).Background(lipgloss.Color(tuiTheme.bright)).Render(string(r[index]))
 	return string(r[:index]) + block + string(r[index+1:])
 }
 
@@ -596,20 +617,3 @@ func prioritySummary(priority int64) string {
 
 // compile-time assertion (in case we evolve Task struct)
 var _ vimkunja.Task
-
-// priorityColor maps a Vikunja priority to a terminal colour code string:
-// 0 = unset/gray, low = green, climbing through yellow/orange to red for urgent.
-func priorityColor(p int) string {
-	switch {
-	case p == 0:
-		return "245" // gray (not specified)
-	case p <= 1:
-		return "34" // green (low priority)
-	case p == 2:
-		return "220" // yellow (medium)
-	case p == 3:
-		return "208" // orange (high)
-	default:
-		return "196" // red (urgent / 4-5)
-	}
-}

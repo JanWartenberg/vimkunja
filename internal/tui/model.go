@@ -1641,7 +1641,7 @@ func (m *model) renderStatusBar(w int) string {
 		hint = "FILTER  o open  •  a all  •  v overdue  •  t due today  •  Esc cancel"
 	}
 	if m.ctrlWArmed {
-		ctrlWHint := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("227")).Render("Ctrl-W")
+		ctrlWHint := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.ctrlWHint)).Render("Ctrl-W")
 		hint = ctrlWHint + " h/j/k/l change pane  •  Ctrl-W/w cycle"
 	}
 	statusStyle := lipgloss.NewStyle().
@@ -1650,7 +1650,7 @@ func (m *model) renderStatusBar(w int) string {
 		Width(w)
 	if m.lastErr != "" {
 		hint = fmt.Sprintf("Error: %s", m.lastErr)
-		statusStyle = statusStyle.Foreground(lipgloss.Color("196")).BorderForeground(lipgloss.Color("196"))
+		statusStyle = statusStyle.Foreground(lipgloss.Color(tuiTheme.danger)).BorderForeground(lipgloss.Color(tuiTheme.danger))
 	}
 
 	return statusStyle.Render(fmt.Sprintf("%s   %s", info, hint))

@@ -459,7 +459,7 @@ func (m *model) renderSearchOverlay(background string, width int) string {
 	}
 	modal := lipgloss.NewStyle().
 		Border(lipgloss.ThickBorder()).
-		BorderForeground(lipgloss.Color("255")).
+		BorderForeground(lipgloss.Color(tuiTheme.bright)).
 		Padding(1, 2).
 		Width(modalWidth).
 		Height(max(1, modalHeight-4)).
@@ -475,12 +475,12 @@ func (m *model) renderSearchResults(width int) []string {
 	for index := start; index < end; index++ {
 		result := m.searchResults[index]
 		if result.Kind != lastKind {
-			lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("245")).Render(searchGroupTitle(result.Kind)))
+			lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.muted)).Render(searchGroupTitle(result.Kind)))
 			lastKind = result.Kind
 		}
 		prefix := "  "
 		if index == m.searchSelected {
-			prefix = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(selectionAccent)).Render(">") + " "
+			prefix = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(">") + " "
 		}
 		primary := truncateSearchHighlights(result.Primary, result.Highlights, max(1, width-lipgloss.Width(prefix)))
 		line := prefix + primary
@@ -521,7 +521,7 @@ func truncateSearchHighlights(text string, highlights []vimkunja.SearchHighlight
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Start < sorted[j].Start })
 	var out strings.Builder
 	position := 0
-	style := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("229"))
+	style := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.inactiveSelection))
 	for _, highlight := range sorted {
 		start := clamp(highlight.Start, 0, len(runes))
 		end := clamp(highlight.End, start, len(runes))

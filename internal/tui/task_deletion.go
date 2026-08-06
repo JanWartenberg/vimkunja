@@ -81,7 +81,7 @@ func (m *model) renderDeleteConfirmationModal(background string, width int) stri
 	contentWidth := max(1, modalWidth-6)
 	taskTitle := truncatePlain(m.deleteConfirmationTaskTitle(), contentWidth-lipgloss.Width(`Delete ""?`))
 	body := strings.Join([]string{
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("196")).Render(truncatePlain("DELETE TASK", contentWidth)),
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.danger)).Render(truncatePlain("DELETE TASK", contentWidth)),
 		"",
 		fmt.Sprintf("Delete %q?", taskTitle),
 		"",
@@ -89,7 +89,7 @@ func (m *model) renderDeleteConfirmationModal(background string, width int) stri
 	}, "\n")
 	modal := lipgloss.NewStyle().
 		Border(lipgloss.ThickBorder()).
-		BorderForeground(lipgloss.Color("255")).
+		BorderForeground(lipgloss.Color(tuiTheme.bright)).
 		Padding(1, 2).
 		Width(modalWidth).
 		Render(body)

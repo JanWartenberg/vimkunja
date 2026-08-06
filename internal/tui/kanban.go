@@ -309,7 +309,7 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 		}
 		header := " " + truncatePlain(title, contentWidth) + " "
 		if index == m.kanbanBucketSelected {
-			header = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205")).Render(header)
+			header = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(header)
 		} else {
 			header = lipgloss.NewStyle().Bold(true).Render(header)
 		}
@@ -320,7 +320,7 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 		content := fitBlock(lines, contentWidth, max(1, textH-2))
 		columns = append(columns, lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("245")).
+			BorderForeground(lipgloss.Color(tuiTheme.muted)).
 			Render(content))
 	}
 	if len(columns) == 0 {
@@ -336,7 +336,7 @@ func renderKanbanTaskLine(task vimkunja.Task, selected bool, contentWidth int) s
 	}
 	title := truncatePlain(task.Title, max(1, contentWidth-lipgloss.Width(prefix)))
 	if selected {
-		title = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("205")).Render(title)
+		title = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(title)
 	}
 	return prefix + title
 }

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/vimkunja/vimkunja/internal/tui"
+
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
@@ -138,7 +140,7 @@ func (m *Model) renderTutorialPanel() string {
 	}
 	return lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("205")).
+		BorderForeground(lipgloss.Color(tui.SelectionAccentColor())).
 		Padding(0, 1).
 		Width(width).
 		Height(tutorialPanelHeight).

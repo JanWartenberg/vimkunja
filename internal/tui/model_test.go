@@ -814,10 +814,10 @@ func TestGlobalSearchUsesPinkCursorAndYellowDescriptionHighlight(t *testing.T) {
 	if got := ansi.Strip(lines[1]); !strings.HasPrefix(got, "> Description task") {
 		t.Fatalf("selected search row = %q, want a > cursor", got)
 	}
-	if !strings.Contains(lines[1], "38;5;205") {
+	if !strings.Contains(lines[1], "38;5;"+tuiTheme.selectionAccent) {
 		t.Fatalf("selected search cursor lacks pink selection color: %q", lines[1])
 	}
-	if !strings.Contains(lines[2], "38;5;229") {
+	if !strings.Contains(lines[2], "38;5;"+tuiTheme.inactiveSelection) {
 		t.Fatalf("Description match lacks inactive-selection yellow: %q", lines[2])
 	}
 }
@@ -856,7 +856,7 @@ func TestKanbanBucketsHaveDimBordersAndBlankHeaderRow(t *testing.T) {
 	if !strings.Contains(lines[1], "To-Do") || strings.Contains(lines[2], "Open") || !strings.Contains(lines[3], "Open") {
 		t.Fatalf("Kanban bucket spacing = %q, want a blank row after the header", lines)
 	}
-	if !strings.Contains(view, "\x1b[38;5;245m") {
+	if !strings.Contains(view, "\x1b[38;5;"+tuiTheme.muted+"m") {
 		t.Fatalf("Kanban bucket border lacks dim white color: %q", view)
 	}
 }
@@ -1399,7 +1399,7 @@ func TestCompletedDetailUsesNeutralMetadata(t *testing.T) {
 	m.focus = paneTasks
 
 	view := renderTaskDetail(m, 80, 12)
-	if strings.Contains(view, "38;5;"+priorityColor(3)) || strings.Count(view, "38;5;245") < 3 {
+	if strings.Contains(view, "38;5;"+priorityColor(3)) || strings.Count(view, "38;5;"+tuiTheme.muted) < 3 {
 		t.Fatalf("completed Detail metadata lacks neutral styling: %q", view)
 	}
 }
@@ -1554,7 +1554,7 @@ func TestFocusedTaskListHighlightsDueDateWithoutUnderline(t *testing.T) {
 	if strings.Contains(line, ";4;") || strings.Contains(line, "[4;") {
 		t.Fatalf("focused task list task is underlined: %q", line)
 	}
-	if !strings.Contains(line, "\x1b[1;38;5;205mtomorrow\x1b[m") {
+	if !strings.Contains(line, "\x1b[1;38;5;"+tuiTheme.selectionAccent+"mtomorrow\x1b[m") {
 		t.Fatalf("focused task list due date lacks selection color: %q", line)
 	}
 }
@@ -1591,7 +1591,7 @@ func TestFocusedOverviewTaskHighlightsDueDateWithoutUnderline(t *testing.T) {
 	if strings.Contains(line, "\x1b[4m") {
 		t.Fatalf("focused overview task is underlined: %q", line)
 	}
-	if !strings.Contains(line, "\x1b[1;38;5;205mtomorrow\x1b[m") {
+	if !strings.Contains(line, "\x1b[1;38;5;"+tuiTheme.selectionAccent+"mtomorrow\x1b[m") {
 		t.Fatalf("focused overview due date lacks selection color: %q", line)
 	}
 }
@@ -1602,7 +1602,7 @@ func TestFocusedDoneTaskUsesAccentChevrons(t *testing.T) {
 	m.tasks = []vimkunja.Task{{ID: 1, Title: "Completed", Done: true}}
 
 	line := strings.Split(renderTasks(m, 80, 3), "\n")[1]
-	if !strings.Contains(line, "\x1b[38;5;205m> \x1b[m") || !strings.Contains(line, "\x1b[38;5;205m <\x1b[m") {
+	if !strings.Contains(line, "\x1b[38;5;"+tuiTheme.selectionAccent+"m> \x1b[m") || !strings.Contains(line, "\x1b[38;5;"+tuiTheme.selectionAccent+"m <\x1b[m") {
 		t.Fatalf("focused completed task lacks accent chevrons: %q", line)
 	}
 }
@@ -1779,7 +1779,7 @@ func TestTaskDeletionConfirmationRendersCenteredModal(t *testing.T) {
 	if !strings.Contains(view, "DELETE TASK") || !strings.Contains(view, `Delete "Delete me"?`) {
 		t.Fatalf("confirmation view = %q, want centered delete modal", view)
 	}
-	if !strings.Contains(view, "38;5;255") {
+	if !strings.Contains(view, "38;5;"+tuiTheme.bright) {
 		t.Fatalf("confirmation view = %q, want white modal border", view)
 	}
 	if strings.Contains(m.renderStatusBar(120), "Delete") {
@@ -1808,7 +1808,7 @@ func TestTaskDeletionModalIsWidthCappedAndCenteredOnWideTerminal(t *testing.T) {
 	background := strings.Repeat(strings.Repeat(" ", terminalWidth)+"\n", 12)
 
 	for _, line := range strings.Split(m.renderDeleteConfirmationModal(background, terminalWidth), "\n") {
-		borderStart := strings.Index(line, "\x1b[38;5;255")
+		borderStart := strings.Index(line, "\x1b[38;5;"+tuiTheme.bright)
 		if borderStart < 0 {
 			continue
 		}
@@ -1938,11 +1938,11 @@ func TestTaskDetailHighlightsOnlyTheSelectedLabel(t *testing.T) {
 	m.editor.labelSelected = 1
 
 	detail := renderTaskDetail(m, 80, 20)
-	selected := lipgloss.NewStyle().Foreground(lipgloss.Color(selectionAccent)).Bold(true).Render("Home")
+	selected := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Bold(true).Render("Home")
 	if !strings.Contains(detail, selected) {
 		t.Fatalf("selected Label lacks its own highlight: %q", detail)
 	}
-	if strings.Contains(detail, "\x1b[38;5;205m▸ Labels:") {
+	if strings.Contains(detail, "\x1b[38;5;"+tuiTheme.selectionAccent+"m▸ Labels:") {
 		t.Fatalf("Labels field is highlighted instead of only its selection: %q", detail)
 	}
 }
@@ -3108,7 +3108,7 @@ func TestCtrlWTimeoutDisarmsAndShowsFooterState(t *testing.T) {
 	if !m.ctrlWArmed {
 		t.Fatal("Ctrl+W did not arm pane navigation")
 	}
-	if footer := m.renderStatusBar(120); !strings.Contains(footer, "Ctrl-W") || !strings.Contains(footer, "38;5;227") {
+	if footer := m.renderStatusBar(120); !strings.Contains(footer, "Ctrl-W") || !strings.Contains(footer, "38;5;"+tuiTheme.ctrlWHint) {
 		t.Fatalf("armed Ctrl+W footer = %q, want bright-yellow Ctrl-W hint", footer)
 	}
 
@@ -3260,12 +3260,60 @@ func TestPickerHighlightsOnlyTheFieldValue(t *testing.T) {
 			m.editor.field, m.editor.mode = tc.field, tc.mode
 
 			detail := renderTaskDetail(m, 80, 20)
-			highlightedValue := tc.label + "\x1b[48;5;205m" + tc.value + "\x1b[m"
+			highlightedValue := tc.label + "\x1b[48;5;" + tuiTheme.selectionAccent + "m" + tc.value + "\x1b[m"
 			if !strings.Contains(detail, highlightedValue) {
 				t.Fatalf("picker value lacks highlight: %q", detail)
 			}
-			if strings.Contains(detail, "\x1b[48;5;205m"+tc.label) {
+			if strings.Contains(detail, "\x1b[48;5;"+tuiTheme.selectionAccent+"m"+tc.label) {
 				t.Fatalf("picker label is highlighted: %q", detail)
+			}
+		})
+	}
+}
+
+func TestPriorityPickerFramesChoicesAndColoursActivePriority(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldPriority
+	m.editor.mode = editorPriorityPicker
+	m.editor.draft.Priority = 2
+	m.editor.priorityIndex = 2
+
+	detail := renderTaskDetail(m, 80, 20)
+	plain := ansi.Strip(detail)
+	if description, frame := strings.Index(plain, "Description:"), strings.Index(plain, "╭"); description < 0 || frame <= description || !strings.Contains(plain, "╰") {
+		t.Fatalf("priority choices must be framed separately from Description: %q", plain)
+	}
+	selected := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(priorityColor(2))).Render("▸ Medium")
+	if !strings.Contains(detail, selected) {
+		t.Fatalf("active priority lacks semantic colour: %q", detail)
+	}
+	if picker := strings.Join(renderPriorityPicker(m.editor), "\n"); strings.Contains(picker, "38;5;"+tuiTheme.selectionAccent) {
+		t.Fatalf("priority picker border must use the terminal default colour: %q", picker)
+	}
+}
+
+func TestProjectAndStatusPickerFramesUseDefaultColourAndSelectionAccent(t *testing.T) {
+	for _, picker := range []struct {
+		name    string
+		choices []string
+	}{
+		{name: "project", choices: []string{"Inbox", "Work"}},
+		{name: "status", choices: []string{"To do", "Doing"}},
+	} {
+		t.Run(picker.name, func(t *testing.T) {
+			rendered := strings.Join(renderPickerChoices(picker.choices, 1, tuiTheme.selectionAccent, ""), "\n")
+			plain := ansi.Strip(rendered)
+			if !strings.Contains(plain, "╭") || !strings.Contains(plain, "╰") {
+				t.Fatalf("picker lacks frame: %q", plain)
+			}
+			selected := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render("▸ " + picker.choices[1])
+			if !strings.Contains(rendered, selected) {
+				t.Fatalf("picker lacks normal selection highlight: %q", rendered)
+			}
+			if strings.Contains(rendered, "38;5;"+tuiTheme.selectionAccent+"m╭") {
+				t.Fatalf("picker frame must use the terminal default colour: %q", rendered)
 			}
 		})
 	}
