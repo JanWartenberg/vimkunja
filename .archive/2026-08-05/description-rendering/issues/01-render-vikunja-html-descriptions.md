@@ -6,7 +6,7 @@
 
 **Chosen strategy:** Extract readable plain text from Vikunja HTML. This ticket introduces no new Description writing or HTML serialization behavior.
 
-**Scope boundary:** This is phase 1 of the Description plan. Native structured rendering and editing, Visual Mode, formatting commands, and preservation-aware serialization belong to the separate M3 ticket [02 — Specify native Rich-Text Description rendering and editing](02-specify-native-rich-text-description-rendering-and-editing.md) and its companion contract [`../spec.md`](../spec.md).
+**Scope boundary:** This is phase 1 of the Description plan. Native structured rendering and editing, Visual Mode, formatting commands, and preservation-aware serialization belong to the separate M3 ticket [02 — Specify native Rich-Text Description rendering and editing](../../../../.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md) and its companion contract [`../../../../.scratch/description-rendering/spec.md`](../../../../.scratch/description-rendering/spec.md).
 
 **Implementation prerequisites:** None — deliberately deferred until after the Fundament/MVP.
 
@@ -14,7 +14,7 @@
 
 **Priority:** Medium
 
-**Status:** ready-for-agent
+**Status:** implemented
 
 ## Accepted reader contract
 
@@ -37,6 +37,14 @@ Rich-text Description editing is deliberately outside the current Daily-driver m
 Vikunja stores rich-text descriptions as HTML. The previous UX note recommended a deliberately small first step (plain text with tags removed) before considering HTML-to-Markdown conversion or a custom renderer.
 
 ## Comments
+
+### 2026-08-05 — Implementation and manual acceptance
+
+Implemented and manually accepted in commit `7c0f591`:
+
+- Vikunja HTML renders as the specified safe, read-only terminal-text projection.
+- HTML Descriptions are scrollable in Task Detail and cannot expose raw HTML for editing.
+- Renderer and TUI behavior are covered by `go test ./...`.
 
 ### 2026-08-04 — Grilling, question 1: block boundaries and whitespace
 

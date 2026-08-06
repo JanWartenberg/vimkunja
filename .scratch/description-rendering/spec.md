@@ -2,7 +2,7 @@
 
 > This document defines Vimkunja's durable contract for reading, displaying, editing, and saving Vikunja Task Descriptions. It deliberately outlives the originating ticket: the contract may later inform terminal rich-text work outside Vimkunja, but it is currently specific to Vimkunja and does not define a new markup language.
 
-**Related tickets:** M2 reader: [01 — Render Vikunja HTML descriptions as readable terminal text](issues/01-render-vikunja-html-descriptions.md); M3 structured reader/editor: [02 — Specify native Rich-Text Description rendering and editing](issues/02-specify-native-rich-text-description-rendering-and-editing.md)
+**Related tickets:** M2 reader: [01 — Render Vikunja HTML descriptions as readable terminal text (archived)](../../.archive/2026-08-05/description-rendering/issues/01-render-vikunja-html-descriptions.md); M3 structured reader/editor: [02 — Specify native Rich-Text Description rendering and editing](issues/02-specify-native-rich-text-description-rendering-and-editing.md)
 
 **Companion artifacts:** [Keybinding Contract](../../docs/keybindings.md), [TUI/Rich-text glossary](../../CONTEXT.md), [Vim Visual-Mode binding review](research-vim-visual-bindings.md), [Task Detail Done toggle](../task-detail-done-toggle/issues/01-toggle-task-done-from-detail-pane.md), [deferred Checkbox-list summary](../checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md), and [deferred independent Link label/URL editor](../link-label-and-url-editor/issues/01-evaluate-independent-link-label-url-editing.md).
 
@@ -24,7 +24,7 @@ Vikunja stores rich-text Task Descriptions as HTML. Vimkunja must provide a keyb
 
 1. Source HTML remains the persistence format. Vimkunja does not store an alternative format or change Vikunja's schema.
 2. Normal editing must not require the user to read or edit HTML source.
-3. M2's reader-only phase may use a deliberately lossy HTML-to-plain-text projection for display. It never writes Source HTML. Native rendering, editing, and saving use a structured document model rather than lossy conversion.
+3. M2's completed reader-only phase uses a deliberately lossy HTML-to-plain-text projection for display. It never writes Source HTML. Native rendering, editing, and saving use a structured document model rather than lossy conversion.
 4. Existing opaque nodes must not be destroyed by an otherwise valid edit. They are visible but initially non-editable.
 5. Unsupported terminal presentation degrades to readable content; it must not display literal markup merely because it is unsupported. Unknown parseable HTML renders its text contents recursively without special formatting; structurally empty unsupported content displays a neutral unsupported-content hint.
 6. Native terminal formatting is semantic where possible. Terminal capabilities may affect visual fallback, but not the document's HTML meaning.

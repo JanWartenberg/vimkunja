@@ -20,7 +20,8 @@ Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End
 
 ### Meilenstein 2
 
-1. [Vikunja-HTML-Beschreibungen lesbar rendern](.scratch/description-rendering/issues/01-render-vikunja-html-descriptions.md) – begrenzter Read-only-Schnitt; der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
+Die read-only HTML-Description-Projektion ist manuell abgenommen und archiviert; der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
+
 2. [Scroll-Position in langen Panes anzeigen](.scratch/scroll-position-feedback/issues/01-indicate-scroll-position.md)
 3. [Task-Titel inline in Listen/Boards bearbeiten](.scratch/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-kanban.md)
 4. [Ex-Commands, History und Completion erweitern](.scratch/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md)
@@ -42,7 +43,7 @@ Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End
 19. [Lokale Suche im fokussierten Pane](.scratch/local-search/issues/01-search-within-focused-pane.md) – `/` sowie `n`/`N` sind vereinbart, die Pane-Semantik bleibt offen.
 20. [Erweiterte globale Suchabfragen und Ranking](.scratch/global-search-filter/issues/02-add-advanced-global-search-query-and-ranking.md) – Phrasen, Negation, Fuzzy-Matching und Ranking bewusst nach V1.
 21. [Fehlerhafte Project-Hierarchien diagnostizieren und reparieren](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – Feedback und sichere Reparatur bewusst nach dem Hierarchie-Reader.
-22. [Native Rich-Text-Beschreibungen rendern und bearbeiten spezifizieren](.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md) – zweiter Schritt nach dem Plain-Text-Reader aus Meilenstein 2; basiert auf dem bestehenden Rich-Text-Contract.
+22. [Native Rich-Text-Beschreibungen rendern und bearbeiten spezifizieren](.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md) – zweiter Schritt nach dem abgeschlossenen Plain-Text-Reader aus Meilenstein 2; basiert auf dem bestehenden Rich-Text-Contract.
 
 ### Meilenstein 4
 

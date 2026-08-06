@@ -4,7 +4,7 @@
 
 **What to decide:** Define the complete M3 scope for a native, keyboard-first terminal projection and editor for Vikunja HTML Task Descriptions.
 
-**Implementation prerequisites:** M2's read-only HTML-to-plain-text reader is complete. The decisions in this ticket govern the M3 implementation; the existing [Rich-Text Description Contract](../spec.md) is the starting point and must be updated only when a decision here changes it.
+**Implementation prerequisites:** M2's read-only HTML-to-plain-text reader is complete; see its [archived ticket](../../../.archive/2026-08-05/description-rendering/issues/01-render-vikunja-html-descriptions.md). The decisions in this ticket govern the M3 implementation; the existing [Rich-Text Description Contract](../spec.md) is the starting point and must be updated only when a decision here changes it.
 
 **Category:** enhancement
 
