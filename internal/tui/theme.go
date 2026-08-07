@@ -2,12 +2,32 @@ package tui
 
 import "charm.land/lipgloss/v2"
 
+type textFormat struct {
+	bold, underline bool
+	foreground      string
+}
+
+func (format textFormat) render(text string) string {
+	style := lipgloss.NewStyle().Bold(format.bold).Underline(format.underline)
+	if format.foreground != "" {
+		style = style.Foreground(lipgloss.Color(format.foreground))
+	}
+	return style.Render(text)
+}
+
+// renderHeading is the single rendering seam for Pane headings. Themes may
+// change the semantic heading format without each Pane choosing its own style.
+func renderHeading(text string) string {
+	return tuiTheme.heading.render(text)
+}
+
 // tuiTheme is the single palette for terminal rendering. Keeping semantic
 // roles here lets a future user-configurable theme replace mappings without
 // finding terminal colour codes throughout individual panes.
 var tuiTheme = struct {
 	selectionAccent, inactiveSelection, muted, danger string
 	dueSoon, dueUpcoming, ctrlWHint, bright, dark     string
+	heading                                           textFormat
 	priority                                          [6]string
 }{
 	selectionAccent:   "205",
@@ -17,6 +37,7 @@ var tuiTheme = struct {
 	dueSoon:           "208",
 	dueUpcoming:       "220",
 	ctrlWHint:         "227",
+	heading:           textFormat{bold: true, underline: true},
 	bright:            "255",
 	dark:              "0",
 	priority:          [6]string{"245", "34", "220", "208", "196", "196"},

@@ -448,6 +448,16 @@ func TestProjectsPaneMarksMalformedProjectsAsRecoveryRoots(t *testing.T) {
 	}
 }
 
+func TestProjectsPaneUnderlinesHeader(t *testing.T) {
+	m := testModel()
+
+	view := renderProjects(m, 24, 5)
+	header := " " + lipgloss.NewStyle().Bold(true).Underline(true).Render("Projects") + " "
+	if !strings.Contains(view, header) {
+		t.Fatalf("Projects Pane header lacks underline: %q", view)
+	}
+}
+
 func TestProjectsPaneRendersHierarchyAndSelectedProject(t *testing.T) {
 	m := testModel()
 	updated, _ := m.Update(projectsLoadedMsg{projects: []vimkunja.Project{
@@ -1561,8 +1571,36 @@ func TestFocusedTaskListHighlightsDueDateWithoutUnderline(t *testing.T) {
 
 func TestTaskPaneLabelsProjectTasks(t *testing.T) {
 	m := testModel()
-	if header := ansi.Strip(strings.Split(renderTasks(m, 80, 3), "\n")[0]); !strings.Contains(header, "Project Tasks") {
-		t.Fatalf("Tasks Pane header = %q, want Project Tasks", header)
+	header := strings.Split(renderTasks(m, 80, 3), "\n")[0]
+	want := " " + lipgloss.NewStyle().Bold(true).Underline(true).Render("Project Tasks") + " "
+	if !strings.Contains(header, want) {
+		t.Fatalf("Tasks Pane header = %q, want underlined Project Tasks", header)
+	}
+}
+
+func TestOverviewPaneUnderlinesHeader(t *testing.T) {
+	m := testModel()
+	m.taskScope = scopeOverview
+
+	header := strings.Split(renderTasks(m, 80, 3), "\n")[0]
+	title := fmt.Sprintf("Overview · %s · %s", m.overviewSortLabel(), m.overviewFilterLabel())
+	want := " " + lipgloss.NewStyle().Bold(true).Underline(true).Render(title) + " "
+	if !strings.Contains(header, want) {
+		t.Fatalf("Overview Pane header = %q, want underlined title", header)
+	}
+}
+
+func TestTaskDetailUnderlinesUncoloredHeader(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+
+	header := strings.Split(renderTaskDetail(m, 80, 20), "\n")[0]
+	want := " " + lipgloss.NewStyle().Bold(true).Underline(true).Render("TASK EDITOR") + " "
+	if !strings.Contains(header, want) {
+		t.Fatalf("Task Detail header = %q, want uncolored underlined title", header)
+	}
+	if strings.Contains(header, "38;5;"+tuiTheme.selectionAccent) {
+		t.Fatalf("Task Detail header retains selection color: %q", header)
 	}
 }
 
@@ -1929,7 +1967,7 @@ func TestTaskDetailLabelsRenderAndStageRemovalInDraft(t *testing.T) {
 	}
 }
 
-func TestTaskDetailHighlightsOnlyTheSelectedLabel(t *testing.T) {
+func TestTaskDetailHighlightsLabelsFieldAndSelectedLabel(t *testing.T) {
 	m := testModel()
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
 	m.editor.labelsLoading = false
@@ -1938,12 +1976,26 @@ func TestTaskDetailHighlightsOnlyTheSelectedLabel(t *testing.T) {
 	m.editor.labelSelected = 1
 
 	detail := renderTaskDetail(m, 80, 20)
+	fieldPrefix := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Bold(true).Render("▸ Labels:   ")
+	if !strings.Contains(detail, fieldPrefix) {
+		t.Fatalf("active Labels field lacks its highlight: %q", detail)
+	}
 	selected := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Bold(true).Render("Home")
 	if !strings.Contains(detail, selected) {
 		t.Fatalf("selected Label lacks its own highlight: %q", detail)
 	}
-	if strings.Contains(detail, "\x1b[38;5;"+tuiTheme.selectionAccent+"m▸ Labels:") {
-		t.Fatalf("Labels field is highlighted instead of only its selection: %q", detail)
+}
+
+func TestTaskDetailHighlightsEmptyLabelsFieldWithoutHighlightingNone(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.editor.field = fieldLabels
+
+	detail := renderTaskDetail(m, 80, 20)
+	selectedLabel := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Bold(true).Render("▸ Labels:   ")
+	if !strings.Contains(detail, selectedLabel+"none") {
+		t.Fatalf("empty Labels field lacks selected label and neutral none: %q", detail)
 	}
 }
 
@@ -2174,6 +2226,29 @@ func TestTaskLabelPickerCreatesAndStagesNewLabel(t *testing.T) {
 	}
 	if got := m.editor.draft.LabelIDs; !reflect.DeepEqual(got, []int64{99}) || !m.editor.draft.LabelIDsSet || !m.editor.dirty() {
 		t.Fatalf("picker draft = %#v, want staged new Label", m.editor.draft)
+	}
+}
+
+func TestLabelOverlayUsesHeadingStyle(t *testing.T) {
+	for _, test := range []struct {
+		name, title string
+		kind        labelUIKind
+	}{
+		{name: "task picker", title: "LABEL PICKER", kind: labelUITaskPicker},
+		{name: "global Labels", title: "LABELS", kind: labelUIGlobalOverview},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			m := testModel()
+			m.width, m.height = 100, 30
+			m.labelUI = &labelUI{kind: test.kind}
+
+			background := strings.Repeat(strings.Repeat(" ", 100)+"\n", 29) + strings.Repeat(" ", 100)
+			overlay := m.renderLabelOverlay(background, 100)
+			want := lipgloss.NewStyle().Bold(true).Underline(true).Render(test.title)
+			if !strings.Contains(overlay, want) {
+				t.Fatalf("Label overlay title = %q, want shared heading style", overlay)
+			}
+		})
 	}
 }
 

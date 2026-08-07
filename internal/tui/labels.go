@@ -509,7 +509,7 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 	if ui.kind == labelUIGlobalOverview {
 		title = "LABELS"
 	}
-	body := []string{lipgloss.NewStyle().Bold(true).Render(title), ""}
+	body := []string{renderHeading(title), ""}
 	if ui.commandMode {
 		body = append(body, ":"+ui.commandInput+"_")
 	} else if ui.deleteConfirm {

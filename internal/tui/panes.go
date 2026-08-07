@@ -60,7 +60,7 @@ func padPlainRight(s string, width int) string {
 }
 
 func renderProjects(m *model, textW, textH int) string {
-	header := lipgloss.NewStyle().Bold(true).Render(" Projects ")
+	header := " " + renderHeading("Projects") + " "
 	focus := m.focus == paneProjects
 
 	lines := []string{header}
@@ -121,14 +121,14 @@ func renderTasks(m *model, textW, textH int) string {
 	if m.kanbanActive && !m.inOverview() {
 		return renderKanbanBoard(m, textW, textH)
 	}
-	headerText := " Project Tasks "
+	headerText := "Project Tasks"
 	if m.inOverview() {
-		headerText = fmt.Sprintf(" Overview · %s · %s ", m.overviewSortLabel(), m.overviewFilterLabel())
+		headerText = fmt.Sprintf("Overview · %s · %s", m.overviewSortLabel(), m.overviewFilterLabel())
 		if m.overviewLabel.ID != 0 {
-			headerText = fmt.Sprintf(" Overview · Label: %s · %s · %s ", m.overviewLabel.Title, m.overviewSortLabel(), m.overviewFilterLabel())
+			headerText = fmt.Sprintf("Overview · Label: %s · %s · %s", m.overviewLabel.Title, m.overviewSortLabel(), m.overviewFilterLabel())
 		}
 	}
-	header := lipgloss.NewStyle().Bold(true).Render(headerText)
+	header := " " + renderHeading(headerText) + " "
 	focus := m.focus == paneTasks
 
 	lines := []string{header}
@@ -351,11 +351,11 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		return fitBlock([]string{"No task editor available."}, textW, textH)
 	}
 	e := m.editor
-	header := " TASK EDITOR "
+	header := "TASK EDITOR"
 	if e.id == 0 {
-		header = " NEW TASK "
+		header = "NEW TASK"
 	}
-	lines := []string{lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(header), ""}
+	lines := []string{" " + renderHeading(header) + " ", ""}
 	projectName := "(none)"
 	for _, p := range m.projects {
 		if p.ID == e.draft.ProjectID {
@@ -387,7 +387,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 			return label + pickerField(value, active)
 		}
 		if field == fieldLabels && active {
-			return label + value
+			return lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Bold(true).Render("▸ "+label) + value
 		}
 		return focusedField(label+value, active)
 	}
