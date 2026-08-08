@@ -510,6 +510,17 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 		title = "LABELS"
 	}
 	body := []string{renderHeading(title), ""}
+	labelScrollbar := false
+	labelViewportStart := 0
+	appendMatches := func() {
+		labelViewportStart = len(body)
+		labelScrollbar = len(ui.matches()) > m.labelResultLineBudget()
+		matchWidth := bodyWidth
+		if labelScrollbar {
+			matchWidth -= 2
+		}
+		body = append(body, m.renderLabelMatches(matchWidth)...)
+	}
 	if ui.commandMode {
 		body = append(body, ":"+ui.commandInput+"_")
 	} else if ui.deleteConfirm {
@@ -525,7 +536,7 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 			prompt = "Rename: "
 		}
 		body = append(body, prompt+ui.input+"_", "")
-		body = append(body, m.renderLabelMatches(bodyWidth)...)
+		appendMatches()
 	} else if ui.loading {
 		body = append(body, "Loading…")
 	} else {
@@ -534,7 +545,10 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 		} else {
 			body = append(body, "o create · i rename · dd then y delete", "")
 		}
-		body = append(body, m.renderLabelMatches(bodyWidth)...)
+		appendMatches()
+	}
+	if labelScrollbar {
+		body = strings.Split(renderVerticalScrollbar(body, bodyWidth, len(body), ui.viewport, len(ui.matches()), labelViewportStart, m.labelResultLineBudget(), true), "\n")
 	}
 	modal := lipgloss.NewStyle().
 		Border(lipgloss.ThickBorder()).
@@ -561,12 +575,13 @@ func (m *model) renderLabelMatches(width int) []string {
 		if index == ui.selected {
 			prefix = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(">") + " "
 		}
-		line := prefix + truncatePlain(label.Title, max(1, width-lipgloss.Width(prefix)))
+		suffix := ""
 		if ui.kind == labelUIGlobalOverview {
-			line += fmt.Sprintf("  (%d)", label.TaskCount)
+			suffix = fmt.Sprintf("  (%d)", label.TaskCount)
 		} else if m.editorHasLabel(label.ID) {
-			line += "  [x]"
+			suffix = "  [x]"
 		}
+		line := prefix + truncatePlain(label.Title, max(1, width-lipgloss.Width(prefix)-lipgloss.Width(suffix))) + suffix
 		lines = append(lines, line)
 	}
 	return lines

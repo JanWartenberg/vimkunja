@@ -8,7 +8,7 @@
 
 **Priority:** Medium
 
-**Status:** ready-for-agent
+**Status:** implemented
 
 - [ ] A Pane with overflow visibly indicates that it can scroll.
 - [ ] The UI shows a percentage of the current scroll position, a scrollbar-like edge indicator, or both.
@@ -38,3 +38,7 @@ Before implementation:
 
 - Centralize the semantic dark-, medium-, and light-grey scrollbar colours in the TUI theme.
 - Add narrow-width rendering checks, including rail reservation, no rail for content that only overflows after reservation, Thumb bounds, and Footer-space omission.
+
+### 2026-08-07 — Implementation
+
+Implemented shared scroll rails and focused Footer percentages for Projects, Tasks, Help, Errors, overflowing read-only Descriptions, and overflowing Label overlays. Rails reserve two columns only after full-width overflow is established; Thumb position uses rendered viewport rows. `┬`/`┴` bounds identify the track in Detail Panes whose fixed fields precede the scrollable Description. Narrow-width regression coverage verifies rail reservation, self-induced-overflow avoidance, and Footer-space omission.

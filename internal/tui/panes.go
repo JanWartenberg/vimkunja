@@ -76,6 +76,11 @@ func renderProjects(m *model, textW, textH int) string {
 	}
 
 	visibleRows := max(0, textH-1)
+	overflows := len(rows) > visibleRows
+	contentWidth := textW
+	if overflows {
+		contentWidth -= 2
+	}
 	selected := clamp(m.projectSelected, 0, len(rows)-1)
 	m.projectViewportStart = clamp(m.projectViewportStart, 0, max(0, len(rows)-visibleRows))
 	if selected < m.projectViewportStart {
@@ -107,13 +112,16 @@ func renderProjects(m *model, textW, textH int) string {
 			label = "> " + label + " <"
 		}
 		line := strings.Repeat("  ", row.Depth) + marker + label
-		line = truncatePlain(line, textW)
+		line = truncatePlain(line, contentWidth)
 		if sel && focus {
 			line = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(line)
 		}
 		lines = append(lines, line)
 	}
 
+	if overflows {
+		return renderVerticalScrollbar(lines, textW, textH, m.projectViewportStart, len(rows), 1, visibleRows, focus)
+	}
 	return fitBlock(lines, textW, textH)
 }
 
@@ -145,12 +153,17 @@ func renderTasks(m *model, textW, textH int) string {
 	// The Tasks Pane owns its viewport: its selected Task must remain visible
 	// when a Detail Pane reduces the available height, regardless of Scope.
 	visibleRows := max(0, textH-1) // header consumes the first row
+	overflows := len(m.tasks) > visibleRows
+	contentWidth := textW
+	if overflows {
+		contentWidth -= 2
+	}
 	selected := clamp(m.taskSelected, 0, len(m.tasks)-1)
 	// Keep context below the selection instead of pinning it to the bottom.
 	bottomMargin := min(2, max(0, visibleRows-1))
-	start := max(0, selected-visibleRows+1+bottomMargin)
+	start := clamp(selected-visibleRows+1+bottomMargin, 0, max(0, len(m.tasks)-visibleRows))
 	end := min(len(m.tasks), start+visibleRows)
-	layout := taskMetadataLayoutForWidth(m.tasks[start:end], textW, m.inOverview(), m.currentTime())
+	layout := taskMetadataLayoutForWidth(m.tasks[start:end], contentWidth, m.inOverview(), m.currentTime())
 	for i, t := range m.tasks[start:end] {
 		sel := start+i == selected
 		done := "[ ]"
@@ -239,6 +252,9 @@ func renderTasks(m *model, textW, textH int) string {
 		lines = append(lines, line)
 	}
 
+	if overflows {
+		return renderVerticalScrollbar(lines, textW, textH, start, len(m.tasks), 1, visibleRows, focus)
+	}
 	return fitBlock(lines, textW, textH)
 }
 
@@ -336,14 +352,38 @@ type infoPane struct {
 	errorLog bool
 }
 
-func renderInfoPane(pane *infoPane, textW, textH int) string {
+func infoPaneRows(lines []string, width int) []string {
+	wrapped := wrapDescription(strings.Join(lines, "\n"), max(1, width))
+	rows := make([]string, len(wrapped))
+	for index, line := range wrapped {
+		rows[index] = line.text
+	}
+	return rows
+}
+
+func infoPaneScrollRows(pane *infoPane, textW, viewportRows int) ([]string, bool) {
+	rows := infoPaneRows(pane.lines, textW)
+	if len(rows) <= viewportRows {
+		return rows, false
+	}
+	// Overflow is assessed at the full text width before reserving the rail.
+	return infoPaneRows(pane.lines, max(1, textW-2)), true
+}
+
+func renderInfoPane(pane *infoPane, textW, textH int, focused bool) string {
 	if pane == nil {
 		return fitBlock([]string{"No information available."}, textW, textH)
 	}
 
 	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(" " + pane.title + " ")
-	offset := clamp(pane.offset, 0, max(0, len(pane.lines)-1))
-	return fitBlock(append([]string{title, ""}, pane.lines[offset:]...), textW, textH)
+	viewportRows := max(0, textH-2) // heading and its blank separator
+	rows, overflows := infoPaneScrollRows(pane, textW, viewportRows)
+	offset := clamp(pane.offset, 0, max(0, len(rows)-viewportRows))
+	lines := append([]string{title, ""}, rows[offset:]...)
+	if overflows {
+		return renderVerticalScrollbar(lines, textW, textH, offset, len(rows), 2, viewportRows, focused)
+	}
+	return fitBlock(lines, textW, textH)
 }
 
 func renderTaskDetail(m *model, textW, textH int) string {
@@ -430,6 +470,8 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		lines = append(lines, placeholderText(fmt.Sprintf("(DB-ID: %d, Task-Index: %d)", e.id, e.taskIndex)))
 	}
 	lines = append(lines, "", renderField(fieldDescription, "Description:", ""))
+	descriptionScrollable := false
+	descriptionScrollTop, descriptionRows, descriptionViewportStart, descriptionViewportRows := 0, 0, 0, 0
 	if e.mode == editorProjectPicker {
 		lines = append(lines, "  Filter: "+e.projectFilter)
 		matches := m.filteredProjects(e.projectFilter)
@@ -454,15 +496,28 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	} else if description := descriptionTerminalText(e.draft.Description); description == "" {
 		lines = append(lines, placeholderText("  (no description)"))
 	} else {
-		desc := wrapDescription(description, textW)
-		start := 0
 		available := max(1, textH-len(lines))
+		desc := wrapDescription(description, textW)
+		// Detect overflow before reserving the rail. Once it exists, the
+		// narrower render width determines the real scroll range.
+		if len(desc) > available {
+			descriptionScrollable = true
+			desc = wrapDescription(description, max(1, textW-2))
+		}
+		start := 0
 		if e.field == fieldDescription && len(desc) > available {
 			start = clamp(e.descScroll, 0, len(desc)-available)
 		}
+		descriptionScrollTop = start
+		descriptionRows = len(desc)
+		descriptionViewportStart = len(lines)
+		descriptionViewportRows = available
 		for _, line := range desc[start:] {
 			lines = append(lines, m.editorDescriptionText(line))
 		}
+	}
+	if descriptionScrollable {
+		return renderVerticalScrollbar(lines, textW, textH, descriptionScrollTop, descriptionRows, descriptionViewportStart, descriptionViewportRows, m.focus == paneDetail)
 	}
 	return fitBlock(lines, textW, textH)
 }
@@ -552,6 +607,9 @@ func (m *model) readOnlyDescriptionScrollLimit() int {
 	}
 	available := max(1, textH-precedingLines)
 	lines := wrapDescription(descriptionTerminalText(m.editor.draft.Description), textW)
+	if len(lines) > available {
+		lines = wrapDescription(descriptionTerminalText(m.editor.draft.Description), max(1, textW-2))
+	}
 	return max(0, len(lines)-available)
 }
 

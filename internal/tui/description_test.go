@@ -130,6 +130,26 @@ func TestHTMLDescriptionRemainsReadOnlyDuringReaderPhase(t *testing.T) {
 	}
 }
 
+func TestReadOnlyDescriptionScrollbarUsesReservedWidth(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Long", Description: strings.Repeat("1234567890", 9)})
+	m.editor.field = fieldDescription
+
+	view := ansi.Strip(renderTaskDetail(m, 20, 16))
+	if !strings.Contains(view, "┬") || !strings.Contains(view, "█") {
+		t.Fatalf("overflowing Description lacks scrollbar: %q", view)
+	}
+	if !strings.Contains(view, "┬") || !strings.Contains(view, "┴") {
+		t.Fatalf("Description scrollbar lacks its bounds: %q", view)
+	}
+	for _, line := range strings.Split(view, "\n") {
+		if got := ansi.StringWidth(line); got != 20 {
+			t.Fatalf("scrollbar line width = %d, want 20: %q", got, line)
+		}
+	}
+}
+
 func TestReadOnlyHTMLDescriptionScrolls(t *testing.T) {
 	var description strings.Builder
 	for line := 1; line <= 18; line++ {

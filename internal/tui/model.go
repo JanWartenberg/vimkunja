@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -1235,10 +1236,27 @@ func (m *model) updateInfoKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m.updateInfoPaneScrollKeys(m.infoPane, k)
 }
 
+func (m *model) infoPaneScrollLimit(pane *infoPane) int {
+	if pane == nil {
+		return 0
+	}
+	w, h := m.viewportSize()
+	contentH := max(4, h-3)
+	topH := m.detailPaneTop()
+	detailH := max(4, contentH-topH)
+	viewportRows := max(1, detailH-2-2) // Pane chrome, heading, and blank row.
+	rows, overflows := infoPaneScrollRows(pane, w-4, viewportRows)
+	if !overflows {
+		return 0
+	}
+	return len(rows) - viewportRows
+}
+
 func (m *model) updateInfoPaneScrollKeys(pane *infoPane, k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if pane == nil {
 		return m, nil
 	}
+	limit := m.infoPaneScrollLimit(pane)
 	if m.gArmed {
 		m.gArmed = false
 		if k.String() == "g" {
@@ -1250,17 +1268,17 @@ func (m *model) updateInfoPaneScrollKeys(pane *infoPane, k tea.KeyMsg) (tea.Mode
 	case "g":
 		m.gArmed = true
 	case "G", "end":
-		pane.offset = max(0, len(pane.lines)-1)
+		pane.offset = limit
 	case "home":
 		pane.offset = 0
 	case "j", "down":
-		pane.offset = clamp(pane.offset+1, 0, max(0, len(pane.lines)-1))
+		pane.offset = clamp(pane.offset+1, 0, limit)
 	case "k", "up":
-		pane.offset = clamp(pane.offset-1, 0, max(0, len(pane.lines)-1))
+		pane.offset = clamp(pane.offset-1, 0, limit)
 	case "ctrl+d", "pgdown", "pagedown":
-		pane.offset = clamp(pane.offset+m.pageStep(), 0, max(0, len(pane.lines)-1))
+		pane.offset = clamp(pane.offset+m.pageStep(), 0, limit)
 	case "ctrl+u", "pgup", "pageup":
-		pane.offset = clamp(pane.offset-m.pageStep(), 0, max(0, len(pane.lines)-1))
+		pane.offset = clamp(pane.offset-m.pageStep(), 0, limit)
 	}
 	return m, nil
 }
@@ -1435,6 +1453,11 @@ func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
 	}
 	available := max(1, textH-precedingLines)
 	description := wrapDescription(m.editor.draft.Description, textW)
+	if len(description) > available {
+		// Match the Detail renderer: overflow is detected at full width, then
+		// the rail reserves two columns before visual rows are calculated.
+		description = wrapDescription(m.editor.draft.Description, max(1, textW-2))
+	}
 	start := 0
 	if len(description) > available {
 		start = clamp(m.editor.descScroll, 0, len(description)-available)
@@ -1530,9 +1553,9 @@ func (m *model) Render() string {
 		case m.showDetail:
 			bottom = renderTaskDetail(m, w-chromeX, detailH-chromeY)
 		case m.helpPane != nil:
-			bottom = renderInfoPane(m.helpPane, w-chromeX, detailH-chromeY)
+			bottom = renderInfoPane(m.helpPane, w-chromeX, detailH-chromeY, m.focus == paneHelp)
 		default:
-			bottom = renderInfoPane(m.infoPane, w-chromeX, detailH-chromeY)
+			bottom = renderInfoPane(m.infoPane, w-chromeX, detailH-chromeY, m.focus == paneInfo)
 		}
 		bottomStyle := lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
@@ -1555,6 +1578,72 @@ func (m *model) Render() string {
 	}
 	status := m.renderStatusBar(w)
 	return lipgloss.JoinVertical(lipgloss.Top, content, status)
+}
+
+// focusedScrollPosition reports the focused Pane's visual viewport position.
+// Fixed Pane chrome (headers and editor fields) is excluded: only rows that
+// actually move under a scrolling command contribute to the percentage.
+func (m *model) focusedScrollPosition() (int, int, bool) {
+	w, h := m.viewportSize()
+	contentH := max(4, h-3)
+	topH := contentH
+	if m.showDetail || m.helpPane != nil || m.infoPane != nil {
+		topH = m.detailPaneTop()
+	}
+	topTextH := topH - 2
+
+	switch m.focus {
+	case paneProjects:
+		rows, viewportRows := m.projectRows(), max(0, topTextH-1)
+		if len(rows) > viewportRows {
+			limit := len(rows) - viewportRows
+			return clamp(m.projectViewportStart, 0, limit), limit, true
+		}
+	case paneTasks:
+		viewportRows := max(0, topTextH-1)
+		if !m.kanbanActive && len(m.tasks) > viewportRows {
+			selected := clamp(m.taskSelected, 0, len(m.tasks)-1)
+			bottomMargin := min(2, max(0, viewportRows-1))
+			limit := len(m.tasks) - viewportRows
+			return clamp(selected-viewportRows+1+bottomMargin, 0, limit), limit, true
+		}
+	case paneDetail:
+		if m.editor == nil || m.editor.field != fieldDescription {
+			break
+		}
+		detailH := max(4, contentH-topH)
+		textH := detailH - 2
+		precedingLines := 11
+		if m.editor.id == 0 {
+			precedingLines--
+		} else if textH >= 12 && !m.editor.isPickerMode() {
+			precedingLines++
+		}
+		viewportRows := max(1, textH-precedingLines)
+		descriptionWidth := w - 4
+		contentRows := len(wrapDescription(descriptionTerminalText(m.editor.draft.Description), descriptionWidth))
+		if contentRows > viewportRows {
+			contentRows = len(wrapDescription(descriptionTerminalText(m.editor.draft.Description), max(1, descriptionWidth-2)))
+			limit := contentRows - viewportRows
+			return clamp(m.editor.descScroll, 0, limit), limit, true
+		}
+	case paneHelp, paneInfo:
+		pane := m.helpPane
+		if m.focus == paneInfo {
+			pane = m.infoPane
+		}
+		if pane == nil {
+			break
+		}
+		detailH := max(4, contentH-topH)
+		viewportRows := max(1, detailH-2-2) // Pane chrome, heading, and blank row.
+		rows, overflows := infoPaneScrollRows(pane, w-4, viewportRows)
+		if overflows {
+			limit := len(rows) - viewportRows
+			return clamp(pane.offset, 0, limit), limit, true
+		}
+	}
+	return 0, 0, false
 }
 
 func (m *model) renderStatusBar(w int) string {
@@ -1653,7 +1742,17 @@ func (m *model) renderStatusBar(w int) string {
 		statusStyle = statusStyle.Foreground(lipgloss.Color(tuiTheme.danger)).BorderForeground(lipgloss.Color(tuiTheme.danger))
 	}
 
-	return statusStyle.Render(fmt.Sprintf("%s   %s", info, hint))
+	status := fmt.Sprintf("%s   %s", info, hint)
+	if scrollTop, maxScroll, scrolling := m.focusedScrollPosition(); scrolling {
+		// The percentage needs its own separator plus enough space for 100%.
+		// Existing hints always win when the status row is narrow.
+		contentWidth := max(0, w-4) // rounded border plus horizontal padding
+		if free := contentWidth - lipgloss.Width(status); free >= 5 {
+			percent := int(math.Round(100 * float64(scrollTop) / float64(maxScroll)))
+			status += strings.Repeat(" ", free-lipgloss.Width(fmt.Sprintf("%d%%", percent))) + fmt.Sprintf("%d%%", percent)
+		}
+	}
+	return statusStyle.Render(status)
 }
 
 func clamp(v, lo, hi int) int {

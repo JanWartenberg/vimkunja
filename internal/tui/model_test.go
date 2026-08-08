@@ -448,6 +448,61 @@ func TestProjectsPaneMarksMalformedProjectsAsRecoveryRoots(t *testing.T) {
 	}
 }
 
+func TestProjectsPaneShowsScrollbarOnlyForActualOverflow(t *testing.T) {
+	m := testModel()
+	m.projects = []vimkunja.Project{
+		{ID: 1, Title: "One", Position: 1},
+		{ID: 2, Title: "Two", Position: 2},
+		{ID: 3, Title: "Three", Position: 3},
+		{ID: 4, Title: "Four", Position: 4},
+	}
+
+	overflowing := ansi.Strip(renderProjects(m, 18, 4))
+	if !strings.Contains(overflowing, "┬") || !strings.Contains(overflowing, "█") {
+		t.Fatalf("overflowing Projects Pane lacks bounded scrollbar: %q", overflowing)
+	}
+	for _, line := range strings.Split(overflowing, "\n") {
+		if got := lipgloss.Width(line); got != 18 {
+			t.Fatalf("scrollbar line width = %d, want 18: %q", got, line)
+		}
+	}
+
+	nonOverflowing := ansi.Strip(renderProjects(m, 18, 5))
+	if strings.Contains(nonOverflowing, "│") || strings.Contains(nonOverflowing, "█") {
+		t.Fatalf("non-overflowing Projects Pane shows scrollbar: %q", nonOverflowing)
+	}
+}
+
+func TestTasksPaneScrollbarTracksSelectionAndFooterPosition(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.width, m.height = 120, 10
+	m.tasks = []vimkunja.Task{
+		{ID: 1, Title: "One"},
+		{ID: 2, Title: "Two"},
+		{ID: 3, Title: "Three"},
+		{ID: 4, Title: "Four"},
+		{ID: 5, Title: "Five"},
+	}
+
+	atTop := ansi.Strip(renderTasks(m, 24, 4))
+	if !strings.Contains(atTop, "┬") || !strings.Contains(atTop, "█") {
+		t.Fatalf("overflowing Tasks Pane lacks bounded scrollbar: %q", atTop)
+	}
+	if footer := ansi.Strip(m.renderStatusBar(120)); !strings.Contains(footer, "0% │") {
+		t.Fatalf("top footer = %q, want right-aligned 0%%", footer)
+	}
+
+	m.taskSelected = len(m.tasks) - 1
+	atBottom := ansi.Strip(renderTasks(m, 24, 4))
+	if strings.Index(atBottom, "█") <= strings.Index(atTop, "█") {
+		t.Fatalf("scrollbar Thumb did not advance: top=%q bottom=%q", atTop, atBottom)
+	}
+	if footer := ansi.Strip(m.renderStatusBar(120)); !strings.Contains(footer, "100% │") {
+		t.Fatalf("bottom footer = %q, want right-aligned 100%%", footer)
+	}
+}
+
 func TestProjectsPaneUnderlinesHeader(t *testing.T) {
 	m := testModel()
 
@@ -475,6 +530,37 @@ func TestProjectsPaneRendersHierarchyAndSelectedProject(t *testing.T) {
 	}
 	if strings.Contains(view, "[X]") {
 		t.Fatalf("legacy selection marker remains in Projects Pane: %q", view)
+	}
+}
+
+func TestInfoPaneScrollbarReservesRailWithoutCreatingOverflow(t *testing.T) {
+	pane := &infoPane{title: "HELP", lines: []string{"one", "two", "three"}}
+
+	overflowing := ansi.Strip(renderInfoPane(pane, 16, 4, true))
+	if !strings.Contains(overflowing, "┬") || !strings.Contains(overflowing, "█") {
+		t.Fatalf("overflowing informational Pane lacks bounded scrollbar: %q", overflowing)
+	}
+	nonOverflowing := ansi.Strip(renderInfoPane(pane, 16, 5, true))
+	if strings.Contains(nonOverflowing, "│") || strings.Contains(nonOverflowing, "█") {
+		t.Fatalf("non-overflowing informational Pane shows scrollbar: %q", nonOverflowing)
+	}
+
+	// This content would gain a third wrapped row if the rail were reserved,
+	// but two full-width rows fit exactly and therefore must not create a rail.
+	selfInduced := ansi.Strip(renderInfoPane(&infoPane{title: "H", lines: []string{"123456789"}}, 5, 4, true))
+	if strings.Contains(selfInduced, "│") || strings.Contains(selfInduced, "█") {
+		t.Fatalf("rail created its own informational Pane overflow: %q", selfInduced)
+	}
+}
+
+func TestScrollPercentageYieldsToNarrowStatusHints(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.width, m.height = 60, 10
+	m.tasks = []vimkunja.Task{{ID: 1}, {ID: 2}, {ID: 3}, {ID: 4}, {ID: 5}}
+
+	if footer := ansi.Strip(m.renderStatusBar(60)); strings.Contains(footer, "0%") {
+		t.Fatalf("narrow footer displaced hints for scroll percentage: %q", footer)
 	}
 }
 
@@ -2252,6 +2338,24 @@ func TestLabelOverlayUsesHeadingStyle(t *testing.T) {
 	}
 }
 
+func TestLabelPickerShowsScrollbarForOverflowingMatches(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 30
+	labels := make([]vimkunja.Label, 55)
+	for i := range labels {
+		labels[i] = vimkunja.Label{ID: int64(i + 1), Title: fmt.Sprintf("Label %02d", i+1)}
+	}
+	m.labelUI = &labelUI{kind: labelUIGlobalOverview, labels: labels}
+	background := strings.Repeat(strings.Repeat(" ", 100)+"\n", 29) + strings.Repeat(" ", 100)
+
+	overlay := ansi.Strip(m.renderLabelOverlay(background, 100))
+	for _, glyph := range []string{"│", "█", "┬", "┴"} {
+		if !strings.Contains(overlay, glyph) {
+			t.Fatalf("overflowing Labels overlay lacks scrollbar glyph %q: %q", glyph, overlay)
+		}
+	}
+}
+
 func TestLabelPickerKeepsBottomBorderWithManyLabels(t *testing.T) {
 	m := testModel()
 	m.width, m.height = 100, 30
@@ -3081,19 +3185,19 @@ func TestHomeEndAliasesScrollInformationalPanes(t *testing.T) {
 	}{
 		{
 			name:   "help",
-			model:  &model{focus: paneHelp, helpPane: &infoPane{lines: []string{"first", "middle", "last"}, offset: 1}},
+			model:  &model{focus: paneHelp, helpPane: &infoPane{lines: []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}, offset: 1}},
 			offset: func(m *model) int { return m.helpPane.offset },
 		},
 		{
 			name:   "errors",
-			model:  &model{focus: paneInfo, infoPane: &infoPane{lines: []string{"first", "middle", "last"}, offset: 1}},
+			model:  &model{focus: paneInfo, infoPane: &infoPane{lines: []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}, offset: 1}},
 			offset: func(m *model) int { return m.infoPane.offset },
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := pressKey(tc.model, tea.Key{Code: tea.KeyEnd})
-			if got := tc.offset(m); got != 2 {
-				t.Fatalf("offset after End = %d, want 2", got)
+			if got := tc.offset(m); got != 3 {
+				t.Fatalf("offset after End = %d, want 3", got)
 			}
 
 			m = pressKey(m, tea.Key{Code: tea.KeyHome})

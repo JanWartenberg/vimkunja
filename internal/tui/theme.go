@@ -25,22 +25,26 @@ func renderHeading(text string) string {
 // roles here lets a future user-configurable theme replace mappings without
 // finding terminal colour codes throughout individual panes.
 var tuiTheme = struct {
-	selectionAccent, inactiveSelection, muted, danger string
-	dueSoon, dueUpcoming, ctrlWHint, bright, dark     string
-	heading                                           textFormat
-	priority                                          [6]string
+	selectionAccent, inactiveSelection, muted, danger    string
+	dueSoon, dueUpcoming, ctrlWHint, bright, dark        string
+	scrollbarRail, scrollbarThumb, scrollbarThumbFocused string
+	heading                                              textFormat
+	priority                                             [6]string
 }{
-	selectionAccent:   "205",
-	inactiveSelection: "229",
-	muted:             "245",
-	danger:            "196",
-	dueSoon:           "208",
-	dueUpcoming:       "220",
-	ctrlWHint:         "227",
-	heading:           textFormat{bold: true, underline: true},
-	bright:            "255",
-	dark:              "0",
-	priority:          [6]string{"245", "34", "220", "208", "196", "196"},
+	selectionAccent:       "205",
+	inactiveSelection:     "229",
+	muted:                 "245",
+	danger:                "196",
+	dueSoon:               "208",
+	dueUpcoming:           "220",
+	ctrlWHint:             "227",
+	scrollbarRail:         "240",
+	scrollbarThumb:        "245",
+	scrollbarThumbFocused: "255",
+	heading:               textFormat{bold: true, underline: true},
+	bright:                "255",
+	dark:                  "0",
+	priority:              [6]string{"245", "34", "220", "208", "196", "196"},
 }
 
 // SelectionAccentColor exposes the shared accent to TUI-adjacent renderers,
