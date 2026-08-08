@@ -2354,6 +2354,14 @@ func TestLabelPickerShowsScrollbarForOverflowingMatches(t *testing.T) {
 			t.Fatalf("overflowing Labels overlay lacks scrollbar glyph %q: %q", glyph, overlay)
 		}
 	}
+	for _, line := range strings.Split(overlay, "\n") {
+		if !strings.Contains(line, "LABELS") && !strings.Contains(line, "o create") {
+			continue
+		}
+		if strings.ContainsAny(line, "│█┬┴") {
+			t.Fatalf("Labels header/instructions have scrollbar glyph: %q", line)
+		}
+	}
 }
 
 func TestLabelPickerKeepsBottomBorderWithManyLabels(t *testing.T) {

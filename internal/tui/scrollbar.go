@@ -17,11 +17,6 @@ func renderVerticalScrollbar(lines []string, width, height, scrollTop, contentRo
 		return fitBlock(lines, width, height)
 	}
 
-	contentWidth := width - 2
-	for index, line := range lines {
-		lines[index] = ansi.Truncate(line, contentWidth, "")
-	}
-	lines = strings.Split(fitBlock(lines, contentWidth, height), "\n")
 	thumbStart, thumbEnd := scrollbarThumb(scrollTop, contentRows, viewportRows)
 	thumb := tuiTheme.scrollbarThumb
 	if focused {
@@ -31,19 +26,34 @@ func renderVerticalScrollbar(lines []string, width, height, scrollTop, contentRo
 	rail := railStyle.Render("│")
 	topCap := viewportStart - 1
 	bottomCap := min(height-1, viewportStart+viewportRows-1)
-	for row := range lines {
-		glyph := rail
-		switch {
-		case row == topCap:
-			glyph = railStyle.Render("┬")
-		case row >= viewportStart && row-viewportStart >= thumbStart && row-viewportStart < thumbEnd:
-			glyph = lipgloss.NewStyle().Foreground(lipgloss.Color(thumb)).Render("█")
-		case row == bottomCap:
-			glyph = railStyle.Render("┴")
+	out := make([]string, 0, height)
+	for row := 0; row < height; row++ {
+		line := ""
+		if row < len(lines) {
+			line = lines[row]
 		}
-		lines[row] += " " + glyph
+		inTrack := row >= topCap && row <= bottomCap
+		lineWidth := width
+		if inTrack {
+			lineWidth -= 2
+		}
+		line = ansi.Truncate(line, lineWidth, "")
+		line += strings.Repeat(" ", max(0, lineWidth-lipgloss.Width(line)))
+		if inTrack {
+			glyph := rail
+			switch {
+			case row == topCap:
+				glyph = railStyle.Render("┬")
+			case row >= viewportStart && row-viewportStart >= thumbStart && row-viewportStart < thumbEnd:
+				glyph = lipgloss.NewStyle().Foreground(lipgloss.Color(thumb)).Render("█")
+			case row == bottomCap:
+				glyph = railStyle.Render("┴")
+			}
+			line += " " + glyph
+		}
+		out = append(out, line)
 	}
-	return strings.Join(lines, "\n")
+	return strings.Join(out, "\n")
 }
 
 // scrollbarThumb returns the [start, end) rows of the Thumb inside a

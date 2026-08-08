@@ -144,6 +144,14 @@ func TestReadOnlyDescriptionScrollbarUsesReservedWidth(t *testing.T) {
 		t.Fatalf("Description scrollbar lacks its bounds: %q", view)
 	}
 	for _, line := range strings.Split(view, "\n") {
+		if strings.Contains(line, "Description:") {
+			break
+		}
+		if strings.ContainsAny(line, "│█┬┴") {
+			t.Fatalf("non-Description field has scrollbar glyph: %q", line)
+		}
+	}
+	for _, line := range strings.Split(view, "\n") {
 		if got := ansi.StringWidth(line); got != 20 {
 			t.Fatalf("scrollbar line width = %d, want 20: %q", got, line)
 		}

@@ -27,6 +27,7 @@ Die read-only HTML-Description-Projektion und das Scroll-Feedback sind implement
 5. [Due Date- und Priority-Eingabe spezifizieren](.scratch/task-editor-special-inputs/issues/01-specify-date-picker-and-priority-input.md)
 6. [Task Comments anzeigen und anlegen](.scratch/task-comments/issues/01-show-and-create-task-comments.md)
 7. [Benutzerkonfiguration hinzufügen](.scratch/user-configuration/issues/01-add-user-facing-tui-configuration.md) – zunächst Konfigurationsrahmen und nur tatsächlich benötigte Einstellungen.
+8. [Description in kurzen Terminals zugänglich halten](.scratch/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md) – kompaktes Detail-Layout und Mindestfläche zuerst spezifizieren.
 
 ### Meilenstein 3
 
