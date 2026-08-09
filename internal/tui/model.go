@@ -52,6 +52,7 @@ type model struct {
 	perPage             int
 	disableCursorShapes bool
 	now                 func() time.Time
+	clipboardRead       func() (string, error)
 
 	width  int
 	height int
@@ -676,6 +677,25 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searchResults = typed.results
 		m.searchSelected = clamp(m.searchSelected, 0, max(0, len(m.searchResults)-1))
 		m.searchViewport = clamp(m.searchViewport, 0, max(0, len(m.searchResults)-1))
+		return m, nil
+
+	case clipboardPastedMsg:
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		if m.focus != paneDetail || m.editor != typed.editor || m.editor.mode != editorInsert {
+			return m, nil
+		}
+		if m.editor.field == fieldDueDate {
+			for _, r := range typed.text {
+				if r >= '0' && r <= '9' {
+					m.editor.insertDueDateDigit(r)
+				}
+			}
+		} else {
+			m.editor.insertText(typed.text)
+		}
 		return m, nil
 
 	case cursorBlinkMsg:

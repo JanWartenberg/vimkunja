@@ -110,6 +110,7 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `j/k`, arrows | Navigate editable fields | Implemented |
 | `i` | Enter Insert Mode or open the focused picker | Implemented |
 | `Esc` | Leave Insert Mode | Implemented |
+| Insert Mode: `Ctrl+V` | Paste the system clipboard at the cursor | Implemented |
 | `:w`, `:wq`, `:wqa` | Save the Task | Implemented |
 | `:q`, `:q!` | Close or discard the editor | Implemented |
 | `j/k` reaches Done after Workflow Status and before Description | Include Done in the field focus order | Agreed |
@@ -127,15 +128,16 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `w/b` | Move by word | Implemented |
 | `gg/G`, Home/End | Start/end of Description | Implemented |
 | `Ctrl+D` / `Ctrl+U`, PgDn/PgUp | Scroll by page | Implemented |
-| `Shift+I` / `Shift+A` | Insert at line start/end | Implemented |
+| `a` / `Shift+I` / `Shift+A` | Enter Insert Mode after the cursor / at line start / end | Implemented |
+| `o` / `Shift+O` | Insert a blank line below / above the current line and enter Insert Mode | Implemented |
 | `j/k` | Move between navigable logical blocks: paragraphs, headings, and list/Checkbox-list entries | Agreed |
 | `gj/gk` | Move between wrapped visual terminal rows | Agreed |
 | `j/k` in a multi-line code block | Move between its unwrapped source lines | Agreed |
 | `zh/zl` in an overwide code block or table | Scroll that block horizontally | Agreed |
 | `x` on a Checkbox-list entry | Toggle only that entry's checked state | Agreed |
 | `dd` | Delete the current logical Description block | Agreed |
-| `o` / `O` | Insert an empty paragraph after / before the current logical block and enter Insert Mode | Agreed |
-| `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end of the current logical line | Agreed |
+| `o` / `O` | Insert an empty paragraph after / before the current logical block and enter Insert Mode | Agreed rich-text behavior |
+| `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end of the current logical line | Agreed rich-text behavior |
 | `0` / `^` / `_` / `$` | Move to start / first nonblank / end of the current logical line | Agreed |
 | `w` / `b` / `e` / `ge` | Move by rendered semantic words, ignoring inline-format and Link boundaries but stopping at blocks | Agreed |
 | `gg` / `G` | Jump to start / end of the whole Description document | Agreed |

@@ -169,15 +169,27 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if e.field == fieldDescription && (s == "I" || s == "A") {
-		if s == "I" {
+	if e.field == fieldDescription {
+		switch s {
+		case "a":
+			e.moveCursor(1)
+			return m.startEditorInsert()
+		case "I":
 			e.cursor = e.lineStart()
-		} else {
+			return m.startEditorInsert()
+		case "A":
 			e.cursor = e.lineEnd()
+			return m.startEditorInsert()
+		case "o":
+			e.cursor = e.lineEnd()
+			e.insertText("\n")
+			return m.startEditorInsert()
+		case "O":
+			e.cursor = e.lineStart()
+			e.insertText("\n")
+			e.cursor--
+			return m.startEditorInsert()
 		}
-		e.mode = editorInsert
-		m.cursorVisible = true
-		return m, cursorBlinkCmd()
 	}
 	if s == "x" && e.field == fieldDone {
 		e.draft.Done = !e.draft.Done
@@ -216,7 +228,6 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case fieldDone:
 			return m, nil
 		default:
-			e.mode = editorInsert
 			if e.field == fieldDueDate && e.draft.DueDate == "" {
 				e.draft.DueDate = "YYYY-MM-DD"
 				e.cursor = 0
@@ -224,8 +235,7 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 				// Title and Description preserve their Normal-mode cursor position on `i`.
 				e.cursor = e.fieldRuneLen()
 			}
-			m.cursorVisible = true
-			return m, cursorBlinkCmd()
+			return m.startEditorInsert()
 		}
 		return m, nil
 	}
@@ -292,6 +302,8 @@ func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
 	switch s {
+	case "ctrl+v":
+		return m, m.pasteClipboard(e)
 	case "esc":
 		e.mode = editorNormal
 		return m, nil
@@ -345,6 +357,12 @@ func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m *model) startEditorInsert() (tea.Model, tea.Cmd) {
+	m.editor.mode = editorInsert
+	m.cursorVisible = true
+	return m, cursorBlinkCmd()
 }
 
 func (m *model) updateProjectPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {

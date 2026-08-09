@@ -20,7 +20,7 @@ Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End
 
 ### Meilenstein 2
 
-Die read-only HTML-Description-Projektion und das Scroll-Feedback sind implementiert und archiviert; der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
+Die read-only HTML-Description-Projektion, das Scroll-Feedback und die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md) sind implementiert und archiviert; der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
 
 3. [Task-Titel inline in Listen/Boards bearbeiten](.scratch/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-kanban.md)
 4. [Ex-Commands, History und Completion erweitern](.scratch/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md)

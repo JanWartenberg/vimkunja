@@ -3061,6 +3061,105 @@ func TestWriteKeepsSavedEditorOpenAndReloadsTargetProject(t *testing.T) {
 	}
 }
 
+func TestDescriptionNormalModeOpensLinesAndAppends(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		key         tea.Key
+		description string
+		cursor      int
+		wantText    string
+		wantCursor  int
+	}{
+		{"open below", tea.Key{Code: 'o', Text: "o"}, "first\nsecond", 2, "first\n\nsecond", 6},
+		{"open above", tea.Key{Code: 'O', Text: "O"}, "first\nsecond", 8, "first\n\nsecond", 6},
+		{"append", tea.Key{Code: 'a', Text: "a"}, "first", 2, "first", 3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testModel()
+			m.currentProjectID = 1
+			m.openNewEditor()
+			m.editor.field = fieldDescription
+			m.editor.draft.Description = tc.description
+			m.editor.cursor = tc.cursor
+
+			m = pressKey(m, tc.key)
+			if m.editor.mode != editorInsert {
+				t.Fatalf("mode = %v, want Insert", m.editor.mode)
+			}
+			if got := m.editor.draft.Description; got != tc.wantText {
+				t.Fatalf("description = %q, want %q", got, tc.wantText)
+			}
+			if got := m.editor.cursor; got != tc.wantCursor {
+				t.Fatalf("cursor = %d, want %d", got, tc.wantCursor)
+			}
+		})
+	}
+}
+
+func TestEditorInsertPastesSystemClipboardAtCursor(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "before after"
+	m.editor.cursor = len([]rune("before "))
+	m.editor.mode = editorInsert
+	m.clipboardRead = func() (string, error) { return "clipboard", nil }
+
+	updated, pasteCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'v', Mod: tea.ModCtrl}))
+	m = updated.(*model)
+	if pasteCmd == nil {
+		t.Fatal("Ctrl+V returned no clipboard command")
+	}
+	updated, _ = m.Update(pasteCmd())
+	m = updated.(*model)
+
+	if got := m.editor.draft.Title; got != "before clipboardafter" {
+		t.Fatalf("title after paste = %q", got)
+	}
+	if got := m.editor.cursor; got != len([]rune("before clipboard")) {
+		t.Fatalf("cursor after paste = %d", got)
+	}
+}
+
+func TestEditorInsertPastesClipboardIntoDueDateMask(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldDueDate
+	m.clipboardRead = func() (string, error) { return "2026-08-08", nil }
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	updated, pasteCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'v', Mod: tea.ModCtrl}))
+	m = updated.(*model)
+	updated, _ = m.Update(pasteCmd())
+	m = updated.(*model)
+
+	if got := m.editor.draft.DueDate; got != "2026-08-08" {
+		t.Fatalf("due date after paste = %q", got)
+	}
+}
+
+func TestEditorInsertClipboardFailuresKeepTheDraft(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "unchanged"
+	m.editor.mode = editorInsert
+	m.clipboardRead = func() (string, error) { return "", errors.New("clipboard unavailable") }
+
+	updated, pasteCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'v', Mod: tea.ModCtrl}))
+	m = updated.(*model)
+	updated, _ = m.Update(pasteCmd())
+	m = updated.(*model)
+
+	if got := m.editor.draft.Title; got != "unchanged" {
+		t.Fatalf("title after failed paste = %q", got)
+	}
+	if !strings.Contains(m.lastErr, "clipboard unavailable") {
+		t.Fatalf("paste error = %q", m.lastErr)
+	}
+}
+
 func TestDueDateMaskInsertsSeparators(t *testing.T) {
 	m := testModel()
 	m.currentProjectID = 1
