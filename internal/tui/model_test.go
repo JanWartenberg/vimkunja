@@ -3121,6 +3121,23 @@ func TestEditorInsertPastesSystemClipboardAtCursor(t *testing.T) {
 	}
 }
 
+func TestDescriptionInsertAcceptsTerminalPaste(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldDescription
+	m.editor.draft.Description = "before after"
+	m.editor.cursor = len([]rune("before "))
+	m.editor.mode = editorInsert
+
+	updated, _ := m.Update(tea.PasteMsg{Content: "https://example.test"})
+	m = updated.(*model)
+
+	if got := m.editor.draft.Description; got != "before https://example.testafter" {
+		t.Fatalf("description after terminal paste = %q", got)
+	}
+}
+
 func TestEditorInsertPastesClipboardIntoDueDateMask(t *testing.T) {
 	m := testModel()
 	m.currentProjectID = 1

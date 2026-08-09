@@ -346,17 +346,22 @@ func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if text := k.Key().Text; text != "" {
-		if e.field == fieldDueDate {
-			for _, r := range text {
-				if r >= '0' && r <= '9' {
-					e.insertDueDateDigit(r)
-				}
-			}
-		} else {
-			e.insertText(text)
-		}
+		m.insertEditorText(text)
 	}
 	return m, nil
+}
+
+func (m *model) insertEditorText(text string) {
+	e := m.editor
+	if e.field == fieldDueDate {
+		for _, r := range text {
+			if r >= '0' && r <= '9' {
+				e.insertDueDateDigit(r)
+			}
+		}
+		return
+	}
+	e.insertText(text)
 }
 
 func (m *model) startEditorInsert() (tea.Model, tea.Cmd) {
