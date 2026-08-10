@@ -2315,6 +2315,92 @@ func TestTaskLabelPickerCreatesAndStagesNewLabel(t *testing.T) {
 	}
 }
 
+func TestTaskLabelPickerPrefersTheSelectedMatchOverCreatingTheQuery(t *testing.T) {
+	store := &fakeStore{labels: []vimkunja.Label{{ID: 11, Title: "AZB"}}}
+	m := NewModel(Config{Store: store}).(*model)
+	m.focus = paneDetail
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.labelUI = &labelUI{kind: labelUITaskPicker, labels: store.labels}
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m = pressKey(m, tea.Key{Code: 'A', Text: "A"})
+	m = pressKey(m, tea.Key{Code: 'Z', Text: "Z"})
+
+	background := strings.Repeat(strings.Repeat(" ", 100)+"\n", 29) + strings.Repeat(" ", 100)
+	overlay := ansi.Strip(m.renderLabelOverlay(background, 100))
+	for _, want := range []string{`+ Create label "AZ"`, "─────────────────────", "AZB"} {
+		if !strings.Contains(overlay, want) {
+			t.Fatalf("filtered picker = %q, want %q", overlay, want)
+		}
+	}
+
+	m = pressKey(m, tea.Key{Code: tea.KeyDown})
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if cmd != nil {
+		t.Fatal("Enter on selected matching Label returned a create command")
+	}
+	if got := m.editor.draft.LabelIDs; !reflect.DeepEqual(got, []int64{11}) {
+		t.Fatalf("selected Label assignment = %#v, want AZB", got)
+	}
+	if store.createdLabelTitle != "" {
+		t.Fatalf("created Label = %q, want no new Label", store.createdLabelTitle)
+	}
+}
+
+func TestTaskLabelPickerEscEntersBrowseModeAndOPrefersCreate(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m.labelUI = &labelUI{kind: labelUITaskPicker, labels: []vimkunja.Label{{ID: 11, Title: "AZB"}}}
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m = pressKey(m, tea.Key{Code: 'A', Text: "A"})
+	m = pressKey(m, tea.Key{Code: 'Z', Text: "Z"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEsc})
+	if m.labelUI == nil || m.labelUI.inputMode || m.labelUI.input != "AZ" {
+		t.Fatalf("first Esc = picker:%v inputMode:%v input:%q, want open browse mode with filter", m.labelUI != nil, m.labelUI.inputMode, m.labelUI.input)
+	}
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.labelUI.createSelected || m.labelUI.selected != 0 {
+		t.Fatalf("j selected = create:%v label:%d, want first matching Label", m.labelUI.createSelected, m.labelUI.selected)
+	}
+	m = pressKey(m, tea.Key{Code: 'k', Text: "k"})
+	if !m.labelUI.createSelected {
+		t.Fatal("k did not return to the Create Label action")
+	}
+	m = pressKey(m, tea.Key{Code: 'o', Text: "o"})
+	if !m.labelUI.createSelected {
+		t.Fatal("o did not select the Create Label action")
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEsc})
+	if m.labelUI != nil {
+		t.Fatal("second Esc did not close the picker")
+	}
+}
+
+func TestTaskLabelPickerHighlightsOnlyTheSelectedCreateAction(t *testing.T) {
+	m := testModel()
+	m.labelUI = &labelUI{
+		kind:           labelUITaskPicker,
+		labels:         []vimkunja.Label{{ID: 11, Title: "AZB"}},
+		input:          "AZ",
+		inputAction:    labelInputTaskPicker,
+		selected:       0,
+		createSelected: false,
+	}
+	accent := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(`+ Create label "AZ"`)
+	if line := m.renderLabelCreateOption(50)[0]; strings.Contains(line, accent) {
+		t.Fatalf("unselected Create action has selection styling: %q", line)
+	}
+	m.labelUI.createSelected = true
+	if line := m.renderLabelCreateOption(50)[0]; !strings.Contains(line, accent) {
+		t.Fatalf("selected Create action lacks selection styling: %q", line)
+	}
+}
+
 func TestLabelOverlayUsesHeadingStyle(t *testing.T) {
 	for _, test := range []struct {
 		name, title string

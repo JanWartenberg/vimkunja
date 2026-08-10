@@ -602,6 +602,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.labelUI.labels = typed.labels
+		if m.labelUI.createSelected && !m.labelUI.showsCreateOption() {
+			m.labelUI.createSelected = false
+		}
 		m.labelUI.selected = clamp(m.labelUI.selected, 0, max(0, len(m.labelUI.matches())-1))
 		return m, nil
 
@@ -659,7 +662,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if typed.mutation == labelCreatedForTask {
 			m.toggleEditorLabel(typed.label)
-			m.labelUI.input, m.labelUI.inputMode = "", false
+			m.clearTaskLabelFilter()
 		} else {
 			m.labelUI.input, m.labelUI.inputMode, m.labelUI.deleteConfirm = "", false, false
 		}

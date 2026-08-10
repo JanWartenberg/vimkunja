@@ -27,21 +27,22 @@ const (
 )
 
 type labelUI struct {
-	kind          labelUIKind
-	labels        []vimkunja.Label
-	selected      int
-	viewport      int
-	input         string
-	inputMode     bool
-	inputAction   labelInputAction
-	inputLabelID  int64
-	deleteArmed   bool
-	deleteConfirm bool
-	commandMode   bool
-	commandInput  string
-	gArmed        bool
-	loading       bool
-	origin        *searchOrigin
+	kind           labelUIKind
+	labels         []vimkunja.Label
+	selected       int
+	viewport       int
+	input          string
+	inputMode      bool
+	createSelected bool
+	inputAction    labelInputAction
+	inputLabelID   int64
+	deleteArmed    bool
+	deleteConfirm  bool
+	commandMode    bool
+	commandInput   string
+	gArmed         bool
+	loading        bool
+	origin         *searchOrigin
 
 	labelSnapshot    []vimkunja.Label
 	labelIDsSnapshot []int64
@@ -191,7 +192,7 @@ func (m *model) updateLabelNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if ui.gArmed {
 		ui.gArmed = false
 		if s == "g" {
-			ui.selected, ui.viewport = 0, 0
+			m.resetLabelSelection()
 		}
 		return m, nil
 	}
@@ -216,8 +217,7 @@ func (m *model) updateLabelNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "k", "up":
 		m.moveLabelSelection(-1)
 	case "G", "end":
-		ui.selected = max(0, len(ui.matches())-1)
-		m.moveLabelSelection(0)
+		m.moveLabelSelection(m.labelOptionCount())
 	case "ctrl+d", "pgdown", "pagedown":
 		m.moveLabelSelection(max(1, m.pageStep()/2))
 	case "ctrl+u", "pgup", "pageup":
@@ -233,11 +233,13 @@ func (m *model) updateLabelNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			ui.input, ui.inputAction, ui.inputLabelID, ui.inputMode = label.Title, labelInputRename, label.ID, true
 		} else {
-			ui.input, ui.inputAction, ui.inputMode = "", labelInputTaskPicker, true
+			ui.inputAction, ui.inputMode = labelInputTaskPicker, true
 		}
 	case "o":
 		if ui.kind == labelUIGlobalOverview {
 			ui.input, ui.inputAction, ui.inputMode = "", labelInputCreate, true
+		} else if ui.showsCreateOption() {
+			ui.createSelected, ui.viewport = true, 0
 		}
 	case "d":
 		if ui.kind == labelUIGlobalOverview {
@@ -245,9 +247,7 @@ func (m *model) updateLabelNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "enter":
 		if ui.kind == labelUITaskPicker {
-			if label, ok := ui.selectedLabel(); ok {
-				m.toggleEditorLabel(label)
-			}
+			return m, m.confirmLabelInput()
 		} else if label, ok := ui.selectedLabel(); ok {
 			m.closeLabelUI()
 			return m, m.openLabelOverview(label)
@@ -310,14 +310,13 @@ func (m *model) updateLabelInput(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch s {
 	case "esc":
 		ui.inputMode = false
-		ui.input = ""
 		return m, nil
 	case "backspace":
 		runes := []rune(ui.input)
 		if len(runes) > 0 {
 			ui.input = string(runes[:len(runes)-1])
 		}
-		ui.selected, ui.viewport = 0, 0
+		m.resetLabelSelection()
 		return m, nil
 	case "up", "ctrl+p":
 		m.moveLabelSelection(-1)
@@ -330,7 +329,7 @@ func (m *model) updateLabelInput(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if text := key.Key().Text; text != "" {
 		ui.input += text
-		ui.selected, ui.viewport = 0, 0
+		m.resetLabelSelection()
 	}
 	return m, nil
 }
@@ -341,13 +340,15 @@ func (m *model) confirmLabelInput() tea.Cmd {
 		return nil
 	}
 	if ui.inputAction == labelInputTaskPicker {
-		if label, ok := ui.exactMatch(); ok {
-			m.toggleEditorLabel(label)
-			ui.input, ui.inputMode = "", false
-			return nil
+		if ui.createSelected && ui.showsCreateOption() {
+			ui.loading = true
+			return m.createLabel(strings.TrimSpace(ui.input), labelCreatedForTask)
 		}
-		ui.loading = true
-		return m.createLabel(ui.input, labelCreatedForTask)
+		if label, ok := ui.selectedLabel(); ok {
+			m.toggleEditorLabel(label)
+			m.clearTaskLabelFilter()
+		}
+		return nil
 	}
 	ui.loading = true
 	if ui.inputAction == labelInputRename {
@@ -441,7 +442,22 @@ func (ui *labelUI) matches() []vimkunja.Label {
 	return matches
 }
 
+func (ui *labelUI) showsCreateOption() bool {
+	if ui.kind != labelUITaskPicker || ui.inputAction != labelInputTaskPicker || normalizedLabelTitle(ui.input) == "" {
+		return false
+	}
+	for _, label := range ui.labels {
+		if normalizedLabelTitle(label.Title) == normalizedLabelTitle(ui.input) {
+			return false
+		}
+	}
+	return true
+}
+
 func (ui *labelUI) selectedLabel() (vimkunja.Label, bool) {
+	if ui.createSelected {
+		return vimkunja.Label{}, false
+	}
 	matches := ui.matches()
 	if ui.selected < 0 || ui.selected >= len(matches) {
 		return vimkunja.Label{}, false
@@ -449,14 +465,32 @@ func (ui *labelUI) selectedLabel() (vimkunja.Label, bool) {
 	return matches[ui.selected], true
 }
 
-func (ui *labelUI) exactMatch() (vimkunja.Label, bool) {
-	query := normalizedLabelTitle(ui.input)
-	for _, label := range ui.labels {
-		if normalizedLabelTitle(label.Title) == query {
-			return label, true
-		}
+func (m *model) labelOptionCount() int {
+	if m.labelUI == nil {
+		return 0
 	}
-	return vimkunja.Label{}, false
+	count := len(m.labelUI.matches())
+	if m.labelUI.showsCreateOption() {
+		count++
+	}
+	return count
+}
+
+func (m *model) resetLabelSelection() {
+	ui := m.labelUI
+	if ui == nil {
+		return
+	}
+	ui.selected, ui.viewport = 0, 0
+	ui.createSelected = ui.showsCreateOption()
+}
+
+func (m *model) clearTaskLabelFilter() {
+	if m.labelUI == nil {
+		return
+	}
+	m.labelUI.input = ""
+	m.resetLabelSelection()
 }
 
 func (m *model) labelModalHeight() int {
@@ -470,7 +504,11 @@ func (m *model) labelModalHeight() int {
 func (m *model) labelResultLineBudget() int {
 	// The title, prompt/instructions, padding, borders, and one free line keep
 	// Lip Gloss' minimum Height from expanding the modal around long lists.
-	return max(1, m.labelModalHeight()-12)
+	budget := max(1, m.labelModalHeight()-12)
+	if m.labelUI != nil && m.labelUI.showsCreateOption() {
+		budget = max(1, budget-2) // Create action and its separator stay fixed above matches.
+	}
+	return budget
 }
 
 func (m *model) labelResultEnd(start int) int {
@@ -481,10 +519,28 @@ func (m *model) labelResultEnd(start int) int {
 
 func (m *model) moveLabelSelection(delta int) {
 	ui := m.labelUI
-	if ui == nil || len(ui.matches()) == 0 {
+	if ui == nil || m.labelOptionCount() == 0 {
 		return
 	}
-	ui.selected = clamp(ui.selected+delta, 0, len(ui.matches())-1)
+	position := ui.selected
+	if ui.showsCreateOption() {
+		if ui.createSelected {
+			position = 0
+		} else {
+			position++
+		}
+	}
+	position = clamp(position+delta, 0, m.labelOptionCount()-1)
+	if ui.showsCreateOption() && position == 0 {
+		ui.createSelected, ui.viewport = true, 0
+		return
+	}
+	ui.createSelected = false
+	if ui.showsCreateOption() {
+		ui.selected = position - 1
+	} else {
+		ui.selected = position
+	}
 	if ui.selected < ui.viewport {
 		ui.viewport = ui.selected
 	}
@@ -513,12 +569,15 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 	labelScrollbar := false
 	labelViewportStart := 0
 	appendMatches := func() {
-		labelViewportStart = len(body)
 		labelScrollbar = len(ui.matches()) > m.labelResultLineBudget()
 		matchWidth := bodyWidth
 		if labelScrollbar {
 			matchWidth -= 2
 		}
+		if ui.showsCreateOption() {
+			body = append(body, m.renderLabelCreateOption(matchWidth)...)
+		}
+		labelViewportStart = len(body)
 		body = append(body, m.renderLabelMatches(matchWidth)...)
 	}
 	if ui.commandMode {
@@ -541,7 +600,11 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 		body = append(body, "Loading…")
 	} else {
 		if ui.kind == labelUITaskPicker {
-			body = append(body, "Enter toggles assignment · i/a search or create", "")
+			instruction := "Enter toggles assignment · i filter"
+			if ui.input != "" {
+				instruction = fmt.Sprintf("Filter: %s · i edit · o create", ui.input)
+			}
+			body = append(body, instruction, "")
 		} else {
 			body = append(body, "o create · i rename · dd then y delete", "")
 		}
@@ -560,10 +623,27 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 	return overlayModal(background, modal, width)
 }
 
+func (m *model) renderLabelCreateOption(width int) []string {
+	ui := m.labelUI
+	prefix := "  "
+	if ui.createSelected {
+		prefix = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(">") + " "
+	}
+	label := truncatePlain(fmt.Sprintf("+ Create label %q", strings.TrimSpace(ui.input)), max(1, width-lipgloss.Width(prefix)))
+	if ui.createSelected {
+		label = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(label)
+	}
+	divider := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Render(strings.Repeat("─", max(1, width)))
+	return []string{prefix + label, divider}
+}
+
 func (m *model) renderLabelMatches(width int) []string {
 	ui := m.labelUI
 	matches := ui.matches()
 	if len(matches) == 0 {
+		if ui.showsCreateOption() {
+			return nil
+		}
 		return []string{"No matching Labels."}
 	}
 	start := clamp(ui.viewport, 0, max(0, len(matches)-1))
@@ -572,7 +652,7 @@ func (m *model) renderLabelMatches(width int) []string {
 	for index := start; index < end; index++ {
 		label := matches[index]
 		prefix := "  "
-		if index == ui.selected {
+		if !ui.createSelected && index == ui.selected {
 			prefix = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(">") + " "
 		}
 		suffix := ""

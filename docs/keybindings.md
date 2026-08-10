@@ -117,6 +117,9 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `x` while Done is focused | Toggle the enclosing Task's Done state | Agreed |
 | Labels field after Due Date | Show assigned Labels or `none` | Implemented |
 | `Space+l` | Open the Task's Label picker | Implemented |
+| Label picker Insert: text, arrows / `Ctrl+N` / `Ctrl+P`, `Enter` | Filter Labels, choose a matching Label or create the shown new Label | Implemented |
+| Label picker: `Esc`, then `Esc` / `q` | Leave filter input; close the picker | Implemented |
+| Label picker Normal: `o` | Select the shown new-Label action | Implemented |
 | Labels field: `h` / `l`, then `x` | Select an assigned Label and stage removal from this Task | Implemented |
 
 ## Description Normal Mode
