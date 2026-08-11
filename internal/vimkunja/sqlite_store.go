@@ -3,9 +3,11 @@ package vimkunja
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -13,6 +15,9 @@ import (
 
 type SQLiteStore struct {
 	db *sql.DB
+
+	closeOnce sync.Once
+	closeErr  error
 }
 
 func NewSQLiteStore(path string) (*SQLiteStore, error) {
@@ -28,14 +33,27 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	return &SQLiteStore{db: db}, nil
 }
 
-// Close releases the database connection. Normal Vimkunja sessions may rely
-// on process cleanup; short-lived users such as the tutorial need an explicit
-// close so their temporary database can also be removed on Windows.
+// Close safely checkpoints a WAL database before releasing its connection.
+// It never removes WAL files itself: if another SQLite connection prevents a
+// complete checkpoint, the WAL remains intact and the returned error reports
+// that cleanup was incomplete rather than risking data loss.
 func (s *SQLiteStore) Close() error {
 	if s == nil || s.db == nil {
 		return nil
 	}
-	return s.db.Close()
+
+	s.closeOnce.Do(func() {
+		var busy, logFrames, checkpointedFrames int
+		checkpointErr := s.db.QueryRow(`PRAGMA wal_checkpoint(TRUNCATE)`).Scan(&busy, &logFrames, &checkpointedFrames)
+		if checkpointErr == nil && busy != 0 {
+			checkpointErr = fmt.Errorf("checkpoint SQLite WAL: database is busy (%d log frames, %d checkpointed)", logFrames, checkpointedFrames)
+		} else if checkpointErr != nil {
+			checkpointErr = fmt.Errorf("checkpoint SQLite WAL: %w", checkpointErr)
+		}
+
+		s.closeErr = errors.Join(checkpointErr, s.db.Close())
+	})
+	return s.closeErr
 }
 
 const (

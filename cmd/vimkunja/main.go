@@ -1,10 +1,10 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/vimkunja/vimkunja/internal/tui"
@@ -12,6 +12,13 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	dbPathFlag := flag.String("db", "internal/db/vikunja.db", "Path to Vikunja SQLite database file")
 	projectIDFlag := flag.Int64("project-id", 0, "Optional: start with this project")
 	viewIDFlag := flag.Int64("view-id", 0, "Optional: start with this view")
@@ -34,11 +41,7 @@ func main() {
 	})
 
 	p := tea.NewProgram(m)
-	if _, err := p.Run(); err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
-		os.Exit(1)
-	}
+	_, runErr := p.Run()
+	closeErr := store.Close()
+	return errors.Join(runErr, closeErr)
 }
-
-// Ensure go vet / linters don't complain about time import if we expand later.
-var _ = time.Second

@@ -107,6 +107,91 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 	return store, cleanup
 }
 
+func sqliteDatabasePath(t *testing.T, db *sql.DB) string {
+	t.Helper()
+
+	rows, err := db.Query(`PRAGMA database_list`)
+	if err != nil {
+		t.Fatalf("list attached databases: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var sequence int
+		var name, path string
+		if err := rows.Scan(&sequence, &name, &path); err != nil {
+			t.Fatalf("scan attached database: %v", err)
+		}
+		if name == "main" {
+			return path
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("list attached databases: %v", err)
+	}
+	t.Fatal("main database is not attached")
+	return ""
+}
+
+func TestSQLiteStoreClosePreservesWALWhenCheckpointIsBusy(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	dbPath := sqliteDatabasePath(t, store.db)
+
+	var journalMode string
+	if err := store.db.QueryRow(`PRAGMA journal_mode = WAL`).Scan(&journalMode); err != nil {
+		t.Fatalf("enable WAL: %v", err)
+	}
+	if journalMode != "wal" {
+		t.Fatalf("journal mode = %q, want wal", journalMode)
+	}
+	if _, err := store.db.Exec(`INSERT INTO projects (id, identifier, title) VALUES (1, 'WAL', 'before checkpoint')`); err != nil {
+		t.Fatalf("write WAL data: %v", err)
+	}
+
+	reader, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open WAL reader: %v", err)
+	}
+	t.Cleanup(func() { _ = reader.Close() })
+	readerTx, err := reader.Begin()
+	if err != nil {
+		t.Fatalf("begin WAL read transaction: %v", err)
+	}
+	t.Cleanup(func() { _ = readerTx.Rollback() })
+	var projectCount int
+	if err := readerTx.QueryRow(`SELECT COUNT(*) FROM projects`).Scan(&projectCount); err != nil {
+		t.Fatalf("establish WAL read snapshot: %v", err)
+	}
+
+	if _, err := store.db.Exec(`INSERT INTO projects (id, identifier, title) VALUES (2, 'KEEP', 'must survive')`); err != nil {
+		t.Fatalf("write data behind reader: %v", err)
+	}
+	if err := store.Close(); err == nil || !strings.Contains(err.Error(), "database is busy") {
+		t.Fatalf("Close() error = %v, want busy WAL checkpoint", err)
+	}
+
+	if err := readerTx.Rollback(); err != nil {
+		t.Fatalf("release WAL reader: %v", err)
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatalf("close WAL reader: %v", err)
+	}
+
+	reopened, err := NewSQLiteStore(dbPath)
+	if err != nil {
+		t.Fatalf("reopen WAL database: %v", err)
+	}
+	defer reopened.Close()
+	var title string
+	if err := reopened.db.QueryRow(`SELECT title FROM projects WHERE id = 2`).Scan(&title); err != nil {
+		t.Fatalf("read data after incomplete checkpoint: %v", err)
+	}
+	if title != "must survive" {
+		t.Fatalf("title = %q, want WAL data", title)
+	}
+}
+
 func TestLoadSearchDataAndListTasksForLabelExcludeArchivedProjects(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
