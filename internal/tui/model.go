@@ -23,6 +23,8 @@ const (
 	projectViewKanban
 )
 
+const commandHistoryLimit = 100
+
 const (
 	paneProjects paneID = iota
 	paneTasks
@@ -76,9 +78,13 @@ type model struct {
 	lastErr string
 	toast   string
 
-	commandMode  bool
-	commandInput string
-	commands     *CommandRegistry
+	commandMode               bool
+	commandInput              string
+	commandCompletionFeedback string
+	commandHistory            []string
+	commandHistoryIndex       int
+	commandHistoryDraft       string
+	commands                  *CommandRegistry
 
 	searchOpen         bool
 	searchMode         searchInputMode
@@ -171,9 +177,10 @@ func NewModel(cfg Config) tea.Model {
 			paneTasks:    {left: ptr(paneProjects), right: nil, down: ptr(paneDetail)},
 			paneDetail:   {up: ptr(paneTasks)},
 		},
-		focus:         paneProjects,
-		commands:      newDefaultCommandRegistry(),
-		cursorVisible: true,
+		focus:               paneProjects,
+		commands:            newDefaultCommandRegistry(),
+		commandHistoryIndex: -1,
+		cursorVisible:       true,
 	}
 	if cfg.InitialProjectID != 0 {
 		m.focus = paneTasks
@@ -463,8 +470,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateDetailKeys(key)
 		}
 		if k == ":" {
-			m.commandMode = true
-			m.commandInput = ""
+			m.openCommandPrompt()
 			return m, nil
 		}
 
@@ -883,22 +889,47 @@ func (m *model) recordError(err error) {
 	}
 }
 
+func (m *model) openCommandPrompt() {
+	m.commandMode = true
+	m.commandInput = ""
+	m.commandCompletionFeedback = ""
+	m.commandHistoryIndex = -1
+	m.commandHistoryDraft = ""
+}
+
 func (m *model) updateCommandModeKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch strings.ToLower(key.String()) {
 	case "esc":
 		m.commandMode = false
 		m.commandInput = ""
+		m.commandCompletionFeedback = ""
+		m.commandHistoryIndex = -1
+		m.commandHistoryDraft = ""
 		return m, nil
 	case "backspace":
+		m.commandCompletionFeedback = ""
 		input := []rune(m.commandInput)
 		if len(input) > 0 {
 			m.commandInput = string(input[:len(input)-1])
 		}
 		return m, nil
+	case "up":
+		m.recallOlderCommand()
+		return m, nil
+	case "down":
+		m.recallNewerCommand()
+		return m, nil
+	case "tab":
+		m.completeCommandInput()
+		return m, nil
 	case "enter":
 		input := m.commandInput
+		m.recordCommandHistory(input)
 		m.commandMode = false
 		m.commandInput = ""
+		m.commandCompletionFeedback = ""
+		m.commandHistoryIndex = -1
+		m.commandHistoryDraft = ""
 
 		updated, cmd, err := m.commands.Execute(m, input)
 		if err != nil {
@@ -909,9 +940,70 @@ func (m *model) updateCommandModeKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if text := key.Key().Text; text != "" {
+		m.commandCompletionFeedback = ""
 		m.commandInput += text
 	}
 	return m, nil
+}
+
+func (m *model) recordCommandHistory(input string) {
+	input = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(input), ":"))
+	if input == "" {
+		return
+	}
+	m.commandHistory = append(m.commandHistory, input)
+	if len(m.commandHistory) > commandHistoryLimit {
+		m.commandHistory = m.commandHistory[len(m.commandHistory)-commandHistoryLimit:]
+	}
+}
+
+func (m *model) recallOlderCommand() {
+	if len(m.commandHistory) == 0 {
+		return
+	}
+	m.commandCompletionFeedback = ""
+	if m.commandHistoryIndex < 0 {
+		m.commandHistoryDraft = m.commandInput
+		m.commandHistoryIndex = len(m.commandHistory) - 1
+	} else if m.commandHistoryIndex > 0 {
+		m.commandHistoryIndex--
+	}
+	m.commandInput = m.commandHistory[m.commandHistoryIndex]
+}
+
+func (m *model) recallNewerCommand() {
+	if m.commandHistoryIndex < 0 {
+		return
+	}
+	m.commandCompletionFeedback = ""
+	if m.commandHistoryIndex < len(m.commandHistory)-1 {
+		m.commandHistoryIndex++
+		m.commandInput = m.commandHistory[m.commandHistoryIndex]
+		return
+	}
+	m.commandHistoryIndex = -1
+	m.commandInput = m.commandHistoryDraft
+}
+
+func (m *model) completeCommandInput() {
+	m.commandCompletionFeedback = ""
+	if m.commandInput == "" {
+		m.commandCompletionFeedback = "Tab completes command names  •  :help lists commands"
+		return
+	}
+	if strings.ContainsAny(m.commandInput, " \t\r\n") {
+		m.commandCompletionFeedback = "Argument completion is not available."
+		return
+	}
+
+	completion, candidates := m.commands.Complete(m.commandInput)
+	if completion != "" {
+		m.commandInput = completion
+		return
+	}
+	if len(candidates) > 0 {
+		m.commandCompletionFeedback = "matches: " + strings.Join(candidates, ", ")
+	}
 }
 
 func isSpaceKey(key tea.KeyMsg) bool {
@@ -1733,6 +1825,9 @@ func (m *model) renderStatusBar(w int) string {
 	}
 	if m.commandMode {
 		hint = fmt.Sprintf(":%s_", m.commandInput)
+		if m.commandCompletionFeedback != "" {
+			hint += "  •  " + m.commandCompletionFeedback
+		}
 	}
 	if m.kanbanProvisionConfirm {
 		hint = fmt.Sprintf(`Create standard Kanban View for %q? y/n`, m.currentProjectTitle())

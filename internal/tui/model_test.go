@@ -2823,6 +2823,83 @@ func TestCommandModeEscapeCancelsInput(t *testing.T) {
 	}
 }
 
+func TestCommandPromptHistoryRecordsSubmissionsAndRestoresDraft(t *testing.T) {
+	m := testModel()
+	m.openCommandPrompt()
+	m.commandInput = "  MiSsInG  argument  "
+	updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if got, want := m.commandHistory, []string{"MiSsInG  argument"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("history = %#v, want %#v", got, want)
+	}
+
+	m.openCommandPrompt()
+	m.commandInput = "draft"
+	m = pressKey(m, tea.Key{Code: tea.KeyUp})
+	if m.commandInput != "MiSsInG  argument" {
+		t.Fatalf("Up recalled %q, want newest history", m.commandInput)
+	}
+	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
+	m = pressKey(m, tea.Key{Code: tea.KeyUp})
+	if m.commandInput != "MiSsInG  argument" {
+		t.Fatalf("Up after recalled edit = %q, want clamped oldest entry", m.commandInput)
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyDown})
+	if m.commandInput != "draft" || m.commandHistoryIndex != -1 {
+		t.Fatalf("Down past newest = input:%q index:%d, want original draft and no navigation", m.commandInput, m.commandHistoryIndex)
+	}
+}
+
+func TestCommandPromptHistoryKeepsOneHundredMostRecentEntries(t *testing.T) {
+	m := testModel()
+	for i := range commandHistoryLimit + 1 {
+		m.recordCommandHistory(fmt.Sprintf("command-%d", i))
+	}
+	if len(m.commandHistory) != commandHistoryLimit || m.commandHistory[0] != "command-1" || m.commandHistory[99] != "command-100" {
+		t.Fatalf("history bounds = %#v", m.commandHistory)
+	}
+}
+
+func TestCommandPromptCompletionUsesRegistryAndFooterFeedback(t *testing.T) {
+	m := testModel()
+	m.openCommandPrompt()
+	m.commandInput = "k"
+	m = pressKey(m, tea.Key{Code: tea.KeyTab})
+	if m.commandInput != "kanban" || m.commandCompletionFeedback != "" {
+		t.Fatalf("unique completion = input:%q feedback:%q", m.commandInput, m.commandCompletionFeedback)
+	}
+
+	m.commandInput = "w"
+	m = pressKey(m, tea.Key{Code: tea.KeyTab})
+	const matches = "matches: write, writequit, writequitall"
+	if m.commandInput != "w" || m.commandCompletionFeedback != matches {
+		t.Fatalf("ambiguous completion = input:%q feedback:%q", m.commandInput, m.commandCompletionFeedback)
+	}
+	if footer := ansi.Strip(m.renderStatusBar(120)); !strings.Contains(footer, matches) {
+		t.Fatalf("footer = %q, missing completion matches", footer)
+	}
+
+	m = pressKey(m, tea.Key{Code: 'x', Text: "x"})
+	if m.commandCompletionFeedback != "" {
+		t.Fatalf("editing left completion feedback %q", m.commandCompletionFeedback)
+	}
+	m.commandInput = "write argument"
+	m = pressKey(m, tea.Key{Code: tea.KeyTab})
+	if m.commandCompletionFeedback != "Argument completion is not available." {
+		t.Fatalf("argument completion feedback = %q", m.commandCompletionFeedback)
+	}
+}
+
+func TestCommandPromptTabExplainsEmptyInputWithoutRecordingError(t *testing.T) {
+	m := testModel()
+	m.openCommandPrompt()
+	m = pressKey(m, tea.Key{Code: tea.KeyTab})
+	const want = "Tab completes command names  •  :help lists commands"
+	if m.commandCompletionFeedback != want || m.lastErr != "" {
+		t.Fatalf("empty Tab = feedback:%q error:%q", m.commandCompletionFeedback, m.lastErr)
+	}
+}
+
 func TestCommandQuitClosesDetailPane(t *testing.T) {
 	m := testModel()
 	m.showDetail = true

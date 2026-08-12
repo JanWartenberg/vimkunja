@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	apperrors "github.com/vimkunja/vimkunja/internal/errors"
@@ -14,65 +15,154 @@ import (
 // CommandHandler handles one Ex command. Args excludes the command name.
 type CommandHandler func(m *model, args []string) (tea.Model, tea.Cmd)
 
-// CommandRegistry maps Ex command names and aliases to their handlers.
+// CommandRegistry owns Ex command names, aliases, and dispatch handlers.
 type CommandRegistry struct {
-	handlers map[string]CommandHandler
+	spellings map[string]*registeredCommand
+}
+
+type registeredCommand struct {
+	canonical string
+	aliases   []string
+	handler   CommandHandler
 }
 
 // NewCommandRegistry creates an empty command registry.
 func NewCommandRegistry() *CommandRegistry {
-	return &CommandRegistry{handlers: make(map[string]CommandHandler)}
+	return &CommandRegistry{spellings: make(map[string]*registeredCommand)}
 }
 
-// Register adds name and aliases for handler. Command names are case-insensitive.
-func (r *CommandRegistry) Register(name string, aliases []string, handler CommandHandler) {
-	if r.handlers == nil {
-		r.handlers = make(map[string]CommandHandler)
+// Register adds a canonical name and aliases for a handler. Command spellings are
+// case-insensitive and must not collide with a spelling owned by another command.
+func (r *CommandRegistry) Register(name string, aliases []string, handler CommandHandler) error {
+	if r.spellings == nil {
+		r.spellings = make(map[string]*registeredCommand)
 	}
 
-	r.handlers[normalizeCommandName(name)] = handler
+	canonical := normalizeCommandName(name)
+	if canonical == "" {
+		return fmt.Errorf("command name must not be empty")
+	}
+	spellings := []string{canonical}
+	normalizedAliases := make([]string, 0, len(aliases))
+	seen := map[string]bool{canonical: true}
 	for _, alias := range aliases {
-		r.handlers[normalizeCommandName(alias)] = handler
+		spelling := normalizeCommandName(alias)
+		if spelling == "" {
+			return fmt.Errorf("command alias must not be empty")
+		}
+		if !seen[spelling] {
+			spellings = append(spellings, spelling)
+			normalizedAliases = append(normalizedAliases, spelling)
+			seen[spelling] = true
+		}
 	}
+	for _, spelling := range spellings {
+		if owner, exists := r.spellings[spelling]; exists {
+			return fmt.Errorf("command spelling %q is already registered for %q", spelling, owner.canonical)
+		}
+	}
+
+	command := &registeredCommand{canonical: canonical, aliases: normalizedAliases, handler: handler}
+	for _, spelling := range spellings {
+		r.spellings[spelling] = command
+	}
+	return nil
 }
 
-// Execute parses input and dispatches it to the registered command handler.
-// input may include the leading colon shown by the command prompt.
+// Execute parses input and dispatches it to the exact or uniquely prefixed
+// registered command. input may include the leading colon shown by the prompt.
 func (r *CommandRegistry) Execute(m *model, input string) (tea.Model, tea.Cmd, error) {
 	fields := strings.Fields(strings.TrimPrefix(strings.TrimSpace(input), ":"))
 	if len(fields) == 0 {
 		return m, nil, fmt.Errorf("empty command")
 	}
 
-	name := normalizeCommandName(fields[0])
-	handler, ok := r.handlers[name]
-	if !ok {
+	command, candidates := r.resolve(fields[0])
+	if command == nil {
+		if len(candidates) > 0 {
+			return m, nil, fmt.Errorf("ambiguous command: %s (matches: %s)", fields[0], strings.Join(candidates, ", "))
+		}
 		return m, nil, fmt.Errorf("unknown command: %s", fields[0])
 	}
 
-	updated, cmd := handler(m, fields[1:])
+	updated, cmd := command.handler(m, fields[1:])
 	return updated, cmd, nil
+}
+
+// Complete returns the canonical command for a unique prefix or all canonical
+// candidates for an ambiguous prefix. An exact spelling does not take precedence.
+func (r *CommandRegistry) Complete(prefix string) (string, []string) {
+	command, candidates := r.resolvePrefix(prefix)
+	if command != nil {
+		return command.canonical, nil
+	}
+	return "", candidates
+}
+
+func (r *CommandRegistry) resolve(name string) (*registeredCommand, []string) {
+	if command := r.spellings[normalizeCommandName(name)]; command != nil {
+		return command, nil
+	}
+	return r.resolvePrefix(name)
+}
+
+func (r *CommandRegistry) resolvePrefix(prefix string) (*registeredCommand, []string) {
+	prefix = normalizeCommandName(prefix)
+	matches := make(map[*registeredCommand]bool)
+	for spelling, command := range r.spellings {
+		if strings.HasPrefix(spelling, prefix) {
+			matches[command] = true
+		}
+	}
+	if len(matches) == 1 {
+		for command := range matches {
+			return command, nil
+		}
+	}
+	if len(matches) == 0 {
+		return nil, nil
+	}
+
+	candidates := make([]string, 0, len(matches))
+	for command := range matches {
+		candidates = append(candidates, command.canonical)
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		return strings.ToLower(candidates[i]) < strings.ToLower(candidates[j])
+	})
+	return nil, candidates
 }
 
 func newDefaultCommandRegistry() *CommandRegistry {
 	registry := NewCommandRegistry()
-	registry.Register("q", []string{"quit"}, quitCommand)
-	registry.Register("q!", []string{"quit!"}, forceQuitCommand)
-	registry.Register("qa", []string{"quitall"}, quitAllCommand)
-	registry.Register("qa!", []string{"quitall!"}, forceQuitAllCommand)
-	registry.Register("new", nil, newTaskCommand)
-	registry.Register("w", []string{"write"}, writeCommand)
-	registry.Register("wq", nil, writeQuitCommand)
-	registry.Register("wqa", nil, writeQuitAllCommand)
-	registry.Register("h", []string{"help"}, helpCommand)
-	registry.Register("err", []string{"errors"}, errorsCommand)
-	registry.Register("overview", nil, overviewCommand)
-	registry.Register("list", nil, listCommand)
-	registry.Register("kanban", nil, kanbanCommand)
-	registry.Register("search", nil, searchCommand)
-	registry.Register("labels", nil, labelsCommand)
-	registry.Register("table", nil, notYetImplementedCommand)
-	registry.Register("gantt", nil, notYetImplementedCommand)
+	registrations := []struct {
+		name    string
+		aliases []string
+		handler CommandHandler
+	}{
+		{"quit", []string{"q"}, quitCommand},
+		{"quit!", []string{"q!"}, forceQuitCommand},
+		{"quitall", []string{"qa"}, quitAllCommand},
+		{"quitall!", []string{"qa!"}, forceQuitAllCommand},
+		{"new", nil, newTaskCommand},
+		{"write", []string{"w"}, writeCommand},
+		{"writequit", []string{"wq"}, writeQuitCommand},
+		{"writequitall", []string{"wqa"}, writeQuitAllCommand},
+		{"help", []string{"h"}, helpCommand},
+		{"errors", []string{"err"}, errorsCommand},
+		{"overview", nil, overviewCommand},
+		{"list", nil, listCommand},
+		{"kanban", nil, kanbanCommand},
+		{"search", nil, searchCommand},
+		{"labels", nil, labelsCommand},
+		{"table", nil, notYetImplementedCommand},
+		{"gantt", nil, notYetImplementedCommand},
+	}
+	for _, registration := range registrations {
+		if err := registry.Register(registration.name, registration.aliases, registration.handler); err != nil {
+			panic(fmt.Sprintf("register default command: %v", err))
+		}
+	}
 	return registry
 }
 
