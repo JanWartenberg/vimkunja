@@ -27,6 +27,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 6. [Task Comments anzeigen und anlegen](.scratch/task-comments/issues/01-show-and-create-task-comments.md)
 7. [Benutzerkonfiguration hinzufügen](.scratch/user-configuration/issues/01-add-user-facing-tui-configuration.md) – zunächst Konfigurationsrahmen und nur tatsächlich benötigte Einstellungen.
 8. [Description in kurzen Terminals zugänglich halten](.scratch/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md) – kompaktes Detail-Layout und Mindestfläche zuerst spezifizieren.
+9. [Kanban-Fokus und Task-Detail-Auswahl synchronisieren](.scratch/kanban-focus-feedback/issues/01-clarify-kanban-focus-and-detail-selection-sync.md) – Fokuskontrast und Karten-/Detail-Auswahlverhalten spezifizieren.
 
 ### Meilenstein 3
 
