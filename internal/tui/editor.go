@@ -23,6 +23,7 @@ const (
 	fieldWorkflowStatus
 	fieldDone
 	fieldDescription
+	fieldMoreFields
 )
 
 type editorMode int
@@ -49,6 +50,10 @@ type taskEditor struct {
 	priorityIndex         int
 	workflowStatusIndex   int
 	descScroll            int
+	detailScroll          int
+	moreFieldsExpanded    bool
+	descriptionActive     bool
+	descriptionNavigated  bool
 	labelSelected         int
 	labels                []vimkunja.Label
 	labelsLoading         bool
@@ -131,6 +136,52 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if !e.descriptionActive {
+		switch s {
+		case "ctrl+d", "pgdown", "pagedown":
+			m.pageDetail(1)
+			return m, nil
+		case "ctrl+u", "pgup", "pageup":
+			m.pageDetail(-1)
+			return m, nil
+		}
+	}
+	if e.field == fieldMoreFields {
+		switch s {
+		case "enter":
+			e.moreFieldsExpanded = !e.moreFieldsExpanded
+			m.ensureDetailFieldVisible()
+		case "j", "down":
+			m.moveField(1)
+		case "k", "up":
+			m.moveField(-1)
+		}
+		return m, nil
+	}
+	if e.field == fieldDescription && e.descriptionNavigated && !e.descriptionActive {
+		switch s {
+		case "enter":
+			e.descriptionActive = true
+			m.ensureDetailFieldVisible()
+		case "i":
+			e.descriptionActive = true
+			if descriptionHasHTML(e.draft.Description) {
+				return m, nil
+			}
+			return m.startEditorInsert()
+		case "j", "down":
+			m.moveField(1)
+		case "k", "up":
+			m.moveField(-1)
+		case "esc":
+			if e.dirty() {
+				m.recordError(errUnsavedNavigation)
+				return m, nil
+			}
+			m.closeTaskDetail()
+		}
+		return m, nil
+	}
 	if e.gArmed {
 		e.gArmed = false
 		if s == "g" && e.field == fieldDescription {
@@ -140,6 +191,10 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if s == "esc" {
+		if e.field == fieldDescription && e.descriptionActive {
+			e.descriptionActive = false
+			return m, nil
+		}
 		if e.dirty() {
 			m.recordError(errUnsavedNavigation)
 			return m, nil
@@ -505,12 +560,131 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 
 func (m *model) moveField(delta int) {
 	e := m.editor
-	// The rendered form is vertical, so j/k and arrow up/down traverse fields.
-	field := editorField(clamp(int(e.field)+delta, int(fieldProject), int(fieldDescription)))
-	if e.id == 0 && field == fieldDone {
-		field = editorField(clamp(int(field)+delta, int(fieldProject), int(fieldDescription)))
+	fields := m.detailFields()
+	current := 0
+	for i, field := range fields {
+		if field == e.field {
+			current = i
+			break
+		}
 	}
-	e.field = field
+	e.field = fields[clamp(current+delta, 0, len(fields)-1)]
+	e.descriptionActive = false
+	e.descriptionNavigated = e.field == fieldDescription
+	m.ensureDetailFieldVisible()
+}
+
+func (m *model) detailFields() []editorField {
+	return m.detailFieldsFor(m.compactDetail())
+}
+
+func (m *model) detailFieldsFor(compact bool) []editorField {
+	if m.editor == nil {
+		return nil
+	}
+	e := m.editor
+	if compact {
+		fields := []editorField{fieldTitle, fieldMoreFields}
+		if e.moreFieldsExpanded {
+			fields = append(fields, fieldProject, fieldPriority, fieldDueDate, fieldLabels, fieldWorkflowStatus)
+			if e.id != 0 {
+				fields = append(fields, fieldDone)
+			}
+		}
+		return append(fields, fieldDescription)
+	}
+	fields := []editorField{fieldProject, fieldTitle, fieldPriority, fieldDueDate, fieldLabels, fieldWorkflowStatus}
+	if e.id != 0 {
+		fields = append(fields, fieldDone)
+	}
+	return append(fields, fieldDescription)
+}
+
+func (m *model) compactDetail() bool {
+	return m.height >= 10 && m.detailTextHeight() < 12
+}
+
+func (m *model) detailTextHeight() int {
+	_, h := m.viewportSize()
+	contentH := max(4, h-3)
+	topH := m.detailPaneTop()
+	detailH := max(4, contentH-topH)
+	return detailH - 2
+}
+
+func (m *model) pageDetail(direction int) {
+	if m.editor == nil {
+		return
+	}
+	limit := m.detailScrollLimit()
+	m.editor.detailScroll = clamp(m.editor.detailScroll+direction*m.pageStep(), 0, limit)
+}
+
+func (m *model) normalizeDetailSelection() {
+	if m.editor == nil {
+		return
+	}
+	for _, field := range m.detailFields() {
+		if field == m.editor.field {
+			m.ensureDetailFieldVisible()
+			return
+		}
+	}
+	m.editor.field = fieldMoreFields
+	m.editor.descriptionActive = false
+	m.editor.descriptionNavigated = false
+	m.ensureDetailFieldVisible()
+}
+
+func (m *model) ensureDetailFieldVisible() {
+	if m.editor == nil || !m.compactDetail() {
+		return
+	}
+	row, ok := m.compactDetailFieldRow(m.editor.field)
+	if !ok {
+		return
+	}
+	bodyRows := max(1, m.detailTextHeight()-2)
+	if row < m.editor.detailScroll {
+		m.editor.detailScroll = row
+	}
+	if row >= m.editor.detailScroll+bodyRows {
+		m.editor.detailScroll = row - bodyRows + 1
+	}
+	m.editor.detailScroll = clamp(m.editor.detailScroll, 0, m.detailScrollLimit())
+}
+
+func (m *model) compactDetailFieldRow(field editorField) (int, bool) {
+	if !m.compactDetail() || m.editor == nil {
+		return 0, false
+	}
+	for row, candidate := range m.detailFields() {
+		if candidate == field {
+			return row, true
+		}
+	}
+	return 0, false
+}
+
+func (m *model) detailScrollLimit() int {
+	if !m.compactDetail() || m.editor == nil {
+		return 0
+	}
+	bodyRows := max(1, m.detailTextHeight()-2)
+	return max(0, len(m.detailFields())+m.compactDescriptionRows()-bodyRows)
+}
+
+func (m *model) compactDescriptionRows() int {
+	return compactDescriptionRows(m.detailTextHeight(), len(m.detailFields()))
+}
+
+func compactDescriptionRows(textH, staticRows int) int {
+	bodyRows := max(1, textH-2)
+	minimum := 2
+	if textH >= 8 {
+		minimum = 3
+	}
+	return max(minimum, bodyRows-staticRows)
 }
 
 func (m *model) filteredProjects(filter string) []vimkunja.Project {

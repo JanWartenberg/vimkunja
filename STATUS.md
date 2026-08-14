@@ -20,13 +20,12 @@ Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End
 
 ### Meilenstein 2
 
-Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md) und die [Ex-Command-History samt Completion](.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md) sind implementiert und archiviert; der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
+Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md), die [kompakte Task-Detail-Ansicht](.archive/2026-08-14/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md) und die [Ex-Command-History samt Completion](.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md) sind implementiert und archiviert; der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
 
 3. [Task-Titel inline in Listen/Boards bearbeiten](.scratch/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-kanban.md)
 5. [Due Date- und Priority-Eingabe spezifizieren](.scratch/task-editor-special-inputs/issues/01-specify-date-picker-and-priority-input.md)
 6. [Task Comments anzeigen und anlegen](.scratch/task-comments/issues/01-show-and-create-task-comments.md)
 7. [Benutzerkonfiguration hinzufügen](.scratch/user-configuration/issues/01-add-user-facing-tui-configuration.md) – zunächst Konfigurationsrahmen und nur tatsächlich benötigte Einstellungen.
-8. [Description in kurzen Terminals zugänglich halten](.scratch/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md) – kompaktes Detail-Layout und Mindestfläche zuerst spezifizieren.
 9. [Kanban-Fokus und Task-Detail-Auswahl synchronisieren](.scratch/kanban-focus-feedback/issues/01-clarify-kanban-focus-and-detail-selection-sync.md) – Fokuskontrast und Karten-/Detail-Auswahlverhalten spezifizieren.
 
 ### Meilenstein 3

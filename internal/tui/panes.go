@@ -390,6 +390,9 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if m.editor == nil {
 		return fitBlock([]string{"No task editor available."}, textW, textH)
 	}
+	if textH < 12 {
+		return renderCompactTaskDetail(m, textW, textH)
+	}
 	e := m.editor
 	header := "TASK EDITOR"
 	if e.id == 0 {
@@ -522,6 +525,161 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	return fitBlock(lines, textW, textH)
 }
 
+func renderCompactTaskDetail(m *model, textW, textH int) string {
+	e := m.editor
+	header := "TASK EDITOR"
+	if e.id == 0 {
+		header = "NEW TASK"
+	}
+	lines := []string{" " + renderHeading(header) + " ", ""}
+	detailFocused := m.focus == paneDetail
+	renderField := func(field editorField, label, value string) string {
+		active := detailFocused && e.field == field
+		if field == fieldLabels && active {
+			return lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Bold(true).Render("▸ "+label) + value
+		}
+		return focusedField(label+value, active)
+	}
+	projectName := "(none)"
+	for _, project := range m.projects {
+		if project.ID == e.draft.ProjectID {
+			projectName = project.Title
+			break
+		}
+	}
+	due := e.draft.DueDate
+	if due == "" {
+		due = placeholderText("-")
+	} else if !(e.mode == editorInsert && e.field == fieldDueDate) {
+		due = ansi.Strip(duePresentation(vimkunja.Task{DueDate: due}, due, m.currentTime()))
+	}
+	priority := prioritySummary(e.draft.Priority)
+	if e.draft.Priority == 0 {
+		priority = placeholderText(priority)
+	} else {
+		priority = lipgloss.NewStyle().Foreground(lipgloss.Color(priorityColor(int(e.draft.Priority)))).Render(priority)
+	}
+	labels := "none"
+	if e.labelsLoading {
+		labels = "loading..."
+	} else if len(e.labels) > 0 {
+		titles := make([]string, 0, len(e.labels))
+		for i, label := range e.labels {
+			title := label.Title
+			if detailFocused && e.field == fieldLabels && i == clamp(e.labelSelected, 0, len(e.labels)-1) {
+				title = lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Bold(true).Render(title)
+			}
+			titles = append(titles, title)
+		}
+		labels = strings.Join(titles, ", ")
+	}
+	renderMetadata := func(field editorField, value string) string {
+		if e.draft.Done && !(detailFocused && e.field == field) {
+			return lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true).Render(ansi.Strip(value))
+		}
+		return value
+	}
+	values := map[editorField]struct{ label, value string }{
+		fieldProject:        {"Project:  ", projectName},
+		fieldTitle:          {"Title:    ", renderMetadata(fieldTitle, m.editorText(fieldTitle, e.draft.Title))},
+		fieldPriority:       {"Priority: ", renderMetadata(fieldPriority, priority)},
+		fieldDueDate:        {"Due Date: ", renderMetadata(fieldDueDate, m.editorText(fieldDueDate, due))},
+		fieldLabels:         {"Labels:   ", renderMetadata(fieldLabels, labels)},
+		fieldWorkflowStatus: {"Status:   ", e.workflowStatusLabel()},
+		fieldDone:           {"Done:     ", "[ ]"},
+	}
+	if e.draft.Done {
+		values[fieldDone] = struct{ label, value string }{"Done:     ", "[x]"}
+	}
+	fields := m.detailFieldsFor(true)
+	body := make([]string, 0, len(fields)+3)
+	descriptionRow := 0
+	pickerSelectedRow := -1
+	for _, field := range fields {
+		switch field {
+		case fieldMoreFields:
+			state := "collapsed"
+			if e.moreFieldsExpanded {
+				state = "expanded"
+			}
+			body = append(body, renderField(field, "More fields: ", state))
+		case fieldDescription:
+			descriptionRow = len(body)
+			body = append(body, renderField(fieldDescription, "Description:", ""))
+		default:
+			value := values[field]
+			body = append(body, renderField(field, value.label, value.value))
+		}
+		switch {
+		case field == fieldProject && e.mode == editorProjectPicker:
+			body = append(body, "  Filter: "+e.projectFilter)
+			matches := m.filteredProjects(e.projectFilter)
+			choices := make([]string, 0, len(matches))
+			for _, project := range matches {
+				choices = append(choices, project.Title)
+			}
+			if len(choices) == 0 {
+				choices = append(choices, placeholderText("No match found"))
+			}
+			pickerSelectedRow = len(body) + 1 + clamp(e.pickerIndex, 0, len(choices)-1)
+			body = append(body, renderPickerChoices(choices, e.pickerIndex, tuiTheme.selectionAccent, "")...)
+		case field == fieldPriority && e.mode == editorPriorityPicker:
+			pickerSelectedRow = len(body) + 1 + clamp(e.priorityIndex, 0, len(tuiTheme.priority)-1)
+			body = append(body, renderPriorityPicker(e)...)
+		case field == fieldWorkflowStatus && e.mode == editorWorkflowStatusPicker:
+			choices := make([]string, 0, len(e.workflowStatus.Buckets))
+			for _, bucket := range e.workflowStatus.Buckets {
+				choices = append(choices, bucket.Title)
+			}
+			if len(choices) > 0 {
+				pickerSelectedRow = len(body) + 1 + clamp(e.workflowStatusIndex, 0, len(choices)-1)
+			}
+			body = append(body, renderPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, "")...)
+		}
+	}
+	bodyRows := max(1, textH-2)
+	descriptionRows := compactDescriptionRows(textH, len(fields))
+	description := descriptionTerminalText(e.draft.Description)
+	desc := wrapDescription(description, textW)
+	if description == "" {
+		desc = []descriptionLine{{text: placeholderText("  (no description)")}}
+	}
+	descriptionScrollable := len(desc) > descriptionRows
+	if descriptionScrollable {
+		desc = wrapDescription(description, max(1, textW-2))
+	}
+	start := 0
+	if e.descriptionActive && len(desc) > descriptionRows {
+		start = clamp(e.descScroll, 0, len(desc)-descriptionRows)
+	}
+	for row := 0; row < descriptionRows; row++ {
+		if line := start + row; line < len(desc) {
+			body = append(body, m.editorDescriptionText(desc[line]))
+		} else {
+			body = append(body, "")
+		}
+	}
+	outerLimit := max(0, len(body)-bodyRows)
+	if pickerSelectedRow >= 0 {
+		if pickerSelectedRow < e.detailScroll {
+			e.detailScroll = pickerSelectedRow
+		}
+		if pickerSelectedRow >= e.detailScroll+bodyRows {
+			e.detailScroll = pickerSelectedRow - bodyRows + 1
+		}
+	}
+	e.detailScroll = clamp(e.detailScroll, 0, outerLimit)
+	visible := body[e.detailScroll:min(len(body), e.detailScroll+bodyRows)]
+	lines = append(lines, visible...)
+	if e.descriptionActive && descriptionScrollable && descriptionRow >= e.detailScroll && descriptionRow < e.detailScroll+bodyRows {
+		return renderVerticalScrollbar(lines, textW, textH, start, len(desc), 2+descriptionRow-e.detailScroll+1, descriptionRows, true)
+	}
+	if outerLimit > 0 {
+		return renderVerticalScrollbar(lines, textW, textH, e.detailScroll, len(body), 2, bodyRows, detailFocused)
+	}
+	return fitBlock(lines, textW, textH)
+}
+
 // renderPriorityPicker keeps the picker visually separate from Description and
 // colours the active choice with the same semantic mapping used everywhere
 // else priorities are displayed.
@@ -593,6 +751,15 @@ func wrapDescription(value string, width int) []descriptionLine {
 func (m *model) readOnlyDescriptionScrollLimit() int {
 	if m.editor == nil {
 		return 0
+	}
+	if m.compactDetail() {
+		w, _ := m.viewportSize()
+		descriptionRows := m.compactDescriptionRows()
+		lines := wrapDescription(descriptionTerminalText(m.editor.draft.Description), w-4)
+		if len(lines) > descriptionRows {
+			lines = wrapDescription(descriptionTerminalText(m.editor.draft.Description), max(1, w-6))
+		}
+		return max(0, len(lines)-descriptionRows)
 	}
 	w, h := m.viewportSize()
 	textW := w - 4

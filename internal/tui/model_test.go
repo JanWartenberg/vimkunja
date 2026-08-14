@@ -3640,6 +3640,143 @@ func TestUnfocusedTaskDetailHasNoHighlightedField(t *testing.T) {
 	}
 }
 
+func TestCompactTaskDetailCollapsesMetadataBehindMoreFields(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 22
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee", Description: "Fresh beans"})
+
+	compact := ansi.Strip(m.Render())
+	for _, want := range []string{"Title:", "More fields", "Description:", "Fresh beans"} {
+		if !strings.Contains(compact, want) {
+			t.Fatalf("compact Task Detail = %q, want %q", compact, want)
+		}
+	}
+	if strings.Contains(compact, "Priority:") {
+		t.Fatalf("compact Task Detail exposes collapsed metadata: %q", compact)
+	}
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	expanded := ansi.Strip(m.Render())
+	if !strings.Contains(expanded, "Priority:") {
+		t.Fatalf("expanded Task Detail = %q, want metadata", expanded)
+	}
+}
+
+func TestTaskDetailActivatesDescriptionSeparatelyFromFieldNavigation(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 22
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee", Description: "first\nsecond"})
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.editor.field != fieldDescription {
+		t.Fatalf("field after compact navigation = %v, want Description", m.editor.field)
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.editor.cursor == 0 {
+		t.Fatal("active Description did not receive its Normal-mode navigation")
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if m.editor == nil || m.editor.field != fieldDescription {
+		t.Fatalf("Esc closed Description instead of returning to Detail navigation: %#v", m.editor)
+	}
+}
+
+func TestCompactTaskDetailPagesItsOuterViewport(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 22
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee", Description: "Fresh beans"})
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	before := ansi.Strip(m.Render())
+	m = pressKey(m, tea.Key{Code: 'd', Mod: tea.ModCtrl})
+	after := ansi.Strip(m.Render())
+	if after == before {
+		t.Fatal("Ctrl-D did not page the Task Detail outer viewport")
+	}
+	if !strings.Contains(after, "┬") || !strings.Contains(after, "┴") {
+		t.Fatalf("outer viewport lacks scrollbar bounds: %q", after)
+	}
+}
+
+func TestCompactTaskDetailThresholdReservesDescriptionRows(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee", Description: "one\ntwo\nthree"})
+
+	compact := ansi.Strip(renderTaskDetail(m, 80, 8))
+	if !strings.Contains(compact, "More fields") || !strings.Contains(compact, "three") {
+		t.Fatalf("eight-row Task Detail = %q, want compact fields and three Description rows", compact)
+	}
+	short := ansi.Strip(renderTaskDetail(m, 80, 7))
+	if !strings.Contains(short, "one") || !strings.Contains(short, "two") {
+		t.Fatalf("short Task Detail = %q, want two Description rows", short)
+	}
+	regular := ansi.Strip(renderTaskDetail(m, 80, 12))
+	if strings.Contains(regular, "More fields") {
+		t.Fatalf("twelve-row Task Detail remains compact: %q", regular)
+	}
+}
+
+func TestActiveCompactDescriptionPagesItsInnerViewport(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 22
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee", Description: strings.Repeat("line\n", 12)})
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	m = pressKey(m, tea.Key{Code: 'd', Mod: tea.ModCtrl})
+	if m.editor.descScroll == 0 {
+		t.Fatal("Ctrl-D did not page the active Description viewport")
+	}
+}
+
+func TestCompactTaskDetailRetainsPickerEditing(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 22
+	for id := int64(1); id <= 8; id++ {
+		m.projects = append(m.projects, vimkunja.Project{ID: id, Title: fmt.Sprintf("Project %d", id)})
+	}
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee"})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+
+	if m.editor.mode != editorProjectPicker || !strings.Contains(ansi.Strip(m.Render()), "Filter:") {
+		t.Fatalf("compact Project picker = mode:%v view:%q", m.editor.mode, ansi.Strip(m.Render()))
+	}
+	for range 6 {
+		m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	}
+	m.Render()
+	if m.editor.detailScroll == 0 {
+		t.Fatal("compact Project picker did not keep its selected choice visible")
+	}
+}
+
+func TestResizePreservesCompactDetailFieldSelection(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 22
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee"})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.editor.field != fieldPriority {
+		t.Fatalf("expanded compact field = %v, want Priority", m.editor.field)
+	}
+
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 40})
+	m = updated.(*model)
+	if m.editor.field != fieldPriority {
+		t.Fatalf("resize changed selected field to %v, want Priority", m.editor.field)
+	}
+}
+
 func TestPaneFocusCtrlWIgnoresLeaderKeyRelease(t *testing.T) {
 	m := testModel()
 

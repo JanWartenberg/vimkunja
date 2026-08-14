@@ -494,6 +494,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = typed.Width
 		m.height = typed.Height
+		m.normalizeDetailSelection()
 		return m, nil
 
 	case projectsLoadedMsg:
@@ -1495,7 +1496,7 @@ func (m *model) View() tea.View {
 // editorCursor delegates cursor-shape support to Bubble Tea. Its renderer
 // restores the terminal default when a previously visible cursor becomes nil.
 func (m *model) nativeEditorCursorActive() bool {
-	return !m.disableCursorShapes && m.focus == paneDetail && m.editor != nil
+	return !m.disableCursorShapes && m.focus == paneDetail && m.editor != nil && m.editor.field != fieldMoreFields
 }
 
 func (m *model) editorCursor() *tea.Cursor {
@@ -1518,6 +1519,9 @@ func (m *model) editorCursor() *tea.Cursor {
 func (m *model) editorCursorPosition() (int, int) {
 	w, h := m.viewportSize()
 	topH := m.detailPaneTop()
+	if m.compactDetail() {
+		return m.compactEditorCursorPosition(w, h, topH)
+	}
 	textX := 2 // detail border plus horizontal padding
 	// Text fields render the focused-field prefix before their label.
 	if !m.editor.isPickerMode() {
@@ -1550,6 +1554,55 @@ func (m *model) editorCursorPosition() (int, int) {
 		cursorOffset = m.editor.cursor
 	}
 	return clamp(textX+labelWidth+cursorOffset, 0, w-1), clamp(topH+1+row, 0, h-1)
+}
+
+func (m *model) compactEditorCursorPosition(w, h, topH int) (int, int) {
+	row, ok := m.compactDetailFieldRow(m.editor.field)
+	if !ok {
+		return 0, 0
+	}
+	if m.editor.field == fieldDescription {
+		return m.compactDescriptionCursorPosition(w, h, topH, row)
+	}
+	labelWidth := 0
+	switch m.editor.field {
+	case fieldTitle:
+		labelWidth = len([]rune("Title:    "))
+	case fieldProject:
+		labelWidth = len([]rune("Project:  "))
+	case fieldPriority:
+		labelWidth = len([]rune("Priority: "))
+	case fieldDueDate:
+		labelWidth = len([]rune("Due Date: "))
+	case fieldLabels:
+		labelWidth = len([]rune("Labels:   "))
+	case fieldWorkflowStatus:
+		labelWidth = len([]rune("Status:   "))
+	case fieldDone:
+		labelWidth = len([]rune("Done:     "))
+	}
+	textX := 4 + labelWidth
+	return clamp(textX+m.editor.cursor, 0, w-1), clamp(topH+3+row-m.editor.detailScroll, 0, h-1)
+}
+
+func (m *model) compactDescriptionCursorPosition(w, h, topH, row int) (int, int) {
+	textW := w - 4
+	description := wrapDescription(m.editor.draft.Description, textW)
+	descriptionRows := m.compactDescriptionRows()
+	if len(description) > descriptionRows {
+		description = wrapDescription(m.editor.draft.Description, max(1, textW-2))
+	}
+	start := clamp(m.editor.descScroll, 0, max(0, len(description)-descriptionRows))
+	cursor := clamp(m.editor.cursor, 0, m.editor.fieldRuneLen())
+	lineIndex, column := 0, 0
+	for i, line := range description {
+		if cursor >= line.start && cursor <= line.end {
+			lineIndex, column = i, cursor-line.start
+			break
+		}
+	}
+	visibleLine := clamp(lineIndex-start, 0, descriptionRows-1)
+	return clamp(2+column, 0, w-1), clamp(topH+4+row-m.editor.detailScroll+visibleLine, 0, h-1)
 }
 
 func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
@@ -1720,7 +1773,31 @@ func (m *model) focusedScrollPosition() (int, int, bool) {
 			return clamp(selected-viewportRows+1+bottomMargin, 0, limit), limit, true
 		}
 	case paneDetail:
-		if m.editor == nil || m.editor.field != fieldDescription {
+		if m.editor == nil {
+			break
+		}
+		if m.compactDetail() {
+			if m.editor.field == fieldDescription && m.editor.descriptionActive {
+				limit := m.readOnlyDescriptionScrollLimit()
+				if !descriptionHasHTML(m.editor.draft.Description) {
+					w, _ := m.viewportSize()
+					rows := m.compactDescriptionRows()
+					lines := wrapDescription(m.editor.draft.Description, w-4)
+					if len(lines) > rows {
+						lines = wrapDescription(m.editor.draft.Description, max(1, w-6))
+					}
+					limit = max(0, len(lines)-rows)
+				}
+				if limit > 0 {
+					return clamp(m.editor.descScroll, 0, limit), limit, true
+				}
+			}
+			if limit := m.detailScrollLimit(); limit > 0 {
+				return clamp(m.editor.detailScroll, 0, limit), limit, true
+			}
+			break
+		}
+		if m.editor.field != fieldDescription {
 			break
 		}
 		detailH := max(4, contentH-topH)
