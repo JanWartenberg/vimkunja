@@ -162,9 +162,16 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch s {
 		case "enter":
 			e.descriptionActive = true
+			if m.compactDetail() {
+				e.moreFieldsExpanded = false
+			}
 			m.ensureDetailFieldVisible()
 		case "i":
 			e.descriptionActive = true
+			if m.compactDetail() {
+				e.moreFieldsExpanded = false
+			}
+			m.ensureDetailFieldVisible()
 			if descriptionHasHTML(e.draft.Description) {
 				return m, nil
 			}

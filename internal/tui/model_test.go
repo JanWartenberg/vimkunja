@@ -3720,6 +3720,27 @@ func TestCompactTaskDetailThresholdReservesDescriptionRows(t *testing.T) {
 	}
 }
 
+func TestActivatingDescriptionCollapsesExpandedCompactFields(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 22
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee", Description: "first\nsecond\nthird"})
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	for m.editor.field != fieldDescription {
+		m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	}
+	if m.editor.detailScroll == 0 {
+		t.Fatal("expanded metadata did not require outer scrolling before Description")
+	}
+
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	view := ansi.Strip(m.Render())
+	if m.editor.moreFieldsExpanded || !strings.Contains(view, "first") || !strings.Contains(view, "second") {
+		t.Fatalf("active Description = expanded:%v view:%q, want collapsed metadata and visible Description", m.editor.moreFieldsExpanded, view)
+	}
+}
+
 func TestActiveCompactDescriptionPagesItsInnerViewport(t *testing.T) {
 	m := testModel()
 	m.width, m.height = 80, 22
