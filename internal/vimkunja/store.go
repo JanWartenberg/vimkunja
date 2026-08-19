@@ -30,4 +30,5 @@ type Store interface {
 	DeleteTask(ctx context.Context, taskID int64) error
 	CreateTask(ctx context.Context, draft TaskDraft) (Task, error)
 	UpdateTask(ctx context.Context, draft TaskDraft) (Task, error)
+	UpdateTaskTitle(ctx context.Context, taskID int64, title string) error
 }

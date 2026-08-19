@@ -754,29 +754,15 @@ func (e *taskEditor) setFieldValue(value string) {
 	}
 }
 func (e *taskEditor) fieldRuneLen() int    { return len([]rune(e.fieldValue())) }
-func (e *taskEditor) moveCursor(delta int) { e.cursor = clamp(e.cursor+delta, 0, e.fieldRuneLen()) }
+func (e *taskEditor) moveCursor(delta int) { moveTextCursor(&e.cursor, e.fieldValue(), delta) }
 func (e *taskEditor) insertText(text string) {
-	r := []rune(e.fieldValue())
-	add := []rune(text)
-	e.cursor = clamp(e.cursor, 0, len(r))
-	r = append(r[:e.cursor], append(add, r[e.cursor:]...)...)
-	e.setFieldValue(string(r))
-	e.cursor += len(add)
+	e.setFieldValue(insertTextAtCursor(e.fieldValue(), &e.cursor, text))
 }
 func (e *taskEditor) deleteBeforeCursor() {
-	r := []rune(e.fieldValue())
-	if e.cursor > 0 {
-		r = append(r[:e.cursor-1], r[e.cursor:]...)
-		e.cursor--
-		e.setFieldValue(string(r))
-	}
+	e.setFieldValue(deleteTextBeforeCursor(e.fieldValue(), &e.cursor))
 }
 func (e *taskEditor) deleteAtCursor() {
-	r := []rune(e.fieldValue())
-	if e.cursor < len(r) {
-		r = append(r[:e.cursor], r[e.cursor+1:]...)
-		e.setFieldValue(string(r))
-	}
+	e.setFieldValue(deleteTextAtCursor(e.fieldValue(), &e.cursor))
 }
 func (e *taskEditor) lineStart() int {
 	r := []rune(e.draft.Description)

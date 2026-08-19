@@ -20,6 +20,8 @@ var helpLines = []string{
 	"  r                     Reload hierarchy",
 	"",
 	"TASKS",
+	"  i / Shift+I           Edit List/Overview title at end / beginning",
+	"  Inline title          Arrows/Home/End, Backspace/Delete; Enter save; Esc discard",
 	"  Enter                 Open task detail editor",
 	"  o                     Create a task in selected project",
 	"  x                     Toggle task done",

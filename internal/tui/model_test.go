@@ -59,6 +59,8 @@ type fakeStore struct {
 	deletedLabelID       int64
 	createdDraft         vimkunja.TaskDraft
 	updatedDraft         vimkunja.TaskDraft
+	updatedTaskID        int64
+	updatedTaskTitle     string
 }
 
 func (f *fakeStore) ListProjects(context.Context) ([]vimkunja.Project, error) {
@@ -251,6 +253,11 @@ func (f *fakeStore) UpdateTask(_ context.Context, draft vimkunja.TaskDraft) (vim
 		return vimkunja.Task{}, f.updateErr
 	}
 	return vimkunja.Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title, Done: draft.Done}, nil
+}
+
+func (f *fakeStore) UpdateTaskTitle(_ context.Context, taskID int64, title string) error {
+	f.updatedTaskID, f.updatedTaskTitle = taskID, title
+	return f.updateErr
 }
 
 func TestProjectsPaneRefreshToEmptyClearsStaleProjectContext(t *testing.T) {
@@ -4058,6 +4065,157 @@ func TestClosingEditorRemovesNativeCursor(t *testing.T) {
 	m.focus = paneTasks
 	if m.View().Cursor != nil {
 		t.Fatalf("closed editor cursor = %#v, want no cursor", m.View().Cursor)
+	}
+}
+
+func TestInlineTitleEditSavesAndRetainsSelection(t *testing.T) {
+	m := testModel()
+	store := m.store.(*fakeStore)
+	m.focus = paneTasks
+	m.width, m.height = 100, 30
+	m.tasks = []vimkunja.Task{{ID: 7, ProjectID: 1, Title: "Buy milk", Priority: 2, Description: "Notes"}}
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	if rendered := ansi.Strip(m.Render()); strings.Contains(rendered, "▏") {
+		t.Fatalf("inline title injects a cursor glyph: %q", rendered)
+	}
+	if cursor := m.View().Cursor; cursor == nil || cursor.Shape != tea.CursorBar {
+		t.Fatalf("inline title cursor = %#v, want native bar cursor", cursor)
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyBackspace})
+	m = pressKey(m, tea.Key{Code: '!', Text: "!"})
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if cmd == nil || m.inlineTitle == nil {
+		t.Fatal("Enter did not begin inline title save")
+	}
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if m.inlineTitle != nil || m.tasks[0].Title != "Buy mil!" || m.taskSelected != 0 {
+		t.Fatalf("inline save = edit:%#v task:%#v selected:%d", m.inlineTitle, m.tasks[0], m.taskSelected)
+	}
+	if store.updatedTaskID != 7 || store.updatedTaskTitle != "Buy mil!" {
+		t.Fatalf("inline title update = id:%d title:%q", store.updatedTaskID, store.updatedTaskTitle)
+	}
+}
+
+func TestInlineTitleEditEscapeDiscardsAndEmptyOrFailedSaveRetainsDraft(t *testing.T) {
+	m := testModel()
+	store := m.store.(*fakeStore)
+	m.focus = paneTasks
+	m.tasks = []vimkunja.Task{{ID: 7, ProjectID: 1, Title: "Buy milk"}}
+
+	m = pressKey(m, tea.Key{Code: 'I', Text: "I"})
+	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if m.inlineTitle != nil || m.tasks[0].Title != "Buy milk" {
+		t.Fatalf("Escape did not discard inline title: %#v", m.inlineTitle)
+	}
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	for range []rune("Buy milk") {
+		m = pressKey(m, tea.Key{Code: tea.KeyBackspace})
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if m.inlineTitle == nil || m.lastErr != "project and title are required" {
+		t.Fatalf("empty title save = edit:%#v error:%q", m.inlineTitle, m.lastErr)
+	}
+	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
+	store.updateErr = errors.New("database unavailable")
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if m.inlineTitle == nil || m.inlineTitle.title != "X" || m.lastErr != "database unavailable" {
+		t.Fatalf("failed inline save = edit:%#v error:%q", m.inlineTitle, m.lastErr)
+	}
+}
+
+func TestInlineTitleEditHomeEndAndOverviewReuse(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.taskScope = scopeOverview
+	m.overviewTasks = []vimkunja.Task{{ID: 7, ProjectID: 1, Title: "Möwen bilder"}}
+	m.tasks = append([]vimkunja.Task(nil), m.overviewTasks...)
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m = pressKey(m, tea.Key{Code: tea.KeyHome})
+	if m.inlineTitle.cursor != 0 {
+		t.Fatalf("Home cursor = %d, want 0", m.inlineTitle.cursor)
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEnd})
+	if got, want := m.inlineTitle.cursor, len([]rune("Möwen bilder")); got != want {
+		t.Fatalf("End cursor = %d, want %d", got, want)
+	}
+	m = pressKey(m, tea.Key{Code: '!', Text: "!"})
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if m.inlineTitle != nil || m.tasks[0].Title != "Möwen bilder!" || m.overviewTasks[0].Title != "Möwen bilder!" || m.taskSelected != 0 {
+		t.Fatalf("Overview inline save = edit:%#v tasks:%#v source:%#v selected:%d", m.inlineTitle, m.tasks, m.overviewTasks, m.taskSelected)
+	}
+}
+
+func TestInlineTitleEditFocusChangeWaitsForSuccessfulSave(t *testing.T) {
+	m := testModel()
+	store := m.store.(*fakeStore)
+	m.focus = paneTasks
+	m.tasks = []vimkunja.Task{{ID: 7, ProjectID: 1, Title: "Buy milk"}}
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m = pressKey(m, tea.Key{Code: '!', Text: "!"})
+
+	m = ctrlW(m)
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'h', Text: "h"}))
+	m = updated.(*model)
+	if cmd == nil || m.focus != paneTasks {
+		t.Fatalf("Ctrl+W h before save = command:%v focus:%v, want pending command in Tasks", cmd != nil, m.focus)
+	}
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if m.focus != paneProjects || m.inlineTitle != nil {
+		t.Fatalf("successful focus save = focus:%v inline:%#v", m.focus, m.inlineTitle)
+	}
+
+	m.focus = paneTasks
+	m.tasks[0].Title = "Buy milk"
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	store.updateErr = errors.New("database unavailable")
+	m = ctrlW(m)
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'h', Text: "h"}))
+	m = updated.(*model)
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if m.focus != paneTasks || m.inlineTitle == nil || m.lastErr != "database unavailable" {
+		t.Fatalf("failed focus save = focus:%v inline:%#v error:%q", m.focus, m.inlineTitle, m.lastErr)
+	}
+
+	store.updateErr = nil
+	m = pressKey(m, tea.Key{Code: tea.KeyBackspace})
+	for range []rune("Buy milk") {
+		m = pressKey(m, tea.Key{Code: tea.KeyBackspace})
+	}
+	m = ctrlW(m)
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'h', Text: "h"}))
+	m = updated.(*model)
+	if cmd != nil || m.inlineTitle.pendingFocus != nil {
+		t.Fatalf("invalid title focus save = command:%v pending:%#v", cmd != nil, m.inlineTitle.pendingFocus)
+	}
+	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if m.focus != paneTasks {
+		t.Fatalf("ordinary save after invalid focus attempt changed focus to %v", m.focus)
+	}
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m = ctrlW(m)
+	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'l', Text: "l"}))
+	m = updated.(*model)
+	if cmd != nil || m.focus != paneTasks || m.inlineTitle == nil {
+		t.Fatalf("no-op Ctrl+W l = command:%v focus:%v inline:%#v", cmd != nil, m.focus, m.inlineTitle)
 	}
 }
 

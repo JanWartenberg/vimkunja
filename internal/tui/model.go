@@ -126,15 +126,19 @@ type model struct {
 	pendingKanbanBucketID  int64
 
 	// Tasks pane
-	tasks          []vimkunja.Task
-	taskSelected   int
-	taskLoading    bool
-	taskScope      taskScope
-	overviewTasks  []vimkunja.Task
-	overviewLabel  vimkunja.Label
-	overviewFilter overviewFilter
-	overviewSort   overviewSort
-	overviewPrompt overviewPrompt
+	tasks               []vimkunja.Task
+	taskSelected        int
+	taskLoading         bool
+	inlineTitle         *inlineTitleEdit
+	inlineCursorX       int
+	inlineCursorY       int
+	inlineCursorVisible bool
+	taskScope           taskScope
+	overviewTasks       []vimkunja.Task
+	overviewLabel       vimkunja.Label
+	overviewFilter      overviewFilter
+	overviewSort        overviewSort
+	overviewPrompt      overviewPrompt
 
 	// Detail and auxiliary panes
 	showDetail bool
@@ -406,6 +410,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+		// Inline title text takes precedence over global leader input. Ctrl+W is
+		// the sole exception: it commits the draft before changing Pane focus.
+		if m.inlineTitle != nil && !m.ctrlWArmed && kLower != "ctrl+w" {
+			return m.updateInlineTitleEdit(key)
+		}
 		if m.leaderArmed {
 			m.leaderArmed = false
 			switch k {
@@ -436,6 +445,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// is consumed by the editor and cannot move focus out of the Detail pane.
 		if m.ctrlWArmed {
 			m.ctrlWArmed = false
+			if m.inlineTitle != nil {
+				return m, m.saveInlineTitleBeforeFocus(kLower, k)
+			}
 
 			// Ctrl+W + Ctrl+W cycles focus.
 			if kLower == "ctrl+w" || kLower == "w" {
@@ -724,6 +736,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if typed.err != nil {
 			m.recordError(typed.err)
 		}
+		return m, nil
+
+	case inlineTitleSavedMsg:
+		m.applyInlineTitleSave(typed)
 		return m, nil
 
 	case taskSavedMsg:
@@ -1255,6 +1271,12 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch s {
 	case "q":
 		return m, tea.Quit
+	case "i":
+		m.openInlineTitleEdit(false)
+		return m, nil
+	case "I":
+		m.openInlineTitleEdit(true)
+		return m, nil
 	case "enter":
 		if m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
 			task := m.tasks[m.taskSelected]
@@ -1500,6 +1522,11 @@ func (m *model) nativeEditorCursorActive() bool {
 }
 
 func (m *model) editorCursor() *tea.Cursor {
+	if !m.disableCursorShapes && m.inlineTitle != nil && m.inlineCursorVisible {
+		cursor := tea.NewCursor(m.inlineCursorX, m.inlineCursorY)
+		cursor.Shape = tea.CursorBar
+		return cursor
+	}
 	if !m.nativeEditorCursorActive() || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
 		return nil
 	}
@@ -1640,6 +1667,17 @@ func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
 	return clamp(2+column, 0, w-1), clamp(topH+1+precedingLines+visibleLine, 0, h-1)
 }
 
+// tasksPaneTextX returns the screen column at which renderTasks's text begins.
+func (m *model) tasksPaneTextX() int {
+	w, _ := m.viewportSize()
+	if m.projectsPaneCollapsed {
+		return 2 // Tasks border plus horizontal padding.
+	}
+	projectsOuter := min(30, w/3)
+	projectsOuter = max(16, projectsOuter)
+	return projectsOuter + 2 // Projects outer width, then Tasks chrome.
+}
+
 func (m *model) viewportSize() (int, int) {
 	w, h := m.width, m.height
 	if w < 40 {
@@ -1657,6 +1695,7 @@ func (m *model) detailPaneTop() int {
 }
 
 func (m *model) Render() string {
+	m.inlineCursorVisible = false
 	w, h := m.viewportSize()
 
 	// chrome: border(1 each side) + padding(0,1) -> 4 cols horizontal, 2 rows vertical

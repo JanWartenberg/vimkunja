@@ -8,10 +8,24 @@
 
 **Priority:** Medium
 
-**Status:** needs-triage
+**Status:** triaged
 
-- [ ] Decide whether Due Date uses a keyboard date picker, shortcuts, or an improved text mask.
-- [ ] Decide whether Priority uses direct number input, `+`/`-`, or retains a Picker.
+## Decision
+
+- **Due Date:** keep the `YYYY-MM-DD` mask for manual entry.
+- Add quick-pick helpers for **tomorrow**, **in n days**, and **in n months**.
+- **Priority:** keep the existing picker.
+- Keep task-detail jump keystrokes as part of the special-input discussion, but make them a separate follow-up unless they are required for the same edit flow.
+
+## Vim-style shortcut proposal
+
+- `gt` → edit title
+- `gd` → edit due date
+- `gp` → edit priority
+- `gl` → edit labels
+
+Rationale: `g`-prefixed shortcuts fit Vim conventions better than picker-centric key flows, while the picker UI itself should stay keyboard-driven (`hjkl`/Enter/Esc) if it remains part of the editor.
+
 - [ ] Preserve predictable validation, dirty state, save/discard, and narrow-terminal rendering.
 
 ## Further context

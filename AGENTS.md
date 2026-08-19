@@ -50,6 +50,15 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 
 ---
 
+## Go, Build und lokale Daten
+
+- Stack: Go 1.25, Bubble Tea v2 und SQLite (`modernc.org/sqlite`). Entrypoints: `cmd/vimkunja` und `cmd/vimkunja-tutorial`; Kernlogik liegt in `internal/vimkunja`, UI in `internal/tui`.
+- Nach Go-Änderungen: mindestens die betroffenen Tests ausführen; vor einem Commit zusätzlich `go test ./...` und `go build ./cmd/vimkunja ./cmd/vimkunja-tutorial`.
+- Vor dem Löschen oder Umbenennen von Go-Dateien, exportierten Typen oder Funktionen: Aufrufer mit `rg` prüfen. Gemeinsam verwendete Typen zuerst auslagern oder alle Aufrufer anpassen.
+- `internal/db/vikunja.db` ist lokale Nutzerdaten: nicht ändern oder löschen. `go.mod` und `go.sum` nur bei ausdrücklich beauftragten Dependency-Änderungen anfassen.
+
+---
+
 ## 🧭 Design-Philosophie (Ousterhout)
 
 - **Deep Modules:** Einfache Interfaces, komplexe Implementation (z.B. `store`)

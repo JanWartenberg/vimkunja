@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**Stand:** 2026-08-04 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 2
+**Stand:** 2026-08-19 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 2
 
 ## Aktueller Stand
 
@@ -20,9 +20,8 @@ Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End
 
 ### Meilenstein 2
 
-Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md), die [kompakte Task-Detail-Ansicht](.archive/2026-08-14/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md) und die [Ex-Command-History samt Completion](.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md) sind implementiert und archiviert; der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
+Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md), die [kompakte Task-Detail-Ansicht](.archive/2026-08-14/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md), die [Ex-Command-History samt Completion](.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md) und die [inline Task-Titelbearbeitung in List und Overview](.archive/2026-08-18/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-overview.md) sind implementiert und archiviert; Kanban-Title-Editing bleibt bewusst ausgenommen, der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
 
-3. [Task-Titel inline in Listen/Boards bearbeiten](.scratch/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-kanban.md)
 5. [Due Date- und Priority-Eingabe spezifizieren](.scratch/task-editor-special-inputs/issues/01-specify-date-picker-and-priority-input.md)
 6. [Task Comments anzeigen und anlegen](.scratch/task-comments/issues/01-show-and-create-task-comments.md)
 7. [Benutzerkonfiguration hinzufügen](.scratch/user-configuration/issues/01-add-user-facing-tui-configuration.md) – zunächst Konfigurationsrahmen und nur tatsächlich benötigte Einstellungen.

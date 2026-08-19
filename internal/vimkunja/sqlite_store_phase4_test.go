@@ -199,6 +199,30 @@ func TestUpdateTaskRollsBackDoneWithOtherFieldsOnFailure(t *testing.T) {
 	}
 }
 
+func TestUpdateTaskTitleChangesOnlyTitle(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title) VALUES (1, 'Project');
+		INSERT INTO tasks (id, project_id, title, description, priority, "index", created, updated, created_by_id)
+		VALUES (1, 1, 'Old', 'Keep this', 4, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
+	`)
+	if err != nil {
+		t.Fatalf("seed database: %v", err)
+	}
+	if err := store.UpdateTaskTitle(context.Background(), 1, "Renamed"); err != nil {
+		t.Fatalf("UpdateTaskTitle: %v", err)
+	}
+	var title, description string
+	var priority int64
+	if err := store.db.QueryRow(`SELECT title, description, priority FROM tasks WHERE id = 1`).Scan(&title, &description, &priority); err != nil {
+		t.Fatalf("read title update: %v", err)
+	}
+	if title != "Renamed" || description != "Keep this" || priority != 4 {
+		t.Fatalf("title update changed unrelated fields: title:%q description:%q priority:%d", title, description, priority)
+	}
+}
+
 func TestUpdateTask_MovesToTargetProjectDefaults(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()

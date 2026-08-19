@@ -1341,6 +1341,29 @@ func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, er
 
 // UpdateTask changes all editable fields. Moving a task also replaces its
 // per-view assignments with the target project's defaults.
+// UpdateTaskTitle changes only a Task title, leaving every other Task field
+// untouched. It is used by inline list editing, whose read model may be stale.
+func (s *SQLiteStore) UpdateTaskTitle(ctx context.Context, taskID int64, title string) error {
+	if taskID == 0 {
+		return fmt.Errorf("update task title: missing task id")
+	}
+	if strings.TrimSpace(title) == "" {
+		return fmt.Errorf("title is required")
+	}
+	result, err := s.db.ExecContext(ctx, `UPDATE tasks SET title = ?, updated = ? WHERE id = ?`, title, time.Now(), taskID)
+	if err != nil {
+		return fmt.Errorf("update task title: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update task title rows: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("update task title: task not found")
+	}
+	return nil
+}
+
 func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, error) {
 	if draft.ID == 0 {
 		return Task{}, fmt.Errorf("update task: missing task id")

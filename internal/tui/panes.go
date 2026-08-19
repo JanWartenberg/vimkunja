@@ -163,7 +163,16 @@ func renderTasks(m *model, textW, textH int) string {
 	bottomMargin := min(2, max(0, visibleRows-1))
 	start := clamp(selected-visibleRows+1+bottomMargin, 0, max(0, len(m.tasks)-visibleRows))
 	end := min(len(m.tasks), start+visibleRows)
-	layout := taskMetadataLayoutForWidth(m.tasks[start:end], contentWidth, m.inOverview(), m.currentTime())
+	visibleTasks := append([]vimkunja.Task(nil), m.tasks[start:end]...)
+	if m.inlineTitle != nil {
+		for i := range visibleTasks {
+			if visibleTasks[i].ID == m.inlineTitle.task.ID {
+				visibleTasks[i].Title = m.inlineTitle.title
+				break
+			}
+		}
+	}
+	layout := taskMetadataLayoutForWidth(visibleTasks, contentWidth, m.inOverview(), m.currentTime())
 	for i, t := range m.tasks[start:end] {
 		sel := start+i == selected
 		done := "[ ]"
@@ -199,7 +208,12 @@ func renderTasks(m *model, textW, textH int) string {
 		if !t.Done {
 			dueSeg = duePresentation(t, due, m.currentTime())
 		}
-		title := padPlainRight(truncatePlain(t.Title, layout.titleWidth), layout.titleWidth)
+		titleText := t.Title
+		inlineEditing := m.inlineTitle != nil && m.inlineTitle.task.ID == t.ID
+		if inlineEditing {
+			titleText = m.inlineTitle.title
+		}
+		title := padPlainRight(truncatePlain(titleText, layout.titleWidth), layout.titleWidth)
 
 		// Style applied to the non-priority segments only. The priority keeps
 		// its own colour even when selected. Each segment is rendered from a
@@ -236,6 +250,17 @@ func renderTasks(m *model, textW, textH int) string {
 		}
 		if layout.showProject && project != "" {
 			segments = append(segments, project)
+		}
+		if inlineEditing {
+			cursor := clamp(m.inlineTitle.cursor, 0, len([]rune(titleText)))
+			cursorWidth := min(lipgloss.Width(string([]rune(titleText)[:cursor])), layout.titleWidth)
+			prefixWidth := lipgloss.Width(strings.Join(segments, " "))
+			if len(segments) > 0 {
+				prefixWidth++
+			}
+			m.inlineCursorX = m.tasksPaneTextX() + prefixWidth + cursorWidth
+			m.inlineCursorY = 2 + i // pane border, header, then visible Task row
+			m.inlineCursorVisible = true
 		}
 		segments = append(segments, rend(title))
 		if layout.showDue {

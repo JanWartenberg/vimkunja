@@ -88,6 +88,7 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `gg/G`, Home/End | First/last Task | Implemented |
 | `Ctrl+D` / `Ctrl+U` | Page Task selection | Implemented |
 | `Enter` | Open the selected Task in the Task Detail Pane | Implemented |
+| List / Overview: `i` / `Shift+I` | Edit the selected Task title inline at its end / beginning. In edit: arrows, Home/End, Backspace, Delete; `Enter` saves; `Esc` discards; `Ctrl+W` saves before changing Pane focus. | Implemented |
 | `o` | Create a Task in the selected Project | Implemented |
 | `x` | Toggle the selected Task's Done state | Implemented |
 | `dd`, then `y` | Permanently delete the selected Task after explicit confirmation; `n` or `Esc` cancel. | Implemented |
