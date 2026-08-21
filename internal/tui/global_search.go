@@ -459,7 +459,7 @@ func (m *model) renderSearchOverlay(background string, width int) string {
 	}
 	modal := lipgloss.NewStyle().
 		Border(lipgloss.ThickBorder()).
-		BorderForeground(lipgloss.Color(tuiTheme.bright)).
+		BorderForeground(lipgloss.Color(paneBorderColor(true))).
 		Padding(1, 2).
 		Width(modalWidth).
 		Height(max(1, modalHeight-4)).

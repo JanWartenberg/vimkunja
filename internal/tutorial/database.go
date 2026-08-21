@@ -217,7 +217,8 @@ INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES
 		return fmt.Errorf("seed tutorial fixtures: %w", err)
 	}
 
-	today := time.Now().Local().Truncate(24 * time.Hour)
+	now := time.Now().Local()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	dueDates := map[int64]time.Time{
 		102: today,
 		103: today.AddDate(0, 0, 1),

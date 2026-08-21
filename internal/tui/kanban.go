@@ -72,7 +72,7 @@ func (m *model) setKanbanBoard(board vimkunja.KanbanBoard) {
 	}
 	m.kanbanBucketSelected = clamp(bucket, 0, max(0, len(board.Buckets)-1))
 	m.kanbanTaskSelected = -1
-	if len(board.Buckets) > 0 {
+	if len(board.Buckets) > 0 && !m.pendingKanbanEmptySelection {
 		for i, task := range board.Buckets[m.kanbanBucketSelected].Tasks {
 			if task.ID == m.pendingKanbanTaskID {
 				m.kanbanTaskSelected = i
@@ -85,6 +85,7 @@ func (m *model) setKanbanBoard(board vimkunja.KanbanBoard) {
 	}
 	m.pendingKanbanTaskID = 0
 	m.pendingKanbanBucketID = 0
+	m.pendingKanbanEmptySelection = false
 	m.ensureKanbanBucketVisible()
 }
 
@@ -122,6 +123,34 @@ func (m *model) selectedKanbanTask() (vimkunja.Task, bool) {
 	return bucket.Tasks[m.kanbanTaskSelected], true
 }
 
+// syncOpenKanbanDetail follows card selection only for a clean, already-open
+// Detail Pane. Navigation itself never opens Detail and never overwrites a
+// draft the user still needs to save or discard.
+func (m *model) syncOpenKanbanDetail() tea.Cmd {
+	if !m.showDetail || (m.editor != nil && m.editor.dirty()) {
+		return nil
+	}
+	focus := m.focus
+	task, ok := m.selectedKanbanTask()
+	if !ok {
+		m.editor = nil
+		m.kanbanEmptyDetailOrigin = true
+		return nil
+	}
+	m.kanbanEmptyDetailOrigin = false
+	m.openExistingEditor(task)
+	m.focus = focus
+	return tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
+}
+
+func (m *model) kanbanActionBlockedByDirtyDetail() bool {
+	if m.editor != nil && m.editor.dirty() {
+		m.recordError(errUnsavedNavigation)
+		return true
+	}
+	return false
+}
+
 func (m *model) updateKanbanKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	s := normalizeArrow(key.String())
 	if m.kanbanPicker {
@@ -139,18 +168,28 @@ func (m *model) updateKanbanKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "q":
 		return m, tea.Quit
 	case "enter":
+		if m.kanbanActionBlockedByDirtyDetail() {
+			return m, nil
+		}
 		if task, ok := m.selectedKanbanTask(); ok {
 			m.openExistingEditor(task)
 			return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
 		}
 	case "o":
+		if m.kanbanActionBlockedByDirtyDetail() {
+			return m, nil
+		}
 		m.openNewEditor()
 	case "r":
 		return m, m.refreshActiveTasks()
 	case "-":
 		return m, m.openOverview()
 	case "x":
+		if m.kanbanActionBlockedByDirtyDetail() {
+			return m, nil
+		}
 		if task, ok := m.selectedKanbanTask(); ok {
+			m.pendingKanbanTaskID = task.ID
 			m.taskLoading = true
 			return m, func() tea.Msg {
 				ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
@@ -159,24 +198,39 @@ func (m *model) updateKanbanKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case "d":
-		m.deleteArmed = true
+		if !m.kanbanActionBlockedByDirtyDetail() {
+			m.deleteArmed = true
+		}
 	case "j":
 		if bucket, ok := m.activeKanbanBucket(); ok && len(bucket.Tasks) > 0 {
 			m.kanbanTaskSelected = clamp(m.kanbanTaskSelected+1, 0, len(bucket.Tasks)-1)
+			return m, m.syncOpenKanbanDetail()
 		}
 	case "k":
 		if bucket, ok := m.activeKanbanBucket(); ok && len(bucket.Tasks) > 0 {
 			m.kanbanTaskSelected = clamp(m.kanbanTaskSelected-1, 0, len(bucket.Tasks)-1)
+			return m, m.syncOpenKanbanDetail()
 		}
 	case "h":
 		m.moveKanbanSelection(-1)
+		return m, m.syncOpenKanbanDetail()
 	case "l":
 		m.moveKanbanSelection(1)
+		return m, m.syncOpenKanbanDetail()
 	case "H":
+		if m.kanbanActionBlockedByDirtyDetail() {
+			return m, nil
+		}
 		return m.moveSelectedKanbanTask(-1)
 	case "L":
+		if m.kanbanActionBlockedByDirtyDetail() {
+			return m, nil
+		}
 		return m.moveSelectedKanbanTask(1)
 	case "m":
+		if m.kanbanActionBlockedByDirtyDetail() {
+			return m, nil
+		}
 		if len(m.kanbanPickerTargets()) > 0 {
 			m.kanbanPicker = true
 			m.kanbanPickerIndex = 0
@@ -318,9 +372,10 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 			lines = append(lines, renderKanbanTaskLine(task, index == m.kanbanBucketSelected && taskIndex == m.kanbanTaskSelected, contentWidth))
 		}
 		content := fitBlock(lines, contentWidth, max(1, textH-2))
+		bucketFocused := m.focus == paneTasks && index == m.kanbanBucketSelected
 		columns = append(columns, lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color(tuiTheme.muted)).
+			BorderForeground(lipgloss.Color(paneBorderColor(bucketFocused))).
 			Render(content))
 	}
 	if len(columns) == 0 {

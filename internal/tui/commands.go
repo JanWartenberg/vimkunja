@@ -190,6 +190,10 @@ func quitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 
 func forceQuitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	if m.showDetail && m.focus == paneDetail {
+		if m.kanbanEmptyDetailOrigin && m.editor != nil && m.editor.id == 0 {
+			m.editor = nil
+			return m, nil
+		}
 		m.closeTaskDetail()
 		return m, nil
 	}

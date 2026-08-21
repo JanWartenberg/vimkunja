@@ -347,7 +347,7 @@ func duePresentation(task vimkunja.Task, value string, now time.Time) string {
 	if !ok {
 		return value
 	}
-	today := now.Local().Truncate(24 * time.Hour)
+	today := localStartOfDay(now.Local())
 	days := int(due.Sub(today).Hours() / 24)
 	label, color := value, ""
 	switch {
@@ -413,6 +413,9 @@ func renderInfoPane(pane *infoPane, textW, textH int, focused bool) string {
 
 func renderTaskDetail(m *model, textW, textH int) string {
 	if m.editor == nil {
+		if m.kanbanActive && !m.inOverview() {
+			return renderEmptyKanbanDetail(textW, textH)
+		}
 		return fitBlock([]string{"No task editor available."}, textW, textH)
 	}
 	if textH < 12 {
@@ -512,7 +515,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 			choices = append(choices, lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Render("No match found"))
 			selected = -1
 		}
-		lines = append(lines, renderPickerChoices(choices, selected, tuiTheme.selectionAccent, "")...)
+		lines = append(lines, renderPickerChoices(choices, selected, tuiTheme.selectionAccent)...)
 	} else if e.mode == editorPriorityPicker {
 		lines = append(lines, renderPriorityPicker(e)...)
 	} else if e.mode == editorWorkflowStatusPicker {
@@ -520,7 +523,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		for _, bucket := range e.workflowStatus.Buckets {
 			choices = append(choices, bucket.Title)
 		}
-		lines = append(lines, renderPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, "")...)
+		lines = append(lines, renderPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent)...)
 	} else if description := descriptionTerminalText(e.draft.Description); description == "" {
 		lines = append(lines, placeholderText("  (no description)"))
 	} else {
@@ -547,6 +550,16 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if descriptionScrollable {
 		return renderVerticalScrollbar(lines, textW, textH, descriptionScrollTop, descriptionRows, descriptionViewportStart, descriptionViewportRows, m.focus == paneDetail)
 	}
+	return fitBlock(lines, textW, textH)
+}
+
+func renderEmptyKanbanDetail(textW, textH int) string {
+	lines := make([]string, max(1, textH))
+	for i := range lines {
+		lines[i] = ""
+	}
+	message := "No task selected"
+	lines[len(lines)/2] = strings.Repeat(" ", max(0, (textW-lipgloss.Width(message))/2)) + message
 	return fitBlock(lines, textW, textH)
 }
 
@@ -647,7 +660,7 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 				choices = append(choices, placeholderText("No match found"))
 			}
 			pickerSelectedRow = len(body) + 1 + clamp(e.pickerIndex, 0, len(choices)-1)
-			body = append(body, renderPickerChoices(choices, e.pickerIndex, tuiTheme.selectionAccent, "")...)
+			body = append(body, renderPickerChoices(choices, e.pickerIndex, tuiTheme.selectionAccent)...)
 		case field == fieldPriority && e.mode == editorPriorityPicker:
 			pickerSelectedRow = len(body) + 1 + clamp(e.priorityIndex, 0, len(tuiTheme.priority)-1)
 			body = append(body, renderPriorityPicker(e)...)
@@ -659,7 +672,7 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 			if len(choices) > 0 {
 				pickerSelectedRow = len(body) + 1 + clamp(e.workflowStatusIndex, 0, len(choices)-1)
 			}
-			body = append(body, renderPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, "")...)
+			body = append(body, renderPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent)...)
 		}
 	}
 	bodyRows := max(1, textH-2)
@@ -713,13 +726,13 @@ func renderPriorityPicker(e *taskEditor) []string {
 	for priority := range tuiTheme.priority {
 		choices[priority] = priorityName(int64(priority))
 	}
-	return renderPickerChoices(choices, e.priorityIndex, priorityColor(e.priorityIndex), "")
+	return renderPickerChoices(choices, e.priorityIndex, priorityColor(e.priorityIndex))
 }
 
-// renderPickerChoices draws the common compact picker frame. All picker frames
-// use the terminal default colour; Project and Status use the normal selection
-// accent for their active choice, while Priority uses its semantic colour.
-func renderPickerChoices(choices []string, selected int, selectionColor, borderColor string) []string {
+// renderPickerChoices draws the common compact picker frame. Its active border
+// uses the shared selection accent; Project and Status use that accent for
+// their active choice, while Priority uses its semantic choice colour.
+func renderPickerChoices(choices []string, selected int, selectionColor string) []string {
 	rows := make([]string, 0, len(choices))
 	for index, choice := range choices {
 		row := "  " + choice
@@ -728,10 +741,10 @@ func renderPickerChoices(choices []string, selected int, selectionColor, borderC
 		}
 		rows = append(rows, row)
 	}
-	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1)
-	if borderColor != "" {
-		style = style.BorderForeground(lipgloss.Color(borderColor))
-	}
+	style := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(paneBorderColor(true))).
+		Padding(0, 1)
 	return strings.Split(style.Render(strings.Join(rows, "\n")), "\n")
 }
 

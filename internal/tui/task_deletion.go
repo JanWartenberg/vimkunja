@@ -21,6 +21,19 @@ func (m *model) beginTaskDeletion() {
 	if !ok {
 		return
 	}
+	if m.kanbanActive && !m.inOverview() {
+		bucket, _ := m.activeKanbanBucket()
+		m.pendingKanbanBucketID = bucket.ID
+		m.pendingKanbanTaskID = 0
+		m.pendingKanbanEmptySelection = false
+		if m.kanbanTaskSelected > 0 {
+			m.pendingKanbanTaskID = bucket.Tasks[m.kanbanTaskSelected-1].ID
+		} else if m.kanbanTaskSelected+1 < len(bucket.Tasks) {
+			m.pendingKanbanTaskID = bucket.Tasks[m.kanbanTaskSelected+1].ID
+		} else {
+			m.pendingKanbanEmptySelection = true
+		}
+	}
 	m.deleteConfirm = true
 	m.deleteTaskID = task.ID
 }
@@ -48,6 +61,9 @@ func (m *model) updateDeleteConfirmation(key string) (tea.Model, tea.Cmd) {
 	case "n", "esc":
 		m.deleteConfirm = false
 		m.deleteTaskID = 0
+		m.pendingKanbanTaskID = 0
+		m.pendingKanbanBucketID = 0
+		m.pendingKanbanEmptySelection = false
 	}
 	return m, nil
 }
@@ -89,7 +105,7 @@ func (m *model) renderDeleteConfirmationModal(background string, width int) stri
 	}, "\n")
 	modal := lipgloss.NewStyle().
 		Border(lipgloss.ThickBorder()).
-		BorderForeground(lipgloss.Color(tuiTheme.bright)).
+		BorderForeground(lipgloss.Color(paneBorderColor(true))).
 		Padding(1, 2).
 		Width(modalWidth).
 		Render(body)

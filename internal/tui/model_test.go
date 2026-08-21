@@ -1372,6 +1372,43 @@ func TestKanbanAdjacentMoveKeepsMovedTaskSelected(t *testing.T) {
 	}
 }
 
+func TestDoneToggleKeepsMovedKanbanTaskSelectedAndInDetail(t *testing.T) {
+	store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{
+		Availability: vimkunja.KanbanBoardAvailable,
+		View:         vimkunja.ProjectView{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		Buckets: []vimkunja.KanbanBucket{
+			{ID: 100, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 2, ProjectID: 1, Title: "Move me"}}},
+			{ID: 101, Title: "Done"},
+		},
+	}}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.setKanbanBoard(store.kanbanBoard)
+	m.openExistingEditor(store.kanbanBoard.Buckets[0].Tasks[0])
+	m.focus = paneTasks
+
+	updated, toggleCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'x', Text: "x"}))
+	m = updated.(*model)
+	if toggleCmd == nil || m.pendingKanbanTaskID != 2 {
+		t.Fatalf("Done toggle = command:%v pending:%d, want task 2 reload selection", toggleCmd != nil, m.pendingKanbanTaskID)
+	}
+	store.kanbanBoard.Buckets = []vimkunja.KanbanBucket{
+		{ID: 100, Title: "To-Do"},
+		{ID: 101, Title: "Done", Tasks: []vimkunja.Task{{ID: 2, ProjectID: 1, Title: "Move me", Done: true}}},
+	}
+	updated, reloadCmd := m.Update(toggleCmd())
+	m = updated.(*model)
+	if reloadCmd == nil {
+		t.Fatal("successful Done toggle returned no board reload")
+	}
+	updated, _ = m.Update(reloadCmd())
+	m = updated.(*model)
+	if task, ok := m.selectedKanbanTask(); !ok || task.ID != 2 || m.editor == nil || m.editor.id != 2 {
+		t.Fatalf("Done toggle state = selected:%#v detail:%#v, want moved task 2", task, m.editor)
+	}
+}
+
 func TestMovingDoneKanbanTaskUpdatesOpenDetailDoneState(t *testing.T) {
 	store := &fakeStore{
 		workflowDone: map[int64]bool{101: false},
@@ -1428,6 +1465,15 @@ func TestKanbanFooterPrioritizesMoveActions(t *testing.T) {
 		if strings.Contains(footer, unwanted) {
 			t.Fatalf("Kanban footer = %q, must not prioritize %q", footer, unwanted)
 		}
+	}
+}
+
+func TestLocalStartOfDayUsesLocalMidnightOutsideUTC(t *testing.T) {
+	zone := time.FixedZone("UTC+2", 2*60*60)
+	now := time.Date(2026, time.August, 1, 12, 0, 0, 0, zone)
+	want := time.Date(2026, time.August, 1, 0, 0, 0, 0, zone)
+	if got := localStartOfDay(now); !got.Equal(want) {
+		t.Fatalf("local start of day = %s, want %s", got, want)
 	}
 }
 
@@ -1880,6 +1926,121 @@ func TestKanbanTaskDeletionUsesTheStandardConfirmation(t *testing.T) {
 	}
 }
 
+func TestActiveOverlaysUseTheSharedBorderAccent(t *testing.T) {
+	background := strings.Repeat(strings.Repeat(" ", 80)+"\n", 24)
+	for name, overlay := range map[string]string{
+		"search": func() string {
+			m := testModel()
+			m.searchOpen = true
+			return m.renderSearchOverlay(background, 80)
+		}(),
+		"labels": func() string {
+			m := testModel()
+			m.labelUI = &labelUI{kind: labelUITaskPicker}
+			return m.renderLabelOverlay(background, 80)
+		}(),
+		"delete": func() string {
+			m := testModel()
+			return m.renderDeleteConfirmationModal(background, 80)
+		}(),
+	} {
+		if !strings.Contains(overlay, "38;5;"+tuiTheme.selectionAccent) {
+			t.Fatalf("%s overlay lacks shared selection-accent border: %q", name, overlay)
+		}
+	}
+}
+
+func TestCommandModeHighlightsStatusBorder(t *testing.T) {
+	m := testModel()
+	m.commandMode = true
+	status := m.renderStatusBar(80)
+	if !strings.Contains(status, "38;5;"+tuiTheme.selectionAccent) {
+		t.Fatalf("command status border lacks selection accent: %q", status)
+	}
+}
+
+func TestFocusedHelpUsesTheBottomPaneBorder(t *testing.T) {
+	m := testModel()
+	m.helpPane = &infoPane{title: "Help"}
+	m.focus = paneHelp
+	view := m.Render()
+	if !strings.Contains(view, "38;5;"+tuiTheme.selectionAccent) {
+		t.Fatalf("focused Help lacks selection-accent border: %q", view)
+	}
+}
+
+func TestKanbanSelectionSyncsAnOpenCleanDetail(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.kanbanActive = true
+	m.kanbanBoard = vimkunja.KanbanBoard{Buckets: []vimkunja.KanbanBucket{{
+		ID: 1, Title: "To-Do", Tasks: []vimkunja.Task{
+			{ID: 7, ProjectID: 1, Title: "First"},
+			{ID: 8, ProjectID: 1, Title: "Second"},
+		},
+	}}}
+	m.openExistingEditor(m.kanbanBoard.Buckets[0].Tasks[0])
+	m.focus = paneTasks
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.editor == nil || m.editor.id != 8 || m.focus != paneTasks {
+		t.Fatalf("Kanban selection sync = editor:%#v focus:%v, want task 8 with Tasks focus", m.editor, m.focus)
+	}
+}
+
+func TestEmptyKanbanDetailCentersItsMessage(t *testing.T) {
+	line := strings.Split(renderEmptyKanbanDetail(30, 5), "\n")[2]
+	if !strings.HasPrefix(line, "       No task selected") {
+		t.Fatalf("empty Detail message = %q, want horizontally centered", line)
+	}
+}
+
+func TestKanbanSelectionDoesNotReplaceDirtyDetailAndEmptyBucketShowsEmptyDetail(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.currentProjectID = 1
+	m.kanbanActive = true
+	m.kanbanBoard = vimkunja.KanbanBoard{Buckets: []vimkunja.KanbanBucket{
+		{ID: 1, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 7, ProjectID: 1, Title: "First"}, {ID: 8, ProjectID: 1, Title: "Second"}}},
+		{ID: 2, Title: "Empty"},
+	}}
+	m.openExistingEditor(m.kanbanBoard.Buckets[0].Tasks[0])
+	m.editor.draft.Title = "Unsaved"
+	m.focus = paneTasks
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.editor.id != 7 {
+		t.Fatalf("dirty Detail was replaced by selection: %#v", m.editor)
+	}
+	m.editor.draft = cloneTaskDraft(m.editor.original)
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	if m.editor != nil || !strings.Contains(ansi.Strip(m.Render()), "No task selected") {
+		t.Fatalf("empty Bucket Detail = editor:%#v render:%q", m.editor, m.Render())
+	}
+	m.focus = paneDetail
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	if m.editor == nil || m.editor.draft.ProjectID != 1 || m.editor.draft.WorkflowBucketID != 2 {
+		t.Fatalf("empty Detail new task = %#v, want project 1 bucket 2", m.editor)
+	}
+	m.editor.draft.Title = "Discard me"
+	updated, _ := forceQuitCommand(m, nil)
+	m = updated.(*model)
+	if !m.showDetail || m.editor != nil || m.focus != paneDetail {
+		t.Fatalf("discarded empty-Bucket task = detail:%v editor:%#v focus:%v", m.showDetail, m.editor, m.focus)
+	}
+}
+
+func TestListPreviewKeepsTasksFocus(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.tasks = []vimkunja.Task{{ID: 7, ProjectID: 1, Title: "Preview"}}
+
+	m = pressKey(m, tea.Key{Code: 'v', Text: "v"})
+	if !m.showDetail || m.editor == nil || m.editor.id != 7 || m.focus != paneTasks {
+		t.Fatalf("preview = detail:%v editor:%#v focus:%v", m.showDetail, m.editor, m.focus)
+	}
+}
+
 func TestKanbanOpenTaskHasNoHighlightedIndentation(t *testing.T) {
 	m := testModel()
 	m.kanbanActive = true
@@ -1910,8 +2071,8 @@ func TestTaskDeletionConfirmationRendersCenteredModal(t *testing.T) {
 	if !strings.Contains(view, "DELETE TASK") || !strings.Contains(view, `Delete "Delete me"?`) {
 		t.Fatalf("confirmation view = %q, want centered delete modal", view)
 	}
-	if !strings.Contains(view, "38;5;"+tuiTheme.bright) {
-		t.Fatalf("confirmation view = %q, want white modal border", view)
+	if !strings.Contains(view, "38;5;"+tuiTheme.selectionAccent) {
+		t.Fatalf("confirmation view = %q, want selection-accent modal border", view)
 	}
 	if strings.Contains(m.renderStatusBar(120), "Delete") {
 		t.Fatalf("confirmation footer = %q, must remain a normal status footer", m.renderStatusBar(120))
@@ -1939,7 +2100,7 @@ func TestTaskDeletionModalIsWidthCappedAndCenteredOnWideTerminal(t *testing.T) {
 	background := strings.Repeat(strings.Repeat(" ", terminalWidth)+"\n", 12)
 
 	for _, line := range strings.Split(m.renderDeleteConfirmationModal(background, terminalWidth), "\n") {
-		borderStart := strings.Index(line, "\x1b[38;5;"+tuiTheme.bright)
+		borderStart := strings.Index(line, "\x1b[38;5;"+tuiTheme.selectionAccent)
 		if borderStart < 0 {
 			continue
 		}
@@ -1949,7 +2110,7 @@ func TestTaskDeletionModalIsWidthCappedAndCenteredOnWideTerminal(t *testing.T) {
 		}
 		return
 	}
-	t.Fatal("rendered modal has no white border")
+	t.Fatal("rendered modal has no selection-accent border")
 }
 
 func TestTaskDeletionFailureIsVisibleAndDoesNotRefresh(t *testing.T) {
@@ -3920,12 +4081,12 @@ func TestPriorityPickerFramesChoicesAndColoursActivePriority(t *testing.T) {
 	if !strings.Contains(detail, selected) {
 		t.Fatalf("active priority lacks semantic colour: %q", detail)
 	}
-	if picker := strings.Join(renderPriorityPicker(m.editor), "\n"); strings.Contains(picker, "38;5;"+tuiTheme.selectionAccent) {
-		t.Fatalf("priority picker border must use the terminal default colour: %q", picker)
+	if picker := strings.Join(renderPriorityPicker(m.editor), "\n"); !strings.Contains(picker, "38;5;"+tuiTheme.selectionAccent+"m╭") {
+		t.Fatalf("priority picker border lacks the shared selection accent: %q", picker)
 	}
 }
 
-func TestProjectAndStatusPickerFramesUseDefaultColourAndSelectionAccent(t *testing.T) {
+func TestProjectAndStatusPickerFramesUseSharedSelectionAccent(t *testing.T) {
 	for _, picker := range []struct {
 		name    string
 		choices []string
@@ -3934,7 +4095,7 @@ func TestProjectAndStatusPickerFramesUseDefaultColourAndSelectionAccent(t *testi
 		{name: "status", choices: []string{"To do", "Doing"}},
 	} {
 		t.Run(picker.name, func(t *testing.T) {
-			rendered := strings.Join(renderPickerChoices(picker.choices, 1, tuiTheme.selectionAccent, ""), "\n")
+			rendered := strings.Join(renderPickerChoices(picker.choices, 1, tuiTheme.selectionAccent), "\n")
 			plain := ansi.Strip(rendered)
 			if !strings.Contains(plain, "╭") || !strings.Contains(plain, "╰") {
 				t.Fatalf("picker lacks frame: %q", plain)
@@ -3943,8 +4104,8 @@ func TestProjectAndStatusPickerFramesUseDefaultColourAndSelectionAccent(t *testi
 			if !strings.Contains(rendered, selected) {
 				t.Fatalf("picker lacks normal selection highlight: %q", rendered)
 			}
-			if strings.Contains(rendered, "38;5;"+tuiTheme.selectionAccent+"m╭") {
-				t.Fatalf("picker frame must use the terminal default colour: %q", rendered)
+			if !strings.Contains(rendered, "38;5;"+tuiTheme.selectionAccent+"m╭") {
+				t.Fatalf("picker frame lacks the shared selection accent: %q", rendered)
 			}
 		})
 	}

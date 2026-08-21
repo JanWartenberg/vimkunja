@@ -118,6 +118,7 @@ func (m *model) openOverviewForLabel(label vimkunja.Label) tea.Cmd {
 func (m *model) closeTaskDetail() {
 	m.editor = nil
 	m.showDetail = false
+	m.kanbanEmptyDetailOrigin = false
 	m.focus = paneTasks
 	if m.projectsPaneAutoShown {
 		m.projectsPaneCollapsed = true
@@ -177,7 +178,7 @@ func (m *model) applyOverview() {
 		selectedID = m.tasks[m.taskSelected].ID
 	}
 	items := make([]vimkunja.Task, 0, len(m.overviewTasks))
-	today := time.Now().Local().Truncate(24 * time.Hour)
+	today := localStartOfDay(m.currentTime())
 	for _, task := range m.overviewTasks {
 		if overviewMatches(task, m.overviewFilter, today) {
 			items = append(items, task)
@@ -250,6 +251,13 @@ func overviewPriorityThenTitle(left, right vimkunja.Task) bool {
 		return strings.ToLower(left.Title) < strings.ToLower(right.Title)
 	}
 	return left.ID < right.ID
+}
+
+// localStartOfDay returns midnight in value's local calendar day. Truncate(24h)
+// is deliberately avoided: it rounds from UTC midnight and shifts the day in
+// non-UTC time zones.
+func localStartOfDay(value time.Time) time.Time {
+	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, value.Location())
 }
 
 func overviewDueDate(task vimkunja.Task) (time.Time, bool) {

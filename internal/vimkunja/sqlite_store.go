@@ -1328,6 +1328,11 @@ func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, er
 	if err := initializeViewAssignments(ctx, tx, id, draft.ProjectID); err != nil {
 		return Task{}, err
 	}
+	if draft.WorkflowBucketID != 0 {
+		if err := setTaskWorkflowStatus(ctx, tx, id, draft.ProjectID, draft.WorkflowBucketID); err != nil {
+			return Task{}, err
+		}
+	}
 	if draft.LabelIDsSet {
 		if err := replaceTaskLabels(ctx, tx, id, draft.LabelIDs); err != nil {
 			return Task{}, err
@@ -1336,7 +1341,13 @@ func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, er
 	if err := tx.Commit(); err != nil {
 		return Task{}, fmt.Errorf("commit create task: %w", err)
 	}
-	return Task{ID: id, ProjectID: draft.ProjectID, Title: draft.Title, Description: draft.Description, Priority: draft.Priority, DueDate: draft.DueDate, Index: index}, nil
+	created := Task{ID: id, ProjectID: draft.ProjectID, Title: draft.Title, Description: draft.Description, Priority: draft.Priority, DueDate: draft.DueDate, Index: index}
+	if draft.WorkflowBucketID != 0 {
+		if err := s.db.QueryRowContext(ctx, `SELECT done FROM tasks WHERE id = ?`, id).Scan(&created.Done); err != nil {
+			return Task{}, fmt.Errorf("get created task done state: %w", err)
+		}
+	}
+	return created, nil
 }
 
 // UpdateTask changes all editable fields. Moving a task also replaces its

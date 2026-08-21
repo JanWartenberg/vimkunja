@@ -53,6 +53,13 @@ func SelectionAccentColor() string {
 	return tuiTheme.selectionAccent
 }
 
+func paneBorderColor(focused bool) string {
+	if focused {
+		return tuiTheme.selectionAccent
+	}
+	return tuiTheme.muted
+}
+
 func focusedField(text string, focused bool) string {
 	if !focused {
 		return text

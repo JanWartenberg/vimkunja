@@ -109,21 +109,23 @@ type model struct {
 	projectLoading       bool
 
 	// Views (derived from selected project)
-	projectViews           []vimkunja.ProjectView
-	viewSelected           int
-	viewLoading            bool
-	currentViewID          int64
-	projectViewPreference  projectViewPreference
-	kanbanActive           bool
-	kanbanBoard            vimkunja.KanbanBoard
-	kanbanBucketSelected   int
-	kanbanTaskSelected     int
-	kanbanViewportStart    int
-	kanbanPicker           bool
-	kanbanPickerIndex      int
-	kanbanProvisionConfirm bool
-	pendingKanbanTaskID    int64
-	pendingKanbanBucketID  int64
+	projectViews                []vimkunja.ProjectView
+	viewSelected                int
+	viewLoading                 bool
+	currentViewID               int64
+	projectViewPreference       projectViewPreference
+	kanbanActive                bool
+	kanbanBoard                 vimkunja.KanbanBoard
+	kanbanBucketSelected        int
+	kanbanTaskSelected          int
+	kanbanViewportStart         int
+	kanbanPicker                bool
+	kanbanPickerIndex           int
+	kanbanProvisionConfirm      bool
+	pendingKanbanTaskID         int64
+	pendingKanbanBucketID       int64
+	pendingKanbanEmptySelection bool
+	kanbanEmptyDetailOrigin     bool
 
 	// Tasks pane
 	tasks               []vimkunja.Task
@@ -790,6 +792,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.deleteConfirm = false
 		m.deleteTaskID = 0
 		if typed.err != nil {
+			m.pendingKanbanTaskID = 0
+			m.pendingKanbanBucketID = 0
+			m.pendingKanbanEmptySelection = false
 			m.taskLoading = false
 			m.recordError(typed.err)
 			return m, nil
@@ -798,6 +803,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case taskToggledMsg:
 		if typed.err != nil {
+			m.pendingKanbanTaskID = 0
 			m.taskLoading = false
 			m.recordError(typed.err)
 			return m, nil
@@ -821,7 +827,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.setKanbanBoard(typed.board)
-		return m, nil
+		return m, m.syncOpenKanbanDetail()
 
 	case kanbanProvisionedMsg:
 		m.taskLoading = false
@@ -830,7 +836,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.setKanbanBoard(typed.board)
-		return m, m.loadViews(m.currentProjectID)
+		return m, tea.Batch(m.loadViews(m.currentProjectID), m.syncOpenKanbanDetail())
 
 	case kanbanTaskMovedMsg:
 		if typed.err != nil {
@@ -1242,6 +1248,27 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *model) previewSelectedTask() tea.Cmd {
+	if m.editor != nil && m.editor.dirty() {
+		m.recordError(errUnsavedNavigation)
+		return nil
+	}
+	if m.taskSelected < 0 || m.taskSelected >= len(m.tasks) {
+		return nil
+	}
+	task := m.tasks[m.taskSelected]
+	if m.inOverview() {
+		if idx := m.findProjectIndex(task.ProjectID); idx >= 0 {
+			m.projectSelected = idx
+		}
+		m.currentProjectID = task.ProjectID
+	}
+	focus := m.focus
+	m.openExistingEditor(task)
+	m.focus = focus
+	return tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
+}
+
 func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.kanbanActive && !m.inOverview() {
 		return m.updateKanbanKeys(k)
@@ -1277,6 +1304,8 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "I":
 		m.openInlineTitleEdit(true)
 		return m, nil
+	case "v":
+		return m, m.previewSelectedTask()
 	case "enter":
 		if m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
 			task := m.tasks[m.taskSelected]
@@ -1723,6 +1752,7 @@ func (m *model) Render() string {
 	topTextH := topH - chromeY
 	rightStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color(paneBorderColor(!m.commandMode && m.focus == paneTasks))).
 		Padding(0, 1).
 		Height(topH - 2)
 	var panes string
@@ -1742,6 +1772,7 @@ func (m *model) Render() string {
 		}
 		leftStyle := lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color(paneBorderColor(!m.commandMode && m.focus == paneProjects))).
 			Padding(0, 1).
 			Height(topH - 2)
 		panes = lipgloss.JoinHorizontal(lipgloss.Top,
@@ -1761,8 +1792,10 @@ func (m *model) Render() string {
 		default:
 			bottom = renderInfoPane(m.infoPane, w-chromeX, detailH-chromeY, m.focus == paneInfo)
 		}
+		bottomFocused := !m.commandMode && (m.focus == paneDetail || m.focus == paneHelp || m.focus == paneInfo)
 		bottomStyle := lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color(paneBorderColor(bottomFocused))).
 			Padding(0, 1).
 			Height(detailH - 2)
 		content = lipgloss.JoinVertical(lipgloss.Top,
@@ -1964,8 +1997,10 @@ func (m *model) renderStatusBar(w int) string {
 		ctrlWHint := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.ctrlWHint)).Render("Ctrl-W")
 		hint = ctrlWHint + " h/j/k/l change pane  •  Ctrl-W/w cycle"
 	}
+	statusActive := m.commandMode || m.kanbanProvisionConfirm || m.leaderArmed || m.viewSwitchArmed || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed
 	statusStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(paneBorderColor(statusActive))).
 		Padding(0, 1).
 		Width(w)
 	if m.lastErr != "" {

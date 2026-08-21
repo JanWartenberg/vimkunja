@@ -73,6 +73,12 @@ func (m *model) openNewEditor() {
 	m.focus = paneDetail
 }
 
+func (m *model) openNewKanbanEditor(bucketID int64) {
+	m.openNewEditor()
+	m.editor.draft.WorkflowBucketID = bucketID
+	m.editor.original.WorkflowBucketID = bucketID
+}
+
 func (m *model) openExistingEditor(task vimkunja.Task) {
 	draft := vimkunja.TaskDraft{
 		ID: task.ID, ProjectID: task.ProjectID, Title: task.Title,
@@ -113,7 +119,14 @@ func (e *taskEditor) dirty() bool {
 
 func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
-	if e == nil { // Defensive fallback for a detail pane opened by old state.
+	if e == nil {
+		if m.kanbanActive && !m.inOverview() && (k.String() == "i" || k.String() == "o") {
+			if bucket, ok := m.activeKanbanBucket(); ok {
+				m.openNewKanbanEditor(bucket.ID)
+			}
+			return m, nil
+		}
+		// Defensive fallback for a detail pane opened by old state.
 		if k.String() == "enter" && m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
 			m.openExistingEditor(m.tasks[m.taskSelected])
 		}

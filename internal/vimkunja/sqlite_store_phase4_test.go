@@ -52,6 +52,39 @@ func TestCreateTask_InitializesDefaultsAndNullDueDate(t *testing.T) {
 	}
 }
 
+func TestCreateTaskPlacesItInRequestedWorkflowBucket(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	if _, err := store.db.Exec(`INSERT INTO projects (id, title, owner_id) VALUES (1, 'Project', 7)`); err != nil {
+		t.Fatalf("seed project: %v", err)
+	}
+	board, err := store.ProvisionStandardManualKanbanView(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("ProvisionStandardManualKanbanView: %v", err)
+	}
+	doneBucket := board.Buckets[len(board.Buckets)-1]
+
+	task, err := store.CreateTask(context.Background(), TaskDraft{ProjectID: 1, Title: "Done on create", WorkflowBucketID: doneBucket.ID})
+	if err != nil {
+		t.Fatalf("CreateTask: %v", err)
+	}
+	if !task.Done {
+		t.Fatalf("created task Done = false, want true for Done bucket")
+	}
+	board, err = store.LoadManualKanbanBoard(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("LoadManualKanbanBoard: %v", err)
+	}
+	for _, bucket := range board.Buckets {
+		for _, candidate := range bucket.Tasks {
+			if candidate.ID == task.ID && bucket.ID == doneBucket.ID {
+				return
+			}
+		}
+	}
+	t.Fatalf("created task %d is not in requested bucket %d", task.ID, doneBucket.ID)
+}
+
 func TestTaskDraftLabelsPersistAtomicallyWithCreateAndUpdate(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
