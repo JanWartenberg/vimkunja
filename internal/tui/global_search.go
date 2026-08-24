@@ -107,6 +107,12 @@ func (m *model) updateSearchInsertKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "down", "ctrl+n":
 		m.moveSearchSelection(1)
 		return m, nil
+	case "ctrl+d", "pgdown", "pagedown":
+		m.moveSearchSelection(m.searchVisibleResultRows() / 2)
+		return m, nil
+	case "ctrl+u", "pgup", "pageup":
+		m.moveSearchSelection(-m.searchVisibleResultRows() / 2)
+		return m, nil
 	}
 	if text := key.Key().Text; text != "" {
 		m.searchInput += text
@@ -428,13 +434,11 @@ func (m *model) searchModeLabel() string {
 }
 
 func (m *model) renderSearchOverlay(background string, width int) string {
-	modalWidth := searchModalWidth(width)
-	viewportHeight := m.height
-	if viewportHeight <= 0 {
-		viewportHeight = len(strings.Split(background, "\n"))
-	}
-	modalHeight := searchModalHeight(viewportHeight)
-	contentWidth := max(1, modalWidth-6)
+	// Background is the actual Pane area to be overlaid, so it is the single
+	// source of truth for both modal geometry and fallback replacement.
+	viewportHeight := len(strings.Split(background, "\n"))
+	layout := modalBounds(width, viewportHeight, searchModalWidth(width), searchModalHeight(viewportHeight))
+	contentWidth := layout.contentWidth
 	query := fmt.Sprintf("Search: %s", m.searchInput)
 	if m.searchMode == searchInsertMode {
 		query += "_"
@@ -455,16 +459,44 @@ func (m *model) renderSearchOverlay(background string, width int) string {
 	case len(m.searchResults) == 0:
 		body = append(body, "No results.")
 	default:
-		body = append(body, m.renderSearchResults(contentWidth)...)
+		resultsWidth := contentWidth
+		overflows := m.searchResultEnd(0) < len(m.searchResults)
+		if overflows {
+			resultsWidth -= 2
+		}
+		resultStart := len(body)
+		body = append(body, m.renderSearchResults(resultsWidth)...)
+		if overflows {
+			scrollTop, contentRows := m.searchResultScrollbarMetrics()
+			body = strings.Split(renderVerticalScrollbar(body, contentWidth, len(body), scrollTop, contentRows, resultStart, len(body)-resultStart, true), "\n")
+		}
 	}
-	modal := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(lipgloss.Color(paneBorderColor(true))).
-		Padding(1, 2).
-		Width(modalWidth).
-		Height(max(1, modalHeight-4)).
-		Render(strings.Join(body, "\n"))
-	return overlayModal(background, modal, width)
+	modal := renderModalFrame(body, layout)
+	return overlayModalLayout(background, modal, width, layout.fallback)
+}
+
+// searchResultScrollbarMetrics measures physical rendered rows, not result
+// records: group headings and description snippets each consume a row.
+func (m *model) searchResultScrollbarMetrics() (scrollTop, contentRows int) {
+	for index, result := range m.searchResults {
+		if index == 0 || result.Kind != m.searchResults[index-1].Kind {
+			contentRows++
+			if index < m.searchViewport {
+				scrollTop++
+			}
+		}
+		contentRows++
+		if index < m.searchViewport {
+			scrollTop++
+		}
+		if result.Snippet != "" {
+			contentRows++
+			if index < m.searchViewport {
+				scrollTop++
+			}
+		}
+	}
+	return scrollTop, contentRows
 }
 
 func (m *model) renderSearchResults(width int) []string {

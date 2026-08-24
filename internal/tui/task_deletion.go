@@ -10,7 +10,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 )
 
 // beginTaskDeletion keeps the destructive-action state behind a small model
@@ -36,6 +35,8 @@ func (m *model) beginTaskDeletion() {
 	}
 	m.deleteConfirm = true
 	m.deleteTaskID = task.ID
+	m.confirmationScroll = 0
+	m.confirmationGArmed = false
 }
 
 func (m *model) selectedTaskForDeletion() (vimkunja.Task, bool) {
@@ -49,6 +50,9 @@ func (m *model) selectedTaskForDeletion() (vimkunja.Task, bool) {
 }
 
 func (m *model) updateDeleteConfirmation(key string) (tea.Model, tea.Cmd) {
+	if m.updateConfirmationScroll(key, m.deleteConfirmationScrollLimit()) {
+		return m, nil
+	}
 	switch key {
 	case "y":
 		taskID := m.deleteTaskID
@@ -64,6 +68,8 @@ func (m *model) updateDeleteConfirmation(key string) (tea.Model, tea.Cmd) {
 		m.pendingKanbanTaskID = 0
 		m.pendingKanbanBucketID = 0
 		m.pendingKanbanEmptySelection = false
+		m.confirmationScroll = 0
+		m.confirmationGArmed = false
 	}
 	return m, nil
 }
@@ -73,58 +79,49 @@ func (m *model) deleteConfirmationTaskTitle() string {
 		for _, bucket := range m.kanbanBoard.Buckets {
 			for _, task := range bucket.Tasks {
 				if task.ID == m.deleteTaskID {
-					return truncatePlain(task.Title, 46)
+					return task.Title
 				}
 			}
 		}
 	}
 	for _, task := range m.tasks {
 		if task.ID == m.deleteTaskID {
-			return truncatePlain(task.Title, 46)
+			return task.Title
 		}
 	}
 	return "selected task"
 }
 
-const deleteConfirmationModalMaxWidth = 50
+const deleteConfirmationModalMinWidth = 50
 
-// renderDeleteConfirmationModal overlays a compact destructive-action dialog
-// over the current Pane content while preserving the surrounding context.
+func deleteConfirmationModalWidth(viewportWidth int, title string) int {
+	// Expand after a resize when it reveals more of the confirmation, while
+	// retaining a readable cap on very wide terminals.
+	preferred := max(deleteConfirmationModalMinWidth, lipgloss.Width(`Delete ""?`)+lipgloss.Width(title)+6)
+	return min(min(80, preferred), viewportWidth)
+}
+
+// renderDeleteConfirmationModal overlays a wrapped destructive-action dialog
+// over the current Pane content. Narrow terminals use the shared text-only
+// fallback while keeping the answer row visible.
+func (m *model) deleteConfirmationScrollLimit() int {
+	width, _ := m.viewportSize()
+	layout := modalBounds(width, m.modalContentHeight(), deleteConfirmationModalWidth(width, m.deleteConfirmationTaskTitle()), 10)
+	_, limit := confirmationBody("", fmt.Sprintf("Delete %q?", m.deleteConfirmationTaskTitle()), "", layout, 0)
+	return limit
+}
+
 func (m *model) renderDeleteConfirmationModal(background string, width int) string {
-	// The modal's border and horizontal padding consume six cells. Cap it on
-	// wide terminals, but let it use the available width on narrow terminals.
-	modalWidth := min(width, deleteConfirmationModalMaxWidth)
-	contentWidth := max(1, modalWidth-6)
-	taskTitle := truncatePlain(m.deleteConfirmationTaskTitle(), contentWidth-lipgloss.Width(`Delete ""?`))
-	body := strings.Join([]string{
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.danger)).Render(truncatePlain("DELETE TASK", contentWidth)),
-		"",
-		fmt.Sprintf("Delete %q?", taskTitle),
-		"",
-		truncatePlain("y delete  •  n / Esc cancel", contentWidth),
-	}, "\n")
-	modal := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(lipgloss.Color(paneBorderColor(true))).
-		Padding(1, 2).
-		Width(modalWidth).
-		Render(body)
-	modalLines := strings.Split(modal, "\n")
-	backgroundLines := strings.Split(background, "\n")
-	modalWidth = lipgloss.Width(modalLines[0])
-	left := max(0, (width-modalWidth)/2)
-	top := max(0, (len(backgroundLines)-len(modalLines))/2)
-
-	for i, modalLine := range modalLines {
-		row := top + i
-		if row >= len(backgroundLines) {
-			break
-		}
-		backgroundLine := backgroundLines[row]
-		if padding := width - lipgloss.Width(backgroundLine); padding > 0 {
-			backgroundLine += strings.Repeat(" ", padding)
-		}
-		backgroundLines[row] = ansi.Cut(backgroundLine, 0, left) + modalLine + ansi.Cut(backgroundLine, left+modalWidth, width)
-	}
-	return strings.Join(backgroundLines, "\n")
+	viewportHeight := len(strings.Split(background, "\n"))
+	layout := modalBounds(width, viewportHeight, deleteConfirmationModalWidth(width, m.deleteConfirmationTaskTitle()), 10)
+	question := fmt.Sprintf("Delete %q?", m.deleteConfirmationTaskTitle())
+	body, _ := confirmationBody(
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.danger)).Render("DELETE TASK"),
+		question,
+		"y delete  •  n / Esc cancel",
+		layout,
+		m.confirmationScroll,
+	)
+	modal := renderModalFrame(body, layout)
+	return overlayModalLayout(background, modal, width, layout.fallback)
 }

@@ -558,9 +558,11 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 	if ui == nil {
 		return background
 	}
-	modalWidth := min(60, max(36, width-8))
-	modalHeight := m.labelModalHeight()
-	bodyWidth := max(1, modalWidth-6)
+	// Background is the actual Pane area to be overlaid, so it is the single
+	// source of truth for both modal geometry and fallback replacement.
+	viewportHeight := len(strings.Split(background, "\n"))
+	layout := modalBounds(width, viewportHeight, min(60, max(36, width-8)), m.labelModalHeight())
+	bodyWidth := layout.contentWidth
 	title := "LABEL PICKER"
 	if ui.kind == labelUIGlobalOverview {
 		title = "LABELS"
@@ -588,7 +590,8 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 		if label.TaskCount > 0 {
 			message += fmt.Sprintf(" This removes %d Task associations.", label.TaskCount)
 		}
-		body = append(body, message, "", "y delete  •  n/Esc cancel")
+		body = append(body, wrapModalWords(message, bodyWidth)...)
+		body = append(body, "", "y delete  •  n/Esc cancel")
 	} else if ui.inputMode {
 		prompt := "Label: "
 		if ui.inputAction == labelInputRename {
@@ -613,14 +616,8 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 	if labelScrollbar {
 		body = strings.Split(renderVerticalScrollbar(body, bodyWidth, len(body), ui.viewport, len(ui.matches()), labelViewportStart, m.labelResultLineBudget(), true), "\n")
 	}
-	modal := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(lipgloss.Color(paneBorderColor(true))).
-		Padding(1, 2).
-		Width(modalWidth).
-		Height(max(1, modalHeight-4)).
-		Render(strings.Join(body, "\n"))
-	return overlayModal(background, modal, width)
+	modal := renderModalFrame(body, layout)
+	return overlayModalLayout(background, modal, width, layout.fallback)
 }
 
 func (m *model) renderLabelCreateOption(width int) []string {
@@ -661,7 +658,7 @@ func (m *model) renderLabelMatches(width int) []string {
 		} else if m.editorHasLabel(label.ID) {
 			suffix = "  [x]"
 		}
-		line := prefix + truncatePlain(label.Title, max(1, width-lipgloss.Width(prefix)-lipgloss.Width(suffix))) + suffix
+		line := prefix + truncateFieldValue(label.Title, max(1, width-lipgloss.Width(prefix)-lipgloss.Width(suffix))) + suffix
 		lines = append(lines, line)
 	}
 	return lines

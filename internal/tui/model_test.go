@@ -560,14 +560,325 @@ func TestInfoPaneScrollbarReservesRailWithoutCreatingOverflow(t *testing.T) {
 	}
 }
 
-func TestScrollPercentageYieldsToNarrowStatusHints(t *testing.T) {
+func TestNarrowFooterKeepsOneRowAndFallsBackToHelp(t *testing.T) {
+	m := testModel()
+	m.focus = paneProjects
+	const width = 20
+	footer := ansi.Strip(m.renderStatusBar(width))
+	lines := strings.Split(footer, "\n")
+	if len(lines) != 3 || !strings.Contains(footer, ":h") {
+		t.Fatalf("narrow footer = %q, want one bordered row with help fallback", footer)
+	}
+	for _, line := range lines {
+		if got := lipgloss.Width(line); got != width {
+			t.Fatalf("narrow footer line width = %d, want %d: %q", got, width, line)
+		}
+	}
+}
+
+func TestFooterHintPriorityKeepsHelpBeforeSecondaryActions(t *testing.T) {
+	segments := []string{"primary", "navigate", ":h help", "secondary"}
+	footer := renderFooterHints(28, "", segments, false)
+	for _, want := range []string{"primary", "navigate", ":h"} {
+		if !strings.Contains(footer, want) {
+			t.Fatalf("footer = %q, missing priority segment %q", footer, want)
+		}
+	}
+	if strings.Contains(footer, "secondary") {
+		t.Fatalf("footer = %q, retained secondary action before help", footer)
+	}
+}
+
+func TestFooterHintFallbackYieldsLabelAndStopsBelowHelpWidth(t *testing.T) {
+	segments := []string{"primary", ":h help", "secondary"}
+	if got := renderFooterHints(3, "[Tasks]", segments, false); got != ":h" {
+		t.Fatalf("label fallback = %q, want compact help without label", got)
+	}
+	if got := renderFooterHints(1, "", segments, false); got != "" {
+		t.Fatalf("sub-help footer = %q, want empty", got)
+	}
+}
+
+func TestFooterStaticStatePriorityMatrix(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(*model)
+		want  []string
+	}{
+		{
+			name:  "projects",
+			setup: func(m *model) { m.focus = paneProjects },
+			want:  []string{"j/k select", "h/l fold/tree", ":h help"},
+		},
+		{
+			name:  "overview",
+			setup: func(m *model) { m.focus, m.taskScope = paneTasks, scopeOverview },
+			want:  []string{"j/k select", "Enter detail", ":h help"},
+		},
+		{
+			name:  "kanban",
+			setup: func(m *model) { m.focus, m.kanbanActive = paneTasks, true },
+			want:  []string{"Shift+H/L move bucket", "m choose bucket", "j/k navigate", ":h help"},
+		},
+		{
+			name:  "detail normal",
+			setup: func(m *model) { m.focus, m.editor = paneDetail, &taskEditor{} },
+			want:  []string{"i edit", "j/k navigate", ":h help"},
+		},
+		{
+			name:  "help",
+			setup: func(m *model) { m.focus = paneHelp },
+			want:  []string{"Ctrl+W k tasks", ":q close pane"},
+		},
+		{
+			name:  "info",
+			setup: func(m *model) { m.focus = paneInfo },
+			want:  []string{"q/esc close pane"},
+		},
+		{
+			name:  "search normal",
+			setup: func(m *model) { m.searchOpen, m.searchMode = true, searchNormalMode },
+			want:  []string{"SEARCH [NORMAL]  j/k navigate", "i/a edit", ":h help"},
+		},
+		{
+			name:  "leader",
+			setup: func(m *model) { m.leaderArmed = true },
+			want:  []string{"[LEADER] a Overview/return", "o toggle projects pane", "v views"},
+		},
+		{
+			name:  "views",
+			setup: func(m *model) { m.viewSwitchArmed = true },
+			want:  []string{"[VIEWS] l list", "k Kanban", "t table", "g Gantt"},
+		},
+		{
+			name:  "sort",
+			setup: func(m *model) { m.overviewPrompt = overviewPromptSort },
+			want:  []string{"SORT  d Due", "p Priority", "t Title", "Esc cancel"},
+		},
+		{
+			name:  "filter",
+			setup: func(m *model) { m.overviewPrompt = overviewPromptFilter },
+			want:  []string{"FILTER  o open", "a all", "v overdue", "t due today", "Esc cancel"},
+		},
+		{
+			name:  "ctrl-w",
+			setup: func(m *model) { m.ctrlWArmed = true },
+			want:  []string{"Ctrl-W", "h/j/k/l change pane", "Ctrl-W/w cycle"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testModel()
+			tc.setup(m)
+			footer := ansi.Strip(m.renderStatusBar(140))
+			for _, want := range tc.want {
+				if !strings.Contains(footer, want) {
+					t.Fatalf("footer = %q, missing %q", footer, want)
+				}
+			}
+		})
+	}
+}
+
+func TestNarrowFooterPreservesInputAndErrorTails(t *testing.T) {
+	m := testModel()
+	m.commandMode = true
+	m.commandInput = "a-very-long-command"
+	footer := ansi.Strip(m.renderStatusBar(25))
+	if !strings.Contains(footer, ":…mmand_") {
+		t.Fatalf("command footer = %q, want input tail", footer)
+	}
+
+	m.commandMode = false
+	m.lastErr = "unknown command: a-very-long-command"
+	footer = ansi.Strip(m.renderStatusBar(25))
+	if !strings.Contains(footer, "Error: …") || !strings.Contains(footer, "mmand") {
+		t.Fatalf("error footer = %q, want prefixed error tail", footer)
+	}
+}
+
+func TestScrollPercentageYieldsLowerPriorityHintsAfterThreeCommands(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.width, m.height = 66, 10
+	m.tasks = []vimkunja.Task{{ID: 1}, {ID: 2}, {ID: 3}, {ID: 4}, {ID: 5}}
+
+	footer := ansi.Strip(m.renderStatusBar(66))
+	if !strings.Contains(footer, "0%") || !strings.Contains(footer, "Ctrl+W cycles") || !strings.Contains(footer, "Enter detail") || strings.Contains(footer, "x toggle") {
+		t.Fatalf("scrolling footer = %q, want percentage after three hints", footer)
+	}
+}
+
+func TestScrollingFooterKeepsHintsWhenThreeActionsDoNotFit(t *testing.T) {
 	m := testModel()
 	m.focus = paneTasks
 	m.width, m.height = 60, 10
 	m.tasks = []vimkunja.Task{{ID: 1}, {ID: 2}, {ID: 3}, {ID: 4}, {ID: 5}}
 
-	if footer := ansi.Strip(m.renderStatusBar(60)); strings.Contains(footer, "0%") {
-		t.Fatalf("narrow footer displaced hints for scroll percentage: %q", footer)
+	footer := ansi.Strip(m.renderStatusBar(60))
+	if strings.Contains(footer, "0%") {
+		t.Fatalf("scrolling footer = %q, must yield percentage below three-action threshold", footer)
+	}
+	if !strings.Contains(footer, "Ctrl+W cycles") || !strings.Contains(footer, "Enter detail") {
+		t.Fatalf("scrolling footer = %q, want retained hints", footer)
+	}
+}
+
+func TestModalFramesNeverExceedTheirViewportWidth(t *testing.T) {
+	for _, width := range []int{32, 40, 60, 100} {
+		t.Run(fmt.Sprintf("%d columns", width), func(t *testing.T) {
+			layout := modalBounds(width, 20, 80, 9)
+			frame := ansi.Strip(renderModalFrame([]string{"A modal row"}, layout))
+			for _, line := range strings.Split(frame, "\n") {
+				if got := lipgloss.Width(line); got > width {
+					t.Fatalf("modal line width = %d, want <= %d: %q", got, width, line)
+				}
+			}
+		})
+	}
+}
+
+func TestNarrowModalFallbacksReplacePaneWithoutOverflow(t *testing.T) {
+	const width, height = 20, 6
+	background := strings.TrimSuffix(strings.Repeat(strings.Repeat("x", width)+"\n", height), "\n")
+	m := testModel()
+	m.width, m.height = width, height
+	m.projects = []vimkunja.Project{{ID: 1, Title: "A very long Project title"}}
+	m.currentProjectID = 1
+	m.labelUI = &labelUI{kind: labelUITaskPicker}
+
+	modals := []struct {
+		name   string
+		render func() string
+	}{
+		{"task deletion", func() string { return m.renderDeleteConfirmationModal(background, width) }},
+		{"kanban provisioning", func() string { return m.renderKanbanProvisionConfirmationModal(background, width) }},
+		{"global search", func() string { return m.renderSearchOverlay(background, width) }},
+		{"labels", func() string { return m.renderLabelOverlay(background, width) }},
+	}
+	for _, modal := range modals {
+		t.Run(modal.name, func(t *testing.T) {
+			lines := strings.Split(ansi.Strip(modal.render()), "\n")
+			if len(lines) != height {
+				t.Fatalf("line count = %d, want %d: %q", len(lines), height, lines)
+			}
+			for _, line := range lines {
+				if got := lipgloss.Width(line); got != width {
+					t.Fatalf("line width = %d, want %d: %q", got, width, line)
+				}
+			}
+		})
+	}
+}
+
+func TestConfirmationBodyScrollsQuestionAndPinsActions(t *testing.T) {
+	layout := modalBounds(32, 9, 50, 9)
+	question := "This deliberately long confirmation question must scroll without hiding its answer actions."
+	body, limit := confirmationBody("CONFIRM", question, "y accept  •  n / Esc cancel", layout, 1)
+	if limit == 0 {
+		t.Fatal("confirmation question should overflow its reserved message region")
+	}
+	if got, want := len(body), layout.contentHeight; got != want {
+		t.Fatalf("confirmation rows = %d, want fixed content height %d: %q", got, want, body)
+	}
+	if got := body[len(body)-1]; !strings.Contains(got, "y") || !strings.Contains(got, "n") {
+		t.Fatalf("confirmation actions = %q, want pinned answer actions", got)
+	}
+}
+
+func TestFooterScrollReservationCountsHelpAsThirdSegment(t *testing.T) {
+	segments := []string{"j/k select", "h/l fold/tree", ":h help", "z fold commands"}
+	width := lipgloss.Width(composeFooter("[Projects]", segments[:3]))
+	if !footerHasRoomForCommands(width, "[Projects]", segments, 3) {
+		t.Fatalf("three complete segments including help should fit in %d columns", width)
+	}
+}
+
+func TestFallbackModalUsesActualBackgroundHeight(t *testing.T) {
+	const width = 20
+	m := testModel()
+	m.width, m.height = width, 6
+	m.tasks = []vimkunja.Task{{ID: 1, Title: "A long task title for confirmation"}}
+	m.deleteTaskID = 1
+	for _, height := range []int{5, 6, 7} {
+		t.Run(fmt.Sprintf("%d rows", height), func(t *testing.T) {
+			background := strings.TrimSuffix(strings.Repeat(strings.Repeat("x", width)+"\n", height), "\n")
+			lines := strings.Split(ansi.Strip(m.renderDeleteConfirmationModal(background, width)), "\n")
+			if got := len(lines); got != height {
+				t.Fatalf("fallback lines = %d, want background height %d", got, height)
+			}
+			for _, line := range lines {
+				if got := lipgloss.Width(line); got != width {
+					t.Fatalf("fallback line width = %d, want %d: %q", got, width, line)
+				}
+			}
+		})
+	}
+}
+
+func TestSearchAndLabelFallbackUseBackgroundHeight(t *testing.T) {
+	const width, backgroundHeight = 20, 6
+	background := strings.TrimSuffix(strings.Repeat(strings.Repeat("x", width)+"\n", backgroundHeight), "\n")
+	m := testModel()
+	m.width, m.height = width, 100 // Deliberately disagrees with the Pane background.
+	m.labelUI = &labelUI{kind: labelUITaskPicker}
+
+	for name, render := range map[string]func() string{
+		"search": func() string { return m.renderSearchOverlay(background, width) },
+		"labels": func() string { return m.renderLabelOverlay(background, width) },
+	} {
+		t.Run(name, func(t *testing.T) {
+			lines := strings.Split(ansi.Strip(render()), "\n")
+			if got := len(lines); got != backgroundHeight {
+				t.Fatalf("fallback lines = %d, want background height %d", got, backgroundHeight)
+			}
+		})
+	}
+}
+
+func TestFooterStatesNeverExceedViewportWidth(t *testing.T) {
+	states := []struct {
+		name  string
+		setup func(*model)
+	}{
+		{"projects", func(m *model) { m.focus = paneProjects }},
+		{"tasks", func(m *model) { m.focus = paneTasks }},
+		{"command", func(m *model) { m.commandMode, m.commandInput = true, "a-very-long-command" }},
+		{"error", func(m *model) { m.lastErr = "a-very-long-error-message" }},
+	}
+	for _, state := range states {
+		for _, width := range []int{5, 20, 40, 80} {
+			t.Run(fmt.Sprintf("%s-%d", state.name, width), func(t *testing.T) {
+				m := testModel()
+				state.setup(m)
+				for _, line := range strings.Split(ansi.Strip(m.renderStatusBar(width)), "\n") {
+					if got := lipgloss.Width(line); got > width {
+						t.Fatalf("footer line width = %d, want <= %d: %q", got, width, line)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestNarrowPickerRowsDropChromeAndFit(t *testing.T) {
+	rows := renderPickerChoicesFitted([]string{"A very long Project or Workflow Status title"}, 0, tuiTheme.selectionAccent, 20)
+	for _, row := range rows {
+		if got := lipgloss.Width(ansi.Strip(row)); got > 20 {
+			t.Fatalf("picker row width = %d, want <= 20: %q", got, row)
+		}
+		if strings.Contains(row, "╭") || strings.Contains(row, "│") {
+			t.Fatalf("narrow picker retained chrome: %q", row)
+		}
+	}
+}
+
+func TestStatusBarOmitsChromeBelowMinimumWidth(t *testing.T) {
+	m := testModel()
+	for width := 1; width < 5; width++ {
+		if got := m.renderStatusBar(width); got != "" {
+			t.Fatalf("status width %d = %q, want no overflowing chrome", width, got)
+		}
 	}
 }
 
@@ -1021,8 +1332,11 @@ func TestKanbanCommandProvisionsAfterExplicitConfirmation(t *testing.T) {
 	m, cmd := typeCommand(t, m, "kanban")
 	updated, _ := m.Update(cmd())
 	m = updated.(*model)
-	if !strings.Contains(m.renderStatusBar(100), `Create standard Kanban View for "Home"? y/n`) {
-		t.Fatalf("kanban prompt = %q", m.renderStatusBar(100))
+	if view := ansi.Strip(m.Render()); !strings.Contains(view, "CREATE KANBAN VIEW") || !strings.Contains(view, "Create standard Kanban View for Home?") {
+		t.Fatalf("kanban confirmation = %q", view)
+	}
+	if strings.Contains(m.renderStatusBar(100), "Create standard Kanban") {
+		t.Fatalf("kanban confirmation leaked into footer = %q", m.renderStatusBar(100))
 	}
 	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
 	m = updated.(*model)
@@ -1517,19 +1831,19 @@ func TestTaskListFormatsDueDatesRelativeToToday(t *testing.T) {
 	}
 }
 
-func TestNarrowTaskListDropsDueDateBeforeTruncatingTitle(t *testing.T) {
+func TestNarrowTaskListHidesMetadataBeforeViolatingTitleBudget(t *testing.T) {
 	m := testModel()
 	m.focus = paneTasks
 	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
 	m.tasks = []vimkunja.Task{{ID: 1, Title: "Important task", Priority: 3, DueDate: "2026-08-02"}}
 
 	line := strings.Split(ansi.Strip(renderTasks(m, 25, 3)), "\n")[1]
-	if !strings.Contains(line, "Important task") || !strings.Contains(line, "High") || strings.Contains(line, "tomorrow") {
-		t.Fatalf("narrow Task list = %q, want title and priority without Due Date", line)
+	if !strings.Contains(line, "Important task") || strings.Contains(line, "High") || strings.Contains(line, "tomorrow") {
+		t.Fatalf("narrow Task list = %q, want title without metadata", line)
 	}
 }
 
-func TestNarrowOverviewDropsProjectThenDueBeforeTruncatingTitle(t *testing.T) {
+func TestNarrowOverviewHidesMetadataBeforeViolatingTitleBudget(t *testing.T) {
 	m := testModel()
 	m.focus = paneTasks
 	m.taskScope = scopeOverview
@@ -1537,8 +1851,42 @@ func TestNarrowOverviewDropsProjectThenDueBeforeTruncatingTitle(t *testing.T) {
 	m.tasks = []vimkunja.Task{{ID: 1, Title: "Important task", Priority: 3, ProjectIdentifier: "VIM", DueDate: "2026-08-02"}}
 
 	line := strings.Split(ansi.Strip(renderTasks(m, 25, 3)), "\n")[1]
-	if !strings.Contains(line, "Important task") || !strings.Contains(line, "High") || strings.Contains(line, "VIM") || strings.Contains(line, "tomorrow") {
-		t.Fatalf("narrow Overview = %q, want title and priority without Project or Due Date", line)
+	if !strings.Contains(line, "Important task") || strings.Contains(line, "High") || strings.Contains(line, "VIM") || strings.Contains(line, "tomorrow") {
+		t.Fatalf("narrow Overview = %q, want title without metadata", line)
+	}
+}
+
+func TestTaskMetadataLayoutStaysStableWhileScrollingPastLongTitle(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
+	m.tasks = []vimkunja.Task{
+		{ID: 1, Title: "First", Priority: 3, DueDate: "2026-08-02"},
+		{ID: 2, Title: "Second", Priority: 3, DueDate: "2026-08-02"},
+		{ID: 3, Title: "A deliberately long Task title that must truncate", Priority: 3, DueDate: "2026-08-02"},
+	}
+
+	initial := ansi.Strip(renderTasks(m, 35, 3))
+	m.taskSelected = 2
+	scrolled := ansi.Strip(renderTasks(m, 35, 3))
+	for _, view := range []string{initial, scrolled} {
+		if !strings.Contains(view, "High") || strings.Contains(view, "tomorrow") {
+			t.Fatalf("metadata layout changed while scrolling: %q", view)
+		}
+	}
+	if !strings.Contains(scrolled, "A deliberately long T…") {
+		t.Fatalf("long title = %q, want end ellipsis", scrolled)
+	}
+}
+
+func TestTruncatedTaskTitleUsesMutedEllipsis(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m.tasks = []vimkunja.Task{{ID: 1, Title: "A deliberately long Task title that must truncate", Priority: 3}}
+
+	view := renderTasks(m, 30, 3)
+	if !strings.Contains(view, "…") || !strings.Contains(view, "38;5;"+tuiTheme.muted) {
+		t.Fatalf("truncated title = %q, want muted ellipsis", view)
 	}
 }
 
@@ -3521,6 +3869,23 @@ func TestDueDateMaskInsertsSeparators(t *testing.T) {
 	}
 	if m.editor.draft.DueDate != "2026-08-01" {
 		t.Fatalf("DueDate = %q, want 2026-08-01", m.editor.draft.DueDate)
+	}
+}
+
+func TestProjectPickerKeepsSelectedProjectVisibleInNormalDetailLayout(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	for i := 0; i < 12; i++ {
+		m.projects = append(m.projects, vimkunja.Project{ID: int64(i + 1), Title: fmt.Sprintf("Project %02d", i)})
+	}
+	m.editor = &taskEditor{field: fieldProject, mode: editorProjectPicker}
+	for range 10 {
+		m.updateProjectPicker(tea.KeyPressMsg(tea.Key{Code: 'j', Text: "j"}))
+	}
+
+	view := ansi.Strip(renderTaskDetail(m, 80, 14))
+	if !strings.Contains(view, "Project 10") {
+		t.Fatalf("selected project scrolled out of the normal Detail layout: %q", view)
 	}
 }
 

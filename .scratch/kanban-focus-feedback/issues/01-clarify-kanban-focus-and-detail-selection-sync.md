@@ -8,7 +8,7 @@
 
 **Priority:** Medium
 
-**Status:** triaged
+**Status:** completed
 
 ## Decisions confirmed
 
@@ -22,8 +22,8 @@
 - Explicit card moves and Done-triggered workflow moves preserve the moved Task as the selected card and keep it in Detail.
 - An Overview preview may update the internal Project context required to load the Task, but does not alter Projects Pane visibility or Pane focus.
 
-- [ ] Preserve existing Kanban navigation, Task opening, scrolling, and narrow-terminal rendering behavior.
-- [ ] Add model-level rendering and selection-synchronization regression coverage without changing Vikunja persistence or schema.
+- [x] Preserve existing Kanban navigation, Task opening, scrolling, and narrow-terminal rendering behavior.
+- [x] Add model-level rendering and selection-synchronization regression coverage without changing Vikunja persistence or schema.
 
 ## Further context
 

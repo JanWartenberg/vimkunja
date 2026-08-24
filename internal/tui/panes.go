@@ -59,6 +59,60 @@ func padPlainRight(s string, width int) string {
 	return s + strings.Repeat(" ", max(0, width-lipgloss.Width(s)))
 }
 
+func truncateFieldValue(value string, width int) string {
+	if lipgloss.Width(value) <= width {
+		return value
+	}
+	return truncatePlain(value, max(1, width-lipgloss.Width("…"))) + "…"
+}
+
+// editorFieldViewport keeps an active one-line field's cursor and a little
+// following context visible. Once it reaches the right edge, omitted leading
+// text is marked with an ellipsis instead of overflowing the Detail Pane.
+func (m *model) editorFieldViewport(field editorField, value string, width int) string {
+	width = max(1, width)
+	if m.editor == nil || m.editor.mode != editorInsert || m.editor.field != field {
+		return truncateFieldValue(value, width)
+	}
+	runes := []rune(value)
+	cursor := clamp(m.editor.cursor, 0, len(runes))
+	start := 0
+	if lipgloss.Width(value) > width {
+		end := min(len(runes), cursor+3)
+		for start < cursor && lipgloss.Width("…"+string(runes[start:end])) > width {
+			start++
+		}
+		value = string(runes[start:end])
+	}
+	m.editor.fieldViewportStart = start
+	if start > 0 {
+		value = "…" + value
+	}
+	// Bubble Tea owns the sole native bar cursor. Only render a textual cursor
+	// when native cursor shapes are explicitly disabled.
+	if m.nativeEditorCursorActive() {
+		return value
+	}
+	return cursorMarkedText(value, cursor-start+boolToInt(start > 0))
+}
+
+func boolToInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
+}
+
+// truncateTitle keeps the identifying start of a Task title. The caller
+// renders the synthetic ellipsis separately so it remains distinguishable from
+// title content.
+func truncateTitle(s string, maxW int) (string, bool) {
+	if lipgloss.Width(s) <= maxW {
+		return s, false
+	}
+	return truncatePlain(s, max(0, maxW-lipgloss.Width("…"))), true
+}
+
 func renderProjects(m *model, textW, textH int) string {
 	header := " " + renderHeading("Projects") + " "
 	focus := m.focus == paneProjects
@@ -136,6 +190,7 @@ func renderTasks(m *model, textW, textH int) string {
 			headerText = fmt.Sprintf("Overview · Label: %s · %s · %s", m.overviewLabel.Title, m.overviewSortLabel(), m.overviewFilterLabel())
 		}
 	}
+	headerText = truncateFieldValue(headerText, max(1, textW-2))
 	header := " " + renderHeading(headerText) + " "
 	focus := m.focus == paneTasks
 
@@ -163,16 +218,18 @@ func renderTasks(m *model, textW, textH int) string {
 	bottomMargin := min(2, max(0, visibleRows-1))
 	start := clamp(selected-visibleRows+1+bottomMargin, 0, max(0, len(m.tasks)-visibleRows))
 	end := min(len(m.tasks), start+visibleRows)
-	visibleTasks := append([]vimkunja.Task(nil), m.tasks[start:end]...)
+	// Layout is based on the complete result set, never only the viewport, so
+	// scrolling past a long title cannot make metadata columns appear or vanish.
+	layoutTasks := append([]vimkunja.Task(nil), m.tasks...)
 	if m.inlineTitle != nil {
-		for i := range visibleTasks {
-			if visibleTasks[i].ID == m.inlineTitle.task.ID {
-				visibleTasks[i].Title = m.inlineTitle.title
+		for i := range layoutTasks {
+			if layoutTasks[i].ID == m.inlineTitle.task.ID {
+				layoutTasks[i].Title = m.inlineTitle.title
 				break
 			}
 		}
 	}
-	layout := taskMetadataLayoutForWidth(visibleTasks, contentWidth, m.inOverview(), m.currentTime())
+	layout := taskMetadataLayoutForWidth(layoutTasks, contentWidth, m.inOverview(), m.currentTime())
 	for i, t := range m.tasks[start:end] {
 		sel := start+i == selected
 		done := "[ ]"
@@ -213,8 +270,6 @@ func renderTasks(m *model, textW, textH int) string {
 		if inlineEditing {
 			titleText = m.inlineTitle.title
 		}
-		title := padPlainRight(truncatePlain(titleText, layout.titleWidth), layout.titleWidth)
-
 		// Style applied to the non-priority segments only. The priority keeps
 		// its own colour even when selected. Each segment is rendered from a
 		// plain string (no nesting) to avoid ANSI corruption.
@@ -244,6 +299,15 @@ func renderTasks(m *model, textW, textH int) string {
 			return s
 		}
 
+		titleContent, titleTruncated := truncateTitle(titleText, layout.titleWidth)
+		title := rend(titleContent)
+		ellipsisWidth := 0
+		if titleTruncated {
+			title += lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true).Render("…")
+			ellipsisWidth = lipgloss.Width("…")
+		}
+		title += rend(strings.Repeat(" ", max(0, layout.titleWidth-lipgloss.Width(titleContent)-ellipsisWidth)))
+
 		segments := []string{rend(done)}
 		if layout.showPriority {
 			segments = append(segments, prioSeg)
@@ -262,7 +326,7 @@ func renderTasks(m *model, textW, textH int) string {
 			m.inlineCursorY = 2 + i // pane border, header, then visible Task row
 			m.inlineCursorVisible = true
 		}
-		segments = append(segments, rend(title))
+		segments = append(segments, title)
 		if layout.showDue {
 			segments = append(segments, dueSeg)
 		}
@@ -296,13 +360,15 @@ type taskMetadataLayout struct {
 	showDue                   bool
 }
 
-// taskMetadataLayoutForWidth preserves the title before optional metadata in
-// narrow Panes. Its shared layout keeps columns aligned across visible Tasks.
+const minimumTaskTitleWidth = 18
+
+// taskMetadataLayoutForWidth reserves an 18-cell title budget before showing
+// optional metadata in narrow Panes. Its shared layout covers the complete
+// result set, keeping columns stable while the viewport scrolls.
 func taskMetadataLayoutForWidth(tasks []vimkunja.Task, textW int, overview bool, now time.Time) taskMetadataLayout {
 	layout := taskMetadataLayout{showPriority: true, showProject: overview, showDue: true}
-	titleWidth, dueWidth := 1, 1
+	dueWidth := 1
 	for _, task := range tasks {
-		titleWidth = max(titleWidth, lipgloss.Width(task.Title))
 		due := strings.TrimSpace(task.DueDate)
 		if due == "" {
 			due = "-"
@@ -325,7 +391,8 @@ func taskMetadataLayoutForWidth(tasks []vimkunja.Task, textW int, overview bool,
 		}
 		return width
 	}
-	for textW < lipgloss.Width("[ ] ")+titleWidth+metadataWidth() {
+	prefixWidth := lipgloss.Width("[ ] ")
+	for textW < prefixWidth+minimumTaskTitleWidth+metadataWidth() {
 		switch {
 		case layout.showProject:
 			layout.showProject = false
@@ -334,11 +401,11 @@ func taskMetadataLayoutForWidth(tasks []vimkunja.Task, textW int, overview bool,
 		case layout.showPriority:
 			layout.showPriority = false
 		default:
-			layout.titleWidth = max(1, textW-lipgloss.Width("[ ] "))
+			layout.titleWidth = max(1, textW-prefixWidth)
 			return layout
 		}
 	}
-	layout.titleWidth = titleWidth
+	layout.titleWidth = max(1, textW-prefixWidth-metadataWidth())
 	return layout
 }
 
@@ -466,15 +533,25 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if e.labelsLoading {
 		labels = "loading..."
 	} else if len(e.labels) > 0 {
-		titles := make([]string, 0, len(e.labels))
+		plainTitles := make([]string, 0, len(e.labels))
+		styledTitles := make([]string, 0, len(e.labels))
 		for i, label := range e.labels {
+			plainTitles = append(plainTitles, label.Title)
 			title := label.Title
 			if detailFocused && e.field == fieldLabels && i == clamp(e.labelSelected, 0, len(e.labels)-1) {
 				title = lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Bold(true).Render(title)
 			}
-			titles = append(titles, title)
+			styledTitles = append(styledTitles, title)
 		}
-		labels = strings.Join(titles, ", ")
+		// Reserve the Detail scrollbar rail when labels are long enough to need
+		// truncation, so the ellipsis remains visible beside that rail.
+		available := textW - lipgloss.Width("Labels: ") - 2
+		plain := strings.Join(plainTitles, ", ")
+		if lipgloss.Width(plain) > available {
+			labels = truncateFieldValue(plain, available)
+		} else {
+			labels = strings.Join(styledTitles, ", ")
+		}
 	}
 	renderMetadata := func(field editorField, value string) string {
 		if e.draft.Done && !(detailFocused && e.field == field) {
@@ -482,9 +559,14 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		}
 		return value
 	}
+	titleWidth := textW - lipgloss.Width("Title:    ")
+	if detailFocused && e.field == fieldTitle {
+		titleWidth -= lipgloss.Width("▸ ")
+	}
+	title := m.editorFieldViewport(fieldTitle, e.draft.Title, titleWidth)
 	lines = append(lines,
 		renderField(fieldProject, "Project:  ", projectName),
-		renderField(fieldTitle, "Title:    ", renderMetadata(fieldTitle, m.editorText(fieldTitle, e.draft.Title))),
+		renderField(fieldTitle, "Title:    ", renderMetadata(fieldTitle, title)),
 		renderField(fieldPriority, "Priority: ", renderMetadata(fieldPriority, priority)),
 		renderField(fieldDueDate, "Due Date: ", renderMetadata(fieldDueDate, m.editorText(fieldDueDate, due))),
 		renderField(fieldLabels, "Labels:   ", renderMetadata(fieldLabels, labels)),
@@ -500,7 +582,11 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if e.id != 0 && textH >= 12 && !e.isPickerMode() {
 		lines = append(lines, placeholderText(fmt.Sprintf("(DB-ID: %d, Task-Index: %d)", e.id, e.taskIndex)))
 	}
-	lines = append(lines, "", renderField(fieldDescription, "Description:", ""))
+	// A short Detail Pane gives its active picker the description rows; at
+	// normal heights retain the usual Description anchor above the picker.
+	if !e.isPickerMode() || textH >= len(lines)+10 {
+		lines = append(lines, "", renderField(fieldDescription, "Description:", ""))
+	}
 	descriptionScrollable := false
 	descriptionScrollTop, descriptionRows, descriptionViewportStart, descriptionViewportRows := 0, 0, 0, 0
 	if e.mode == editorProjectPicker {
@@ -515,15 +601,19 @@ func renderTaskDetail(m *model, textW, textH int) string {
 			choices = append(choices, lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Render("No match found"))
 			selected = -1
 		}
-		lines = append(lines, renderPickerChoices(choices, selected, tuiTheme.selectionAccent)...)
+		lines = append(lines, renderDetailPickerChoices(choices, selected, tuiTheme.selectionAccent, textW, textH, len(lines))...)
 	} else if e.mode == editorPriorityPicker {
-		lines = append(lines, renderPriorityPicker(e)...)
+		choices := make([]string, len(tuiTheme.priority))
+		for priority := range tuiTheme.priority {
+			choices[priority] = priorityName(int64(priority))
+		}
+		lines = append(lines, renderDetailPickerChoices(choices, e.priorityIndex, priorityColor(e.priorityIndex), textW, textH, len(lines))...)
 	} else if e.mode == editorWorkflowStatusPicker {
 		choices := make([]string, 0, len(e.workflowStatus.Buckets))
 		for _, bucket := range e.workflowStatus.Buckets {
 			choices = append(choices, bucket.Title)
 		}
-		lines = append(lines, renderPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent)...)
+		lines = append(lines, renderDetailPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, textW, textH, len(lines))...)
 	} else if description := descriptionTerminalText(e.draft.Description); description == "" {
 		lines = append(lines, placeholderText("  (no description)"))
 	} else {
@@ -660,10 +750,10 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 				choices = append(choices, placeholderText("No match found"))
 			}
 			pickerSelectedRow = len(body) + 1 + clamp(e.pickerIndex, 0, len(choices)-1)
-			body = append(body, renderPickerChoices(choices, e.pickerIndex, tuiTheme.selectionAccent)...)
+			body = append(body, renderPickerChoicesFitted(choices, e.pickerIndex, tuiTheme.selectionAccent, textW)...)
 		case field == fieldPriority && e.mode == editorPriorityPicker:
 			pickerSelectedRow = len(body) + 1 + clamp(e.priorityIndex, 0, len(tuiTheme.priority)-1)
-			body = append(body, renderPriorityPicker(e)...)
+			body = append(body, renderPriorityPickerFitted(e, textW)...)
 		case field == fieldWorkflowStatus && e.mode == editorWorkflowStatusPicker:
 			choices := make([]string, 0, len(e.workflowStatus.Buckets))
 			for _, bucket := range e.workflowStatus.Buckets {
@@ -672,7 +762,7 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 			if len(choices) > 0 {
 				pickerSelectedRow = len(body) + 1 + clamp(e.workflowStatusIndex, 0, len(choices)-1)
 			}
-			body = append(body, renderPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent)...)
+			body = append(body, renderPickerChoicesFitted(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, textW)...)
 		}
 	}
 	bodyRows := max(1, textH-2)
@@ -718,28 +808,64 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	return fitBlock(lines, textW, textH)
 }
 
+// renderDetailPickerChoices limits a picker to the space left below the
+// Detail's fixed fields. Its window follows selection, rather than allowing
+// fitBlock to silently cut off choices below the viewport.
+func renderDetailPickerChoices(choices []string, selected int, selectionColor string, textW, textH, precedingRows int) []string {
+	// Leave one row of slack below the rounded frame: fitBlock owns the final
+	// Detail row and otherwise clips the picker's bottom border.
+	choiceRows := max(1, textH-precedingRows-3) // rounded picker frame + slack
+	start := 0
+	if len(choices) > choiceRows && selected >= 0 {
+		start = clamp(selected-choiceRows+1, 0, len(choices)-choiceRows)
+	}
+	end := min(len(choices), start+choiceRows)
+	return renderPickerChoicesFitted(choices[start:end], selected-start, selectionColor, textW)
+}
+
 // renderPriorityPicker keeps the picker visually separate from Description and
 // colours the active choice with the same semantic mapping used everywhere
 // else priorities are displayed.
 func renderPriorityPicker(e *taskEditor) []string {
+	return renderPriorityPickerFitted(e, 0)
+}
+
+func renderPriorityPickerFitted(e *taskEditor, width int) []string {
 	choices := make([]string, len(tuiTheme.priority))
 	for priority := range tuiTheme.priority {
 		choices[priority] = priorityName(int64(priority))
 	}
-	return renderPickerChoices(choices, e.priorityIndex, priorityColor(e.priorityIndex))
+	return renderPickerChoicesFitted(choices, e.priorityIndex, priorityColor(e.priorityIndex), width)
 }
 
 // renderPickerChoices draws the common compact picker frame. Its active border
 // uses the shared selection accent; Project and Status use that accent for
 // their active choice, while Priority uses its semantic choice colour.
 func renderPickerChoices(choices []string, selected int, selectionColor string) []string {
+	return renderPickerChoicesFitted(choices, selected, selectionColor, 0)
+}
+
+// renderPickerChoicesFitted drops picker chrome below the shared modal width
+// threshold and bounds every choice to the available Detail Pane width.
+func renderPickerChoicesFitted(choices []string, selected int, selectionColor string, width int) []string {
 	rows := make([]string, 0, len(choices))
+	bare := width > 0 && width < modalFallbackWidth
 	for index, choice := range choices {
-		row := "  " + choice
+		prefix := "  "
 		if index == selected {
-			row = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(selectionColor)).Render("▸ " + choice)
+			prefix = "▸ "
+		}
+		if width > 0 {
+			choice = ansi.Truncate(choice, max(1, width-lipgloss.Width(prefix)), "")
+		}
+		row := prefix + choice
+		if index == selected {
+			row = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(selectionColor)).Render(row)
 		}
 		rows = append(rows, row)
+	}
+	if bare {
+		return rows
 	}
 	style := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

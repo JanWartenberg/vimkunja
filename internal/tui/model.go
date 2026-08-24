@@ -67,6 +67,8 @@ type model struct {
 	deleteArmed              bool
 	deleteConfirm            bool
 	deleteTaskID             int64
+	confirmationScroll       int
+	confirmationGArmed       bool
 	projectsPaneCollapsed    bool
 	projectsPaneAutoShown    bool
 	lastProjectPaneCollapsed bool
@@ -791,6 +793,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case taskDeletedMsg:
 		m.deleteConfirm = false
 		m.deleteTaskID = 0
+		m.confirmationScroll = 0
+		m.confirmationGArmed = false
 		if typed.err != nil {
 			m.pendingKanbanTaskID = 0
 			m.pendingKanbanBucketID = 0
@@ -819,6 +823,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if typed.board.Availability == vimkunja.KanbanBoardUnavailable {
 			m.kanbanActive = false
 			m.kanbanProvisionConfirm = true
+			m.confirmationScroll = 0
+			m.confirmationGArmed = false
 			return m, nil
 		}
 		if typed.board.Availability == vimkunja.KanbanBoardAmbiguous {
@@ -1556,7 +1562,7 @@ func (m *model) editorCursor() *tea.Cursor {
 		cursor.Shape = tea.CursorBar
 		return cursor
 	}
-	if !m.nativeEditorCursorActive() || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
+	if !m.nativeEditorCursorActive() || (m.labelUI != nil && m.labelUI.deleteConfirm) || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
 		return nil
 	}
 
@@ -1608,6 +1614,12 @@ func (m *model) editorCursorPosition() (int, int) {
 	cursorOffset := 0
 	if !m.editor.isPickerMode() {
 		cursorOffset = m.editor.cursor
+		if m.editor.field == fieldTitle {
+			cursorOffset -= m.editor.fieldViewportStart
+			if m.editor.fieldViewportStart > 0 {
+				cursorOffset++ // leading ellipsis in the horizontally scrolled field
+			}
+		}
 	}
 	return clamp(textX+labelWidth+cursorOffset, 0, w-1), clamp(topH+1+row, 0, h-1)
 }
@@ -1723,6 +1735,19 @@ func (m *model) detailPaneTop() int {
 	return max(4, (h-3)/2)
 }
 
+// modalContentHeight matches the Pane area built by Render, excluding the
+// status footer. Confirmation key handling uses this same geometry as modal
+// rendering, rather than a separate approximation based on m.height.
+func (m *model) modalContentHeight() int {
+	_, h := m.viewportSize()
+	contentH := max(4, h-3)
+	if m.showDetail || m.helpPane != nil || m.infoPane != nil {
+		topH := m.detailPaneTop()
+		return topH + max(4, contentH-topH)
+	}
+	return contentH
+}
+
 func (m *model) Render() string {
 	m.inlineCursorVisible = false
 	w, h := m.viewportSize()
@@ -1807,6 +1832,9 @@ func (m *model) Render() string {
 	if m.deleteConfirm {
 		content = m.renderDeleteConfirmationModal(content, w)
 	}
+	if m.kanbanProvisionConfirm {
+		content = m.renderKanbanProvisionConfirmationModal(content, w)
+	}
 	if m.searchOpen {
 		content = m.renderSearchOverlay(content, w)
 	}
@@ -1821,6 +1849,10 @@ func (m *model) Render() string {
 // Fixed Pane chrome (headers and editor fields) is excluded: only rows that
 // actually move under a scrolling command contribute to the percentage.
 func (m *model) focusedScrollPosition() (int, int, bool) {
+	if m.searchOpen && len(m.searchResults) > 1 && m.searchResultEnd(0) < len(m.searchResults) {
+		return m.searchSelected, len(m.searchResults) - 1, true
+	}
+
 	w, h := m.viewportSize()
 	contentH := max(4, h-3)
 	topH := contentH
@@ -1908,6 +1940,13 @@ func (m *model) focusedScrollPosition() (int, int, bool) {
 }
 
 func (m *model) renderStatusBar(w int) string {
+	// Rounded border plus horizontal padding needs five cells. Below that the
+	// terminal cannot display a usable status bar, so omit it rather than let
+	// lipgloss expand and wrap it beyond the viewport.
+	if w < 5 {
+		return ""
+	}
+
 	info := ""
 	switch m.focus {
 	case paneProjects:
@@ -1922,15 +1961,18 @@ func (m *model) renderStatusBar(w int) string {
 		info = "[Info]"
 	}
 
-	hint := "Ctrl+W cycles  •  Enter detail  •  q quit  •  :h help  •  j/k navigate  •  x toggle"
+	// Hint order is the narrow-footer priority contract: primary action,
+	// navigation, help, then secondary actions. renderFooterHints keeps only
+	// complete segments from this ordered budget.
+	hint := "Ctrl+W cycles  •  Enter detail  •  j/k navigate  •  :h help  •  q quit  •  x toggle"
 	if m.focus == paneProjects {
-		hint = "j/k select  •  h/l fold/tree  •  z fold commands  •  Shift+J/K reorder  •  r reload  •  :h help"
+		hint = "j/k select  •  h/l fold/tree  •  :h help  •  z fold commands  •  Shift+J/K reorder  •  r reload"
 	}
 	if m.focus == paneTasks && m.kanbanActive && !m.inOverview() {
-		hint = "Shift+H/L move bucket  •  m choose bucket  •  j/k navigate  •  x toggle  •  Ctrl+W cycles  •  :h help"
+		hint = "Shift+H/L move bucket  •  m choose bucket  •  j/k navigate  •  :h help  •  x toggle  •  Ctrl+W cycles"
 	}
 	if m.focus == paneTasks && m.inOverview() {
-		hint = "Enter detail  •  o new task  •  s sort  •  f filter  •  Space+a return"
+		hint = "j/k select  •  Enter detail  •  :h help  •  o new task  •  s sort  •  f filter  •  Space+a return"
 	}
 	if (m.focus == paneProjects || m.focus == paneTasks) && !m.inOverview() && w >= 100 {
 		hint += "  •  o new task"
@@ -1951,9 +1993,9 @@ func (m *model) renderStatusBar(w int) string {
 		if inputActive {
 			hint = "[" + mode + "]  Esc normal"
 		} else if m.editor != nil && m.editor.field == fieldLabels && !m.editor.labelsLoading && len(m.editor.labels) > 0 {
-			hint = "[" + mode + "]  h/l select Label  •  x remove Label  •  i pick/edit  •  :w save  •  :q close"
+			hint = "[" + mode + "]  i pick/edit  •  h/l select Label  •  :h help  •  x remove Label  •  :w save  •  :q close"
 		} else {
-			hint = "[" + mode + "]  i edit  •  :w save  •  :q close  •  Ctrl+W switch pane"
+			hint = "[" + mode + "]  i edit  •  j/k navigate  •  :h help  •  :w save  •  :q close  •  Ctrl+W switch pane"
 		}
 	}
 	if m.focus == paneHelp {
@@ -1978,9 +2020,6 @@ func (m *model) renderStatusBar(w int) string {
 			hint += "  •  " + m.commandCompletionFeedback
 		}
 	}
-	if m.kanbanProvisionConfirm {
-		hint = fmt.Sprintf(`Create standard Kanban View for %q? y/n`, m.currentProjectTitle())
-	}
 	if m.leaderArmed {
 		hint = "[LEADER] a Overview/return  •  o toggle projects pane  •  v views"
 	}
@@ -1997,7 +2036,7 @@ func (m *model) renderStatusBar(w int) string {
 		ctrlWHint := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.ctrlWHint)).Render("Ctrl-W")
 		hint = ctrlWHint + " h/j/k/l change pane  •  Ctrl-W/w cycle"
 	}
-	statusActive := m.commandMode || m.kanbanProvisionConfirm || m.leaderArmed || m.viewSwitchArmed || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed
+	statusActive := m.commandMode || m.leaderArmed || m.viewSwitchArmed || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed
 	statusStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(paneBorderColor(statusActive))).
@@ -2008,17 +2047,177 @@ func (m *model) renderStatusBar(w int) string {
 		statusStyle = statusStyle.Foreground(lipgloss.Color(tuiTheme.danger)).BorderForeground(lipgloss.Color(tuiTheme.danger))
 	}
 
-	status := fmt.Sprintf("%s   %s", info, hint)
-	if scrollTop, maxScroll, scrolling := m.focusedScrollPosition(); scrolling {
-		// The percentage needs its own separator plus enough space for 100%.
-		// Existing hints always win when the status row is narrow.
-		contentWidth := max(0, w-4) // rounded border plus horizontal padding
+	contentWidth := max(1, w-4) // rounded border plus horizontal padding
+	scrollTop, maxScroll, scrolling := m.focusedScrollPosition()
+	reserveScrollPercent := scrolling && footerHasRoomForCommands(contentWidth-5, info, strings.Split(hint, footerSeparator), 3)
+	if m.searchOpen && scrolling {
+		reserveScrollPercent = true
+	}
+	var status string
+	switch {
+	case m.lastErr != "":
+		status = renderFooterMessage(contentWidth, info, "Error: ", m.lastErr)
+	case m.commandMode:
+		input := ":" + m.commandInput + "_"
+		status = renderFooterMessage(contentWidth, info, ":", m.commandInput+"_")
+		if m.commandCompletionFeedback != "" && footerFits(contentWidth, info, []string{input, m.commandCompletionFeedback}) {
+			status = composeFooter(info, []string{input, m.commandCompletionFeedback})
+		}
+	case m.searchOpen:
+		if m.searchMode == searchNormalMode && !m.searchCommandMode {
+			width := contentWidth
+			if reserveScrollPercent {
+				width -= 5
+			}
+			status = renderFooterHints(width, info, []string{
+				"SEARCH [NORMAL]  j/k navigate",
+				"i/a edit",
+				":h help",
+				":q / Esc close",
+			}, false)
+			break
+		}
+		prefix := fmt.Sprintf("SEARCH [%s] ", m.searchModeLabel())
+		input := m.searchInput
+		if m.searchCommandMode {
+			prefix, input = "SEARCH COMMAND  :", m.searchCommandInput
+		}
+		if m.searchMode == searchInsertMode && !m.searchCommandMode {
+			input += "_"
+		}
+		status = renderFooterMessage(contentWidth, info, prefix, input)
+	default:
+		required := (m.focus == paneDetail && m.editor != nil && m.editor.mode != editorNormal) || m.focus == paneHelp || m.focus == paneInfo
+		width := contentWidth
+		if reserveScrollPercent {
+			width -= 5 // separator plus enough space for 100%
+		}
+		status = renderFooterHints(width, info, strings.Split(hint, footerSeparator), required)
+	}
+	if scrolling && reserveScrollPercent {
+		// Once three complete commands fit, the percentage reserves the final
+		// five cells and yields lower-priority hints instead.
 		if free := contentWidth - lipgloss.Width(status); free >= 5 {
 			percent := int(math.Round(100 * float64(scrollTop) / float64(maxScroll)))
 			status += strings.Repeat(" ", free-lipgloss.Width(fmt.Sprintf("%d%%", percent))) + fmt.Sprintf("%d%%", percent)
 		}
 	}
 	return statusStyle.Render(status)
+}
+
+const footerSeparator = "  •  "
+
+// renderFooterHints fits whole hint segments into one status row. Segment
+// order is its priority; :h help degrades to :h before lower-priority segments
+// are considered. The Pane label yields only when no complete segment fits.
+func renderFooterHints(width int, info string, segments []string, requiredFirst bool) string {
+	for _, label := range []string{info, ""} {
+		parts := make([]string, 0, len(segments))
+		for i, raw := range segments {
+			segment := strings.TrimSpace(raw)
+			if segment == "" {
+				continue
+			}
+			if requiredFirst && i == 0 && !footerFits(width, label, []string{segment}) {
+				break
+			}
+			candidate := append(append([]string(nil), parts...), segment)
+			if footerFits(width, label, candidate) {
+				parts = candidate
+				continue
+			}
+			if segment == ":h help" && footerFits(width, label, append(append([]string(nil), parts...), ":h")) {
+				parts = append(parts, ":h")
+				continue
+			}
+			break
+		}
+		if len(parts) > 0 {
+			return composeFooter(label, parts)
+		}
+		for _, fallback := range []string{":h help", ":h"} {
+			if footerFits(width, label, []string{fallback}) {
+				return composeFooter(label, []string{fallback})
+			}
+		}
+	}
+	return ""
+}
+
+func footerHasRoomForCommands(width int, info string, segments []string, count int) bool {
+	parts := make([]string, 0, count)
+	for _, segment := range segments {
+		segment = strings.TrimSpace(segment)
+		if segment == "" {
+			continue
+		}
+		parts = append(parts, segment)
+		if len(parts) == count {
+			return footerFits(width, info, parts)
+		}
+	}
+	return false
+}
+
+func footerFits(width int, info string, parts []string) bool {
+	return lipgloss.Width(composeFooter(info, parts)) <= width
+}
+
+func composeFooter(info string, parts []string) string {
+	body := strings.Join(parts, footerSeparator)
+	if info == "" {
+		return body
+	}
+	if body == "" {
+		return info
+	}
+	return info + "   " + body
+}
+
+// renderFooterMessage preserves a message prefix and the tail nearest the
+// cursor or most recent error detail when the footer is narrow.
+func renderFooterMessage(width int, info, prefix, value string) string {
+	for _, label := range []string{info, ""} {
+		available := width
+		if label != "" {
+			available -= lipgloss.Width(label + "   ")
+		}
+		// A Pane label must yield when it would leave room only for an
+		// ellipsis: active input and error detail are more useful feedback.
+		if label != "" && lipgloss.Width(prefix+value) > available && available <= lipgloss.Width(prefix)+1 {
+			continue
+		}
+		message := fitFooterTail(prefix, value, available)
+		if footerFits(width, label, []string{message}) {
+			return composeFooter(label, []string{message})
+		}
+	}
+	return fitFooterTail(prefix, value, width)
+}
+
+func fitFooterTail(prefix, value string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	if lipgloss.Width(prefix+value) <= width {
+		return prefix + value
+	}
+	if lipgloss.Width(prefix) >= width {
+		return truncatePlain(prefix, width)
+	}
+	available := width - lipgloss.Width(prefix)
+	if available == 1 {
+		return prefix + "…"
+	}
+	return prefix + "…" + tailPlain(value, available-1)
+}
+
+func tailPlain(value string, width int) string {
+	runes := []rune(value)
+	for len(runes) > 0 && lipgloss.Width(string(runes)) > width {
+		runes = runes[1:]
+	}
+	return string(runes)
 }
 
 func clamp(v, lo, hi int) int {

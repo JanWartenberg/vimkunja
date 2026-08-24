@@ -135,24 +135,24 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `Ctrl+D` / `Ctrl+U`, PgDn/PgUp | Scroll by page | Implemented |
 | `a` / `Shift+I` / `Shift+A` | Enter Insert Mode after the cursor / at line start / end | Implemented |
 | `o` / `Shift+O` | Insert a blank line below / above the current line and enter Insert Mode | Implemented |
-| `j/k` | Move between navigable logical blocks: paragraphs, headings, and list/Checkbox-list entries | Agreed |
+| `j/k` | Move between navigable logical blocks:<br>paragraphs, headings, and list/Checkbox-list entries | Agreed |
 | `gj/gk` | Move between wrapped visual terminal rows | Agreed |
 | `j/k` in a multi-line code block | Move between its unwrapped source lines | Agreed |
 | `zh/zl` in an overwide code block or table | Scroll that block horizontally | Agreed |
 | `x` on a Checkbox-list entry | Toggle only that entry's checked state | Agreed |
 | `dd` | Delete the current logical Description block | Agreed |
-| `o` / `O` | Insert an empty paragraph after / before the current logical block and enter Insert Mode | Agreed rich-text behavior |
-| `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end of the current logical line | Agreed rich-text behavior |
+| `o` / `O` | Insert an empty paragraph after / before the current logical block;<br>then enter Insert Mode | Agreed rich-text behavior |
+| `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end<br>of the current logical line | Agreed rich-text behavior |
 | `0` / `^` / `_` / `$` | Move to start / first nonblank / end of the current logical line | Agreed |
-| `w` / `b` / `e` / `ge` | Move by rendered semantic words, ignoring inline-format and Link boundaries but stopping at blocks | Agreed |
+| `w` / `b` / `e` / `ge` | Move by rendered semantic words, ignoring inline-format and Link boundaries;<br>stop at blocks | Agreed |
 | `gg` / `G` | Jump to start / end of the whole Description document | Agreed |
 | `Ctrl+D` / `Ctrl+U` | Move the cursor about one visible Task Detail Pane height down / up | Agreed |
 | `u` / `Ctrl+R` | Undo / redo an unsaved Description-draft change | Agreed |
-| `Space` | Open the visible Description formatting palette in a secondary footer; it closes on the second key, `Esc`, or the existing Leader timeout | Provisional |
+| `Space` | Open the Description formatting palette in a secondary footer.<br>It closes on the second key, `Esc`, or the Leader timeout. | Provisional |
 | `Space+1/2/3` | Convert current block to H1/H2/H3 | Provisional |
 | `Space+0` | Convert current block to a paragraph | Provisional |
-| `Space+u/n/x` | Toggle current block between unordered, numbered, or Checkbox list and a paragraph | Provisional |
-| `Space+c/q/r` | Toggle current block between code block or quote and a paragraph; insert a horizontal rule after the current block | Provisional |
+| `Space+u/n/x` | Toggle current block between unordered, numbered, or Checkbox list<br>and a paragraph | Provisional |
+| `Space+c/q/r` | Toggle current block between code block or quote and a paragraph;<br>insert a horizontal rule after the current block | Provisional |
 | `Space+o` | Toggle Projects Pane; never a Description formatting command | Agreed |
 | `Space+l` inside an existing link | Prompt with its current URL; link text remains ordinary Description text | Provisional |
 
@@ -181,6 +181,33 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `Space+0` | Remove all inline formatting, including Links, while preserving text and blocks | Provisional |
 | `d` | Delete exactly the selected text; delete selected logical blocks after `V` | Agreed |
 
+
+## Footer hint priority
+
+The footer is a one-line display budget. It shows complete segments only; it
+never wraps or clips a static hint. The active Pane label is retained when it
+fits, but yields to usable input or error feedback and, at extreme widths, to
+`:h`. If even `:h` cannot fit, no hint text is shown.
+
+Static footers use this order: primary action, navigation, `:h help`, then
+secondary actions. `:h help` contracts to `:h` before any lower-priority action
+is considered. A scrolling Pane reserves its right-aligned percentage once its
+label and three actionable segments fit; otherwise hints win.
+
+| Context | Primary | Navigation | Secondary |
+| --- | --- | --- | --- |
+| Projects | `j/k select` | `h/l fold/tree` | fold commands, reorder, reload, new Task |
+| List / Overview | `j/k select`, `Enter detail` | Task navigation | new Task, sort, filter, return |
+| Kanban | move Bucket, choose Bucket | card navigation | Done, Pane cycling, new Task |
+| Task Detail normal | edit | field navigation | save, close, Pane switching |
+| Task Detail insert | `Esc normal` | — | — |
+| Help / Info | close Pane | — | Pane switching where available |
+| Leader, Views, Sort, Filter | shown choice actions | — | cancel where available |
+
+Command and Search input retain their prompt and cursor-side input tail, with
+an ellipsis for omitted leading input. Completion feedback yields before input
+is clipped. An active error owns the footer budget and shows only `Error:` plus
+the useful error tail.
 
 ## Notes for future binding proposals
 

@@ -9,8 +9,8 @@ MVP und **Meilenstein 1** sind abgeschlossen: tägliche Aufgabenverwaltung ist o
 - Lokale Vikunja-SQLite-Datenbank: Projects, List View, All-Tasks-Overview, Task-Detail, Task-Editor und Task-Löschung
 - Hierarchischer Projects Pane mit Einrückung, session-lokaler Faltung, defensiven Recovery-Einträgen und persistenter Geschwister-Sortierung
 - Workflow-Status und Done-Toggle im Detail sowie Done-/Default-Bucket-Synchronisierung
-- Einheitliche Due-Date-, Priority- und Identifier-Darstellung in Liste, Overview und Detail
-- List-, Overview- und Kanban-Views mit Vim-Navigation, Pane-Fokus, Ex-Commands, Help, Fehlerlog und Leader-Key
+- Einheitliche Due-Date-, Priority- und Identifier-Darstellung in Liste, Overview und Detail; stabiles Metadaten-Layout bei schmalen Pane-Breiten
+- List-, Overview- und Kanban-Views mit Vim-Navigation, Pane-Fokus, Ex-Commands, Help, Fehlerlog und Leader-Key; Kanban-Karten- und Task-Detail-Auswahl bleiben synchron
 - Separates englisches Keystroke-Tutorial mit bei jedem Start frisch erzeugter, temporärer SQLite-Datenbank
 - `go test ./...` grün
 
@@ -20,12 +20,11 @@ Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End
 
 ### Meilenstein 2
 
-Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md), die [kompakte Task-Detail-Ansicht](.archive/2026-08-14/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md), die [Ex-Command-History samt Completion](.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md) und die [inline Task-Titelbearbeitung in List und Overview](.archive/2026-08-18/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-overview.md) sind implementiert und archiviert; Kanban-Title-Editing bleibt bewusst ausgenommen, der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
+Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md), die [kompakte Task-Detail-Ansicht](.archive/2026-08-14/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md), die [Ex-Command-History samt Completion](.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md), die [inline Task-Titelbearbeitung in List und Overview](.archive/2026-08-18/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-overview.md), der einzeilige Status-Footer und schmale Modal-Layouts sind implementiert; Kanban-Title-Editing bleibt bewusst ausgenommen, der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
 
 5. [Due Date- und Priority-Eingabe spezifizieren](.scratch/task-editor-special-inputs/issues/01-specify-date-picker-and-priority-input.md)
 6. [Task Comments anzeigen und anlegen](.scratch/task-comments/issues/01-show-and-create-task-comments.md)
 7. [Benutzerkonfiguration hinzufügen](.scratch/user-configuration/issues/01-add-user-facing-tui-configuration.md) – zunächst Konfigurationsrahmen und nur tatsächlich benötigte Einstellungen.
-9. [Kanban-Fokus und Task-Detail-Auswahl synchronisieren](.scratch/kanban-focus-feedback/issues/01-clarify-kanban-focus-and-detail-selection-sync.md) – Fokuskontrast und Karten-/Detail-Auswahlverhalten spezifizieren.
 
 ### Meilenstein 3
 
@@ -33,6 +32,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 11. [Letzte Task-Aktionen rückgängig machen](.scratch/undo-task-actions/issues/01-undo-recent-task-actions.md)
 12. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md)
 13. [Project-Löschen semantisch spezifizieren](.scratch/project-deletion/issues/01-specify-project-deletion-semantics.md)
+13a. [Project-Erstellung spezifizieren](.scratch/project-creation/issues/01-specify-project-creation-workflow.md) – Entry Point, Hierarchie, initiale View und Vikunja-kompatible Persistenz vor der Implementierung festlegen.
 14. [Table View rendern](.scratch/table-view/issues/01-render-table-project-view.md)
 15. [Gantt View rendern](.scratch/gantt-view/issues/01-render-gantt-project-view.md)
 16. [Checkbox-Listen-Fortschritt anzeigen](.scratch/checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md)

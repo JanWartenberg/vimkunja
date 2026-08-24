@@ -46,6 +46,7 @@ type taskEditor struct {
 	cursor    int // rune offset in the active text field
 
 	projectFilter         string
+	fieldViewportStart    int
 	pickerIndex           int
 	priorityIndex         int
 	workflowStatusIndex   int
