@@ -485,6 +485,9 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		}
 		return fitBlock([]string{"No task editor available."}, textW, textH)
 	}
+	if m.editor.isPickerMode() {
+		return renderDetailPickerOverlay(m, textW, textH)
+	}
 	if textH < 12 {
 		return renderCompactTaskDetail(m, textW, textH)
 	}
@@ -641,6 +644,136 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		return renderVerticalScrollbar(lines, textW, textH, descriptionScrollTop, descriptionRows, descriptionViewportStart, descriptionViewportRows, m.focus == paneDetail)
 	}
 	return fitBlock(lines, textW, textH)
+}
+
+// renderDetailPickerOverlay layers a field-local picker over the existing
+// Detail content. Pickers must not consume Description rows or become part of
+// the Detail Pane's scrollable document.
+func renderDetailPickerOverlay(m *model, textW, textH int) string {
+	e := m.editor
+	mode := e.mode
+	e.mode = editorNormal
+	background := renderTaskDetail(m, textW, textH)
+	e.mode = mode
+
+	rows, selected, choices := detailPickerOverlayContent(m)
+	_, viewportHeight := m.viewportSize()
+	if textW < modalFallbackWidth || viewportHeight < modalFallbackHeight {
+		return fitBlock(append(rows, renderDetailPickerChoiceRows(choices, selected, e.mode, textW)...), textW, textH)
+	}
+	maxChoiceRows := max(1, textH-2-len(rows))
+	start := 0
+	if len(choices) > maxChoiceRows && selected >= 0 {
+		start = clamp(selected-maxChoiceRows+1, 0, len(choices)-maxChoiceRows)
+	}
+	end := min(len(choices), start+maxChoiceRows)
+	rows = append(rows, renderDetailPickerChoiceRows(choices[start:end], selected-start, e.mode, textW)...)
+	popover := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color(paneBorderColor(true))).
+		Padding(0, 1).
+		Render(strings.Join(rows, "\n"))
+
+	popoverLines := strings.Split(popover, "\n")
+	backgroundLines := strings.Split(background, "\n")
+	anchor := detailPickerAnchor(backgroundLines, e.field)
+	top := anchor + 1
+	if below := len(backgroundLines) - top; below < len(popoverLines) {
+		top = max(0, anchor-len(popoverLines))
+	}
+	if top+len(popoverLines) > len(backgroundLines) {
+		top = max(0, len(backgroundLines)-len(popoverLines))
+	}
+	left := min(max(0, detailPickerAnchorColumn(e.field)), max(0, textW-lipgloss.Width(popoverLines[0])))
+	for i, line := range popoverLines {
+		row := top + i
+		if row >= len(backgroundLines) {
+			break
+		}
+		base := backgroundLines[row]
+		if padding := textW - lipgloss.Width(base); padding > 0 {
+			base += strings.Repeat(" ", padding)
+		}
+		backgroundLines[row] = ansi.Cut(base, 0, left) + line + ansi.Cut(base, left+lipgloss.Width(line), textW)
+	}
+	return strings.Join(backgroundLines, "\n")
+}
+
+func detailPickerOverlayContent(m *model) (rows []string, selected int, choices []string) {
+	e := m.editor
+	switch e.mode {
+	case editorProjectPicker:
+		rows = append(rows, "Filter: "+e.projectFilter)
+		for _, project := range m.filteredProjects(e.projectFilter) {
+			choices = append(choices, project.Title)
+		}
+		if len(choices) == 0 {
+			return rows, -1, []string{"No matching Projects"}
+		}
+		return rows, e.pickerIndex, choices
+	case editorPriorityPicker:
+		for priority := range tuiTheme.priority {
+			choices = append(choices, priorityName(int64(priority)))
+		}
+		return nil, e.priorityIndex, choices
+	case editorWorkflowStatusPicker:
+		for _, bucket := range e.workflowStatus.Buckets {
+			choices = append(choices, bucket.Title)
+		}
+		if len(choices) == 0 {
+			return nil, -1, []string{"No workflow statuses"}
+		}
+		return nil, e.workflowStatusIndex, choices
+	default:
+		return nil, -1, nil
+	}
+}
+
+func renderDetailPickerChoiceRows(choices []string, selected int, mode editorMode, width int) []string {
+	innerWidth := max(1, min(36, width-4))
+	rows := make([]string, 0, len(choices))
+	for index, choice := range choices {
+		prefix := "  "
+		if index == selected {
+			prefix = "▸ "
+		}
+		choice = ansi.Truncate(choice, max(1, innerWidth-lipgloss.Width(prefix)), "")
+		row := prefix + choice
+		if index == selected {
+			color := tuiTheme.selectionAccent
+			if mode == editorPriorityPicker {
+				color = priorityColor(selected)
+			}
+			row = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(color)).Render(row)
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func detailPickerAnchor(lines []string, field editorField) int {
+	labels := map[editorField]string{
+		fieldProject: "Project:", fieldPriority: "Priority:", fieldWorkflowStatus: "Status:",
+	}
+	for index, line := range lines {
+		if strings.Contains(ansi.Strip(line), labels[field]) {
+			return index
+		}
+	}
+	return len(lines) / 2
+}
+
+func detailPickerAnchorColumn(field editorField) int {
+	switch field {
+	case fieldProject:
+		return lipgloss.Width("Project:  ")
+	case fieldPriority:
+		return lipgloss.Width("Priority: ")
+	case fieldWorkflowStatus:
+		return lipgloss.Width("Status:   ")
+	default:
+		return 0
+	}
 }
 
 func renderEmptyKanbanDetail(textW, textH int) string {

@@ -97,6 +97,7 @@ func (m *model) setKanbanBoard(board vimkunja.KanbanBoard) {
 	}
 	m.kanbanBucketSelected = clamp(bucket, 0, max(0, len(board.Buckets)-1))
 	m.kanbanTaskSelected = -1
+	m.kanbanTaskViewportStart = 0
 	if len(board.Buckets) > 0 && !m.pendingKanbanEmptySelection {
 		for i, task := range board.Buckets[m.kanbanBucketSelected].Tasks {
 			if task.ID == m.pendingKanbanTaskID {
@@ -273,6 +274,7 @@ func (m *model) moveKanbanSelection(delta int) {
 	row := m.kanbanTaskSelected
 	m.kanbanBucketSelected = to
 	m.kanbanTaskSelected = -1
+	m.kanbanTaskViewportStart = 0
 	if tasks := m.kanbanBoard.Buckets[to].Tasks; len(tasks) > 0 {
 		if row >= 0 && row < len(tasks) {
 			m.kanbanTaskSelected = row
@@ -393,8 +395,21 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 			header = lipgloss.NewStyle().Bold(true).Render(header)
 		}
 		lines := []string{header, ""}
-		for taskIndex, task := range bucket.Tasks {
-			lines = append(lines, renderKanbanTaskLine(task, index == m.kanbanBucketSelected && taskIndex == m.kanbanTaskSelected, contentWidth))
+		visibleTaskRows := max(1, textH-4) // Bucket border, title, and separator.
+		startTask := 0
+		if index == m.kanbanBucketSelected {
+			selected := clamp(m.kanbanTaskSelected, 0, max(0, len(bucket.Tasks)-1))
+			m.kanbanTaskViewportStart = clamp(m.kanbanTaskViewportStart, 0, max(0, len(bucket.Tasks)-visibleTaskRows))
+			if selected < m.kanbanTaskViewportStart {
+				m.kanbanTaskViewportStart = selected
+			} else if selected >= m.kanbanTaskViewportStart+visibleTaskRows {
+				m.kanbanTaskViewportStart = selected - visibleTaskRows + 1
+			}
+			startTask = m.kanbanTaskViewportStart
+		}
+		endTask := min(len(bucket.Tasks), startTask+visibleTaskRows)
+		for taskIndex, task := range bucket.Tasks[startTask:endTask] {
+			lines = append(lines, renderKanbanTaskLine(task, index == m.kanbanBucketSelected && startTask+taskIndex == m.kanbanTaskSelected, contentWidth))
 		}
 		content := fitBlock(lines, contentWidth, max(1, textH-2))
 		bucketFocused := m.focus == paneTasks && index == m.kanbanBucketSelected

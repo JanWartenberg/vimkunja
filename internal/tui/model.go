@@ -120,6 +120,7 @@ type model struct {
 	kanbanBoard                 vimkunja.KanbanBoard
 	kanbanBucketSelected        int
 	kanbanTaskSelected          int
+	kanbanTaskViewportStart     int
 	kanbanViewportStart         int
 	kanbanPicker                bool
 	kanbanPickerIndex           int
@@ -1562,7 +1563,7 @@ func (m *model) editorCursor() *tea.Cursor {
 		cursor.Shape = tea.CursorBar
 		return cursor
 	}
-	if !m.nativeEditorCursorActive() || (m.labelUI != nil && m.labelUI.deleteConfirm) || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
+	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || (m.labelUI != nil && m.labelUI.deleteConfirm) || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
 		return nil
 	}
 

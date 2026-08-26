@@ -1275,6 +1275,23 @@ func TestKanbanBucketsHaveDimBordersAndBlankHeaderRow(t *testing.T) {
 	}
 }
 
+func TestKanbanSelectionScrollsItsBucketVertically(t *testing.T) {
+	m := testModel()
+	m.kanbanActive = true
+	m.focus = paneTasks
+	m.kanbanBoard = vimkunja.KanbanBoard{Buckets: []vimkunja.KanbanBucket{{
+		ID: 1, Title: "To-Do", Tasks: []vimkunja.Task{
+			{ID: 1, Title: "One"}, {ID: 2, Title: "Two"}, {ID: 3, Title: "Three"}, {ID: 4, Title: "Four"},
+		},
+	}}}
+	m.kanbanTaskSelected = 3
+
+	view := ansi.Strip(renderKanbanBoard(m, 25, 5))
+	if !strings.Contains(view, "Four") {
+		t.Fatalf("selected card is outside the short Bucket viewport: %q", view)
+	}
+}
+
 func TestKanbanBoardUsesAvailableWidthWhenAllBucketsFit(t *testing.T) {
 	m := testModel()
 	m.kanbanActive = true
@@ -3889,6 +3906,21 @@ func TestProjectPickerKeepsSelectedProjectVisibleInNormalDetailLayout(t *testing
 	}
 }
 
+func TestDetailPickerOverlaysShortDetailWithoutClippingItsFrame(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 19
+	m.focus = paneDetail
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee", Description: "Description remains behind the picker."})
+	m.editor.field = fieldPriority
+	m.editor.mode = editorPriorityPicker
+	m.editor.priorityIndex = 3
+
+	view := ansi.Strip(renderTaskDetail(m, 80, 8))
+	if !strings.Contains(view, "╭") || !strings.Contains(view, "╰") || !strings.Contains(view, "▸ High") {
+		t.Fatalf("short Detail picker frame or selected choice was clipped: %q", view)
+	}
+}
+
 func TestProjectPickerShowsNoMatch(t *testing.T) {
 	m := testModel()
 	m.projects = []vimkunja.Project{{ID: 1, Title: "Alpha"}}
@@ -3900,7 +3932,7 @@ func TestProjectPickerShowsNoMatch(t *testing.T) {
 	m = updated.(*model)
 	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'z', Text: "z"}))
 	m = updated.(*model)
-	if m.editor.mode != editorProjectPicker || !strings.Contains(renderTaskDetail(m, 80, 20), "No match found") {
+	if m.editor.mode != editorProjectPicker || !strings.Contains(renderTaskDetail(m, 80, 20), "No matching Projects") {
 		t.Fatal("project picker did not render its no-match state")
 	}
 }
@@ -4306,9 +4338,8 @@ func TestCompactTaskDetailRetainsPickerEditing(t *testing.T) {
 	for range 6 {
 		m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
 	}
-	m.Render()
-	if m.editor.detailScroll == 0 {
-		t.Fatal("compact Project picker did not keep its selected choice visible")
+	if view := ansi.Strip(m.Render()); !strings.Contains(view, "Project 7") {
+		t.Fatalf("compact Project picker did not keep its selected choice visible: %q", view)
 	}
 }
 
@@ -4378,11 +4409,19 @@ func TestEditorViewUsesCursorShapeForCurrentMode(t *testing.T) {
 	}
 
 	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
-	m.editor.field = fieldPriority
-	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
-	view = m.View()
-	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBlock {
-		t.Fatalf("picker cursor = %#v, want block cursor", view.Cursor)
+	for _, field := range []editorField{fieldProject, fieldPriority, fieldWorkflowStatus} {
+		m.editor.field = field
+		switch field {
+		case fieldProject:
+			m.editor.mode = editorProjectPicker
+		case fieldPriority:
+			m.editor.mode = editorPriorityPicker
+		case fieldWorkflowStatus:
+			m.editor.mode = editorWorkflowStatusPicker
+		}
+		if view = m.View(); view.Cursor != nil {
+			t.Fatalf("picker %v cursor = %#v, want none", field, view.Cursor)
+		}
 	}
 }
 
@@ -4397,17 +4436,16 @@ func TestEditorViewOmitsNativeCursorWhenDisabled(t *testing.T) {
 	}
 }
 
-func TestPickerHighlightsOnlyTheFieldValue(t *testing.T) {
+func TestPickerKeepsItsFieldAnchorVisibleBehindTheOverlay(t *testing.T) {
 	tests := []struct {
 		name  string
 		field editorField
 		mode  editorMode
 		label string
-		value string
 	}{
-		{"project", fieldProject, editorProjectPicker, "Project:  ", "(none)"},
-		{"priority", fieldPriority, editorPriorityPicker, "Priority: ", "None"},
-		{"workflow status", fieldWorkflowStatus, editorWorkflowStatusPicker, "Status:   ", "unassigned"},
+		{"project", fieldProject, editorProjectPicker, "Project:  "},
+		{"priority", fieldPriority, editorPriorityPicker, "Priority: "},
+		{"workflow status", fieldWorkflowStatus, editorWorkflowStatusPicker, "Status:   "},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -4416,13 +4454,9 @@ func TestPickerHighlightsOnlyTheFieldValue(t *testing.T) {
 			m.openNewEditor()
 			m.editor.field, m.editor.mode = tc.field, tc.mode
 
-			detail := renderTaskDetail(m, 80, 20)
-			highlightedValue := tc.label + "\x1b[48;5;" + tuiTheme.selectionAccent + "m" + tc.value + "\x1b[m"
-			if !strings.Contains(detail, highlightedValue) {
-				t.Fatalf("picker value lacks highlight: %q", detail)
-			}
-			if strings.Contains(detail, "\x1b[48;5;"+tuiTheme.selectionAccent+"m"+tc.label) {
-				t.Fatalf("picker label is highlighted: %q", detail)
+			detail := ansi.Strip(renderTaskDetail(m, 80, 20))
+			if !strings.Contains(detail, "▸ "+tc.label) {
+				t.Fatalf("picker anchor is not visible behind its overlay: %q", detail)
 			}
 		})
 	}
@@ -4439,8 +4473,8 @@ func TestPriorityPickerFramesChoicesAndColoursActivePriority(t *testing.T) {
 
 	detail := renderTaskDetail(m, 80, 20)
 	plain := ansi.Strip(detail)
-	if description, frame := strings.Index(plain, "Description:"), strings.Index(plain, "╭"); description < 0 || frame <= description || !strings.Contains(plain, "╰") {
-		t.Fatalf("priority choices must be framed separately from Description: %q", plain)
+	if !strings.Contains(plain, "╭") || !strings.Contains(plain, "╰") || !strings.Contains(plain, "▸ Medium") {
+		t.Fatalf("priority choices must be framed as a complete overlay: %q", plain)
 	}
 	selected := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(priorityColor(2))).Render("▸ Medium")
 	if !strings.Contains(detail, selected) {
