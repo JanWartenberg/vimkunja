@@ -657,9 +657,13 @@ func renderDetailPickerOverlay(m *model, textW, textH int) string {
 	e.mode = mode
 
 	rows, selected, choices := detailPickerOverlayContent(m)
+	contentWidth := detailPickerContentWidth(rows, choices, textW)
+	for index, row := range rows {
+		rows[index] = padPlainRight(ansi.Truncate(row, contentWidth, ""), contentWidth)
+	}
 	_, viewportHeight := m.viewportSize()
 	if textW < modalFallbackWidth || viewportHeight < modalFallbackHeight {
-		return fitBlock(append(rows, renderDetailPickerChoiceRows(choices, selected, e.mode, textW)...), textW, textH)
+		return fitBlock(append(rows, renderDetailPickerChoiceRows(choices, selected, e.mode, contentWidth)...), textW, textH)
 	}
 	maxChoiceRows := max(1, textH-2-len(rows))
 	start := 0
@@ -667,7 +671,7 @@ func renderDetailPickerOverlay(m *model, textW, textH int) string {
 		start = clamp(selected-maxChoiceRows+1, 0, len(choices)-maxChoiceRows)
 	}
 	end := min(len(choices), start+maxChoiceRows)
-	rows = append(rows, renderDetailPickerChoiceRows(choices[start:end], selected-start, e.mode, textW)...)
+	rows = append(rows, renderDetailPickerChoiceRows(choices[start:end], selected-start, e.mode, contentWidth)...)
 	popover := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(paneBorderColor(true))).
@@ -729,16 +733,27 @@ func detailPickerOverlayContent(m *model) (rows []string, selected int, choices 
 	}
 }
 
+func detailPickerContentWidth(rows, choices []string, textW int) int {
+	width := 0
+	for _, row := range rows {
+		width = max(width, lipgloss.Width(row))
+	}
+	for _, choice := range choices {
+		width = max(width, lipgloss.Width("▸ "+choice))
+	}
+	return min(max(1, width), max(1, min(36, textW-4)))
+}
+
 func renderDetailPickerChoiceRows(choices []string, selected int, mode editorMode, width int) []string {
-	innerWidth := max(1, min(36, width-4))
+	width = max(1, width)
 	rows := make([]string, 0, len(choices))
 	for index, choice := range choices {
 		prefix := "  "
 		if index == selected {
 			prefix = "▸ "
 		}
-		choice = ansi.Truncate(choice, max(1, innerWidth-lipgloss.Width(prefix)), "")
-		row := prefix + choice
+		choice = ansi.Truncate(choice, max(1, width-lipgloss.Width(prefix)), "")
+		row := padPlainRight(prefix+choice, width)
 		if index == selected {
 			color := tuiTheme.selectionAccent
 			if mode == editorPriorityPicker {

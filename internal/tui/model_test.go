@@ -3921,6 +3921,33 @@ func TestDetailPickerOverlaysShortDetailWithoutClippingItsFrame(t *testing.T) {
 	}
 }
 
+func TestDetailPickerWidthComesFromAllChoicesNotTheCurrentViewport(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	m.projects = []vimkunja.Project{{ID: 1, Title: "A project title wide enough to set the picker width"}}
+	for id := int64(2); id <= 12; id++ {
+		m.projects = append(m.projects, vimkunja.Project{ID: id, Title: "short"})
+	}
+	m.editor = &taskEditor{field: fieldProject, mode: editorProjectPicker}
+
+	first := pickerFrameWidth(renderTaskDetail(m, 80, 14))
+	m.editor.pickerIndex = 11
+	last := pickerFrameWidth(renderTaskDetail(m, 80, 14))
+	if first == 0 || last != first {
+		t.Fatalf("picker width changed with its selected viewport: first=%d last=%d", first, last)
+	}
+}
+
+func pickerFrameWidth(view string) int {
+	for _, line := range strings.Split(ansi.Strip(view), "\n") {
+		left, right := strings.Index(line, "╭"), strings.Index(line, "╮")
+		if left >= 0 && right > left {
+			return lipgloss.Width(line[left : right+len("╮")])
+		}
+	}
+	return 0
+}
+
 func TestProjectPickerShowsNoMatch(t *testing.T) {
 	m := testModel()
 	m.projects = []vimkunja.Project{{ID: 1, Title: "Alpha"}}
@@ -4389,6 +4416,51 @@ func TestInsertFooterShowsOnlyAvailableActions(t *testing.T) {
 	}
 	if !strings.Contains(footer, "Esc normal") {
 		t.Fatalf("Insert footer = %q, want Esc normal hint", footer)
+	}
+}
+
+func TestPickerFooterDescribesPickerEscape(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	m.editor = &taskEditor{field: fieldProject, mode: editorProjectPicker}
+
+	footer := ansi.Strip(m.renderStatusBar(120))
+	if strings.Contains(footer, "[INSERT]") || strings.Contains(footer, "Esc normal") || !strings.Contains(footer, "Esc cancel") {
+		t.Fatalf("project picker footer = %q, want picker-specific cancellation hint", footer)
+	}
+}
+
+func TestLabelsOverlayOmitsTheNativeTextCursor(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	m.openNewEditor()
+	m.labelUI = &labelUI{kind: labelUIGlobalOverview}
+
+	if cursor := m.View().Cursor; cursor != nil {
+		t.Fatalf("Labels overlay cursor = %#v, want none", cursor)
+	}
+}
+
+func TestTextOnlyFallbackFitsAnExplicitTinyTerminal(t *testing.T) {
+	for _, height := range []int{8, 0} {
+		t.Run(fmt.Sprintf("%d rows", height), func(t *testing.T) {
+			m := testModel()
+			m.focus = paneDetail
+			m.openNewEditor()
+			updated, _ := m.Update(tea.WindowSizeMsg{Width: 54, Height: height})
+			m = updated.(*model)
+
+			view := ansi.Strip(m.Render())
+			lines := strings.Split(view, "\n")
+			if len(lines) != max(1, height) || strings.Contains(view, "┌") || strings.Contains(view, "╭") {
+				t.Fatalf("tiny terminal did not use text-only fallback: %q", view)
+			}
+			for _, line := range lines {
+				if lipgloss.Width(line) > 54 {
+					t.Fatalf("fallback width = %d, want <= 54: %q", lipgloss.Width(line), line)
+				}
+			}
+		})
 	}
 }
 

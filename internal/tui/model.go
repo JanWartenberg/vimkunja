@@ -56,8 +56,9 @@ type model struct {
 	now                 func() time.Time
 	clipboardRead       func() (string, error)
 
-	width  int
-	height int
+	width            int
+	height           int
+	viewportReceived bool
 
 	focus                    paneID
 	ctrlWArmed               bool
@@ -511,6 +512,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = typed.Width
 		m.height = typed.Height
+		m.viewportReceived = true
 		m.normalizeDetailSelection()
 		return m, nil
 
@@ -1563,7 +1565,7 @@ func (m *model) editorCursor() *tea.Cursor {
 		cursor.Shape = tea.CursorBar
 		return cursor
 	}
-	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || (m.labelUI != nil && m.labelUI.deleteConfirm) || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
+	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
 		return nil
 	}
 
@@ -1721,6 +1723,9 @@ func (m *model) tasksPaneTextX() int {
 }
 
 func (m *model) viewportSize() (int, int) {
+	if m.viewportReceived {
+		return max(1, m.width), max(1, m.height)
+	}
 	w, h := m.width, m.height
 	if w < 40 {
 		w = 80
@@ -1752,6 +1757,9 @@ func (m *model) modalContentHeight() int {
 func (m *model) Render() string {
 	m.inlineCursorVisible = false
 	w, h := m.viewportSize()
+	if w < modalFallbackWidth || h < modalFallbackHeight {
+		return m.renderTextOnlyFallback(w, h)
+	}
 
 	// chrome: border(1 each side) + padding(0,1) -> 4 cols horizontal, 2 rows vertical
 	const chromeX = 4
@@ -1844,6 +1852,40 @@ func (m *model) Render() string {
 	}
 	status := m.renderStatusBar(w)
 	return lipgloss.JoinVertical(lipgloss.Top, content, status)
+}
+
+// renderTextOnlyFallback replaces the multi-Pane layout below the minimum
+// usable terminal size. It intentionally has no borders: a partial Pane frame
+// conveys less than a single current-context line and footer does.
+func (m *model) renderTextOnlyFallback(w, h int) string {
+	info, hint := "[Tasks]", "j/k navigate  •  :h help"
+	switch m.focus {
+	case paneProjects:
+		info, hint = "[Projects]", "j/k select  •  :h help"
+	case paneDetail:
+		info, hint = "[Detail]", "i edit  •  j/k navigate  •  :h help"
+		if m.editor != nil {
+			switch m.editor.mode {
+			case editorProjectPicker:
+				hint = "type filter  •  j/k select  •  Enter choose  •  Esc cancel"
+			case editorPriorityPicker, editorWorkflowStatusPicker:
+				hint = "j/k select  •  Enter choose  •  Esc cancel"
+			}
+		}
+	case paneHelp:
+		info, hint = "[Help]", "q/esc close"
+	case paneInfo:
+		info, hint = "[Info]", "q/esc close"
+	}
+	footer := renderFooterHints(w, info, strings.Split(hint, "  •  "), false)
+	lines := []string{"Vimkunja"}
+	for len(lines) < max(0, h-1) {
+		lines = append(lines, "")
+	}
+	if h > 0 {
+		lines = append(lines[:max(0, h-1)], footer)
+	}
+	return fitBlock(lines, w, h)
 }
 
 // focusedScrollPosition reports the focused Pane's visual viewport position.
@@ -1980,12 +2022,21 @@ func (m *model) renderStatusBar(w int) string {
 	}
 	if m.focus == paneDetail {
 		mode := "NORMAL"
-		inputActive := false
+		inputActive, pickerActive := false, false
 		if m.editor != nil {
 			switch m.editor.mode {
-			case editorInsert, editorProjectPicker, editorPriorityPicker:
+			case editorInsert:
 				mode = "INSERT"
 				inputActive = true
+			case editorProjectPicker:
+				pickerActive = true
+				hint = "[PROJECT PICKER] type filter  •  j/k select  •  Enter choose  •  Esc cancel"
+			case editorPriorityPicker:
+				pickerActive = true
+				hint = "[PRIORITY PICKER] j/k select  •  Enter choose  •  Esc cancel"
+			case editorWorkflowStatusPicker:
+				pickerActive = true
+				hint = "[STATUS PICKER] j/k select  •  Enter choose  •  Esc cancel"
 			}
 			if m.editor.dirty() {
 				mode += " [+]"
@@ -1993,6 +2044,9 @@ func (m *model) renderStatusBar(w int) string {
 		}
 		if inputActive {
 			hint = "[" + mode + "]  Esc normal"
+		} else if pickerActive {
+			// Picker hints were set above; Esc cancels the picker rather than
+			// switching the editor from Insert to Normal mode.
 		} else if m.editor != nil && m.editor.field == fieldLabels && !m.editor.labelsLoading && len(m.editor.labels) > 0 {
 			hint = "[" + mode + "]  i pick/edit  •  h/l select Label  •  :h help  •  x remove Label  •  :w save  •  :q close"
 		} else {
