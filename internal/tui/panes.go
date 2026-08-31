@@ -658,20 +658,28 @@ func renderDetailPickerOverlay(m *model, textW, textH int) string {
 
 	rows, selected, choices := detailPickerOverlayContent(m)
 	contentWidth := detailPickerContentWidth(rows, choices, textW)
-	for index, row := range rows {
-		rows[index] = padPlainRight(ansi.Truncate(row, contentWidth, ""), contentWidth)
-	}
 	_, viewportHeight := m.viewportSize()
 	if textW < modalFallbackWidth || viewportHeight < modalFallbackHeight {
+		for index, row := range rows {
+			rows[index] = padPlainRight(ansi.Truncate(row, contentWidth, ""), contentWidth)
+		}
 		return fitBlock(append(rows, renderDetailPickerChoiceRows(choices, selected, e.mode, contentWidth)...), textW, textH)
 	}
 	maxChoiceRows := max(1, textH-2-len(rows))
+	if len(choices) > maxChoiceRows {
+		// The scrollbar owns the final inner column without shortening choice
+		// labels merely because the picker happens to overflow.
+		contentWidth = min(contentWidth+1, max(1, min(36, textW-4)))
+	}
+	for index, row := range rows {
+		rows[index] = padPlainRight(ansi.Truncate(row, contentWidth, ""), contentWidth)
+	}
 	start := 0
 	if len(choices) > maxChoiceRows && selected >= 0 {
 		start = clamp(selected-maxChoiceRows+1, 0, len(choices)-maxChoiceRows)
 	}
 	end := min(len(choices), start+maxChoiceRows)
-	rows = append(rows, renderDetailPickerChoiceRows(choices[start:end], selected-start, e.mode, contentWidth)...)
+	rows = append(rows, renderDetailPickerChoiceViewport(choices, selected, start, end, e.mode, contentWidth)...)
 	popover := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(paneBorderColor(true))).
@@ -707,14 +715,13 @@ func detailPickerOverlayContent(m *model) (rows []string, selected int, choices 
 	e := m.editor
 	switch e.mode {
 	case editorProjectPicker:
-		rows = append(rows, "Filter: "+e.projectFilter)
-		for _, project := range m.filteredProjects(e.projectFilter) {
+		for _, project := range m.projects {
 			choices = append(choices, project.Title)
 		}
 		if len(choices) == 0 {
-			return rows, -1, []string{"No matching Projects"}
+			return nil, -1, []string{"No Projects"}
 		}
-		return rows, e.pickerIndex, choices
+		return nil, e.pickerIndex, choices
 	case editorPriorityPicker:
 		for priority := range tuiTheme.priority {
 			choices = append(choices, priorityName(int64(priority)))
@@ -762,6 +769,29 @@ func renderDetailPickerChoiceRows(choices []string, selected int, mode editorMod
 			row = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(color)).Render(row)
 		}
 		rows = append(rows, row)
+	}
+	return rows
+}
+
+// renderDetailPickerChoiceViewport reserves its inner-right column for the
+// picker rail. Unlike the Detail Pane scrollbar, this rail belongs to the
+// popover and must stay visible even when only a few choices fit.
+func renderDetailPickerChoiceViewport(choices []string, selected, start, end int, mode editorMode, width int) []string {
+	visible := choices[start:end]
+	if len(choices) <= len(visible) || width < 2 {
+		return renderDetailPickerChoiceRows(visible, selected-start, mode, width)
+	}
+
+	rows := renderDetailPickerChoiceRows(visible, selected-start, mode, width-1)
+	thumbStart, thumbEnd := scrollbarThumb(start, len(choices), len(visible))
+	railStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.scrollbarRail))
+	thumbStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.scrollbarThumbFocused))
+	for index, row := range rows {
+		glyph := railStyle.Render("│")
+		if index >= thumbStart && index < thumbEnd {
+			glyph = thumbStyle.Render("█")
+		}
+		rows[index] = row + glyph
 	}
 	return rows
 }

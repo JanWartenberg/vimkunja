@@ -3948,9 +3948,9 @@ func pickerFrameWidth(view string) int {
 	return 0
 }
 
-func TestProjectPickerShowsNoMatch(t *testing.T) {
+func TestProjectPickerIgnoresPrintableKeys(t *testing.T) {
 	m := testModel()
-	m.projects = []vimkunja.Project{{ID: 1, Title: "Alpha"}}
+	m.projects = []vimkunja.Project{{ID: 1, Title: "Alpha"}, {ID: 2, Title: "Zulu"}}
 	m.currentProjectID = 1
 	m.openNewEditor()
 	m.editor.field = fieldProject
@@ -3959,9 +3959,40 @@ func TestProjectPickerShowsNoMatch(t *testing.T) {
 	m = updated.(*model)
 	updated, _ = m.Update(tea.KeyPressMsg(tea.Key{Code: 'z', Text: "z"}))
 	m = updated.(*model)
-	if m.editor.mode != editorProjectPicker || !strings.Contains(renderTaskDetail(m, 80, 20), "No matching Projects") {
-		t.Fatal("project picker did not render its no-match state")
+	view := ansi.Strip(renderTaskDetail(m, 80, 20))
+	if m.editor.mode != editorProjectPicker || m.editor.projectFilter != "" || !strings.Contains(view, "Alpha") || !strings.Contains(view, "Zulu") {
+		t.Fatalf("project picker accepted printable input: filter=%q view=%q", m.editor.projectFilter, view)
 	}
+}
+
+func TestOverflowingPriorityPickerHasInternalScrollbar(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	m.editor = &taskEditor{field: fieldPriority, mode: editorPriorityPicker, priorityIndex: 3}
+
+	view := ansi.Strip(renderTaskDetail(m, 80, 5))
+	popover := pickerFrame(view)
+	if !strings.Contains(popover, "│") || !strings.Contains(popover, "█") {
+		t.Fatalf("overflowing Priority picker lacks an internal rail and thumb: %q", popover)
+	}
+}
+
+func pickerFrame(view string) string {
+	lines := strings.Split(view, "\n")
+	inside := false
+	var frame []string
+	for _, line := range lines {
+		if strings.Contains(line, "╭") {
+			inside = true
+		}
+		if inside {
+			frame = append(frame, line)
+		}
+		if inside && strings.Contains(line, "╰") {
+			break
+		}
+	}
+	return strings.Join(frame, "\n")
 }
 
 func TestAdvertisedUnimplementedCommandsExplainTheirStatus(t *testing.T) {
@@ -4359,7 +4390,7 @@ func TestCompactTaskDetailRetainsPickerEditing(t *testing.T) {
 	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
 	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
 
-	if m.editor.mode != editorProjectPicker || !strings.Contains(ansi.Strip(m.Render()), "Filter:") {
+	if m.editor.mode != editorProjectPicker || !strings.Contains(ansi.Strip(m.Render()), "Project 1") {
 		t.Fatalf("compact Project picker = mode:%v view:%q", m.editor.mode, ansi.Strip(m.Render()))
 	}
 	for range 6 {

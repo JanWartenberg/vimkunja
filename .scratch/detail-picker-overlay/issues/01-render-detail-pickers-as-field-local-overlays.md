@@ -28,10 +28,10 @@ Use one bounded, field-local popover component for the Project, Priority, and Wo
 
 - `i` on a focused picker field opens its popover. `j`/`k` and arrows select immediately; `Enter` accepts; `Esc` cancels without changing the draft.
 - `Ctrl+D`/`Ctrl+U` page by the currently visible choice-row count. `gg`/`G` select the first/last choice. Every selection movement keeps the selected choice visible.
-- Project accepts ordinary text immediately as its filter while retaining the same navigation. Query changes and Backspace reset selection and viewport scroll to the first match. `Esc` cancels the entire popover and restores the unchanged Project selection.
-- An empty Project filter renders a non-selectable `No matching Projects` row without a scrollbar; `Enter` is a no-op and retains the filter and popover. Priority and Workflow Status use the same non-selectable empty state when unavailable.
+- Project is selection-only: printable keys and Backspace do not enter or alter a filter. `Esc` cancels the entire popover and restores the unchanged Project selection. Filtering is deferred until its Normal-/Insert-mode interaction is specified.
+- An unavailable Project picker renders a non-selectable `No Projects` row; Priority and Workflow Status use the same non-selectable empty state when unavailable.
 - Every overflowing choice viewport, including a height-constrained six-choice Priority picker, shows an internal scrollbar in its reserved inner-right column.
-- On terminal resize, keep the popover open; recompute bounds and placement, preserve the Project filter and selected choice, and adjust only viewport scroll needed to keep that choice visible.
+- On terminal resize, keep the popover open; recompute bounds and placement, preserve the selected choice, and adjust only viewport scroll needed to keep that choice visible.
 - Interaction hints belong only in the one-line status footer, for pickers and other modals. Explicit confirmation answer actions remain pinned inside confirmation modals for now.
 
 ## Acceptance criteria
@@ -39,8 +39,16 @@ Use one bounded, field-local popover component for the Project, Priority, and Wo
 - [ ] Render Project, Priority, and Workflow-status controls as the shared field-local popover without changing their draft/save semantics.
 - [ ] Cover below/above anchoring, horizontal bounds, one-row viewports, and content-area coverage when no adjacent choice row fits.
 - [ ] Cover frozen Detail background, sole-active-popover emphasis, and non-intersection with Detail scrollbars.
-- [ ] Cover filtering, empty states, keyboard navigation, page/jump motions, selection visibility, internal overflow scrollbars, and resize preservation.
+- [ ] Cover selection-only Project behavior, empty states, keyboard navigation, page/jump motions, selection visibility, internal overflow scrollbars, and resize preservation.
 - [ ] Cover the `<32×9` text-only fallback and footer-only picker hints.
+
+## Next-session acceptance checks
+
+- Manually verify that Project ignores printable keys and Backspace, while `j`/`k` and `Enter` still select and accept.
+- Manually verify a height-constrained Priority picker shows its internal rail and thumb.
+- Check the reachable empty-Project state renders `No Projects` without selecting a value.
+- Decide whether `Ctrl+D`/`Ctrl+U` and `gg`/`G` remain requirements: they are specified above but not implemented. Remove that promise or implement it before closing this ticket.
+- After acceptance, mark the criteria, archive this ticket, and update `STATUS.md`.
 
 ## Further context
 

@@ -449,13 +449,12 @@ func (m *model) startEditorInsert() (tea.Model, tea.Cmd) {
 func (m *model) updateProjectPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
-	matches := m.filteredProjects(e.projectFilter)
 	switch s {
 	case "esc":
 		e.mode = editorNormal
 	case "enter":
-		if len(matches) > 0 {
-			projectID := matches[clamp(e.pickerIndex, 0, len(matches)-1)].ID
+		if len(m.projects) > 0 {
+			projectID := m.projects[clamp(e.pickerIndex, 0, len(m.projects)-1)].ID
 			if projectID != e.draft.ProjectID {
 				e.draft.ProjectID = projectID
 				// Buckets are scoped to a project's Kanban View. A bucket from
@@ -466,21 +465,10 @@ func (m *model) updateProjectPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		e.mode = editorNormal
-	case "backspace":
-		r := []rune(e.projectFilter)
-		if len(r) > 0 {
-			e.projectFilter = string(r[:len(r)-1])
-		}
-		e.pickerIndex = 0
 	case "j", "down":
-		e.pickerIndex = clamp(e.pickerIndex+1, 0, max(0, len(matches)-1))
+		e.pickerIndex = clamp(e.pickerIndex+1, 0, max(0, len(m.projects)-1))
 	case "k", "up":
-		e.pickerIndex = clamp(e.pickerIndex-1, 0, max(0, len(matches)-1))
-	default:
-		if text := k.Key().Text; text != "" {
-			e.projectFilter += text
-			e.pickerIndex = 0
-		}
+		e.pickerIndex = clamp(e.pickerIndex-1, 0, max(0, len(m.projects)-1))
 	}
 	return m, nil
 }

@@ -1866,9 +1866,7 @@ func (m *model) renderTextOnlyFallback(w, h int) string {
 		info, hint = "[Detail]", "i edit  •  j/k navigate  •  :h help"
 		if m.editor != nil {
 			switch m.editor.mode {
-			case editorProjectPicker:
-				hint = "type filter  •  j/k select  •  Enter choose  •  Esc cancel"
-			case editorPriorityPicker, editorWorkflowStatusPicker:
+			case editorProjectPicker, editorPriorityPicker, editorWorkflowStatusPicker:
 				hint = "j/k select  •  Enter choose  •  Esc cancel"
 			}
 		}
@@ -2030,7 +2028,7 @@ func (m *model) renderStatusBar(w int) string {
 				inputActive = true
 			case editorProjectPicker:
 				pickerActive = true
-				hint = "[PROJECT PICKER] type filter  •  j/k select  •  Enter choose  •  Esc cancel"
+				hint = "[PROJECT PICKER] j/k select  •  Enter choose  •  Esc cancel"
 			case editorPriorityPicker:
 				pickerActive = true
 				hint = "[PRIORITY PICKER] j/k select  •  Enter choose  •  Esc cancel"
