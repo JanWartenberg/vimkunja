@@ -3906,6 +3906,83 @@ func TestProjectPickerKeepsSelectedProjectVisibleInNormalDetailLayout(t *testing
 	}
 }
 
+func TestDetailPickersPageAndJumpUsingTheirVisibleChoiceRows(t *testing.T) {
+	cases := []struct {
+		name     string
+		setup    func(*model)
+		selected func(*model) int
+		last     int
+		visible  string
+	}{
+		{
+			name: "project",
+			setup: func(m *model) {
+				for i := 0; i < 10; i++ {
+					m.projects = append(m.projects, vimkunja.Project{ID: int64(i + 1), Title: fmt.Sprintf("Project %d", i+1)})
+				}
+				m.editor = &taskEditor{field: fieldProject, mode: editorProjectPicker}
+			},
+			selected: func(m *model) int { return m.editor.pickerIndex },
+			last:     9,
+			visible:  "Project 9",
+		},
+		{
+			name: "priority",
+			setup: func(m *model) {
+				m.editor = &taskEditor{field: fieldPriority, mode: editorPriorityPicker}
+			},
+			selected: func(m *model) int { return m.editor.priorityIndex },
+			last:     len(tuiTheme.priority) - 1,
+			visible:  "Do now",
+		},
+		{
+			name: "workflow status",
+			setup: func(m *model) {
+				buckets := make([]vimkunja.WorkflowBucket, 10)
+				for i := range buckets {
+					buckets[i] = vimkunja.WorkflowBucket{ID: int64(i + 1), Title: fmt.Sprintf("Status %d", i+1)}
+				}
+				m.editor = &taskEditor{field: fieldWorkflowStatus, mode: editorWorkflowStatusPicker, workflowStatus: vimkunja.WorkflowStatus{Buckets: buckets}}
+			},
+			selected: func(m *model) int { return m.editor.workflowStatusIndex },
+			last:     9,
+			visible:  "Status 9",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testModel()
+			m.width, m.height = 80, 19 // Four visible picker choice rows.
+			m.focus, m.showDetail = paneDetail, true
+			tc.setup(m)
+
+			m = pressKey(m, tea.Key{Code: 'd', Mod: tea.ModCtrl})
+			if got := tc.selected(m); got != 4 {
+				t.Fatalf("Ctrl-D selected %d, want one four-row picker page", got)
+			}
+			m = pressKey(m, tea.Key{Code: 'u', Mod: tea.ModCtrl})
+			if got := tc.selected(m); got != 0 {
+				t.Fatalf("Ctrl-U selected %d, want first choice", got)
+			}
+			m = pressKey(m, tea.Key{Code: 'd', Mod: tea.ModCtrl})
+			m = pressKey(m, tea.Key{Code: 'd', Mod: tea.ModCtrl})
+			if got := tc.selected(m); got != min(8, tc.last) || !strings.Contains(ansi.Strip(m.Render()), tc.visible) {
+				t.Fatalf("paged picker = selected:%d view:%q, want visible %q", got, ansi.Strip(m.Render()), tc.visible)
+			}
+			m = pressKey(m, tea.Key{Code: 'G', Text: "G"})
+			if got := tc.selected(m); got != tc.last {
+				t.Fatalf("G selected %d, want last choice %d", got, tc.last)
+			}
+			m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+			m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+			if got := tc.selected(m); got != 0 {
+				t.Fatalf("gg selected %d, want first choice", got)
+			}
+		})
+	}
+}
+
 func TestDetailPickerOverlaysShortDetailWithoutClippingItsFrame(t *testing.T) {
 	m := testModel()
 	m.width, m.height = 80, 19

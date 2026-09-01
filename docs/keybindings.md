@@ -111,6 +111,8 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | --- | --- | --- |
 | `j/k`, arrows | Navigate editable fields | Implemented |
 | `i` | Enter Insert Mode or open the focused picker | Implemented |
+| Detail pickers: `j/k`, arrows, `Ctrl+D/U`, `gg/G` | Move, page by visible choices, or jump to first/last; all motions clamp at the boundary. | Implemented |
+| Project picker: printable keys / Backspace | Selection-only; typing does not filter Projects. | Implemented |
 | `Esc` | Leave Insert Mode | Implemented |
 | Insert Mode: `Ctrl+V` | Paste the system clipboard at the cursor | Implemented |
 | `:w`, `:wq`, `:wqa` | Save the Task | Implemented |

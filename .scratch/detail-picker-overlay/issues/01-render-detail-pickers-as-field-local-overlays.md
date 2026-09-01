@@ -27,7 +27,7 @@ Use one bounded, field-local popover component for the Project, Priority, and Wo
 ### Interaction
 
 - `i` on a focused picker field opens its popover. `j`/`k` and arrows select immediately; `Enter` accepts; `Esc` cancels without changing the draft.
-- `Ctrl+D`/`Ctrl+U` page by the currently visible choice-row count. `gg`/`G` select the first/last choice. Every selection movement keeps the selected choice visible.
+- All pickers support `Ctrl+D`/`Ctrl+U`, paging by the currently visible choice-row count, and `gg`/`G`, selecting the first/last choice. Every selection movement keeps the selected choice visible. This uniform behavior is retained even for short pickers, where paging simply clamps at the respective boundary.
 - Project is selection-only: printable keys and Backspace do not enter or alter a filter. `Esc` cancels the entire popover and restores the unchanged Project selection. Filtering is deferred until its Normal-/Insert-mode interaction is specified.
 - An unavailable Project picker renders a non-selectable `No Projects` row; Priority and Workflow Status use the same non-selectable empty state when unavailable.
 - Every overflowing choice viewport, including a height-constrained six-choice Priority picker, shows an internal scrollbar in its reserved inner-right column.
@@ -47,7 +47,7 @@ Use one bounded, field-local popover component for the Project, Priority, and Wo
 - Manually verify that Project ignores printable keys and Backspace, while `j`/`k` and `Enter` still select and accept.
 - Manually verify a height-constrained Priority picker shows its internal rail and thumb.
 - Check the reachable empty-Project state renders `No Projects` without selecting a value.
-- Decide whether `Ctrl+D`/`Ctrl+U` and `gg`/`G` remain requirements: they are specified above but not implemented. Remove that promise or implement it before closing this ticket.
+- [x] Implement and test `Ctrl+D`/`Ctrl+U` plus `gg`/`G` uniformly for Project, Priority, and Workflow-status pickers.
 - After acceptance, mark the criteria, archive this ticket, and update `STATUS.md`.
 
 ## Further context

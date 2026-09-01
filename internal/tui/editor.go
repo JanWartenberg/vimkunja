@@ -449,6 +449,10 @@ func (m *model) startEditorInsert() (tea.Model, tea.Cmd) {
 func (m *model) updateProjectPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if index, handled := m.updatePickerNavigation(s, e.pickerIndex, len(m.projects)); handled {
+		e.pickerIndex = index
+		return m, nil
+	}
 	switch s {
 	case "esc":
 		e.mode = editorNormal
@@ -465,10 +469,6 @@ func (m *model) updateProjectPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		e.mode = editorNormal
-	case "j", "down":
-		e.pickerIndex = clamp(e.pickerIndex+1, 0, max(0, len(m.projects)-1))
-	case "k", "up":
-		e.pickerIndex = clamp(e.pickerIndex-1, 0, max(0, len(m.projects)-1))
 	}
 	return m, nil
 }
@@ -476,16 +476,16 @@ func (m *model) updateProjectPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updatePriorityPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if index, handled := m.updatePickerNavigation(s, e.priorityIndex, len(tuiTheme.priority)); handled {
+		e.priorityIndex = index
+		return m, nil
+	}
 	switch s {
 	case "esc":
 		e.mode = editorNormal
 	case "enter":
 		e.draft.Priority = int64(e.priorityIndex)
 		e.mode = editorNormal
-	case "j", "down":
-		e.priorityIndex = clamp(e.priorityIndex+1, 0, 5)
-	case "k", "up":
-		e.priorityIndex = clamp(e.priorityIndex-1, 0, 5)
 	}
 	return m, nil
 }
@@ -494,6 +494,10 @@ func (m *model) updateWorkflowStatusPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
 	buckets := e.workflowStatus.Buckets
+	if index, handled := m.updatePickerNavigation(s, e.workflowStatusIndex, len(buckets)); handled {
+		e.workflowStatusIndex = index
+		return m, nil
+	}
 	switch s {
 	case "esc":
 		e.mode = editorNormal
@@ -502,12 +506,46 @@ func (m *model) updateWorkflowStatusPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			e.draft.WorkflowBucketID = buckets[clamp(e.workflowStatusIndex, 0, len(buckets)-1)].ID
 		}
 		e.mode = editorNormal
-	case "j", "down":
-		e.workflowStatusIndex = clamp(e.workflowStatusIndex+1, 0, max(0, len(buckets)-1))
-	case "k", "up":
-		e.workflowStatusIndex = clamp(e.workflowStatusIndex-1, 0, max(0, len(buckets)-1))
 	}
 	return m, nil
+}
+
+// updatePickerNavigation keeps every Detail picker on the same motion
+// contract. The page size is the rendered choice viewport, not the outer Pane
+// height, so a short picker predictably clamps at its boundary.
+func (m *model) updatePickerNavigation(key string, selected, choices int) (int, bool) {
+	e := m.editor
+	last := max(0, choices-1)
+	selected = clamp(selected, 0, last)
+	if e.gArmed {
+		e.gArmed = false
+		if key == "g" {
+			return 0, true
+		}
+	}
+	switch key {
+	case "g":
+		e.gArmed = true
+		return selected, true
+	case "G", "end":
+		return last, true
+	case "home":
+		return 0, true
+	case "j", "down":
+		return clamp(selected+1, 0, last), true
+	case "k", "up":
+		return clamp(selected-1, 0, last), true
+	case "ctrl+d", "pgdown", "pagedown":
+		return clamp(selected+m.detailPickerViewportRows(), 0, last), true
+	case "ctrl+u", "pgup", "pageup":
+		return clamp(selected-m.detailPickerViewportRows(), 0, last), true
+	}
+	return selected, false
+}
+
+func (m *model) detailPickerViewportRows() int {
+	// Two rows belong to the picker frame; its content has no heading rows.
+	return max(1, m.detailTextHeight()-2)
 }
 
 func (e *taskEditor) isPickerMode() bool {

@@ -2028,13 +2028,13 @@ func (m *model) renderStatusBar(w int) string {
 				inputActive = true
 			case editorProjectPicker:
 				pickerActive = true
-				hint = "[PROJECT PICKER] j/k select  •  Enter choose  •  Esc cancel"
+				hint = "[PROJECT PICKER] j/k move  •  Ctrl+D/U page  •  gg/G jump  •  Enter choose  •  Esc cancel"
 			case editorPriorityPicker:
 				pickerActive = true
-				hint = "[PRIORITY PICKER] j/k select  •  Enter choose  •  Esc cancel"
+				hint = "[PRIORITY PICKER] j/k move  •  Ctrl+D/U page  •  gg/G jump  •  Enter choose  •  Esc cancel"
 			case editorWorkflowStatusPicker:
 				pickerActive = true
-				hint = "[STATUS PICKER] j/k select  •  Enter choose  •  Esc cancel"
+				hint = "[STATUS PICKER] j/k move  •  Ctrl+D/U page  •  gg/G jump  •  Enter choose  •  Esc cancel"
 			}
 			if m.editor.dirty() {
 				mode += " [+]"
