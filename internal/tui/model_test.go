@@ -893,6 +893,29 @@ func TestErrorFooterClearsOnNextKey(t *testing.T) {
 	}
 }
 
+func TestEscapeAtRootShowsQuitCommandOnly(t *testing.T) {
+	m := testModel()
+	m.focus = paneTasks
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if !m.quitHint || !strings.Contains(ansi.Strip(m.renderStatusBar(100)), ":q quit") {
+		t.Fatalf("root Escape = hint:%v footer:%q, want :q quit", m.quitHint, m.renderStatusBar(100))
+	}
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	if m.quitHint {
+		t.Fatal("a subsequent key retained the transient quit hint")
+	}
+
+	m.focus = paneDetail
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.mode = editorProjectPicker
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if m.quitHint {
+		t.Fatal("picker Escape must cancel the picker, not show the root quit hint")
+	}
+}
+
 func testModel() *model {
 	return NewModel(Config{Store: &fakeStore{}}).(*model)
 }

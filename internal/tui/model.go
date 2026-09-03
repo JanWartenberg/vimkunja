@@ -78,8 +78,9 @@ type model struct {
 	zArmed                   bool
 	neighbors                map[paneID]paneNeighbors
 
-	lastErr string
-	toast   string
+	lastErr  string
+	toast    string
+	quitHint bool
 
 	commandMode               bool
 	commandInput              string
@@ -364,6 +365,18 @@ func (m *model) loadTasks(projectID, viewID int64) tea.Cmd {
 	}
 }
 
+// canShowQuitHint limits Escape's quit guidance to the root browsing state.
+// Every overlay, prompt, picker, editor, and pending multi-key command owns
+// Escape for cancellation instead.
+func (m *model) canShowQuitHint() bool {
+	return (m.focus == paneProjects || m.focus == paneTasks) &&
+		m.editor == nil && m.inlineTitle == nil && m.labelUI == nil &&
+		!m.searchOpen && !m.commandMode && !m.deleteArmed && !m.deleteConfirm &&
+		!m.kanbanPicker && !m.kanbanProvisionConfirm && !m.leaderArmed &&
+		!m.viewSwitchArmed && !m.ctrlWArmed && !m.gArmed && !m.zArmed &&
+		m.overviewPrompt == overviewPromptNone && m.helpPane == nil && m.infoPane == nil
+}
+
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Vim-split style focus switching
 	if key, ok := msg.(tea.KeyMsg); ok {
@@ -376,6 +389,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// A footer error is transient feedback. The full error remains available
 		// in the session log for the future :errors pane.
 		m.lastErr = ""
+		m.quitHint = false
 
 		k := key.String()
 		kLower := strings.ToLower(k)
@@ -387,6 +401,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Quit
 		if kLower == "ctrl+c" {
 			return m, tea.Quit
+		}
+
+		if kLower == "esc" && m.canShowQuitHint() {
+			m.quitHint = true
+			return m, nil
 		}
 
 		if m.searchOpen {
@@ -2113,6 +2132,8 @@ func (m *model) renderStatusBar(w int) string {
 	switch {
 	case m.lastErr != "":
 		status = renderFooterMessage(contentWidth, info, "Error: ", m.lastErr)
+	case m.quitHint:
+		status = renderFooterMessage(contentWidth, info, "", ":q quit")
 	case m.commandMode:
 		input := ":" + m.commandInput + "_"
 		status = renderFooterMessage(contentWidth, info, ":", m.commandInput+"_")
