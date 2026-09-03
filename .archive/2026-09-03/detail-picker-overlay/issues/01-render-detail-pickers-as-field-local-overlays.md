@@ -8,7 +8,7 @@
 
 **Priority:** High
 
-**Status:** triaged
+**Status:** complete
 
 ## Decision
 
@@ -36,19 +36,18 @@ Use one bounded, field-local popover component for the Project, Priority, and Wo
 
 ## Acceptance criteria
 
-- [ ] Render Project, Priority, and Workflow-status controls as the shared field-local popover without changing their draft/save semantics.
-- [ ] Cover below/above anchoring, horizontal bounds, one-row viewports, and content-area coverage when no adjacent choice row fits.
-- [ ] Cover frozen Detail background, sole-active-popover emphasis, and non-intersection with Detail scrollbars.
-- [ ] Cover selection-only Project behavior, empty states, keyboard navigation, page/jump motions, selection visibility, internal overflow scrollbars, and resize preservation.
-- [ ] Cover the `<32×9` text-only fallback and footer-only picker hints.
+- [x] Render Project, Priority, and Workflow-status controls as the shared field-local popover without changing their draft/save semantics.
+- [x] Cover below/above anchoring, horizontal bounds, one-row viewports, and content-area coverage when no adjacent choice row fits.
+- [x] Cover frozen Detail background, sole-active-popover emphasis, and non-intersection with Detail scrollbars.
+- [x] Cover selection-only Project behavior, keyboard navigation, page/jump motions, selection visibility, internal overflow scrollbars, and resize preservation.
+- [x] Cover the `<32×9` text-only fallback and footer-only picker hints.
 
-## Next-session acceptance checks
+## Acceptance
 
-- Manually verify that Project ignores printable keys and Backspace, while `j`/`k` and `Enter` still select and accept.
-- Manually verify a height-constrained Priority picker shows its internal rail and thumb.
-- Check the reachable empty-Project state renders `No Projects` without selecting a value.
-- [x] Implement and test `Ctrl+D`/`Ctrl+U` plus `gg`/`G` uniformly for Project, Priority, and Workflow-status pickers.
-- After acceptance, mark the criteria, archive this ticket, and update `STATUS.md`.
+- [x] Project ignores printable keys and Backspace; `j`/`k` and `Enter` still select and accept.
+- [x] A height-constrained Priority picker shows its internal rail and thumb.
+- N/A: `No Projects` cannot be reached through the current UI. A database without active Projects has no Task Detail Pane from which to open the Project picker; Project creation and deletion remain future work. The renderer and Enter handler defensively support the state, but it is not a manual acceptance condition.
+- [x] `Ctrl+D`/`Ctrl+U` and `gg`/`G` work uniformly for Project, Priority, and Workflow-status pickers.
 
 ## Further context
 
