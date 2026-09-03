@@ -289,7 +289,7 @@ func renderTasks(m *model, textW, textH int) string {
 			}
 			segStyle = &s
 		case t.Done:
-			s := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true)
+			s := completedTaskStyle()
 			segStyle = &s
 		}
 		rend := func(s string) string {
@@ -332,7 +332,7 @@ func renderTasks(m *model, textW, textH int) string {
 		}
 		line := strings.Join(segments, " ")
 		if t.Done {
-			line = lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true).Render(ansi.Strip(line))
+			line = completedTaskStyle().Render(ansi.Strip(line))
 			if sel && focus {
 				chevron := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent))
 				line = chevron.Render("> ") + line + chevron.Render(" <")

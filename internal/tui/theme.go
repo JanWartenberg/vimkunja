@@ -60,6 +60,12 @@ func paneBorderColor(focused bool) string {
 	return tuiTheme.muted
 }
 
+// completedTaskStyle is shared by every Task presentation, including Global
+// Search, so completed Tasks remain consistently subdued.
+func completedTaskStyle() lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true)
+}
+
 func focusedField(text string, focused bool) string {
 	if !focused {
 		return text

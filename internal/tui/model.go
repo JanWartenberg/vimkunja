@@ -1560,6 +1560,9 @@ func (m *model) nativeEditorCursorActive() bool {
 }
 
 func (m *model) editorCursor() *tea.Cursor {
+	if m.searchOpen {
+		return nil
+	}
 	if !m.disableCursorShapes && m.inlineTitle != nil && m.inlineCursorVisible {
 		cursor := tea.NewCursor(m.inlineCursorX, m.inlineCursorY)
 		cursor.Shape = tea.CursorBar

@@ -36,6 +36,7 @@ type SearchResult struct {
 	Primary             string
 	Secondary           string
 	Snippet             string
+	Done                bool
 	Highlights          []SearchHighlight
 	SecondaryHighlights []SearchHighlight
 	SnippetHighlights   []SearchHighlight
@@ -54,7 +55,7 @@ func QuerySearch(data SearchData, query string) []SearchResult {
 		if highlights, ok := matchingHighlights(task.Title, terms); ok {
 			tasks = append(tasks, SearchResult{
 				Kind: SearchTaskResult, TaskID: task.ID, ProjectID: task.ProjectID,
-				Primary: task.Title, Secondary: projectContext(task), Highlights: highlights,
+				Primary: task.Title, Secondary: projectContext(task), Done: task.Done, Highlights: highlights,
 			})
 		}
 
@@ -64,7 +65,7 @@ func QuerySearch(data SearchData, query string) []SearchResult {
 			snippetHighlights, _ := matchingHighlights(snippet, terms)
 			descriptions = append(descriptions, SearchResult{
 				Kind: SearchDescriptionResult, TaskID: task.ID, ProjectID: task.ProjectID,
-				Primary: task.Title, Secondary: projectContext(task), Snippet: snippet,
+				Primary: task.Title, Secondary: projectContext(task), Snippet: snippet, Done: task.Done,
 				SnippetHighlights: snippetHighlights,
 			})
 		}

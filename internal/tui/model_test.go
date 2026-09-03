@@ -1077,7 +1077,7 @@ func TestGlobalSearchLocalQuitAllQuitsVimkunja(t *testing.T) {
 
 func TestGlobalSearchQueriesAndRendersTypedResults(t *testing.T) {
 	store := &fakeStore{searchData: vimkunja.SearchData{Tasks: []vimkunja.Task{{
-		ID: 7, ProjectID: 1, ProjectIdentifier: "HOME", ProjectTitle: "Home", Title: "Buy coffee", Description: "<p>Fresh coffee beans</p>",
+		ID: 7, ProjectID: 1, ProjectIdentifier: "HOME", ProjectTitle: "Home", Title: "Buy coffee", Description: "<p>Fresh coffee beans</p>", Done: true,
 	}}}}
 	m := NewModel(Config{Store: store}).(*model)
 	m.width, m.height = 100, 30
@@ -1091,12 +1091,38 @@ func TestGlobalSearchQueriesAndRendersTypedResults(t *testing.T) {
 	}
 	updated, _ = m.Update(cmd())
 	m = updated.(*model)
-	if len(m.searchResults) != 2 || m.searchResults[0].Kind != vimkunja.SearchTaskResult || m.searchResults[1].Kind != vimkunja.SearchDescriptionResult {
-		t.Fatalf("search results = %#v, want Task and Description hits", m.searchResults)
+	if len(m.searchResults) != 2 || m.searchResults[0].Kind != vimkunja.SearchTaskResult || m.searchResults[1].Kind != vimkunja.SearchDescriptionResult || !m.searchResults[0].Done || !m.searchResults[1].Done {
+		t.Fatalf("search results = %#v, want completed Task and Description hits", m.searchResults)
 	}
 	view := ansi.Strip(m.Render())
 	if !strings.Contains(view, "TASKS") || !strings.Contains(view, "DESCRIPTIONS") || strings.Contains(view, "<p>") {
 		t.Fatalf("Global Search render = %q, want typed groups without HTML", view)
+	}
+}
+
+func TestGlobalSearchCompletedTasksAreMutedAndMarked(t *testing.T) {
+	m := testModel()
+	m.searchSelected = -1
+	m.searchResults = []vimkunja.SearchResult{
+		{Kind: vimkunja.SearchDescriptionResult, Primary: "Foo", Snippet: "Completed Description", Done: true},
+		{Kind: vimkunja.SearchTaskResult, Primary: "Food"},
+	}
+
+	lines := m.renderSearchResults(40)
+	if len(lines) != 5 {
+		t.Fatalf("search lines = %q, want Description and Task groups", lines)
+	}
+	if got := ansi.Strip(lines[1]); !strings.HasSuffix(got, "[DONE]") || lipgloss.Width(got) != 40 {
+		t.Fatalf("completed Task row = %q, want right-aligned [DONE] at width 40", got)
+	}
+	if !strings.Contains(lines[1], "38;5;"+tuiTheme.muted) {
+		t.Fatalf("completed Task row lacks the shared muted colour: %q", lines[1])
+	}
+	if !strings.Contains(lines[2], "38;5;"+tuiTheme.muted) {
+		t.Fatalf("completed Description preview lacks the shared muted colour: %q", lines[2])
+	}
+	if got := ansi.Strip(lines[4]); strings.Contains(got, "[DONE]") {
+		t.Fatalf("open Task row = %q, must not show a completion marker", got)
 	}
 }
 
@@ -4602,6 +4628,18 @@ func TestEditorViewUsesCursorShapeForCurrentMode(t *testing.T) {
 		if view = m.View(); view.Cursor != nil {
 			t.Fatalf("picker %v cursor = %#v, want none", field, view.Cursor)
 		}
+	}
+}
+
+func TestGlobalSearchOmitsNativeEditorCursor(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.searchOpen = true
+
+	if view := m.View(); view.Cursor != nil {
+		t.Fatalf("Global Search cursor = %#v, want none", view.Cursor)
 	}
 }
 

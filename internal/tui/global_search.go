@@ -507,24 +507,40 @@ func (m *model) renderSearchResults(width int) []string {
 	for index := start; index < end; index++ {
 		result := m.searchResults[index]
 		if result.Kind != lastKind {
-			lines = append(lines, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.muted)).Render(searchGroupTitle(result.Kind)))
+			lines = append(lines, lipgloss.NewStyle().Bold(true).Render(searchGroupTitle(result.Kind)))
 			lastKind = result.Kind
 		}
 		prefix := "  "
 		if index == m.searchSelected {
 			prefix = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(">") + " "
 		}
-		primary := truncateSearchHighlights(result.Primary, result.Highlights, max(1, width-lipgloss.Width(prefix)))
-		line := prefix + primary
+		doneMarker := ""
+		if result.Done {
+			doneMarker = "[DONE]"
+		}
+		contentWidth := max(1, width-lipgloss.Width(prefix)-lipgloss.Width(doneMarker))
+		if doneMarker != "" {
+			contentWidth = max(1, contentWidth-1) // reserve a separating space
+		}
+		primary := truncateSearchHighlights(result.Primary, result.Highlights, contentWidth)
+		content := primary
 		if result.Secondary != "" {
-			available := max(0, width-lipgloss.Width(line)-2)
+			available := max(0, contentWidth-lipgloss.Width(content)-2)
 			if available > 0 {
-				line += "  " + truncateSearchHighlights(result.Secondary, result.SecondaryHighlights, available)
+				content += "  " + truncateSearchHighlights(result.Secondary, result.SecondaryHighlights, available)
 			}
 		}
-		lines = append(lines, line)
+		if doneMarker != "" {
+			content += strings.Repeat(" ", max(1, width-lipgloss.Width(prefix)-lipgloss.Width(content)-lipgloss.Width(doneMarker))) + doneMarker
+			content = completedTaskStyle().Render(ansi.Strip(content))
+		}
+		lines = append(lines, prefix+content)
 		if result.Snippet != "" {
-			lines = append(lines, "    "+truncateSearchHighlights(result.Snippet, result.SnippetHighlights, max(1, width-4)))
+			snippet := "    " + truncateSearchHighlights(result.Snippet, result.SnippetHighlights, max(1, width-4))
+			if result.Done {
+				snippet = completedTaskStyle().Render(ansi.Strip(snippet))
+			}
+			lines = append(lines, snippet)
 		}
 	}
 	return lines
