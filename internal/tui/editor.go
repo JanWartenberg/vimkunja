@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,6 +35,7 @@ const (
 	editorProjectPicker
 	editorPriorityPicker
 	editorWorkflowStatusPicker
+	editorDueDatePicker
 )
 
 type taskEditor struct {
@@ -45,22 +47,26 @@ type taskEditor struct {
 	mode      editorMode
 	cursor    int // rune offset in the active text field
 
-	projectFilter         string
-	fieldViewportStart    int
-	pickerIndex           int
-	priorityIndex         int
-	workflowStatusIndex   int
-	descScroll            int
-	detailScroll          int
-	moreFieldsExpanded    bool
-	descriptionActive     bool
-	descriptionNavigated  bool
-	labelSelected         int
-	labels                []vimkunja.Label
-	labelsLoading         bool
-	gArmed                bool
-	workflowStatus        vimkunja.WorkflowStatus
-	workflowStatusLoading bool
+	projectFilter           string
+	fieldViewportStart      int
+	pickerIndex             int
+	priorityIndex           int
+	workflowStatusIndex     int
+	dueDatePickerSelected   int
+	dueDatePickerDateCursor int
+	dueDatePickerInputs     [3]string // days, weeks, months
+	descScroll              int
+	detailScroll            int
+	moreFieldsExpanded      bool
+	descriptionActive       bool
+	descriptionNavigated    bool
+	labelSelected           int
+	labels                  []vimkunja.Label
+	labelsLoading           bool
+	gArmed                  bool
+	dArmed                  bool
+	workflowStatus          vimkunja.WorkflowStatus
+	workflowStatusLoading   bool
 }
 
 func (m *model) openNewEditor() {
@@ -140,6 +146,8 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updatePriorityPicker(k)
 	case editorWorkflowStatusPicker:
 		return m.updateWorkflowStatusPicker(k)
+	case editorDueDatePicker:
+		return m.updateDueDatePicker(k)
 	case editorInsert:
 		return m.updateEditorInsert(k)
 	default:
@@ -205,9 +213,33 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if e.gArmed {
 		e.gArmed = false
-		if s == "g" && e.field == fieldDescription {
-			e.cursor = 0
-			e.descScroll = 0
+		switch s {
+		case "g":
+			if e.field == fieldDescription {
+				e.cursor = 0
+				e.descScroll = 0
+			}
+		case "t":
+			m.focusDetailField(fieldTitle)
+			e.cursor = e.fieldRuneLen()
+			return m.startEditorInsert()
+		case "d":
+			m.focusDetailField(fieldDueDate)
+			return m.openDueDatePicker()
+		case "p":
+			m.focusDetailField(fieldPriority)
+			e.mode = editorPriorityPicker
+			e.priorityIndex = int(e.draft.Priority)
+		case "l":
+			m.focusDetailField(fieldLabels)
+			return m, m.openTaskLabelPicker()
+		}
+		return m, nil
+	}
+	if e.dArmed {
+		e.dArmed = false
+		if s == "d" {
+			e.clearOptionalField()
 		}
 		return m, nil
 	}
@@ -267,9 +299,18 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m.startEditorInsert()
 		}
 	}
-	if s == "x" && e.field == fieldDone {
-		e.draft.Done = !e.draft.Done
-		e.draft.DoneSet = e.draft.Done != e.original.Done
+	if s == "x" {
+		if e.clearOptionalField() {
+			return m, nil
+		}
+		if e.field == fieldDone {
+			e.draft.Done = !e.draft.Done
+			e.draft.DoneSet = e.draft.Done != e.original.Done
+			return m, nil
+		}
+	}
+	if s == "d" && e.optionalFieldClearable() {
+		e.dArmed = true
 		return m, nil
 	}
 	if e.field == fieldLabels {
@@ -304,10 +345,10 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case fieldDone:
 			return m, nil
 		default:
-			if e.field == fieldDueDate && e.draft.DueDate == "" {
-				e.draft.DueDate = "YYYY-MM-DD"
-				e.cursor = 0
-			} else if e.field != fieldDescription && e.field != fieldTitle {
+			if e.field == fieldDueDate {
+				return m.openDueDatePicker()
+			}
+			if e.field != fieldDescription && e.field != fieldTitle {
 				// Title and Description preserve their Normal-mode cursor position on `i`.
 				e.cursor = e.fieldRuneLen()
 			}
@@ -315,7 +356,7 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if s == "g" && e.field == fieldDescription {
+	if s == "g" {
 		e.gArmed = true
 		return m, nil
 	}
@@ -471,6 +512,151 @@ func (m *model) updateProjectPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		e.mode = editorNormal
 	}
 	return m, nil
+}
+
+func (e *taskEditor) optionalFieldClearable() bool {
+	return e.field == fieldDueDate || e.field == fieldPriority
+}
+
+func (e *taskEditor) clearOptionalField() bool {
+	switch e.field {
+	case fieldDueDate:
+		e.draft.DueDate = ""
+		e.cursor = 0
+	case fieldPriority:
+		e.draft.Priority = 0
+	default:
+		return false
+	}
+	return true
+}
+
+func (m *model) focusDetailField(field editorField) {
+	e := m.editor
+	e.field = field
+	e.descriptionActive = false
+	e.descriptionNavigated = false
+	if m.compactDetail() && field != fieldTitle && field != fieldDescription {
+		e.moreFieldsExpanded = true
+	}
+	m.ensureDetailFieldVisible()
+}
+
+func (m *model) openDueDatePicker() (tea.Model, tea.Cmd) {
+	e := m.editor
+	if e.draft.DueDate == "" {
+		e.draft.DueDate = "YYYY-MM-DD"
+		e.cursor = 0
+	}
+	e.dueDatePickerSelected = 0
+	e.dueDatePickerInputs = [3]string{}
+	e.dueDatePickerDateCursor = e.cursor
+	e.mode = editorDueDatePicker
+	m.cursorVisible = true
+	return m, cursorBlinkCmd()
+}
+
+// updateDueDatePicker combines the existing masked date entry with relative
+// helpers. Relative values remain a draft until Enter, so changing a helper
+// selection or pressing Esc cannot overwrite a manually entered date.
+func (m *model) updateDueDatePicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	e := m.editor
+	s := k.String()
+	if index, handled := m.updatePickerNavigation(s, e.dueDatePickerSelected, 4); handled {
+		if e.dueDatePickerSelected == 0 {
+			e.dueDatePickerDateCursor = e.cursor
+		}
+		e.dueDatePickerSelected = index
+		if index > 0 && index < 4 {
+			e.cursor = len([]rune(e.dueDatePickerInputs[index-1]))
+		} else if index == 0 {
+			e.cursor = clamp(e.dueDatePickerDateCursor, 0, e.fieldRuneLen())
+		}
+		return m, nil
+	}
+	switch s {
+	case "ctrl+v":
+		return m, m.pasteClipboard(e)
+	case "esc":
+		e.mode = editorNormal
+		return m, nil
+	case "enter":
+		if e.dueDatePickerSelected == 0 {
+			e.mode = editorNormal
+			return m, nil
+		}
+		input := e.dueDatePickerInputs[e.dueDatePickerSelected-1]
+		n, err := strconv.Atoi(input)
+		if err != nil || n < 0 {
+			m.recordError(fmt.Errorf("enter a non-negative whole number"))
+			return m, nil
+		}
+		now := m.currentTime()
+		switch e.dueDatePickerSelected {
+		case 1:
+			e.draft.DueDate = now.AddDate(0, 0, n).Format("2006-01-02")
+		case 2:
+			e.draft.DueDate = now.AddDate(0, 0, 7*n).Format("2006-01-02")
+		case 3:
+			e.draft.DueDate = now.AddDate(0, n, 0).Format("2006-01-02")
+		}
+		e.mode = editorNormal
+		return m, nil
+	case "backspace":
+		if e.dueDatePickerSelected == 0 {
+			e.deleteDueDateDigit(-1)
+		} else if e.dueDatePickerSelected < 4 {
+			e.setDueDatePickerInput(deleteTextBeforeCursor(e.dueDatePickerInput(), &e.cursor))
+		}
+		return m, nil
+	case "delete":
+		if e.dueDatePickerSelected == 0 {
+			e.deleteDueDateDigit(0)
+		} else if e.dueDatePickerSelected < 4 {
+			e.setDueDatePickerInput(deleteTextAtCursor(e.dueDatePickerInput(), &e.cursor))
+		}
+		return m, nil
+	case "left":
+		if e.dueDatePickerSelected == 0 {
+			e.moveCursor(-1)
+		} else if e.dueDatePickerSelected < 4 {
+			moveTextCursor(&e.cursor, e.dueDatePickerInput(), -1)
+		}
+		return m, nil
+	case "right":
+		if e.dueDatePickerSelected == 0 {
+			e.moveCursor(1)
+		} else if e.dueDatePickerSelected < 4 {
+			moveTextCursor(&e.cursor, e.dueDatePickerInput(), 1)
+		}
+		return m, nil
+	}
+	if text := k.Key().Text; text != "" {
+		if e.dueDatePickerSelected == 0 {
+			m.insertEditorText(text)
+		} else if e.dueDatePickerSelected < 4 {
+			for _, r := range text {
+				if r >= '0' && r <= '9' {
+					e.setDueDatePickerInput(insertTextAtCursor(e.dueDatePickerInput(), &e.cursor, string(r)))
+				}
+			}
+		}
+	}
+	return m, nil
+}
+
+func (e *taskEditor) dueDatePickerInput() string {
+	if e.dueDatePickerSelected < 1 || e.dueDatePickerSelected > 3 {
+		return ""
+	}
+	return e.dueDatePickerInputs[e.dueDatePickerSelected-1]
+}
+
+func (e *taskEditor) setDueDatePickerInput(value string) {
+	if e.dueDatePickerSelected < 1 || e.dueDatePickerSelected > 3 {
+		return
+	}
+	e.dueDatePickerInputs[e.dueDatePickerSelected-1] = value
 }
 
 func (m *model) updatePriorityPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {

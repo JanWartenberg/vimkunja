@@ -728,7 +728,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.PasteMsg:
-		if m.focus == paneDetail && m.editor != nil && m.editor.mode == editorInsert {
+		if m.focus == paneDetail && m.editor != nil && (m.editor.mode == editorInsert || (m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) {
 			m.insertEditorText(typed.Content)
 		}
 		return m, nil
@@ -738,13 +738,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
-		if m.focus == paneDetail && m.editor == typed.editor && m.editor.mode == editorInsert {
+		if m.focus == paneDetail && m.editor == typed.editor && (m.editor.mode == editorInsert || (m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) {
 			m.insertEditorText(typed.text)
 		}
 		return m, nil
 
 	case cursorBlinkMsg:
-		if m.focus == paneDetail && m.editor != nil && m.editor.mode == editorInsert {
+		if m.focus == paneDetail && m.editor != nil && (m.editor.mode == editorInsert || m.editor.dueDatePickerActive()) {
 			m.cursorVisible = !m.cursorVisible
 			return m, cursorBlinkCmd()
 		}
@@ -1587,7 +1587,7 @@ func (m *model) editorCursor() *tea.Cursor {
 		cursor.Shape = tea.CursorBar
 		return cursor
 	}
-	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
+	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.editor.dueDatePickerActive() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
 		return nil
 	}
 
@@ -2057,6 +2057,9 @@ func (m *model) renderStatusBar(w int) string {
 			case editorWorkflowStatusPicker:
 				pickerActive = true
 				hint = "[STATUS PICKER] j/k move  •  Ctrl+D/U page  •  gg/G jump  •  Enter choose  •  Esc cancel"
+			case editorDueDatePicker:
+				pickerActive = true
+				hint = "[DUE DATE] j/k move  •  digits enter  •  Enter choose  •  Esc cancel"
 			}
 			if m.editor.dirty() {
 				mode += " [+]"
@@ -2069,8 +2072,14 @@ func (m *model) renderStatusBar(w int) string {
 			// switching the editor from Insert to Normal mode.
 		} else if m.editor != nil && m.editor.field == fieldLabels && !m.editor.labelsLoading && len(m.editor.labels) > 0 {
 			hint = "[" + mode + "]  i pick/edit  •  h/l select Label  •  :h help  •  x remove Label  •  :w save  •  :q close"
+		} else if m.editor != nil && m.editor.gArmed {
+			hint = "[FIELD] t title  •  d due date  •  p priority  •  l labels  •  Esc cancel"
+		} else if m.editor != nil && m.editor.dArmed {
+			hint = "[DELETE FIELD] d clear  •  Esc cancel"
+		} else if m.editor != nil && m.editor.optionalFieldClearable() {
+			hint = "[" + mode + "]  x/dd clear  •  i edit  •  j/k navigate  •  :h help  •  gt title  •  gd due  •  gp priority  •  gl labels  •  :w save  •  :q close"
 		} else {
-			hint = "[" + mode + "]  i edit  •  j/k navigate  •  :h help  •  :w save  •  :q close  •  Ctrl+W switch pane"
+			hint = "[" + mode + "]  i edit  •  j/k navigate  •  :h help  •  gt title  •  gd due  •  gp priority  •  gl labels  •  :w save  •  :q close  •  Ctrl+W switch pane"
 		}
 	}
 	if m.focus == paneHelp {

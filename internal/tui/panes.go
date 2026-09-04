@@ -507,7 +507,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	due := e.draft.DueDate
 	if due == "" {
 		due = placeholderText("-")
-	} else if !(e.mode == editorInsert && e.field == fieldDueDate) {
+	} else if !e.dueDatePickerActive() && !(e.mode == editorInsert && e.field == fieldDueDate) {
 		due = ansi.Strip(duePresentation(vimkunja.Task{DueDate: due}, due, m.currentTime()))
 	}
 	priority := prioritySummary(e.draft.Priority)
@@ -524,6 +524,9 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	}
 	renderField := func(field editorField, label, value string) string {
 		active := detailFocused && e.field == field
+		if field == fieldDueDate && e.dueDatePickerActive() && e.dueDatePickerSelected != 0 {
+			active = false
+		}
 		if e.isPickerMode() {
 			return label + pickerField(value, active)
 		}
@@ -572,6 +575,11 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		renderField(fieldTitle, "Title:    ", renderMetadata(fieldTitle, title)),
 		renderField(fieldPriority, "Priority: ", renderMetadata(fieldPriority, priority)),
 		renderField(fieldDueDate, "Due Date: ", renderMetadata(fieldDueDate, m.editorText(fieldDueDate, due))),
+	)
+	if e.dueDatePickerActive() {
+		lines = append(lines, renderDueDatePickerChoices(m)...)
+	}
+	lines = append(lines,
 		renderField(fieldLabels, "Labels:   ", renderMetadata(fieldLabels, labels)),
 		renderField(fieldWorkflowStatus, "Status:   ", e.workflowStatusLabel()),
 	)
@@ -841,6 +849,9 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	detailFocused := m.focus == paneDetail
 	renderField := func(field editorField, label, value string) string {
 		active := detailFocused && e.field == field
+		if field == fieldDueDate && e.dueDatePickerActive() && e.dueDatePickerSelected != 0 {
+			active = false
+		}
 		if field == fieldLabels && active {
 			return lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Bold(true).Render("▸ "+label) + value
 		}
@@ -856,7 +867,7 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	due := e.draft.DueDate
 	if due == "" {
 		due = placeholderText("-")
-	} else if !(e.mode == editorInsert && e.field == fieldDueDate) {
+	} else if !e.dueDatePickerActive() && !(e.mode == editorInsert && e.field == fieldDueDate) {
 		due = ansi.Strip(duePresentation(vimkunja.Task{DueDate: due}, due, m.currentTime()))
 	}
 	priority := prioritySummary(e.draft.Priority)
@@ -915,6 +926,12 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 		default:
 			value := values[field]
 			body = append(body, renderField(field, value.label, value.value))
+			if field == fieldDueDate && e.dueDatePickerActive() {
+				if e.dueDatePickerSelected > 0 {
+					pickerSelectedRow = len(body) + e.dueDatePickerSelected - 1
+				}
+				body = append(body, renderDueDatePickerChoices(m)...)
+			}
 		}
 		switch {
 		case field == fieldProject && e.mode == editorProjectPicker:
@@ -1052,6 +1069,33 @@ func renderPickerChoicesFitted(choices []string, selected int, selectionColor st
 	return strings.Split(style.Render(strings.Join(rows, "\n")), "\n")
 }
 
+func (e *taskEditor) dueDatePickerActive() bool {
+	return e.mode == editorDueDatePicker && e.field == fieldDueDate
+}
+
+func renderDueDatePickerChoices(m *model) []string {
+	e := m.editor
+	labels := []string{"In days: ", "In weeks: ", "In months: "}
+	rows := make([]string, 0, len(labels))
+	for index, label := range labels {
+		selected := e.dueDatePickerSelected == index+1
+		row := "  " + label
+		input := e.dueDatePickerInputs[index]
+		if selected && m.cursorVisible && !m.nativeEditorCursorActive() {
+			input = cursorMarkedText(input, e.cursor)
+		}
+		if input == "" {
+			input = placeholderText("n")
+		}
+		row += input
+		if selected {
+			row = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render("▸ " + strings.TrimPrefix(row, "  "))
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
 func placeholderText(value string) string {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true).Render(value)
 }
@@ -1059,7 +1103,7 @@ func placeholderText(value string) string {
 // editorText marks the character at the insertion point instead of inserting a
 // printable cursor glyph, so the text never shifts while the cursor blinks.
 func (m *model) editorText(field editorField, value string) string {
-	if m.editor == nil || m.editor.mode != editorInsert || m.editor.field != field || !m.cursorVisible || m.nativeEditorCursorActive() {
+	if m.editor == nil || (m.editor.mode != editorInsert && !(m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) || m.editor.field != field || !m.cursorVisible || m.nativeEditorCursorActive() {
 		return value
 	}
 	return cursorMarkedText(value, m.editor.cursor)

@@ -110,11 +110,13 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | Binding | Action | Status |
 | --- | --- | --- |
 | `j/k`, arrows | Navigate editable fields | Implemented |
-| `i` | Enter Insert Mode or open the focused picker | Implemented |
+| `i` | Enter Insert Mode or open the focused picker; Due Date keeps its `YYYY-MM-DD` mask and shows relative-date helpers below it. | Implemented |
 | Detail pickers: `j/k`, arrows, `Ctrl+D/U`, `gg/G` | Move, page by visible choices, or jump to first/last; all motions clamp at the boundary. | Implemented |
 | Project picker: printable keys / Backspace | Selection-only; typing does not filter Projects. | Implemented |
-| `Esc` | Leave Insert Mode | Implemented |
-| Insert Mode: `Ctrl+V` | Paste the system clipboard at the cursor | Implemented |
+| `Esc` | Leave Insert Mode or the Due Date picker | Implemented |
+| Due Date picker: `j/k`, arrows; digits; `Enter` | Select masked entry or `n` days/weeks/months; confirm the selected value. | Implemented |
+| Due Date / Priority: `x` or `dd` | Clear the field in the Task draft; Due Date becomes empty and Priority becomes None. | Implemented |
+| `gt` / `gd` / `gp` / `gl` | Jump directly to and edit Title / Due Date / Priority / Labels. | Implemented |
 | `:w`, `:wq`, `:wqa` | Save the Task | Implemented |
 | `:q`, `:q!` | Close or discard the editor | Implemented |
 | `j/k` reaches Done after Workflow Status and before Description | Include Done in the field focus order | Agreed |

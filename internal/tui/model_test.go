@@ -5020,6 +5020,162 @@ func TestInlineTitleEditFocusChangeWaitsForSuccessfulSave(t *testing.T) {
 	}
 }
 
+func TestDueDatePickerSetsRelativeDatesAndKeepsMaskedEntry(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.now = func() time.Time { return time.Date(2026, time.January, 15, 15, 0, 0, 0, time.UTC) }
+	m.openNewEditor()
+	m.editor.field = fieldDueDate
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	if m.editor.mode != editorDueDatePicker || m.editor.draft.DueDate != "YYYY-MM-DD" {
+		t.Fatalf("date picker = mode:%v due:%q, want picker and mask", m.editor.mode, m.editor.draft.DueDate)
+	}
+	if rendered := ansi.Strip(renderTaskDetail(m, 80, 24)); !strings.Contains(rendered, "In days:") || !strings.Contains(rendered, "In months:") || strings.Contains(rendered, "Tomorrow") {
+		t.Fatalf("date picker choices incorrect: %q", rendered)
+	}
+
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: '3', Text: "3"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if got := m.editor.draft.DueDate; got != "2026-01-18" || m.editor.mode != editorNormal {
+		t.Fatalf("three days = due:%q mode:%v", got, m.editor.mode)
+	}
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: '2', Text: "2"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if got := m.editor.draft.DueDate; got != "2026-01-29" {
+		t.Fatalf("two weeks = %q, want 2026-01-29", got)
+	}
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	for range 3 {
+		m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	}
+	m = pressKey(m, tea.Key{Code: '1', Text: "1"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if got := m.editor.draft.DueDate; got != "2026-02-15" {
+		t.Fatalf("one month = %q, want 2026-02-15", got)
+	}
+
+}
+
+func TestDetailFieldShortcutsOpenTheirEditors(t *testing.T) {
+	cases := []struct {
+		name      string
+		key       rune
+		wantField editorField
+		wantMode  editorMode
+	}{
+		{name: "title", key: 't', wantField: fieldTitle, wantMode: editorInsert},
+		{name: "due date", key: 'd', wantField: fieldDueDate, wantMode: editorDueDatePicker},
+		{name: "priority", key: 'p', wantField: fieldPriority, wantMode: editorPriorityPicker},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testModel()
+			m.currentProjectID = 1
+			m.openNewEditor()
+			m.editor.field = fieldDescription
+
+			m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+			m = pressKey(m, tea.Key{Code: tc.key, Text: string(tc.key)})
+
+			if m.editor.field != tc.wantField || m.editor.mode != tc.wantMode {
+				t.Fatalf("g%c = field:%v mode:%v, want field:%v mode:%v", tc.key, m.editor.field, m.editor.mode, tc.wantField, tc.wantMode)
+			}
+		})
+	}
+
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.labelsLoading = false
+	m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	if m.editor.field != fieldLabels || m.labelUI == nil || m.labelUI.kind != labelUITaskPicker {
+		t.Fatalf("gl = field:%v label UI:%#v, want Labels picker", m.editor.field, m.labelUI)
+	}
+}
+
+func TestDueDateAndPriorityCanBeClearedWithXOrDD(t *testing.T) {
+	cases := []struct {
+		name  string
+		field editorField
+		keys  []tea.Key
+	}{
+		{name: "due date x", field: fieldDueDate, keys: []tea.Key{{Code: 'x', Text: "x"}}},
+		{name: "due date dd", field: fieldDueDate, keys: []tea.Key{{Code: 'd', Text: "d"}, {Code: 'd', Text: "d"}}},
+		{name: "priority x", field: fieldPriority, keys: []tea.Key{{Code: 'x', Text: "x"}}},
+		{name: "priority dd", field: fieldPriority, keys: []tea.Key{{Code: 'd', Text: "d"}, {Code: 'd', Text: "d"}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testModel()
+			m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", DueDate: "2026-10-04", Priority: 3})
+			m.editor.field = tc.field
+			for _, key := range tc.keys {
+				m = pressKey(m, key)
+			}
+			if m.editor.draft.DueDate != "" && tc.field == fieldDueDate {
+				t.Fatalf("Due Date = %q, want empty", m.editor.draft.DueDate)
+			}
+			if m.editor.draft.Priority != 0 && tc.field == fieldPriority {
+				t.Fatalf("Priority = %d, want None", m.editor.draft.Priority)
+			}
+			if !m.editor.dirty() {
+				t.Fatal("clearing optional field did not mark draft dirty")
+			}
+		})
+	}
+}
+
+func TestDetailFieldShortcutsAppearInWideFooterAndHelp(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	footer := ansi.Strip(m.renderStatusBar(240))
+	for _, want := range []string{"gt title", "gd due", "gp priority", "gl labels"} {
+		if !strings.Contains(footer, want) {
+			t.Fatalf("wide Detail footer = %q, missing %q", footer, want)
+		}
+	}
+	m.editor.field = fieldDueDate
+	if clearFooter := ansi.Strip(m.renderStatusBar(120)); !strings.Contains(clearFooter, "x/dd clear") {
+		t.Fatalf("Due Date footer = %q, missing clear hint", clearFooter)
+	}
+	help := strings.Join(helpLines, "\n")
+	for _, want := range []string{"DETAIL FIELD SHORTCUTS", "gt", "gd", "gp", "gl", "x or dd clears"} {
+		if !strings.Contains(help, want) {
+			t.Fatalf("Help missing %q", want)
+		}
+	}
+}
+
+func TestDueDatePickerClearsRelativeInputsWhenReopened(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.now = func() time.Time { return time.Date(2026, time.January, 15, 0, 0, 0, 0, time.UTC) }
+	m.openNewEditor()
+	m.editor.field = fieldDueDate
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: '3', Text: "3"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+
+	if got := m.editor.dueDatePickerInputs; got != [3]string{} {
+		t.Fatalf("reopened picker inputs = %#v, want empty", got)
+	}
+	if rendered := ansi.Strip(renderTaskDetail(m, 80, 24)); strings.Contains(rendered, "In days: 3") {
+		t.Fatalf("reopened picker retained prior days input: %q", rendered)
+	}
+}
+
 func TestNavigationKeepsValidStateAtUnavailableBoundaries(t *testing.T) {
 	m := testModel()
 	m.focus = paneTasks
