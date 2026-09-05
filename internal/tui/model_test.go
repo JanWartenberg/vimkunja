@@ -61,6 +61,10 @@ type fakeStore struct {
 	updatedDraft         vimkunja.TaskDraft
 	updatedTaskID        int64
 	updatedTaskTitle     string
+	taskComments         map[int64][]vimkunja.TaskComment
+	commentErr           error
+	savedCommentDraft    vimkunja.TaskCommentDraft
+	savedCommentTask     vimkunja.TaskDraft
 }
 
 func (f *fakeStore) ListProjects(context.Context) ([]vimkunja.Project, error) {
@@ -145,6 +149,20 @@ func (f *fakeStore) ListLabels(context.Context) ([]vimkunja.Label, error) {
 
 func (f *fakeStore) ListTaskLabels(_ context.Context, taskID int64) ([]vimkunja.Label, error) {
 	return append([]vimkunja.Label(nil), f.taskLabels[taskID]...), f.labelErr
+}
+
+func (f *fakeStore) ListTaskComments(_ context.Context, taskID int64) ([]vimkunja.TaskComment, error) {
+	return append([]vimkunja.TaskComment(nil), f.taskComments[taskID]...), f.commentErr
+}
+
+func (f *fakeStore) SaveTaskWithComment(_ context.Context, draft vimkunja.TaskDraft, comment vimkunja.TaskCommentDraft) (vimkunja.Task, vimkunja.TaskComment, error) {
+	f.savedCommentTask, f.savedCommentDraft = draft, comment
+	if f.commentErr != nil {
+		return vimkunja.Task{}, vimkunja.TaskComment{}, f.commentErr
+	}
+	created := vimkunja.TaskComment{ID: 99, TaskID: draft.ID, HTML: "<p>" + comment.Text + "</p>", Author: "Local User", Created: time.Date(2026, 9, 4, 13, 30, 0, 0, time.UTC), Updated: time.Date(2026, 9, 4, 13, 30, 0, 0, time.UTC)}
+	f.taskComments[draft.ID] = append(f.taskComments[draft.ID], created)
+	return vimkunja.Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title, Description: draft.Description, Priority: draft.Priority, DueDate: draft.DueDate}, created, nil
 }
 
 func (f *fakeStore) CreateLabel(_ context.Context, title string) (vimkunja.Label, error) {
@@ -4412,6 +4430,24 @@ func TestCompactTaskDetailCollapsesMetadataBehindMoreFields(t *testing.T) {
 	}
 }
 
+func TestExpandedCompactDetailScrollsToLabels(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 22
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.labelsLoading = false
+	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	for range 4 { // Project, Priority, Due Date, Labels
+		m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	}
+	if m.editor.field != fieldLabels || m.editor.detailScroll == 0 {
+		t.Fatalf("expanded compact navigation = field:%v scroll:%d, want Labels in a scrolled viewport", m.editor.field, m.editor.detailScroll)
+	}
+	if view := ansi.Strip(m.Render()); !strings.Contains(view, "Labels:") {
+		t.Fatalf("expanded compact Detail did not reveal Labels: %q", view)
+	}
+}
+
 func TestTaskDetailActivatesDescriptionSeparatelyFromFieldNavigation(t *testing.T) {
 	m := testModel()
 	m.width, m.height = 80, 22
@@ -4456,16 +4492,89 @@ func TestCompactTaskDetailThresholdReservesDescriptionRows(t *testing.T) {
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee", Description: "one\ntwo\nthree"})
 
 	compact := ansi.Strip(renderTaskDetail(m, 80, 8))
-	if !strings.Contains(compact, "More fields") || !strings.Contains(compact, "three") {
-		t.Fatalf("eight-row Task Detail = %q, want compact fields and three Description rows", compact)
+	if !strings.Contains(compact, "More fields") || !strings.Contains(compact, "one") || !strings.Contains(compact, "Comments (…)") {
+		t.Fatalf("eight-row Task Detail = %q, want compact fields, Description access, and Comments", compact)
 	}
 	short := ansi.Strip(renderTaskDetail(m, 80, 7))
-	if !strings.Contains(short, "one") || !strings.Contains(short, "two") {
-		t.Fatalf("short Task Detail = %q, want two Description rows", short)
+	if !strings.Contains(short, "one") || !strings.Contains(short, "Comments (…)") {
+		t.Fatalf("short Task Detail = %q, want Description access and Comments", short)
 	}
 	regular := ansi.Strip(renderTaskDetail(m, 80, 12))
-	if strings.Contains(regular, "More fields") {
-		t.Fatalf("twelve-row Task Detail remains compact: %q", regular)
+	if strings.Contains(regular, "More fields") || !strings.Contains(regular, "Priority:") || !strings.Contains(regular, "Comments (…)") {
+		t.Fatalf("twelve-row Task Detail = %q, want regular metadata and pinned Comments", regular)
+	}
+}
+
+func TestTinyActiveDescriptionUsesWholeDetailPaneAndFollowsCursor(t *testing.T) {
+	m := testModel()
+	m.focus = paneDetail
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee", Description: "one\ntwo\nthree\nfour\nfive\nsix"})
+	m.editor.field = fieldDescription
+	m.editor.descriptionActive = true
+	m.editor.mode = editorInsert
+	m.editor.cursor = len([]rune(m.editor.draft.Description))
+	m.cursorVisible = true
+
+	view := ansi.Strip(renderTaskDetail(m, 80, 8))
+	if !strings.Contains(view, "DESCRIPTION · INSERT") || !strings.Contains(view, "six") {
+		t.Fatalf("tiny active Description = %q, want focused editor following cursor", view)
+	}
+	if strings.Contains(view, "Comments") || strings.Contains(view, "More fields") {
+		t.Fatalf("tiny active Description retained Detail chrome: %q", view)
+	}
+
+	m.editor.insertText("\nseven")
+	view = ansi.Strip(renderTaskDetail(m, 80, 8))
+	if !strings.Contains(view, "seven") {
+		t.Fatalf("tiny active Description hid inserted line: %q", view)
+	}
+}
+
+func TestDescriptionNormalModeDeletesCharactersAndLines(t *testing.T) {
+	newEditor := func(text string, cursor int) *model {
+		m := testModel()
+		m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: text})
+		m.editor.field, m.editor.descriptionActive, m.editor.cursor = fieldDescription, true, cursor
+		return m
+	}
+
+	m := newEditor("abc", 1)
+	m = pressKey(m, tea.Key{Code: 'x', Text: "x"})
+	if m.editor.draft.Description != "ac" {
+		t.Fatalf("x Description = %q, want ac", m.editor.draft.Description)
+	}
+	m = newEditor("abc", 1)
+	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
+	if m.editor.draft.Description != "bc" || m.editor.cursor != 0 {
+		t.Fatalf("X Description = %q at %d, want bc at 0", m.editor.draft.Description, m.editor.cursor)
+	}
+	m = newEditor("abc\ndef", 1)
+	m = pressKey(m, tea.Key{Code: 'D', Text: "D"})
+	if m.editor.draft.Description != "a\ndef" {
+		t.Fatalf("D Description = %q, want a\\ndef", m.editor.draft.Description)
+	}
+	m = newEditor("one\ntwo\nthree", 5)
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	if m.editor.draft.Description != "one\nthree" || m.editor.cursor != 4 {
+		t.Fatalf("dd Description = %q at %d, want one\\nthree at 4", m.editor.draft.Description, m.editor.cursor)
+	}
+}
+
+func TestTinyDescriptionInsertShowsCursorOnEmptyLine(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 10
+	m.focus = paneDetail
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "one\ntwo\nthree\n"})
+	m.editor.field = fieldDescription
+	m.editor.descriptionActive = true
+	m.editor.mode = editorInsert
+	m.editor.cursor = len([]rune(m.editor.draft.Description))
+	m.cursorVisible = true
+
+	view := ansi.Strip(renderTaskDetail(m, 80, 8))
+	if !strings.Contains(view, "│") {
+		t.Fatalf("tiny empty Description line lacks insert cursor: %q", view)
 	}
 }
 
@@ -4627,8 +4736,8 @@ func TestEditorViewUsesCursorShapeForCurrentMode(t *testing.T) {
 	m.openNewEditor()
 
 	view := m.View()
-	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBlock {
-		t.Fatalf("normal editor cursor = %#v, want block cursor", view.Cursor)
+	if view.Cursor != nil {
+		t.Fatalf("normal editor cursor = %#v, want no native cursor", view.Cursor)
 	}
 
 	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
@@ -4833,8 +4942,8 @@ func TestDescriptionCursorTracksNewDoneFieldAfterSavingNewTask(t *testing.T) {
 	m = updated.(*model)
 	cursor := m.View().Cursor
 	lines := strings.Split(ansi.Strip(m.Render()), "\n")
-	if cursor == nil || cursor.Position.Y >= len(lines) || !strings.Contains(lines[cursor.Position.Y], "hello") {
-		t.Fatalf("description cursor = %#v, rendered line = %q, want description text", cursor, lines[cursor.Position.Y])
+	if cursor == nil || cursor.Shape != tea.CursorBlock || cursor.Position.Y >= len(lines) || !strings.Contains(lines[cursor.Position.Y], "hello") {
+		t.Fatalf("description cursor = %#v, rendered lines = %q, want block cursor on Description", cursor, lines)
 	}
 }
 
@@ -4848,8 +4957,8 @@ func TestDisabledDescriptionCursorRetainsRenderedFallback(t *testing.T) {
 	m.editor.mode = editorInsert
 	m.cursorVisible = true
 
-	if detail := renderTaskDetail(m, 80, 20); !strings.Contains(detail, "\x1b[7m") {
-		t.Fatalf("disabled cursor shapes lost rendered fallback: %q", detail)
+	if detail := ansi.Strip(renderTaskDetail(m, 80, 20)); !strings.Contains(detail, "he│llo") {
+		t.Fatalf("disabled cursor shapes lost vertical rendered fallback: %q", detail)
 	}
 }
 
@@ -4857,8 +4966,9 @@ func TestClosingEditorRemovesNativeCursor(t *testing.T) {
 	m := testModel()
 	m.currentProjectID = 1
 	m.openNewEditor()
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
 	if m.View().Cursor == nil {
-		t.Fatal("open editor has no native cursor")
+		t.Fatal("insert editor has no native cursor")
 	}
 
 	m.editor = nil
@@ -5101,6 +5211,378 @@ func TestDetailFieldShortcutsOpenTheirEditors(t *testing.T) {
 	}
 }
 
+func TestTaskCommentsOpenNavigateAndAppendFromDetail(t *testing.T) {
+	store := &fakeStore{taskComments: map[int64][]vimkunja.TaskComment{1: {
+		{ID: 1, TaskID: 1, HTML: "<p>First <strong>comment</strong></p>", Author: "Ada", Created: time.Date(2026, 9, 4, 10, 0, 0, 0, time.UTC)},
+		{ID: 2, TaskID: 1, HTML: "<p>Second</p>", Author: "Grace", Created: time.Date(2026, 9, 4, 11, 0, 0, 0, time.UTC)},
+	}}}
+	m := NewModel(Config{Store: store}).(*model)
+	m.width, m.height = 100, 35
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "Description"})
+	updated, cmd := m.Update(taskCommentsLoadedMsg{taskID: 1, comments: store.taskComments[1]})
+	m = updated.(*model)
+	if cmd != nil {
+		t.Fatal("loading Task Comments unexpectedly returned a command")
+	}
+
+	m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+	m = pressKey(m, tea.Key{Code: 'c', Text: "c"})
+	if m.comments == nil || m.comments.selected != 1 {
+		t.Fatalf("gc Comments state = %#v, want open with newest selected", m.comments)
+	}
+	view := ansi.Strip(m.Render())
+	for _, want := range []string{"TASK COMMENTS", "Grace", "Second"} {
+		if !strings.Contains(view, want) {
+			t.Fatalf("Comments overlay = %q, missing %q", view, want)
+		}
+	}
+	m = pressKey(m, tea.Key{Code: 'k', Text: "k"})
+	if m.comments.selected != 0 {
+		t.Fatalf("k selected Comment %d, want oldest", m.comments.selected)
+	}
+
+	m = pressKey(m, tea.Key{Code: 'a', Text: "a"})
+	m = pressKey(m, tea.Key{Text: "New comment"})
+	m.editor.draft.Title = "Renamed"
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	m = pressKey(m, tea.Key{Text: "w"})
+	updated, saveCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if saveCmd == nil {
+		t.Fatal(":w in Comment composer returned no save command")
+	}
+	updated, _ = m.Update(saveCmd())
+	m = updated.(*model)
+	if store.savedCommentDraft.Text != "New comment" || store.savedCommentTask.Title != "Renamed" {
+		t.Fatalf("atomic save received Task/Comment = %#v / %#v", store.savedCommentTask, store.savedCommentDraft)
+	}
+	if m.comments.composer != nil || len(m.comments.items) != 3 || m.comments.selected != 2 {
+		t.Fatalf("Comments after save = %#v, want new selected Comment and closed composer", m.comments)
+	}
+}
+
+func TestCommentWriteQuitSavesAndClosesOverlay(t *testing.T) {
+	store := &fakeStore{taskComments: map[int64][]vimkunja.TaskComment{1: {}}}
+	m := NewModel(Config{Store: store}).(*model)
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.commentsLoading = false
+
+	for _, key := range []tea.Key{
+		{Code: 'g', Text: "g"}, {Code: 'c', Text: "c"}, {Code: 'a', Text: "a"},
+		{Text: "First comment"}, {Code: tea.KeyEscape}, {Code: ':', Text: ":"},
+		{Text: "wq"},
+	} {
+		m = pressKey(m, key)
+	}
+	updated, saveCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if saveCmd == nil {
+		t.Fatal(":wq returned no save command")
+	}
+	updated, _ = m.Update(saveCmd())
+	m = updated.(*model)
+	if store.savedCommentDraft.Text != "First comment" {
+		t.Fatalf(":wq saved Comment = %q, want first Comment", store.savedCommentDraft.Text)
+	}
+	if m.comments != nil {
+		t.Fatalf(":wq left Comments overlay open: %#v", m.comments)
+	}
+}
+
+func TestCommentQuitClosesCleanOverlay(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.openComments()
+
+	for _, key := range []tea.Key{
+		{Code: ':', Text: ":"}, {Text: "q"}, {Code: tea.KeyEnter},
+	} {
+		m = pressKey(m, key)
+	}
+	if m.comments != nil {
+		t.Fatalf(":q left clean Comments overlay open: %#v", m.comments)
+	}
+}
+
+func TestReopeningSameTaskRejectsPreviousCommentsLoad(t *testing.T) {
+	m := testModel()
+	task := vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"}
+	m.openExistingEditor(task)
+	_ = m.loadTaskComments(task.ID)
+	oldRequest := m.editor.commentsRequest
+
+	m.openExistingEditor(task)
+	_ = m.loadTaskComments(task.ID)
+	updated, _ := m.Update(taskCommentsLoadedMsg{taskID: task.ID, request: oldRequest, comments: []vimkunja.TaskComment{{ID: 99, HTML: "stale"}}})
+	m = updated.(*model)
+	if len(m.editor.comments) != 0 {
+		t.Fatalf("reopened Task accepted previous Comments load: %#v", m.editor.comments)
+	}
+}
+
+func TestStaleInitialCommentsLoadCannotHideNewlySavedComment(t *testing.T) {
+	store := &fakeStore{taskComments: map[int64][]vimkunja.TaskComment{1: {}}}
+	m := NewModel(Config{Store: store}).(*model)
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	_ = m.loadTaskComments(1) // request 1 remains in flight with an empty snapshot
+	m.openComments()
+	m.comments.composer = &commentComposer{text: "New", mode: editorNormal}
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	m = pressKey(m, tea.Key{Text: "w"})
+	updated, saveCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	updated, _ = m.Update(saveCmd())
+	m = updated.(*model)
+	if len(m.comments.items) != 1 {
+		t.Fatalf("saved Comment count = %d, want 1", len(m.comments.items))
+	}
+
+	updated, _ = m.Update(taskCommentsLoadedMsg{taskID: 1, request: 1, comments: nil})
+	m = updated.(*model)
+	if len(m.comments.items) != 1 || m.comments.items[0].HTML != "<p>New</p>" {
+		t.Fatalf("stale load replaced saved Comment: %#v", m.comments.items)
+	}
+}
+
+func TestCommentComposerPastesSystemClipboardLikeDescription(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.comments = &commentsUI{composer: &commentComposer{mode: editorInsert}}
+	m.clipboardRead = func() (string, error) { return "pasted\ntext", nil }
+	updated, pasteCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'v', Mod: tea.ModCtrl}))
+	m = updated.(*model)
+	if pasteCmd == nil {
+		t.Fatal("Comment Ctrl+V returned no clipboard command")
+	}
+	updated, _ = m.Update(pasteCmd())
+	m = updated.(*model)
+	if got := m.comments.composer.text; got != "pasted\ntext" {
+		t.Fatalf("Comment clipboard text = %q", got)
+	}
+}
+
+func TestCommentSaveBlocksDuplicateSubmissionUntilCompletion(t *testing.T) {
+	store := &fakeStore{taskComments: map[int64][]vimkunja.TaskComment{1: {}}}
+	m := NewModel(Config{Store: store}).(*model)
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.comments = &commentsUI{composer: &commentComposer{text: "Once", mode: editorNormal}}
+
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	m = pressKey(m, tea.Key{Text: "w"})
+	updated, firstSave := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	if firstSave == nil {
+		t.Fatal("first :w returned no save command")
+	}
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	m = pressKey(m, tea.Key{Text: "w"})
+	_, duplicateSave := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	if duplicateSave != nil {
+		t.Fatal("second :w started a duplicate save while the first was in flight")
+	}
+}
+
+func TestFailedCommentSaveKeepsInitialLoadValid(t *testing.T) {
+	store := &fakeStore{taskComments: map[int64][]vimkunja.TaskComment{}, commentErr: errors.New("write failed")}
+	m := NewModel(Config{Store: store}).(*model)
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	_ = m.loadTaskComments(1)
+	request := m.editor.commentsRequest
+	m.openComments()
+	m.comments.composer = &commentComposer{text: "Draft", mode: editorNormal}
+
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	m = pressKey(m, tea.Key{Text: "w"})
+	updated, saveCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	updated, _ = m.Update(saveCmd())
+	m = updated.(*model)
+	updated, _ = m.Update(taskCommentsLoadedMsg{taskID: 1, request: request, comments: []vimkunja.TaskComment{{ID: 1, HTML: "<p>Existing</p>"}}})
+	m = updated.(*model)
+	if len(m.editor.comments) != 1 || m.editor.commentsLoading {
+		t.Fatalf("failed save invalidated initial load: comments=%#v loading=%v", m.editor.comments, m.editor.commentsLoading)
+	}
+}
+
+func TestOpeningCommentsKeepsNewestSelectedCommentBodyVisible(t *testing.T) {
+	m := testModel()
+	m.width, m.height, m.viewportReceived = 60, 16, true
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.commentsLoading = false
+	for id := int64(1); id <= 8; id++ {
+		body := fmt.Sprintf("Older body %d", id)
+		if id == 8 {
+			body = "Newest body must be visible"
+		}
+		m.editor.comments = append(m.editor.comments, vimkunja.TaskComment{ID: id, HTML: "<p>" + body + "</p>", Author: "Ada", Created: time.Date(2026, 9, 4, int(id), 0, 0, 0, time.UTC)})
+	}
+	m.openComments()
+	if view := ansi.Strip(m.Render()); !strings.Contains(view, "Newest body must be visible") {
+		t.Fatalf("newest selected Comment body is outside initial viewport: %q", view)
+	}
+}
+
+func TestTaskCommentsOverlayStaysWithinNormalAndNarrowViewports(t *testing.T) {
+	for _, size := range []struct{ width, height int }{{100, 35}, {25, 8}} {
+		t.Run(fmt.Sprintf("%dx%d", size.width, size.height), func(t *testing.T) {
+			m := testModel()
+			m.width, m.height, m.viewportReceived = size.width, size.height, true
+			m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+			m.editor.commentsLoading = false
+			m.editor.comments = []vimkunja.TaskComment{{ID: 1, TaskID: 1, HTML: "<p>Long comment content that must remain inside the available terminal viewport.</p>", Author: "Ada", Created: time.Date(2026, 9, 4, 10, 0, 0, 0, time.UTC)}}
+			m.openComments()
+			view := ansi.Strip(m.Render())
+			lines := strings.Split(view, "\n")
+			if len(lines) > size.height {
+				t.Fatalf("Comments overlay height = %d, viewport = %d", len(lines), size.height)
+			}
+			for _, line := range lines {
+				if lipgloss.Width(line) > size.width {
+					t.Fatalf("Comments overlay row width = %d, viewport = %d: %q", lipgloss.Width(line), size.width, line)
+				}
+			}
+		})
+	}
+}
+
+func TestFailedTaskCommentSaveKeepsBothDrafts(t *testing.T) {
+	store := &fakeStore{taskComments: map[int64][]vimkunja.TaskComment{}, commentErr: errors.New("database busy")}
+	m := NewModel(Config{Store: store}).(*model)
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Original"})
+	m.editor.draft.Title = "Renamed"
+	m.comments = &commentsUI{composer: &commentComposer{text: "Unsaved", mode: editorNormal}}
+
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	m = pressKey(m, tea.Key{Text: "w"})
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: tea.KeyEnter}))
+	m = updated.(*model)
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if m.editor.draft.Title != "Renamed" || m.comments.composer == nil || m.comments.composer.text != "Unsaved" {
+		t.Fatalf("failed save lost Task or Comment draft: editor=%#v comments=%#v", m.editor, m.comments)
+	}
+	if !strings.Contains(m.lastErr, "database busy") {
+		t.Fatalf("failed save error = %q", m.lastErr)
+	}
+}
+
+func TestCommentForceQuitDiscardsTaskAndCommentDrafts(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Original"})
+	m.editor.draft.Title = "Renamed"
+	m.comments = &commentsUI{composer: &commentComposer{text: "Unsaved", mode: editorNormal}}
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	m = pressKey(m, tea.Key{Text: "q!"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if m.comments != nil || m.editor.draft.Title != "Original" {
+		t.Fatalf(":q! left Comments or Task draft: comments=%#v title=%q", m.comments, m.editor.draft.Title)
+	}
+}
+
+func TestTaskDetailShowsCommentsEntryAndGNFocusesDescription(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 35
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "Description"})
+	m.editor.comments = []vimkunja.TaskComment{{ID: 1}, {ID: 2}}
+	m.editor.commentsLoading = false
+	for _, height := range []int{20, 12, 8} {
+		view := ansi.Strip(renderTaskDetail(m, 80, height))
+		if !strings.Contains(view, "Comments (2)") {
+			t.Fatalf("Task Detail height %d = %q, missing pinned Comments entry", height, view)
+		}
+	}
+	m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+	m = pressKey(m, tea.Key{Code: 'n', Text: "n"})
+	if m.editor.field != fieldDescription || m.editor.mode != editorNormal {
+		t.Fatalf("gn = field:%v mode:%v, want Description Normal Mode", m.editor.field, m.editor.mode)
+	}
+}
+
+func TestGNThenEnterActivatesDescriptionEditing(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 10
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "Text"})
+	m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+	m = pressKey(m, tea.Key{Code: 'n', Text: "n"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
+	if !m.editor.descriptionActive || m.editor.mode != editorNormal {
+		t.Fatalf("gn then Enter = active:%v mode:%v, want active Description Normal Mode", m.editor.descriptionActive, m.editor.mode)
+	}
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	if m.editor.mode != editorInsert {
+		t.Fatalf("i in active Description = mode:%v, want Insert", m.editor.mode)
+	}
+}
+
+func TestDescriptionCursorHidesWhenPinnedCommentsLeaveNoTextRow(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 30 // Detail text height is 12 rows.
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "Text"})
+	m.editor.field = fieldDescription
+	if cursor := m.View().Cursor; cursor != nil {
+		t.Fatalf("hidden Description body retained cursor %#v", cursor)
+	}
+}
+
+func TestHiddenDescriptionInExpandedCompactDetailHasNoCursor(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 22 // Compact Detail with a pinned Comments row.
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "Text"})
+	m.editor.moreFieldsExpanded = true
+	m.editor.field = fieldDescription
+	m.editor.detailScroll = 0 // Metadata fills the visible compact viewport.
+	if cursor := m.View().Cursor; cursor != nil {
+		t.Fatalf("hidden Description retained cursor %#v", cursor)
+	}
+}
+
+func TestHTMLDescriptionEditingReportsReadOnlyReason(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "<p>HTML</p>"})
+	m.editor.field = fieldDescription
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	if m.editor.mode != editorNormal || !strings.Contains(m.lastErr, "read-only") {
+		t.Fatalf("HTML Description edit = mode:%v error:%q, want Normal Mode with read-only reason", m.editor.mode, m.lastErr)
+	}
+}
+
+func TestGNThenITypesIntoPlainTextDescription(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 80, 10
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "Text"})
+	m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+	m = pressKey(m, tea.Key{Code: 'n', Text: "n"})
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m = pressKey(m, tea.Key{Text: "!"})
+	if m.editor.mode != editorInsert || m.editor.draft.Description != "!Text" {
+		t.Fatalf("gn then i = mode:%v Description:%q, want Insert !Text", m.editor.mode, m.editor.draft.Description)
+	}
+}
+
+func TestEmptyCommentEscDiscardsWithoutError(t *testing.T) {
+	m := testModel()
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.openComments()
+	m.startCommentComposer()
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
+	if m.comments == nil || m.comments.composer != nil || m.lastErr != "" {
+		t.Fatalf("Esc on empty Comment = comments:%#v error:%q, want discarded composer without error", m.comments, m.lastErr)
+	}
+}
+
+func TestGCRejectsCommentsForUnsavedTask(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m = pressKey(m, tea.Key{Code: 'g', Text: "g"})
+	m = pressKey(m, tea.Key{Code: 'c', Text: "c"})
+	if m.comments != nil || !strings.Contains(m.lastErr, "Save Task") {
+		t.Fatalf("gc on new Task = comments:%#v error:%q", m.comments, m.lastErr)
+	}
+}
+
 func TestDueDateAndPriorityCanBeClearedWithXOrDD(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -5137,8 +5619,8 @@ func TestDetailFieldShortcutsAppearInWideFooterAndHelp(t *testing.T) {
 	m := testModel()
 	m.currentProjectID = 1
 	m.openNewEditor()
-	footer := ansi.Strip(m.renderStatusBar(240))
-	for _, want := range []string{"gt title", "gd due", "gp priority", "gl labels"} {
+	footer := ansi.Strip(m.renderStatusBar(320))
+	for _, want := range []string{"gt title", "gd due", "gp priority", "gl labels", "gc comments", "gn description"} {
 		if !strings.Contains(footer, want) {
 			t.Fatalf("wide Detail footer = %q, missing %q", footer, want)
 		}
@@ -5148,7 +5630,7 @@ func TestDetailFieldShortcutsAppearInWideFooterAndHelp(t *testing.T) {
 		t.Fatalf("Due Date footer = %q, missing clear hint", clearFooter)
 	}
 	help := strings.Join(helpLines, "\n")
-	for _, want := range []string{"DETAIL FIELD SHORTCUTS", "gt", "gd", "gp", "gl", "x or dd clears"} {
+	for _, want := range []string{"DETAIL FIELD SHORTCUTS", "gt", "gd", "gp", "gl", "gc", "gn", "x or dd clears"} {
 		if !strings.Contains(help, want) {
 			t.Fatalf("Help missing %q", want)
 		}

@@ -5,13 +5,39 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"html"
 	"math"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
 )
+
+const databaseTimestampLayout = "2006-01-02 15:04:05"
+
+func utcTimestampNow() string {
+	return time.Now().UTC().Format(databaseTimestampLayout)
+}
+
+func parseDatabaseTimestamp(value string) (time.Time, error) {
+	value = strings.TrimSpace(value)
+	if monotonic := strings.Index(value, " m="); monotonic >= 0 {
+		value = value[:monotonic]
+	}
+	layouts := []string{
+		databaseTimestampLayout,
+		"2006-01-02 15:04:05.999999999 -0700 MST",
+		time.RFC3339Nano,
+	}
+	for _, layout := range layouts {
+		if parsed, err := time.ParseInLocation(layout, value, time.UTC); err == nil {
+			return parsed.UTC(), nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("unsupported database timestamp %q", value)
+}
 
 type SQLiteStore struct {
 	db *sql.DB
@@ -213,7 +239,7 @@ func (s *SQLiteStore) MoveProjectAmongSiblings(ctx context.Context, projectID in
 		}
 	}
 	siblings[selected], siblings[target] = siblings[target], siblings[selected]
-	movedAt := time.Now()
+	movedAt := utcTimestampNow()
 	for i, candidate := range siblings {
 		if _, err := tx.ExecContext(ctx, `UPDATE projects SET position = ?, updated = ? WHERE id = ?`, positions[i], movedAt, candidate.id); err != nil {
 			return fmt.Errorf("move Project: persist sibling positions: %w", err)
@@ -622,7 +648,7 @@ func (s *SQLiteStore) CreateLabel(ctx context.Context, title string) (Label, err
 	if err := ensureUniqueLabelTitle(ctx, tx, 0, title); err != nil {
 		return Label{}, err
 	}
-	now := time.Now()
+	now := utcTimestampNow()
 	result, err := tx.ExecContext(ctx, `INSERT INTO labels (title, created_by_id, created, updated)
 		VALUES (?, ?, ?, ?)`, title, createdByID, now, now)
 	if err != nil {
@@ -653,7 +679,7 @@ func (s *SQLiteStore) RenameLabel(ctx context.Context, labelID int64, title stri
 	if err := ensureUniqueLabelTitle(ctx, tx, labelID, title); err != nil {
 		return err
 	}
-	result, err := tx.ExecContext(ctx, `UPDATE labels SET title = ?, updated = ? WHERE id = ?`, title, time.Now(), labelID)
+	result, err := tx.ExecContext(ctx, `UPDATE labels SET title = ?, updated = ? WHERE id = ?`, title, utcTimestampNow(), labelID)
 	if err != nil {
 		return fmt.Errorf("rename Label: %w", err)
 	}
@@ -732,7 +758,7 @@ func onlyLocalUser(ctx context.Context, tx *sql.Tx) (int64, error) {
 		return 0, fmt.Errorf("iterate local Vikunja users: %w", err)
 	}
 	if len(userIDs) != 1 {
-		return 0, fmt.Errorf("create Label: expected exactly one local Vikunja user, found %d", len(userIDs))
+		return 0, fmt.Errorf("expected exactly one local Vikunja user, found %d", len(userIDs))
 	}
 	return userIDs[0], nil
 }
@@ -794,7 +820,7 @@ func replaceTaskLabels(ctx context.Context, tx *sql.Tx, taskID int64, labelIDs [
 	if _, err := tx.ExecContext(ctx, `DELETE FROM label_tasks WHERE task_id = ?`, taskID); err != nil {
 		return fmt.Errorf("remove Task Labels: %w", err)
 	}
-	now := time.Now()
+	now := utcTimestampNow()
 	for _, labelID := range unique {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO label_tasks (task_id, label_id, created) VALUES (?, ?, ?)`, taskID, labelID, now); err != nil {
 			return fmt.Errorf("assign Task Label: %w", err)
@@ -828,7 +854,7 @@ func (s *SQLiteStore) ProvisionStandardManualKanbanView(ctx context.Context, pro
 		return KanbanBoard{}, fmt.Errorf("project already has %d manual kanban views", manualViewCount)
 	}
 
-	now := time.Now()
+	now := utcTimestampNow()
 	result, err := tx.ExecContext(ctx, `
 		INSERT INTO project_views (project_id, title, view_kind, position, bucket_configuration_mode, created, updated)
 		VALUES (?, 'Kanban', ?, 400, ?, ?, ?)
@@ -1138,9 +1164,9 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 	done := view.doneBucketID.Valid && view.doneBucketID.Int64 == bucketID
 	var doneAt any
 	if done {
-		doneAt = time.Now()
+		doneAt = utcTimestampNow()
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`, boolToInt(done), doneAt, time.Now(), taskID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`, boolToInt(done), doneAt, utcTimestampNow(), taskID); err != nil {
 		return fmt.Errorf("update task workflow done state: %w", err)
 	}
 	result, err := tx.ExecContext(ctx, `UPDATE task_buckets SET bucket_id = ? WHERE task_id = ? AND project_view_id = ?`, bucketID, taskID, view.id)
@@ -1215,9 +1241,9 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 func setTaskDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool) error {
 	var doneAt any
 	if done {
-		doneAt = time.Now()
+		doneAt = utcTimestampNow()
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`, boolToInt(done), doneAt, time.Now(), taskID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`, boolToInt(done), doneAt, utcTimestampNow(), taskID); err != nil {
 		return fmt.Errorf("set task done state: %w", err)
 	}
 	if err := syncTaskBucketsForDoneState(ctx, tx, taskID, done); err != nil {
@@ -1286,6 +1312,72 @@ func (s *SQLiteStore) DeleteTask(ctx context.Context, taskID int64) error {
 	return nil
 }
 
+func (s *SQLiteStore) ListTaskComments(ctx context.Context, taskID int64) ([]TaskComment, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT tc.id, tc.task_id, tc.comment,
+			COALESCE(NULLIF(TRIM(u.name), ''), u.username, 'Unknown user'),
+			CAST(tc.created AS TEXT), COALESCE(CAST(tc.updated AS TEXT), CAST(tc.created AS TEXT))
+		FROM task_comments tc
+		LEFT JOIN users u ON u.id = tc.author_id
+		WHERE tc.task_id = ?
+		ORDER BY tc.created ASC, tc.id ASC`, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("list Task Comments: %w", err)
+	}
+	defer rows.Close()
+	comments := make([]TaskComment, 0)
+	for rows.Next() {
+		var comment TaskComment
+		var created, updated string
+		if err := rows.Scan(&comment.ID, &comment.TaskID, &comment.HTML, &comment.Author, &created, &updated); err != nil {
+			return nil, fmt.Errorf("scan Task Comment: %w", err)
+		}
+		comment.Created, err = parseDatabaseTimestamp(created)
+		if err != nil {
+			return nil, fmt.Errorf("parse Task Comment created time: %w", err)
+		}
+		comment.Updated, err = parseDatabaseTimestamp(updated)
+		if err != nil {
+			return nil, fmt.Errorf("parse Task Comment updated time: %w", err)
+		}
+		comments = append(comments, comment)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate Task Comments: %w", err)
+	}
+	sort.SliceStable(comments, func(i, j int) bool {
+		if comments[i].Created.Equal(comments[j].Created) {
+			return comments[i].ID < comments[j].ID
+		}
+		return comments[i].Created.Before(comments[j].Created)
+	})
+	return comments, nil
+}
+
+func taskCommentHTML(text string) (string, error) {
+	text = strings.TrimSpace(strings.ReplaceAll(text, "\r\n", "\n"))
+	if text == "" {
+		return "", fmt.Errorf("Comment text is required")
+	}
+	paragraphs := strings.Split(text, "\n\n")
+	encoded := make([]string, 0, len(paragraphs))
+	for _, paragraph := range paragraphs {
+		paragraph = strings.TrimSpace(paragraph)
+		if paragraph == "" {
+			continue
+		}
+		lines := strings.Split(paragraph, "\n")
+		for index := range lines {
+			lines[index] = html.EscapeString(lines[index])
+		}
+		encoded = append(encoded, "<p>"+strings.Join(lines, "<br>")+"</p>")
+	}
+	if len(encoded) == 0 {
+		return "", fmt.Errorf("Comment text is required")
+	}
+	return strings.Join(encoded, ""), nil
+}
+
 func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, error) {
 	if err := validateDraft(draft); err != nil {
 		return Task{}, err
@@ -1313,7 +1405,7 @@ func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, er
 	if err != nil {
 		return Task{}, err
 	}
-	now := time.Now()
+	now := utcTimestampNow()
 	result, err := tx.ExecContext(ctx, `
 		INSERT INTO tasks (title, description, done, due_date, project_id, priority, "index", created, updated, created_by_id)
 		VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
@@ -1361,7 +1453,7 @@ func (s *SQLiteStore) UpdateTaskTitle(ctx context.Context, taskID int64, title s
 	if strings.TrimSpace(title) == "" {
 		return fmt.Errorf("title is required")
 	}
-	result, err := s.db.ExecContext(ctx, `UPDATE tasks SET title = ?, updated = ? WHERE id = ?`, title, time.Now(), taskID)
+	result, err := s.db.ExecContext(ctx, `UPDATE tasks SET title = ?, updated = ? WHERE id = ?`, title, utcTimestampNow(), taskID)
 	if err != nil {
 		return fmt.Errorf("update task title: %w", err)
 	}
@@ -1387,7 +1479,61 @@ func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, er
 		return Task{}, fmt.Errorf("begin update task transaction: %w", err)
 	}
 	defer tx.Rollback()
+	task, err := updateTaskInTx(ctx, tx, draft)
+	if err != nil {
+		return Task{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return Task{}, fmt.Errorf("commit update task: %w", err)
+	}
+	return task, nil
+}
 
+func (s *SQLiteStore) SaveTaskWithComment(ctx context.Context, draft TaskDraft, commentDraft TaskCommentDraft) (Task, TaskComment, error) {
+	if draft.ID == 0 {
+		return Task{}, TaskComment{}, fmt.Errorf("save Task with Comment: Task must be persisted")
+	}
+	if err := validateDraft(draft); err != nil {
+		return Task{}, TaskComment{}, err
+	}
+	commentHTML, err := taskCommentHTML(commentDraft.Text)
+	if err != nil {
+		return Task{}, TaskComment{}, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Task{}, TaskComment{}, fmt.Errorf("begin Task Comment transaction: %w", err)
+	}
+	defer tx.Rollback()
+	actorID, err := onlyLocalUser(ctx, tx)
+	if err != nil {
+		return Task{}, TaskComment{}, fmt.Errorf("create Task Comment: %w", err)
+	}
+	task, err := updateTaskInTx(ctx, tx, draft)
+	if err != nil {
+		return Task{}, TaskComment{}, err
+	}
+	now := utcTimestampNow()
+	result, err := tx.ExecContext(ctx, `INSERT INTO task_comments (comment, author_id, task_id, created, updated) VALUES (?, ?, ?, ?, ?)`, commentHTML, actorID, draft.ID, now, now)
+	if err != nil {
+		return Task{}, TaskComment{}, fmt.Errorf("insert Task Comment: %w", err)
+	}
+	commentID, err := result.LastInsertId()
+	if err != nil {
+		return Task{}, TaskComment{}, fmt.Errorf("get Task Comment id: %w", err)
+	}
+	var author string
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(NULLIF(TRIM(name), ''), username) FROM users WHERE id = ?`, actorID).Scan(&author); err != nil {
+		return Task{}, TaskComment{}, fmt.Errorf("get Task Comment author: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return Task{}, TaskComment{}, fmt.Errorf("commit Task Comment: %w", err)
+	}
+	created, _ := parseDatabaseTimestamp(now)
+	return task, TaskComment{ID: commentID, TaskID: draft.ID, HTML: commentHTML, Author: author, Created: created, Updated: created}, nil
+}
+
+func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, error) {
 	var oldProjectID int64
 	var done bool
 	if err := tx.QueryRowContext(ctx, `SELECT project_id, done FROM tasks WHERE id = ?`, draft.ID).Scan(&oldProjectID, &done); err != nil {
@@ -1412,7 +1558,7 @@ func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, er
 	} else if err := tx.QueryRowContext(ctx, `SELECT "index" FROM tasks WHERE id = ?`, draft.ID).Scan(&index); err != nil {
 		return Task{}, fmt.Errorf("get task index: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET title = ?, description = ?, due_date = ?, project_id = ?, priority = ?, "index" = ?, updated = ? WHERE id = ?`, draft.Title, draft.Description, dueDate, draft.ProjectID, draft.Priority, index, time.Now(), draft.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET title = ?, description = ?, due_date = ?, project_id = ?, priority = ?, "index" = ?, updated = ? WHERE id = ?`, draft.Title, draft.Description, dueDate, draft.ProjectID, draft.Priority, index, utcTimestampNow(), draft.ID); err != nil {
 		return Task{}, fmt.Errorf("update task: %w", err)
 	}
 	if oldProjectID != draft.ProjectID {
@@ -1427,8 +1573,6 @@ func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, er
 			return Task{}, fmt.Errorf("get updated task done state: %w", err)
 		}
 	}
-	// Done is applied last so its configured Done/Default Bucket rule wins
-	// over a simultaneously selected Workflow Status.
 	if draft.DoneSet {
 		if err := setTaskDoneState(ctx, tx, draft.ID, draft.Done); err != nil {
 			return Task{}, err
@@ -1439,9 +1583,6 @@ func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, er
 		if err := replaceTaskLabels(ctx, tx, draft.ID, draft.LabelIDs); err != nil {
 			return Task{}, err
 		}
-	}
-	if err := tx.Commit(); err != nil {
-		return Task{}, fmt.Errorf("commit update task: %w", err)
 	}
 	return Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title, Description: draft.Description, Priority: draft.Priority, DueDate: draft.DueDate, Index: index, Done: done}, nil
 }

@@ -1,5 +1,7 @@
 package vimkunja
 
+import "time"
+
 // Project represents a Vikunja project (formerly called "list" in older versions).
 type Project struct {
 	ID              int64   `json:"id"`
@@ -105,6 +107,26 @@ type Task struct {
 	Description       string `json:"description"`
 	// Identifier is present on some responses; we still can fall back to "#<index>".
 	Identifier string `json:"identifier"`
+}
+
+// TaskComment is one persisted contribution in a Task's chronological Comment thread.
+type TaskComment struct {
+	ID      int64
+	TaskID  int64
+	HTML    string
+	Author  string
+	Created time.Time
+	Updated time.Time
+}
+
+func (c TaskComment) Edited() bool {
+	return c.Updated.After(c.Created)
+}
+
+// TaskCommentDraft is the plain-text content of a new Comment before it is
+// safely serialized to Vikunja-compatible HTML.
+type TaskCommentDraft struct {
+	Text string
 }
 
 // TaskDraft contains the editable fields of a task. DueDate is either empty

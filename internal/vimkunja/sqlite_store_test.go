@@ -132,6 +132,121 @@ func sqliteDatabasePath(t *testing.T, db *sql.DB) string {
 	return ""
 }
 
+func TestSQLiteStoreListsAndAtomicallyAppendsTaskComments(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	if _, err := store.db.Exec(`
+		CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, username TEXT NOT NULL);
+		CREATE TABLE task_comments (
+			id INTEGER PRIMARY KEY AUTOINCREMENT, comment TEXT NOT NULL, author_id INTEGER NOT NULL,
+			task_id INTEGER NOT NULL, created DATETIME, updated DATETIME
+		);
+		INSERT INTO users (id, name, username) VALUES (7, 'Ada Lovelace', 'ada');
+		INSERT INTO projects (id, title, owner_id) VALUES (1, 'Project', 7);
+		INSERT INTO tasks (id, project_id, title, description, priority, "index") VALUES (11, 1, 'Old', '', 0, 1);
+		INSERT INTO task_comments (id, comment, author_id, task_id, created, updated) VALUES
+			(2, '<p>Second</p>', 7, 11, '2026-09-04 11:00:00', '2026-09-04 11:30:00'),
+			(1, '<p>First</p>', 7, 11, '2026-09-04 10:00:00', '2026-09-04 10:00:00');
+	`); err != nil {
+		t.Fatal(err)
+	}
+
+	comments, err := store.ListTaskComments(context.Background(), 11)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(comments) != 2 || comments[0].ID != 1 || comments[1].ID != 2 || comments[0].Author != "Ada Lovelace" || !comments[1].Edited() {
+		t.Fatalf("Task Comments = %#v, want chronological comments with author and edited state", comments)
+	}
+	if comments[0].Created.Location() != time.UTC {
+		t.Fatalf("Comment timestamp location = %v, want UTC", comments[0].Created.Location())
+	}
+
+	draft := TaskDraft{ID: 11, ProjectID: 1, Title: "Renamed"}
+	task, comment, err := store.SaveTaskWithComment(context.Background(), draft, TaskCommentDraft{Text: "Hello <world>\nline\n\nNext"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if task.Title != "Renamed" || comment.Author != "Ada Lovelace" || comment.HTML != "<p>Hello &lt;world&gt;<br>line</p><p>Next</p>" {
+		t.Fatalf("saved Task/Comment = %#v / %#v", task, comment)
+	}
+	var storedHTML, created string
+	if err := store.db.QueryRow(`SELECT comment, CAST(created AS TEXT) FROM task_comments WHERE id = ?`, comment.ID).Scan(&storedHTML, &created); err != nil {
+		t.Fatal(err)
+	}
+	if storedHTML != comment.HTML {
+		t.Fatalf("stored Comment = %q, want %q", storedHTML, comment.HTML)
+	}
+	if _, err := time.Parse(databaseTimestampLayout, created); err != nil {
+		t.Fatalf("Comment created = %q, want canonical UTC", created)
+	}
+}
+
+func TestListTaskCommentsAcceptsLegacyVimkunjaTimestamp(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	if _, err := store.db.Exec(`
+		CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, username TEXT NOT NULL);
+		CREATE TABLE task_comments (id INTEGER PRIMARY KEY, comment TEXT NOT NULL, author_id INTEGER NOT NULL, task_id INTEGER NOT NULL, created DATETIME, updated DATETIME);
+		INSERT INTO users (id, username) VALUES (1, 'local');
+		INSERT INTO task_comments VALUES (1, '<p>Legacy</p>', 1, 11, '2026-09-04 13:00:00.123 +0200 CEST m=+1.25', '2026-09-04 13:00:00.123 +0200 CEST m=+1.25');
+	`); err != nil {
+		t.Fatal(err)
+	}
+	comments, err := store.ListTaskComments(context.Background(), 11)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := time.Date(2026, 9, 4, 11, 0, 0, 123000000, time.UTC)
+	if len(comments) != 1 || !comments[0].Created.Equal(want) {
+		t.Fatalf("legacy Comment timestamp = %#v, want %v", comments, want)
+	}
+}
+
+func TestSaveTaskWithCommentRollsBackTaskWhenCommentInsertFails(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	if _, err := store.db.Exec(`
+		CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, username TEXT NOT NULL);
+		CREATE TABLE task_comments (id INTEGER PRIMARY KEY, comment TEXT NOT NULL, author_id INTEGER NOT NULL, task_id INTEGER NOT NULL, created DATETIME, updated DATETIME);
+		CREATE TRIGGER reject_comment BEFORE INSERT ON task_comments BEGIN SELECT RAISE(ABORT, 'comment insert failed'); END;
+		INSERT INTO users (id, username) VALUES (7, 'local');
+		INSERT INTO projects (id, title, owner_id) VALUES (1, 'Project', 7);
+		INSERT INTO tasks (id, project_id, title, "index") VALUES (11, 1, 'Original', 1);
+	`); err != nil {
+		t.Fatal(err)
+	}
+	_, _, err := store.SaveTaskWithComment(context.Background(), TaskDraft{ID: 11, ProjectID: 1, Title: "Must roll back"}, TaskCommentDraft{Text: "Comment"})
+	if err == nil || !strings.Contains(err.Error(), "comment insert failed") {
+		t.Fatalf("SaveTaskWithComment error = %v, want Comment-insert error", err)
+	}
+	var title string
+	if err := store.db.QueryRow(`SELECT title FROM tasks WHERE id = 11`).Scan(&title); err != nil {
+		t.Fatal(err)
+	}
+	if title != "Original" {
+		t.Fatalf("Task title = %q after failed Comment insert, want rollback", title)
+	}
+}
+
+func TestSQLiteStoreWritesCanonicalUTCTimestamps(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	if _, err := store.db.Exec(`INSERT INTO tasks (id, project_id, title) VALUES (1, 1, 'Task')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.UpdateTaskTitle(context.Background(), 1, "Renamed"); err != nil {
+		t.Fatal(err)
+	}
+	var updated string
+	if err := store.db.QueryRow(`SELECT CAST(updated AS TEXT) FROM tasks WHERE id = 1`).Scan(&updated); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := time.Parse("2006-01-02 15:04:05", updated); err != nil {
+		t.Fatalf("persisted timestamp = %q, want canonical UTC YYYY-MM-DD HH:mm:ss", updated)
+	}
+}
+
 func TestSQLiteStoreClosePreservesWALWhenCheckpointIsBusy(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
@@ -1050,7 +1165,9 @@ func TestDeleteTaskRemovesTaskAndRelationsTransactionally(t *testing.T) {
 		INSERT INTO task_positions (task_id, project_view_id, position) VALUES (1, 1, 1.0);
 		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES (1, 1, 1, 1);
 		CREATE TABLE task_relations (task_id INTEGER, other_task_id INTEGER);
+		CREATE TABLE task_comments (id INTEGER PRIMARY KEY, task_id INTEGER NOT NULL);
 		INSERT INTO task_relations (task_id, other_task_id) VALUES (1, 2), (2, 1);
+		INSERT INTO task_comments (id, task_id) VALUES (1, 1), (2, 2);
 	`)
 	if err != nil {
 		t.Fatalf("insert deletion fixtures: %v", err)
@@ -1064,6 +1181,7 @@ func TestDeleteTaskRemovesTaskAndRelationsTransactionally(t *testing.T) {
 		"SELECT COUNT(1) FROM task_positions WHERE task_id = 1",
 		"SELECT COUNT(1) FROM task_buckets WHERE task_id = 1",
 		"SELECT COUNT(1) FROM task_relations WHERE task_id = 1 OR other_task_id = 1",
+		"SELECT COUNT(1) FROM task_comments WHERE task_id = 1",
 	} {
 		var count int
 		if err := store.db.QueryRow(check).Scan(&count); err != nil || count != 0 {

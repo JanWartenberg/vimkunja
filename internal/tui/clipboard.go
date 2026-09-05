@@ -8,9 +8,10 @@ import (
 )
 
 type clipboardPastedMsg struct {
-	editor *taskEditor
-	text   string
-	err    error
+	editor   *taskEditor
+	composer *commentComposer
+	text     string
+	err      error
 }
 
 func systemClipboardText() (string, error) {
@@ -22,12 +23,22 @@ func systemClipboardText() (string, error) {
 }
 
 func (m *model) pasteClipboard(e *taskEditor) tea.Cmd {
+	return m.readClipboard(func(message *clipboardPastedMsg) { message.editor = e })
+}
+
+func (m *model) pasteCommentClipboard(composer *commentComposer) tea.Cmd {
+	return m.readClipboard(func(message *clipboardPastedMsg) { message.composer = composer })
+}
+
+func (m *model) readClipboard(setTarget func(*clipboardPastedMsg)) tea.Cmd {
 	read := m.clipboardRead
 	if read == nil {
 		read = systemClipboardText
 	}
 	return func() tea.Msg {
 		text, err := read()
-		return clipboardPastedMsg{editor: e, text: text, err: err}
+		message := clipboardPastedMsg{text: text, err: err}
+		setTarget(&message)
+		return message
 	}
 }

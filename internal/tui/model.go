@@ -104,6 +104,8 @@ type model struct {
 	searchOrigin       *searchOrigin
 	searchReturn       *searchReturn
 	labelUI            *labelUI
+	comments           *commentsUI
+	commentRequest     uint64
 
 	// Projects pane
 	projects             []vimkunja.Project
@@ -370,7 +372,7 @@ func (m *model) loadTasks(projectID, viewID int64) tea.Cmd {
 // Escape for cancellation instead.
 func (m *model) canShowQuitHint() bool {
 	return (m.focus == paneProjects || m.focus == paneTasks) &&
-		m.editor == nil && m.inlineTitle == nil && m.labelUI == nil &&
+		m.editor == nil && m.inlineTitle == nil && m.labelUI == nil && m.comments == nil &&
 		!m.searchOpen && !m.commandMode && !m.deleteArmed && !m.deleteConfirm &&
 		!m.kanbanPicker && !m.kanbanProvisionConfirm && !m.leaderArmed &&
 		!m.viewSwitchArmed && !m.ctrlWArmed && !m.gArmed && !m.zArmed &&
@@ -410,6 +412,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.searchOpen {
 			return m.updateSearchKeys(key)
+		}
+		if m.comments != nil {
+			return m.updateComments(key)
 		}
 		if m.labelUI != nil {
 			return m.updateLabelUI(key)
@@ -653,6 +658,59 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.labelUI.selected = clamp(m.labelUI.selected, 0, max(0, len(m.labelUI.matches())-1))
 		return m, nil
 
+	case taskCommentsLoadedMsg:
+		if m.editor == nil || m.editor.id != typed.taskID || m.editor.commentsRequest != typed.request {
+			return m, nil
+		}
+		m.editor.commentsLoading = false
+		m.editor.commentsErr = typed.err
+		if typed.err != nil {
+			m.recordError(typed.err)
+			if m.comments != nil {
+				m.comments.loading, m.comments.err = false, typed.err
+			}
+			return m, nil
+		}
+		m.editor.comments = append([]vimkunja.TaskComment(nil), typed.comments...)
+		if m.comments != nil {
+			m.comments.items = append([]vimkunja.TaskComment(nil), typed.comments...)
+			m.comments.selected = max(0, len(typed.comments)-1)
+			m.comments.loading, m.comments.err = false, nil
+		}
+		return m, nil
+
+	case taskCommentSavedMsg:
+		if m.comments != nil {
+			m.comments.loading = false
+			m.comments.saving = false
+		}
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		if m.editor == nil || m.comments == nil {
+			return m, nil
+		}
+		m.editor.id = typed.task.ID
+		m.editor.draft.ID = typed.task.ID
+		m.editor.draft.Done = typed.task.Done
+		m.editor.draft.DoneSet = false
+		m.editor.original = cloneTaskDraft(m.editor.draft)
+		m.commentRequest++
+		m.editor.commentsRequest = m.commentRequest
+		m.editor.commentsLoading = false
+		m.editor.commentsErr = nil
+		m.editor.comments = append(m.editor.comments, typed.comment)
+		m.comments.items = append(m.comments.items, typed.comment)
+		m.comments.selected = len(m.comments.items) - 1
+		m.comments.composer = nil
+		m.comments.commandMode, m.comments.commandInput = false, ""
+		if typed.closeAfter {
+			m.closeComments()
+		}
+		m.pendingTaskID = typed.task.ID
+		return m, m.refreshActiveTasks()
+
 	case taskLabelsLoadedMsg:
 		if m.editor == nil || m.editor.id != typed.taskID {
 			return m, nil
@@ -728,6 +786,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.PasteMsg:
+		if m.comments != nil && m.comments.composer != nil && m.comments.composer.mode == editorInsert {
+			composer := m.comments.composer
+			composer.text = insertTextAtCursor(composer.text, &composer.cursor, typed.Content)
+			return m, nil
+		}
 		if m.focus == paneDetail && m.editor != nil && (m.editor.mode == editorInsert || (m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) {
 			m.insertEditorText(typed.Content)
 		}
@@ -736,6 +799,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clipboardPastedMsg:
 		if typed.err != nil {
 			m.recordError(typed.err)
+			return m, nil
+		}
+		if m.comments != nil && m.comments.composer == typed.composer && typed.composer != nil && typed.composer.mode == editorInsert {
+			typed.composer.text = insertTextAtCursor(typed.composer.text, &typed.composer.cursor, typed.text)
 			return m, nil
 		}
 		if m.focus == paneDetail && m.editor == typed.editor && (m.editor.mode == editorInsert || (m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) {
@@ -917,7 +984,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for _, task := range m.tasks {
 				if task.ID == taskID {
 					m.openExistingEditor(task)
-					return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
+					return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID), m.loadTaskComments(task.ID))
 				}
 			}
 		}
@@ -1294,7 +1361,7 @@ func (m *model) previewSelectedTask() tea.Cmd {
 	focus := m.focus
 	m.openExistingEditor(task)
 	m.focus = focus
-	return tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
+	return tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID), m.loadTaskComments(task.ID))
 }
 
 func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -1343,7 +1410,7 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.openExistingEditor(task)
-			return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
+			return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID), m.loadTaskComments(task.ID))
 		}
 		return m, nil
 	case "o":
@@ -1575,11 +1642,16 @@ func (m *model) View() tea.View {
 // editorCursor delegates cursor-shape support to Bubble Tea. Its renderer
 // restores the terminal default when a previously visible cursor becomes nil.
 func (m *model) nativeEditorCursorActive() bool {
-	return !m.disableCursorShapes && m.focus == paneDetail && m.editor != nil && m.editor.field != fieldMoreFields
+	if m.disableCursorShapes || m.focus != paneDetail || m.editor == nil || m.editor.field == fieldMoreFields {
+		return false
+	}
+	// The tiny focused Description workspace has a different row geometry from
+	// the compact Detail document, so it renders its own cursor marker.
+	return !(m.editor.descriptionActive && m.detailTextHeight() < 12)
 }
 
 func (m *model) editorCursor() *tea.Cursor {
-	if m.searchOpen {
+	if m.searchOpen || m.comments != nil {
 		return nil
 	}
 	if !m.disableCursorShapes && m.inlineTitle != nil && m.inlineCursorVisible {
@@ -1590,12 +1662,25 @@ func (m *model) editorCursor() *tea.Cursor {
 	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.editor.dueDatePickerActive() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
 		return nil
 	}
+	if m.editor.mode == editorNormal && m.editor.field != fieldDescription {
+		return nil
+	}
+	// At the smallest regular Detail height, metadata and the pinned Comments
+	// entry consume every Description body row. Do not position a block cursor
+	// on the divider below an invisible Description.
+	if m.editor.mode == editorNormal && m.editor.field == fieldDescription && m.editor.id != 0 && m.detailTextHeight() == 12 {
+		return nil
+	}
+	if m.editor.mode == editorNormal && m.editor.field == fieldDescription && m.compactDetail() && !m.compactDescriptionCursorRendered() {
+		return nil
+	}
 
 	x, y := m.editorCursorPosition()
 	cursor := tea.NewCursor(x, y)
-	cursor.Shape = tea.CursorBlock
 	if m.editor.mode == editorInsert {
 		cursor.Shape = tea.CursorBar
+	} else {
+		cursor.Shape = tea.CursorBlock
 	}
 	return cursor
 }
@@ -1696,6 +1781,41 @@ func (m *model) compactDescriptionCursorPosition(w, h, topH, row int) (int, int)
 	}
 	visibleLine := clamp(lineIndex-start, 0, descriptionRows-1)
 	return clamp(2+column, 0, w-1), clamp(topH+4+row-m.editor.detailScroll+visibleLine, 0, h-1)
+}
+
+func (m *model) compactDescriptionCursorRendered() bool {
+	e := m.editor
+	if e == nil {
+		return false
+	}
+	w, _ := m.viewportSize()
+	descriptionRows := m.compactDescriptionRows()
+	description := wrapDescription(e.draft.Description, w-4)
+	if len(description) > descriptionRows {
+		description = wrapDescription(e.draft.Description, max(1, w-6))
+	}
+	cursor := clamp(e.cursor, 0, e.fieldRuneLen())
+	lineIndex := 0
+	for index, line := range description {
+		if cursor >= line.start && cursor <= line.end {
+			lineIndex = index
+			break
+		}
+	}
+	start := clamp(e.descScroll, 0, max(0, len(description)-descriptionRows))
+	descriptionRow := 0
+	for _, field := range m.detailFields() {
+		if field == fieldComments {
+			continue
+		}
+		if field == fieldDescription {
+			break
+		}
+		descriptionRow++
+	}
+	bodyRows := max(1, m.detailTextHeight()-2-compactPinnedCommentRows(m.detailTextHeight(), e.id != 0))
+	cursorRow := descriptionRow + 1 + lineIndex - start
+	return cursorRow >= e.detailScroll && cursorRow < e.detailScroll+bodyRows
 }
 
 func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
@@ -1871,6 +1991,9 @@ func (m *model) Render() string {
 	}
 	if m.labelUI != nil {
 		content = m.renderLabelOverlay(content, w)
+	}
+	if m.comments != nil {
+		content = m.renderCommentsOverlay(content, w)
 	}
 	status := m.renderStatusBar(w)
 	return lipgloss.JoinVertical(lipgloss.Top, content, status)
@@ -2073,13 +2196,13 @@ func (m *model) renderStatusBar(w int) string {
 		} else if m.editor != nil && m.editor.field == fieldLabels && !m.editor.labelsLoading && len(m.editor.labels) > 0 {
 			hint = "[" + mode + "]  i pick/edit  •  h/l select Label  •  :h help  •  x remove Label  •  :w save  •  :q close"
 		} else if m.editor != nil && m.editor.gArmed {
-			hint = "[FIELD] t title  •  d due date  •  p priority  •  l labels  •  Esc cancel"
+			hint = "[FIELD] t title  •  d due date  •  p priority  •  l labels  •  c comments  •  n description  •  Esc cancel"
 		} else if m.editor != nil && m.editor.dArmed {
 			hint = "[DELETE FIELD] d clear  •  Esc cancel"
 		} else if m.editor != nil && m.editor.optionalFieldClearable() {
-			hint = "[" + mode + "]  x/dd clear  •  i edit  •  j/k navigate  •  :h help  •  gt title  •  gd due  •  gp priority  •  gl labels  •  :w save  •  :q close"
+			hint = "[" + mode + "]  x/dd clear  •  i edit  •  j/k navigate  •  :h help  •  gt title  •  gd due  •  gp priority  •  gl labels  •  gc comments  •  gn description  •  :w save  •  :q close"
 		} else {
-			hint = "[" + mode + "]  i edit  •  j/k navigate  •  :h help  •  gt title  •  gd due  •  gp priority  •  gl labels  •  :w save  •  :q close  •  Ctrl+W switch pane"
+			hint = "[" + mode + "]  i edit  •  j/k navigate  •  :h help  •  gt title  •  gd due  •  gp priority  •  gl labels  •  gc comments  •  gn description  •  :w save  •  :q close  •  Ctrl+W switch pane"
 		}
 	}
 	if m.focus == paneHelp {
@@ -2096,6 +2219,21 @@ func (m *model) renderStatusBar(w int) string {
 			hint += "_  •  Esc NORMAL"
 		} else {
 			hint += "  •  j/k navigate  •  i/a edit  •  :q / Esc close"
+		}
+	}
+	if m.comments != nil {
+		hint = "[COMMENTS] j/k select  •  gg/G jump  •  a append  •  Esc close"
+		if m.comments.saving {
+			hint = "[COMMENTS] Saving Task and Comment…"
+		} else if m.comments.composer != nil {
+			mode := "NORMAL"
+			if m.comments.composer.mode == editorInsert {
+				mode = "INSERT"
+			}
+			hint = "[COMMENT " + mode + "] Esc normal  •  :w save  •  :q! discard"
+		}
+		if m.comments.commandMode {
+			hint = "COMMENTS COMMAND  :" + m.comments.commandInput + "_"
 		}
 	}
 	if m.commandMode {
@@ -2120,7 +2258,7 @@ func (m *model) renderStatusBar(w int) string {
 		ctrlWHint := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.ctrlWHint)).Render("Ctrl-W")
 		hint = ctrlWHint + " h/j/k/l change pane  •  Ctrl-W/w cycle"
 	}
-	statusActive := m.commandMode || m.leaderArmed || m.viewSwitchArmed || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed
+	statusActive := m.commandMode || (m.comments != nil && m.comments.commandMode) || m.leaderArmed || m.viewSwitchArmed || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed
 	statusStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(paneBorderColor(statusActive))).

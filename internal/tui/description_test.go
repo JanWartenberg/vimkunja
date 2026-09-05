@@ -168,12 +168,12 @@ func TestReadOnlyHTMLDescriptionScrolls(t *testing.T) {
 	m.editor.field = fieldDescription
 
 	before := ansi.Strip(renderTaskDetail(m, 80, 16))
-	if strings.Contains(before, "Line 5") {
+	if strings.Contains(before, "Line 4") {
 		t.Fatalf("fixture does not overflow the Detail Pane: %q", before)
 	}
 	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
 	after := ansi.Strip(renderTaskDetail(m, 80, 16))
-	if m.editor.descScroll == 0 || !strings.Contains(after, "Line 5") {
+	if m.editor.descScroll == 0 || !strings.Contains(after, "Line 2") {
 		t.Fatalf("read-only Description did not scroll: offset=%d detail=%q", m.editor.descScroll, after)
 	}
 }

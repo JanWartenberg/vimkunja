@@ -64,3 +64,17 @@ _Avoid_: Line jump
 **Visual row jump**:
 Description navigation between terminal rows produced by paragraph wrapping using `gj` and `gk`.
 _Avoid_: Paragraph jump
+
+## Task comments
+
+**Task Comment**:
+A timestamped rich-text contribution associated with one persisted Task and one author; it is a separate record from the Task's Description.
+_Avoid_: Ticket comment, Description note
+
+**Comment thread**:
+The chronological sequence of a Task's Comments, ordered from oldest to newest.
+_Avoid_: Comment page, conversation page
+
+**Comment draft**:
+An unsaved new Task Comment that belongs to the current Task edit session until that session is saved or discarded.
+_Avoid_: Temporary Description, pending Ticket comment

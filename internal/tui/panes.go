@@ -496,7 +496,14 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if e.id == 0 {
 		header = "NEW TASK"
 	}
-	lines := []string{" " + renderHeading(header) + " ", ""}
+	// At 12–13 rows preserve the regular metadata layout and the pinned
+	// Comments entry by sacrificing decorative blank rows and Description body
+	// rows first.
+	constrainedRegular := e.id != 0 && textH < 14
+	lines := []string{" " + renderHeading(header) + " "}
+	if !constrainedRegular {
+		lines = append(lines, "")
+	}
 	projectName := "(none)"
 	for _, p := range m.projects {
 		if p.ID == e.draft.ProjectID {
@@ -596,7 +603,10 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	// A short Detail Pane gives its active picker the description rows; at
 	// normal heights retain the usual Description anchor above the picker.
 	if !e.isPickerMode() || textH >= len(lines)+10 {
-		lines = append(lines, "", renderField(fieldDescription, "Description:", ""))
+		if !constrainedRegular {
+			lines = append(lines, "")
+		}
+		lines = append(lines, renderField(fieldDescription, "Description:", ""))
 	}
 	descriptionScrollable := false
 	descriptionScrollTop, descriptionRows, descriptionViewportStart, descriptionViewportRows := 0, 0, 0, 0
@@ -626,9 +636,16 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		}
 		lines = append(lines, renderDetailPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, textW, textH, len(lines))...)
 	} else if description := descriptionTerminalText(e.draft.Description); description == "" {
-		lines = append(lines, placeholderText("  (no description)"))
+		if availableDetailDescriptionRows(textH, len(lines), e.id != 0) > 0 {
+			lines = append(lines, placeholderText("  (no description)"))
+		}
 	} else {
-		available := max(1, textH-len(lines))
+		available := availableDetailDescriptionRows(textH, len(lines), e.id != 0)
+		if available == 0 {
+			// The Description label remains an entry point; its body yields to
+			// metadata and Comments in the smallest regular layout.
+			return renderPinnedCommentsDetail(m, lines, textW, textH)
+		}
 		desc := wrapDescription(description, textW)
 		// Detect overflow before reserving the rail. Once it exists, the
 		// narrower render width determines the real scroll range.
@@ -644,14 +661,44 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		descriptionRows = len(desc)
 		descriptionViewportStart = len(lines)
 		descriptionViewportRows = available
-		for _, line := range desc[start:] {
+		end := min(len(desc), start+available)
+		for _, line := range desc[start:end] {
 			lines = append(lines, m.editorDescriptionText(line))
 		}
 	}
 	if descriptionScrollable {
+		lines = appendPinnedCommentsDetail(m, lines, textW, textH)
 		return renderVerticalScrollbar(lines, textW, textH, descriptionScrollTop, descriptionRows, descriptionViewportStart, descriptionViewportRows, m.focus == paneDetail)
 	}
-	return fitBlock(lines, textW, textH)
+	return renderPinnedCommentsDetail(m, lines, textW, textH)
+}
+
+func availableDetailDescriptionRows(textH, usedRows int, hasComments bool) int {
+	reservedCommentsRows := 0
+	if hasComments {
+		reservedCommentsRows = 2
+	}
+	return max(0, textH-usedRows-reservedCommentsRows)
+}
+
+func renderPinnedCommentsDetail(m *model, lines []string, textW, textH int) string {
+	return fitBlock(appendPinnedCommentsDetail(m, lines, textW, textH), textW, textH)
+}
+
+func appendPinnedCommentsDetail(m *model, lines []string, textW, textH int) []string {
+	e := m.editor
+	if e == nil || e.id == 0 || e.isPickerMode() {
+		return lines
+	}
+	for len(lines) < textH-2 {
+		lines = append(lines, "")
+	}
+	divider := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Render(strings.Repeat("─", max(1, textW)))
+	commentCount := fmt.Sprintf("Comments (%d)", len(e.comments))
+	if e.commentsLoading {
+		commentCount = "Comments (…)"
+	}
+	return append(lines, divider, focusedField(commentCount, m.focus == paneDetail && e.field == fieldComments))
 }
 
 // renderDetailPickerOverlay layers a field-local picker over the existing
@@ -841,6 +888,9 @@ func renderEmptyKanbanDetail(textW, textH int) string {
 
 func renderCompactTaskDetail(m *model, textW, textH int) string {
 	e := m.editor
+	if e.descriptionActive && textH < 12 {
+		return renderFocusedCompactDescription(m, textW, textH)
+	}
 	header := "TASK EDITOR"
 	if e.id == 0 {
 		header = "NEW TASK"
@@ -923,6 +973,8 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 		case fieldDescription:
 			descriptionRow = len(body)
 			body = append(body, renderField(fieldDescription, "Description:", ""))
+		case fieldComments:
+			// The Comments entry is pinned after the Description content below.
 		default:
 			value := values[field]
 			body = append(body, renderField(field, value.label, value.value))
@@ -960,16 +1012,21 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 			body = append(body, renderPickerChoicesFitted(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, textW)...)
 		}
 	}
-	bodyRows := max(1, textH-2)
-	descriptionRows := compactDescriptionRows(textH, len(fields))
+	pinnedCommentRows := compactPinnedCommentRows(textH, e.id != 0)
+	staticRows := len(fields)
+	if e.id != 0 {
+		staticRows-- // Comments is pinned outside the scrollable Detail document.
+	}
+	bodyRows := max(1, textH-2-pinnedCommentRows)
+	descriptionRows := compactDescriptionRows(textH-pinnedCommentRows, staticRows)
 	description := descriptionTerminalText(e.draft.Description)
-	desc := wrapDescription(description, textW)
+	desc := wrapDescription(description, max(1, textW-2))
 	if description == "" {
 		desc = []descriptionLine{{text: placeholderText("  (no description)")}}
 	}
 	descriptionScrollable := len(desc) > descriptionRows
 	if descriptionScrollable {
-		desc = wrapDescription(description, max(1, textW-2))
+		desc = wrapDescription(description, max(1, textW-4))
 	}
 	start := 0
 	if e.descriptionActive && len(desc) > descriptionRows {
@@ -977,7 +1034,7 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	}
 	for row := 0; row < descriptionRows; row++ {
 		if line := start + row; line < len(desc) {
-			body = append(body, m.editorDescriptionText(desc[line]))
+			body = append(body, "  "+m.editorDescriptionText(desc[line]))
 		} else {
 			body = append(body, "")
 		}
@@ -994,11 +1051,68 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	e.detailScroll = clamp(e.detailScroll, 0, outerLimit)
 	visible := body[e.detailScroll:min(len(body), e.detailScroll+bodyRows)]
 	lines = append(lines, visible...)
+	if e.id != 0 {
+		for len(lines) < textH-pinnedCommentRows {
+			lines = append(lines, "")
+		}
+		if pinnedCommentRows == 2 {
+			lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Render(strings.Repeat("─", max(1, textW))))
+		}
+		commentCount := fmt.Sprintf("(%d)", len(e.comments))
+		if e.commentsLoading {
+			commentCount = "(…)"
+		}
+		lines = append(lines, renderField(fieldComments, "Comments ", commentCount))
+	}
 	if e.descriptionActive && descriptionScrollable && descriptionRow >= e.detailScroll && descriptionRow < e.detailScroll+bodyRows {
 		return renderVerticalScrollbar(lines, textW, textH, start, len(desc), 2+descriptionRow-e.detailScroll+1, descriptionRows, true)
 	}
 	if outerLimit > 0 {
 		return renderVerticalScrollbar(lines, textW, textH, e.detailScroll, len(body), 2, bodyRows, detailFocused)
+	}
+	return fitBlock(lines, textW, textH)
+}
+
+// renderFocusedCompactDescription gives Description editing the entire tiny
+// Detail Pane. The metadata and Comments entry remain available after Esc.
+func renderFocusedCompactDescription(m *model, textW, textH int) string {
+	e := m.editor
+	mode := "NORMAL"
+	if e.mode == editorInsert {
+		mode = "INSERT"
+	}
+	lines := []string{" " + renderHeading("DESCRIPTION · "+mode) + " ", ""}
+	available := max(1, textH-len(lines))
+	description := descriptionTerminalText(e.draft.Description)
+	desc := wrapDescription(description, textW)
+	if description == "" {
+		desc = []descriptionLine{{text: ""}}
+	}
+	if len(desc) > available {
+		desc = wrapDescription(description, max(1, textW-2))
+	}
+	cursorRow := 0
+	for row, line := range desc {
+		if e.cursor >= line.start && e.cursor <= line.end {
+			cursorRow = row
+		}
+	}
+	start := clamp(e.descScroll, 0, max(0, len(desc)-available))
+	if cursorRow < start {
+		start = cursorRow
+	} else if cursorRow >= start+available {
+		start = cursorRow - available + 1
+	}
+	e.descScroll = start
+	for row := 0; row < available; row++ {
+		if line := start + row; line < len(desc) {
+			lines = append(lines, m.editorDescriptionText(desc[line]))
+		} else {
+			lines = append(lines, "")
+		}
+	}
+	if len(desc) > available {
+		return renderVerticalScrollbar(lines, textW, textH, start, len(desc), 2, available, true)
 	}
 	return fitBlock(lines, textW, textH)
 }
@@ -1180,7 +1294,7 @@ func (m *model) editorDescriptionText(line descriptionLine) string {
 	if m.editor.mode == editorNormal {
 		return normalCursorText(line.text, cursor)
 	}
-	if m.editor.mode == editorInsert && m.cursorVisible {
+	if m.editor.mode == editorInsert {
 		return cursorMarkedText(line.text, cursor)
 	}
 	return line.text
@@ -1204,15 +1318,9 @@ func normalCursorText(value string, cursor int) string {
 
 func cursorMarkedText(value string, cursor int) string {
 	r := []rune(value)
-	if len(r) == 0 {
-		return value
-	}
 	cursor = clamp(cursor, 0, len(r))
-	index := cursor
-	if index == len(r) {
-		index--
-	}
-	return string(r[:index]) + lipgloss.NewStyle().Reverse(true).Render(string(r[index])) + string(r[index+1:])
+	marker := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render("│")
+	return string(r[:cursor]) + marker + string(r[cursor:])
 }
 
 func priorityName(priority int64) string {

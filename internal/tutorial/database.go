@@ -86,6 +86,11 @@ func (d *DemoDatabase) Close() error {
 
 func createTutorialSchema(db *sql.DB) error {
 	const schema = `
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    username TEXT NOT NULL
+);
 CREATE TABLE projects (
     id INTEGER PRIMARY KEY,
     identifier TEXT,
@@ -158,6 +163,14 @@ CREATE TABLE label_tasks (
     task_id INTEGER NOT NULL,
     label_id INTEGER NOT NULL,
     created DATETIME NOT NULL
+);
+CREATE TABLE task_comments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    comment TEXT NOT NULL,
+    author_id INTEGER NOT NULL,
+    task_id INTEGER NOT NULL,
+    created DATETIME,
+    updated DATETIME
 );`
 	if _, err := db.Exec(schema); err != nil {
 		return fmt.Errorf("create tutorial schema: %w", err)
@@ -173,6 +186,7 @@ func seedTutorialDatabase(db *sql.DB) error {
 	defer tx.Rollback()
 
 	const fixedSeed = `
+INSERT INTO users (id, name, username) VALUES (1, 'Tutorial User', 'tutorial');
 INSERT INTO projects (id, identifier, title, description, parent_project_id, position, owner_id) VALUES
     (1, 'LEARN', 'Learn Vimkunja', 'The guided workshop project.', 0, 100, 1),
     (2, 'HOME', 'Home', 'A second project for cross-project examples.', 0, 200, 1),

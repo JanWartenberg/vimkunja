@@ -116,6 +116,7 @@ func (m *model) openOverviewForLabel(label vimkunja.Label) tea.Cmd {
 }
 
 func (m *model) closeTaskDetail() {
+	m.comments = nil
 	m.editor = nil
 	m.showDetail = false
 	m.kanbanEmptyDetailOrigin = false

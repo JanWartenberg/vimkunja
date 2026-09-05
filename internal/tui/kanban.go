@@ -166,7 +166,7 @@ func (m *model) syncOpenKanbanDetail() tea.Cmd {
 	m.kanbanEmptyDetailOrigin = false
 	m.openExistingEditor(task)
 	m.focus = focus
-	return tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
+	return tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID), m.loadTaskComments(task.ID))
 }
 
 func (m *model) kanbanActionBlockedByDirtyDetail() bool {
@@ -199,7 +199,7 @@ func (m *model) updateKanbanKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		if task, ok := m.selectedKanbanTask(); ok {
 			m.openExistingEditor(task)
-			return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID))
+			return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID), m.loadTaskComments(task.ID))
 		}
 	case "o":
 		if m.kanbanActionBlockedByDirtyDetail() {

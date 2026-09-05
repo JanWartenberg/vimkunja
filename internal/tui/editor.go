@@ -24,6 +24,7 @@ const (
 	fieldWorkflowStatus
 	fieldDone
 	fieldDescription
+	fieldComments
 	fieldMoreFields
 )
 
@@ -63,6 +64,10 @@ type taskEditor struct {
 	labelSelected           int
 	labels                  []vimkunja.Label
 	labelsLoading           bool
+	comments                []vimkunja.TaskComment
+	commentsLoading         bool
+	commentsRequest         uint64
+	commentsErr             error
 	gArmed                  bool
 	dArmed                  bool
 	workflowStatus          vimkunja.WorkflowStatus
@@ -91,7 +96,7 @@ func (m *model) openExistingEditor(task vimkunja.Task) {
 		ID: task.ID, ProjectID: task.ProjectID, Title: task.Title,
 		Description: task.Description, Priority: task.Priority, DueDate: task.DueDate, Done: task.Done,
 	}
-	m.editor = &taskEditor{id: task.ID, taskIndex: task.Index, draft: draft, original: cloneTaskDraft(draft), field: fieldTitle, workflowStatusLoading: true, labelsLoading: true}
+	m.editor = &taskEditor{id: task.ID, taskIndex: task.Index, draft: draft, original: cloneTaskDraft(draft), field: fieldTitle, workflowStatusLoading: true, labelsLoading: true, commentsLoading: true}
 	m.showDetail = true
 	m.focus = paneDetail
 }
@@ -135,7 +140,9 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		// Defensive fallback for a detail pane opened by old state.
 		if k.String() == "enter" && m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
-			m.openExistingEditor(m.tasks[m.taskSelected])
+			task := m.tasks[m.taskSelected]
+			m.openExistingEditor(task)
+			return m, tea.Batch(m.loadWorkflowStatus(task.ProjectID, task.ID), m.loadEditorLabels(task.ID), m.loadTaskComments(task.ID))
 		}
 		return m, nil
 	}
@@ -158,6 +165,10 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if e.field == fieldDescription && descriptionHasHTML(e.draft.Description) && (s == "enter" || s == "i") {
+		m.recordError(fmt.Errorf("Description is read-only: HTML editing is not supported yet."))
+		return m, nil
+	}
 	if !e.descriptionActive {
 		switch s {
 		case "ctrl+d", "pgdown", "pagedown":
@@ -167,6 +178,44 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.pageDetail(-1)
 			return m, nil
 		}
+	}
+	if e.gArmed {
+		e.gArmed = false
+		switch s {
+		case "g":
+			if e.field == fieldDescription {
+				e.cursor = 0
+				e.descScroll = 0
+			}
+		case "t":
+			m.focusDetailField(fieldTitle)
+			e.cursor = e.fieldRuneLen()
+			return m.startEditorInsert()
+		case "d":
+			m.focusDetailField(fieldDueDate)
+			return m.openDueDatePicker()
+		case "p":
+			m.focusDetailField(fieldPriority)
+			e.mode = editorPriorityPicker
+			e.priorityIndex = int(e.draft.Priority)
+		case "l":
+			m.focusDetailField(fieldLabels)
+			return m, m.openTaskLabelPicker()
+		case "c":
+			if e.id == 0 {
+				m.recordError(fmt.Errorf("Save Task before adding Comments."))
+				return m, nil
+			}
+			m.focusDetailField(fieldComments)
+			m.openComments()
+		case "n":
+			m.focusDetailField(fieldDescription)
+		}
+		return m, nil
+	}
+	if s == "g" {
+		e.gArmed = true
+		return m, nil
 	}
 	if e.field == fieldMoreFields {
 		switch s {
@@ -179,6 +228,17 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.moveField(-1)
 		}
 		return m, nil
+	}
+	if e.field == fieldComments {
+		switch s {
+		case "enter", "i":
+			m.openComments()
+			return m, nil
+		case "a":
+			m.openComments()
+			m.startCommentComposer()
+			return m, cursorBlinkCmd()
+		}
 	}
 	if e.field == fieldDescription && e.descriptionNavigated && !e.descriptionActive {
 		switch s {
@@ -211,35 +271,14 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if e.gArmed {
-		e.gArmed = false
-		switch s {
-		case "g":
-			if e.field == fieldDescription {
-				e.cursor = 0
-				e.descScroll = 0
-			}
-		case "t":
-			m.focusDetailField(fieldTitle)
-			e.cursor = e.fieldRuneLen()
-			return m.startEditorInsert()
-		case "d":
-			m.focusDetailField(fieldDueDate)
-			return m.openDueDatePicker()
-		case "p":
-			m.focusDetailField(fieldPriority)
-			e.mode = editorPriorityPicker
-			e.priorityIndex = int(e.draft.Priority)
-		case "l":
-			m.focusDetailField(fieldLabels)
-			return m, m.openTaskLabelPicker()
-		}
-		return m, nil
-	}
 	if e.dArmed {
 		e.dArmed = false
 		if s == "d" {
-			e.clearOptionalField()
+			if e.field == fieldDescription {
+				e.deleteDescriptionLine()
+			} else {
+				e.clearOptionalField()
+			}
 		}
 		return m, nil
 	}
@@ -279,6 +318,18 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if e.field == fieldDescription {
 		switch s {
+		case "d":
+			e.dArmed = true
+			return m, nil
+		case "x":
+			e.deleteAtCursor()
+			return m, nil
+		case "X":
+			e.deleteBeforeCursor()
+			return m, nil
+		case "D":
+			e.deleteToLineEnd()
+			return m, nil
 		case "a":
 			e.moveCursor(1)
 			return m.startEditorInsert()
@@ -337,6 +388,9 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			e.priorityIndex = int(e.draft.Priority)
 		case fieldLabels:
 			return m, m.openTaskLabelPicker()
+		case fieldComments:
+			m.openComments()
+			return m, nil
 		case fieldWorkflowStatus:
 			if e.workflowStatus.Availability == vimkunja.WorkflowStatusAvailable && len(e.workflowStatus.Buckets) > 0 {
 				e.mode = editorWorkflowStatusPicker
@@ -354,10 +408,6 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			return m.startEditorInsert()
 		}
-		return m, nil
-	}
-	if s == "g" {
-		e.gArmed = true
 		return m, nil
 	}
 	if (s == "G" || s == "end") && e.field == fieldDescription {
@@ -535,7 +585,7 @@ func (m *model) focusDetailField(field editorField) {
 	e := m.editor
 	e.field = field
 	e.descriptionActive = false
-	e.descriptionNavigated = false
+	e.descriptionNavigated = field == fieldDescription
 	if m.compactDetail() && field != fieldTitle && field != fieldDescription {
 		e.moreFieldsExpanded = true
 	}
@@ -824,17 +874,25 @@ func (m *model) detailFieldsFor(compact bool) []editorField {
 				fields = append(fields, fieldDone)
 			}
 		}
-		return append(fields, fieldDescription)
+		fields = append(fields, fieldDescription)
+		if e.id != 0 {
+			fields = append(fields, fieldComments)
+		}
+		return fields
 	}
 	fields := []editorField{fieldProject, fieldTitle, fieldPriority, fieldDueDate, fieldLabels, fieldWorkflowStatus}
 	if e.id != 0 {
 		fields = append(fields, fieldDone)
 	}
-	return append(fields, fieldDescription)
+	fields = append(fields, fieldDescription)
+	if e.id != 0 {
+		fields = append(fields, fieldComments)
+	}
+	return fields
 }
 
 func (m *model) compactDetail() bool {
-	return m.height >= 10 && m.detailTextHeight() < 12
+	return m.height >= 10 && m.detailTextHeight() < 14
 }
 
 func (m *model) detailTextHeight() int {
@@ -877,7 +935,7 @@ func (m *model) ensureDetailFieldVisible() {
 	if !ok {
 		return
 	}
-	bodyRows := max(1, m.detailTextHeight()-2)
+	bodyRows := max(1, m.detailTextHeight()-2-compactPinnedCommentRows(m.detailTextHeight(), m.editor.id != 0))
 	if row < m.editor.detailScroll {
 		m.editor.detailScroll = row
 	}
@@ -891,6 +949,9 @@ func (m *model) compactDetailFieldRow(field editorField) (int, bool) {
 	if !m.compactDetail() || m.editor == nil {
 		return 0, false
 	}
+	if field == fieldComments {
+		return 0, false // Comments is pinned outside the scrollable Detail document.
+	}
 	for row, candidate := range m.detailFields() {
 		if candidate == field {
 			return row, true
@@ -903,12 +964,32 @@ func (m *model) detailScrollLimit() int {
 	if !m.compactDetail() || m.editor == nil {
 		return 0
 	}
-	bodyRows := max(1, m.detailTextHeight()-2)
-	return max(0, len(m.detailFields())+m.compactDescriptionRows()-bodyRows)
+	bodyRows := max(1, m.detailTextHeight()-2-compactPinnedCommentRows(m.detailTextHeight(), m.editor.id != 0))
+	rows := len(m.detailFields()) + m.compactDescriptionRows()
+	if m.editor.id != 0 {
+		rows-- // Comments is pinned outside the scrollable Detail document.
+	}
+	return max(0, rows-bodyRows)
 }
 
 func (m *model) compactDescriptionRows() int {
-	return compactDescriptionRows(m.detailTextHeight(), len(m.detailFields()))
+	textHeight := m.detailTextHeight()
+	staticRows := len(m.detailFields())
+	if m.editor != nil && m.editor.id != 0 {
+		textHeight -= compactPinnedCommentRows(textHeight, true)
+		staticRows-- // Comments is pinned outside the scrollable Detail document.
+	}
+	return compactDescriptionRows(textHeight, staticRows)
+}
+
+func compactPinnedCommentRows(textH int, hasComments bool) int {
+	if !hasComments {
+		return 0
+	}
+	if textH <= 8 {
+		return 1
+	}
+	return 2
 }
 
 func compactDescriptionRows(textH, staticRows int) int {
@@ -990,6 +1071,29 @@ func (e *taskEditor) deleteBeforeCursor() {
 func (e *taskEditor) deleteAtCursor() {
 	e.setFieldValue(deleteTextAtCursor(e.fieldValue(), &e.cursor))
 }
+func (e *taskEditor) deleteToLineEnd() {
+	r := []rune(e.draft.Description)
+	cursor := clamp(e.cursor, 0, len(r))
+	end := e.lineEnd()
+	e.draft.Description = string(append(r[:cursor:cursor], r[end:]...))
+	e.cursor = cursor
+}
+
+func (e *taskEditor) deleteDescriptionLine() {
+	r := []rune(e.draft.Description)
+	start, end := e.lineStart(), e.lineEnd()
+	if end < len(r) { // Remove this line and its trailing newline.
+		e.draft.Description = string(append(r[:start:start], r[end+1:]...))
+		e.cursor = start
+		return
+	}
+	if start > 0 { // The final line consumes its preceding newline instead.
+		start--
+	}
+	e.draft.Description = string(append(r[:start:start], r[end:]...))
+	e.cursor = start
+}
+
 func (e *taskEditor) lineStart() int {
 	r := []rune(e.draft.Description)
 	start := clamp(e.cursor, 0, len(r))
