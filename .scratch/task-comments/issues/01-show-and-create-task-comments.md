@@ -8,7 +8,7 @@
 
 **Priority:** Low
 
-**Status:** needs-info
+**Status:** implemented
 
 ## Decisions confirmed
 
@@ -32,7 +32,7 @@
 - The Comments workspace should follow established Vimkunja overlay conventions wherever applicable. Fine visual and interaction details may be refined after evaluating the first implementation.
 - When appending, anchor the Comment composer at the bottom of the overlay and keep the existing thread visible in the remaining scrollable area. Let the composer grow with content up to a sensible share of the height; at extremely low heights it may consume almost the full workspace.
 - There is no hard Comment-count limit. The initial expectation of small threads is only an optimization assumption.
-- Editing and deletion of persisted Comments remain outside V1. Single-Comment deletion is the direct follow-up in `02-delete-single-task-comment.md`; multiple selection remains excluded.
+- Editing persisted Comments remains outside V1. Single-Comment deletion is implemented by the direct follow-up in `02-delete-single-task-comment.md`; multiple selection remains excluded.
 
 ## Implementation defaults to validate
 
@@ -42,7 +42,7 @@
 
 ## Implementation checkpoint
 
-The first implementation is complete and awaiting hands-on UI evaluation. It includes eager loading/counts, the large shared-style overlay, chronological HTML projection, navigation, the Description-like plain-text composer, atomic Task-plus-Comment persistence, `gc`/`gn`, absolute local timestamps, narrow fallback, and regression coverage. `:wq` saves and closes the overlay; save responses invalidate older in-flight Comment snapshots so a newly saved Comment cannot disappear from the UI. Fine layout and interaction details remain intentionally open until that evaluation.
+The implementation is complete and the hands-on UI evaluation passed. It includes eager loading/counts, the large shared-style overlay, chronological HTML projection, navigation, the Description-like plain-text composer, atomic Task-plus-Comment persistence, `gc`/`gn`, absolute local timestamps, narrow fallback, and regression coverage. `:wq` saves and closes the overlay; save responses invalidate older in-flight Comment snapshots so a newly saved Comment cannot disappear from the UI.
 
 ## Compatibility notes
 

@@ -2,13 +2,13 @@
 
 **What to build:** A user can deliberately delete the currently selected persisted Task Comment.
 
-**Implementation prerequisites:** The read-and-append Task Comments workflow must be implemented first. Confirm Vikunja-compatible authorization semantics for the sole local User before implementing deletion.
+**Implementation prerequisites:** The read-and-append Task Comments workflow is implemented. V1 uses the sole local User to enforce Vikunja-compatible author-only deletion.
 
 **Category:** enhancement
 
 **Priority:** Low
 
-**Status:** needs-triage
+**Status:** implemented
 
 ## Decisions confirmed
 
@@ -19,7 +19,11 @@
 - After successful deletion, select the preceding Comment when available, otherwise the following Comment; an empty thread retains its empty Comments workspace.
 - Description is a Task field and may be cleared, but is never deleted as an independent record.
 
-## Decisions still required
+## Decisions confirmed
 
-- Determine whether V1 may delete only Comments authored by the sole local User or every Comment visible through an accessible Task.
-- Define failure and external-deletion feedback without changing the Vikunja schema.
+- V1 deletes only Comments authored by the sole local User; Comments authored by another User are not deletable.
+- Store failures and already-missing Comments use normal Vimkunja error feedback without changing the Vikunja schema.
+
+## Implementation checkpoint
+
+Implemented with `dd`, a central confirmation modal, author-only Store enforcement, selection adjustment after deletion, empty-thread handling, and regression coverage. Manual UI evaluation passed; `go test ./...` passes.

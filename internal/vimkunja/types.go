@@ -111,12 +111,13 @@ type Task struct {
 
 // TaskComment is one persisted contribution in a Task's chronological Comment thread.
 type TaskComment struct {
-	ID      int64
-	TaskID  int64
-	HTML    string
-	Author  string
-	Created time.Time
-	Updated time.Time
+	ID        int64
+	TaskID    int64
+	HTML      string
+	Author    string
+	CanDelete bool // True only for the sole local User, matching Vikunja's author-only rule.
+	Created   time.Time
+	Updated   time.Time
 }
 
 func (c TaskComment) Edited() bool {

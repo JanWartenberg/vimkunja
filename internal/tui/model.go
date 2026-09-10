@@ -90,22 +90,26 @@ type model struct {
 	commandHistoryDraft       string
 	commands                  *CommandRegistry
 
-	searchOpen         bool
-	searchMode         searchInputMode
-	searchCommandMode  bool
-	searchCommandInput string
-	searchGArmed       bool
-	searchInput        string
-	searchResults      []vimkunja.SearchResult
-	searchSelected     int
-	searchViewport     int
-	searchRequest      uint64
-	searchLoading      bool
-	searchOrigin       *searchOrigin
-	searchReturn       *searchReturn
-	labelUI            *labelUI
-	comments           *commentsUI
-	commentRequest     uint64
+	searchOpen           bool
+	searchMode           searchInputMode
+	searchCommandMode    bool
+	searchCommandInput   string
+	searchGArmed         bool
+	searchInput          string
+	searchResults        []vimkunja.SearchResult
+	searchSelected       int
+	searchViewport       int
+	searchRequest        uint64
+	searchLoading        bool
+	searchOrigin         *searchOrigin
+	searchReturn         *searchReturn
+	labelUI              *labelUI
+	comments             *commentsUI
+	commentRequest       uint64
+	commentDeleteConfirm bool
+	commentDeleting      bool
+	commentDeleteTaskID  int64
+	commentDeleteID      int64
 
 	// Projects pane
 	projects             []vimkunja.Project
@@ -413,6 +417,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.searchOpen {
 			return m.updateSearchKeys(key)
 		}
+		if m.commentDeleteConfirm {
+			return m.updateCommentDeleteConfirmation(k)
+		}
 		if m.comments != nil {
 			return m.updateComments(key)
 		}
@@ -676,6 +683,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.comments.items = append([]vimkunja.TaskComment(nil), typed.comments...)
 			m.comments.selected = max(0, len(typed.comments)-1)
 			m.comments.loading, m.comments.err = false, nil
+		}
+		return m, nil
+
+	case taskCommentDeletedMsg:
+		m.commentDeleting = false
+		m.commentDeleteConfirm = false
+		m.commentDeleteTaskID, m.commentDeleteID = 0, 0
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		if m.editor == nil || m.editor.id != typed.taskID {
+			return m, nil
+		}
+		m.editor.comments = removeComment(m.editor.comments, typed.commentID)
+		if m.comments != nil {
+			m.comments.items = removeComment(m.comments.items, typed.commentID)
+			m.comments.selected = clamp(m.comments.selected-1, 0, max(0, len(m.comments.items)-1))
 		}
 		return m, nil
 
@@ -1641,6 +1666,15 @@ func (m *model) View() tea.View {
 
 // editorCursor delegates cursor-shape support to Bubble Tea. Its renderer
 // restores the terminal default when a previously visible cursor becomes nil.
+func removeComment(comments []vimkunja.TaskComment, id int64) []vimkunja.TaskComment {
+	for index, comment := range comments {
+		if comment.ID == id {
+			return append(comments[:index:index], comments[index+1:]...)
+		}
+	}
+	return comments
+}
+
 func (m *model) nativeEditorCursorActive() bool {
 	if m.disableCursorShapes || m.focus != paneDetail || m.editor == nil || m.editor.field == fieldMoreFields {
 		return false
@@ -1994,6 +2028,9 @@ func (m *model) Render() string {
 	}
 	if m.comments != nil {
 		content = m.renderCommentsOverlay(content, w)
+	}
+	if m.commentDeleteConfirm {
+		content = m.renderCommentDeleteConfirmationModal(content, w)
 	}
 	status := m.renderStatusBar(w)
 	return lipgloss.JoinVertical(lipgloss.Top, content, status)

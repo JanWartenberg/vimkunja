@@ -16,14 +16,13 @@ MVP und **Meilenstein 1** sind abgeschlossen: tägliche Aufgabenverwaltung ist o
 
 ## Aktuelle Tickets
 
-Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End-Aliasse, Done-Toggle im Detail, Task-Metadaten-Darstellung und Task Labels sind abgeschlossen und archiviert. Die Standard-Kanban-Provisionierung, die einzelne manuelle Kanban View, die Project-Hierarchie und die Globale Suche sind implementiert und archiviert. Die folgenden offenen Tickets sind nach Meilenstein eingeordnet; `needs-triage` in einem Ticket bedeutet weiterhin, dass dessen konkrete Spezifikation noch fehlt.
+Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End-Aliasse, Done-Toggle im Detail, Task-Metadaten-Darstellung, Task Labels und Task Comments inklusive Einzel-Löschung sind abgeschlossen. Die Standard-Kanban-Provisionierung, die einzelne manuelle Kanban View, die Project-Hierarchie und die Globale Suche sind implementiert und archiviert. Die folgenden offenen Tickets sind nach Meilenstein eingeordnet; `needs-triage` in einem Ticket bedeutet weiterhin, dass dessen konkrete Spezifikation noch fehlt.
 
 ### Meilenstein 2
 
 Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md), die [kompakte Task-Detail-Ansicht](.archive/2026-08-14/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md), die [Ex-Command-History samt Completion](.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md), die [inline Task-Titelbearbeitung in List und Overview](.archive/2026-08-18/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-overview.md), die [feldlokalen Detail-Picker-Overlays](.archive/2026-09-03/detail-picker-overlay/issues/01-render-detail-pickers-as-field-local-overlays.md), der Due-Date-Picker mit relativen Helfern, kanonische UTC-Zeitstempel, der einzeilige Status-Footer und schmale Modal-Layouts sind implementiert; Kanban-Title-Editing bleibt bewusst ausgenommen, der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
 
-5. [Task Comments anzeigen und anlegen](.scratch/task-comments/issues/01-show-and-create-task-comments.md) – erste Implementierung abgeschlossen; UI-Evaluation und Feinschliff stehen aus.
-5a. [Einzelnen Task Comment löschen](.scratch/task-comments/issues/02-delete-single-task-comment.md) – direktes Follow-up nach der UI-Evaluation.
+5. [Home/End im Insert Mode unterstützen](.scratch/insert-mode-home-end/issues/01-support-home-end-in-insert-mode.md) – höchste Priorität; `Home`/`Pos1` zum Anfang und `End` zum Ende während des Editierens.
 6. [Benutzerkonfiguration hinzufügen](.scratch/user-configuration/issues/01-add-user-facing-tui-configuration.md) – zunächst Konfigurationsrahmen und nur tatsächlich benötigte Einstellungen.
 
 ### Meilenstein 3

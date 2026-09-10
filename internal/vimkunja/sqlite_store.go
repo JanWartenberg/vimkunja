@@ -1316,6 +1316,9 @@ func (s *SQLiteStore) ListTaskComments(ctx context.Context, taskID int64) ([]Tas
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT tc.id, tc.task_id, tc.comment,
 			COALESCE(NULLIF(TRIM(u.name), ''), u.username, 'Unknown user'),
+			CASE WHEN (SELECT COUNT(*) FROM users) = 1
+				AND tc.author_id = (SELECT id FROM users ORDER BY id LIMIT 1)
+				THEN 1 ELSE 0 END,
 			CAST(tc.created AS TEXT), COALESCE(CAST(tc.updated AS TEXT), CAST(tc.created AS TEXT))
 		FROM task_comments tc
 		LEFT JOIN users u ON u.id = tc.author_id
@@ -1329,7 +1332,7 @@ func (s *SQLiteStore) ListTaskComments(ctx context.Context, taskID int64) ([]Tas
 	for rows.Next() {
 		var comment TaskComment
 		var created, updated string
-		if err := rows.Scan(&comment.ID, &comment.TaskID, &comment.HTML, &comment.Author, &created, &updated); err != nil {
+		if err := rows.Scan(&comment.ID, &comment.TaskID, &comment.HTML, &comment.Author, &comment.CanDelete, &created, &updated); err != nil {
 			return nil, fmt.Errorf("scan Task Comment: %w", err)
 		}
 		comment.Created, err = parseDatabaseTimestamp(created)
@@ -1530,7 +1533,38 @@ func (s *SQLiteStore) SaveTaskWithComment(ctx context.Context, draft TaskDraft, 
 		return Task{}, TaskComment{}, fmt.Errorf("commit Task Comment: %w", err)
 	}
 	created, _ := parseDatabaseTimestamp(now)
-	return task, TaskComment{ID: commentID, TaskID: draft.ID, HTML: commentHTML, Author: author, Created: created, Updated: created}, nil
+	return task, TaskComment{ID: commentID, TaskID: draft.ID, HTML: commentHTML, Author: author, CanDelete: true, Created: created, Updated: created}, nil
+}
+
+// DeleteTaskComment enforces Vikunja's author-only Comment deletion rule in
+// the Store so the direct SQLite path cannot bypass the TUI affordance.
+func (s *SQLiteStore) DeleteTaskComment(ctx context.Context, taskID, commentID int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("delete Task Comment: begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+	actorID, err := onlyLocalUser(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("delete Task Comment: %w", err)
+	}
+	var authorID int64
+	if err := tx.QueryRowContext(ctx, `SELECT author_id FROM task_comments WHERE id = ? AND task_id = ?`, commentID, taskID).Scan(&authorID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("delete Task Comment: Comment not found")
+		}
+		return fmt.Errorf("delete Task Comment: load Comment: %w", err)
+	}
+	if authorID != actorID {
+		return fmt.Errorf("delete Task Comment: only the Comment author may delete it")
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM task_comments WHERE id = ? AND task_id = ?`, commentID, taskID); err != nil {
+		return fmt.Errorf("delete Task Comment: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("delete Task Comment: commit: %w", err)
+	}
+	return nil
 }
 
 func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, error) {

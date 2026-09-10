@@ -65,6 +65,8 @@ type fakeStore struct {
 	commentErr           error
 	savedCommentDraft    vimkunja.TaskCommentDraft
 	savedCommentTask     vimkunja.TaskDraft
+	deletedCommentTaskID int64
+	deletedCommentID     int64
 }
 
 func (f *fakeStore) ListProjects(context.Context) ([]vimkunja.Project, error) {
@@ -160,9 +162,28 @@ func (f *fakeStore) SaveTaskWithComment(_ context.Context, draft vimkunja.TaskDr
 	if f.commentErr != nil {
 		return vimkunja.Task{}, vimkunja.TaskComment{}, f.commentErr
 	}
-	created := vimkunja.TaskComment{ID: 99, TaskID: draft.ID, HTML: "<p>" + comment.Text + "</p>", Author: "Local User", Created: time.Date(2026, 9, 4, 13, 30, 0, 0, time.UTC), Updated: time.Date(2026, 9, 4, 13, 30, 0, 0, time.UTC)}
+	created := vimkunja.TaskComment{ID: 99, TaskID: draft.ID, HTML: "<p>" + comment.Text + "</p>", Author: "Local User", CanDelete: true, Created: time.Date(2026, 9, 4, 13, 30, 0, 0, time.UTC), Updated: time.Date(2026, 9, 4, 13, 30, 0, 0, time.UTC)}
 	f.taskComments[draft.ID] = append(f.taskComments[draft.ID], created)
 	return vimkunja.Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title, Description: draft.Description, Priority: draft.Priority, DueDate: draft.DueDate}, created, nil
+}
+
+func (f *fakeStore) DeleteTaskComment(_ context.Context, taskID, commentID int64) error {
+	f.deletedCommentTaskID, f.deletedCommentID = taskID, commentID
+	if f.commentErr != nil {
+		return f.commentErr
+	}
+	comments := f.taskComments[taskID]
+	for index, comment := range comments {
+		if comment.ID != commentID {
+			continue
+		}
+		if !comment.CanDelete {
+			return errors.New("only the Comment author may delete it")
+		}
+		f.taskComments[taskID] = append(comments[:index:index], comments[index+1:]...)
+		return nil
+	}
+	return errors.New("Comment not found")
 }
 
 func (f *fakeStore) CreateLabel(_ context.Context, title string) (vimkunja.Label, error) {
@@ -5420,6 +5441,42 @@ func TestOpeningCommentsKeepsNewestSelectedCommentBodyVisible(t *testing.T) {
 	m.openComments()
 	if view := ansi.Strip(m.Render()); !strings.Contains(view, "Newest body must be visible") {
 		t.Fatalf("newest selected Comment body is outside initial viewport: %q", view)
+	}
+}
+
+func TestTaskCommentsDeleteOnlyOwnComment(t *testing.T) {
+	store := &fakeStore{taskComments: map[int64][]vimkunja.TaskComment{1: {
+		{ID: 1, TaskID: 1, Author: "Local", CanDelete: true},
+		{ID: 2, TaskID: 1, Author: "Ada"},
+	}}}
+	m := NewModel(Config{Store: store}).(*model)
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	m.editor.comments = append([]vimkunja.TaskComment(nil), store.taskComments[1]...)
+	m.openComments()
+	m.comments.selected = 0
+
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	updated, deleteCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'd', Text: "d"}))
+	m = updated.(*model)
+	if !m.commentDeleteConfirm || deleteCmd != nil {
+		t.Fatalf("own Comment dd = confirm:%v command:%v", m.commentDeleteConfirm, deleteCmd != nil)
+	}
+	updated, deleteCmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
+	m = updated.(*model)
+	if deleteCmd == nil {
+		t.Fatal("delete confirmation did not start persistence")
+	}
+	updated, _ = m.Update(deleteCmd())
+	m = updated.(*model)
+	if store.deletedCommentID != 1 || len(m.comments.items) != 1 || m.comments.items[0].ID != 2 {
+		t.Fatalf("deleted Comment = id:%d items:%#v", store.deletedCommentID, m.comments.items)
+	}
+
+	m.comments.selected = 0
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	if m.commentDeleteConfirm || !strings.Contains(m.lastErr, "only the Comment author") {
+		t.Fatalf("foreign Comment dd = confirm:%v error:%q", m.commentDeleteConfirm, m.lastErr)
 	}
 }
 

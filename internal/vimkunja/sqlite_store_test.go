@@ -182,6 +182,31 @@ func TestSQLiteStoreListsAndAtomicallyAppendsTaskComments(t *testing.T) {
 	}
 }
 
+func TestSQLiteStoreDeletesOnlyCommentsBySoleLocalUser(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	if _, err := store.db.Exec(`
+		CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, username TEXT NOT NULL);
+		CREATE TABLE task_comments (id INTEGER PRIMARY KEY, comment TEXT NOT NULL, author_id INTEGER NOT NULL, task_id INTEGER NOT NULL, created DATETIME, updated DATETIME);
+		INSERT INTO users (id, username) VALUES (1, 'local');
+		INSERT INTO task_comments VALUES
+			(1, '<p>Own</p>', 1, 11, '2026-09-04 10:00:00', '2026-09-04 10:00:00'),
+			(2, '<p>Other</p>', 2, 11, '2026-09-04 10:00:00', '2026-09-04 10:00:00');
+	`); err != nil {
+		t.Fatal(err)
+	}
+	comments, err := store.ListTaskComments(context.Background(), 11)
+	if err != nil || !comments[0].CanDelete || comments[1].CanDelete {
+		t.Fatalf("Comment deletion capabilities = %#v, err=%v", comments, err)
+	}
+	if err := store.DeleteTaskComment(context.Background(), 11, 1); err != nil {
+		t.Fatalf("delete own Comment: %v", err)
+	}
+	if err := store.DeleteTaskComment(context.Background(), 11, 2); err == nil || !strings.Contains(err.Error(), "only the Comment author") {
+		t.Fatalf("delete foreign Comment = %v, want author error", err)
+	}
+}
+
 func TestListTaskCommentsAcceptsLegacyVimkunjaTimestamp(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()

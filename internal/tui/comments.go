@@ -44,6 +44,12 @@ type taskCommentSavedMsg struct {
 	err        error
 }
 
+type taskCommentDeletedMsg struct {
+	taskID    int64
+	commentID int64
+	err       error
+}
+
 func (m *model) loadTaskComments(taskID int64) tea.Cmd {
 	m.commentRequest++
 	request := m.commentRequest
@@ -106,6 +112,11 @@ func (m *model) updateComments(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		ui.gArmed = false
 		if s == "g" {
 			ui.selected = 0
+			return m, nil
+		}
+		if s == "d" {
+			m.beginCommentDeletion()
+			return m, nil
 		}
 		return m, nil
 	}
@@ -118,6 +129,9 @@ func (m *model) updateComments(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "a":
 		m.startCommentComposer()
 		return m, cursorBlinkCmd()
+	case "d":
+		ui.gArmed = true
+		return m, nil
 	case "g":
 		ui.gArmed = true
 	case "G":
@@ -403,6 +417,53 @@ func renderCommentThread(ui *commentsUI, width int) ([]string, int, int) {
 		rows = append(rows, "")
 	}
 	return rows, selectedStart, selectedEnd
+}
+
+func (m *model) beginCommentDeletion() {
+	if m.comments == nil || m.editor == nil || m.comments.selected < 0 || m.comments.selected >= len(m.comments.items) {
+		return
+	}
+	comment := m.comments.items[m.comments.selected]
+	if !comment.CanDelete {
+		m.recordError(fmt.Errorf("only the Comment author may delete it"))
+		return
+	}
+	m.commentDeleteConfirm = true
+	m.commentDeleteTaskID, m.commentDeleteID = comment.TaskID, comment.ID
+	m.confirmationScroll, m.confirmationGArmed = 0, false
+}
+
+func (m *model) updateCommentDeleteConfirmation(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "y":
+		if m.commentDeleting {
+			return m, nil
+		}
+		m.commentDeleting = true
+		taskID, commentID := m.commentDeleteTaskID, m.commentDeleteID
+		return m, func() tea.Msg {
+			ctx, cancel := contextWithTimeout()
+			defer cancel()
+			return taskCommentDeletedMsg{taskID: taskID, commentID: commentID, err: m.store.DeleteTaskComment(ctx, taskID, commentID)}
+		}
+	case "n", "esc":
+		m.commentDeleteConfirm = false
+		m.commentDeleteTaskID, m.commentDeleteID = 0, 0
+	}
+	return m, nil
+}
+
+func (m *model) renderCommentDeleteConfirmationModal(background string, width int) string {
+	viewportHeight := len(strings.Split(background, "\n"))
+	layout := modalBounds(width, viewportHeight, min(50, width), 10)
+	body, _ := confirmationBody(
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.danger)).Render("DELETE COMMENT"),
+		"Delete comment?",
+		"y delete  •  n / Esc cancel",
+		layout,
+		0,
+	)
+	return overlayModalLayout(background, renderModalFrame(body, layout), width, layout.fallback)
 }
 
 func (m *model) renderCommentComposer(width, height int) []string {
