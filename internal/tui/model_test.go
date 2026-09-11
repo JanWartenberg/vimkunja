@@ -3880,6 +3880,90 @@ func TestDescriptionNormalModeOpensLinesAndAppends(t *testing.T) {
 	}
 }
 
+func TestEditorInsertHomeEndStayInInsertMode(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		field    editorField
+		value    string
+		cursor   int
+		wantHome int
+		wantEnd  int
+	}{
+		{name: "title", field: fieldTitle, value: "Möwen bilder", cursor: 5, wantHome: 0, wantEnd: 12},
+		{name: "description current line", field: fieldDescription, value: "first\nMöwen bilder\nlast", cursor: 9, wantHome: 6, wantEnd: 18},
+		{name: "legacy due date insert mode", field: fieldDueDate, value: "2026-09-04", cursor: 5, wantHome: 0, wantEnd: 10},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testModel()
+			m.currentProjectID = 1
+			m.openNewEditor()
+			m.editor.field = tc.field
+			m.editor.setFieldValue(tc.value)
+			m.editor.cursor = tc.cursor
+			m.editor.mode = editorInsert
+
+			m = pressKey(m, tea.Key{Code: tea.KeyHome})
+			if m.editor.mode != editorInsert || m.editor.cursor != tc.wantHome {
+				t.Fatalf("Home = mode:%v cursor:%d, want Insert/%d", m.editor.mode, m.editor.cursor, tc.wantHome)
+			}
+			m = pressKey(m, tea.Key{Code: tea.KeyEnd})
+			if m.editor.mode != editorInsert || m.editor.cursor != tc.wantEnd {
+				t.Fatalf("End = mode:%v cursor:%d, want Insert/%d", m.editor.mode, m.editor.cursor, tc.wantEnd)
+			}
+		})
+	}
+}
+
+// Normal date entry uses the picker, not the legacy Insert Mode exercised
+// above. Preserve its navigation until the Home/End ticket resolves that conflict.
+func TestDueDateHomeEndThroughNormalEntryKeepPickerNavigation(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldDueDate
+	m.editor.draft.DueDate = "2026-09-04"
+	m.editor.cursor = 5
+
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	if m.editor.mode != editorDueDatePicker || m.editor.cursor != 0 {
+		t.Fatalf("i = mode:%v cursor:%d, want Due Date picker/0", m.editor.mode, m.editor.cursor)
+	}
+	// Row navigation preserves a cursor moved within this picker session,
+	// not one inherited from the field edited before opening it.
+	for range 5 {
+		m = pressKey(m, tea.Key{Code: tea.KeyRight})
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEnd})
+	if m.editor.mode != editorDueDatePicker || m.editor.dueDatePickerSelected != 3 {
+		t.Fatalf("End = mode:%v selected:%d, want picker/3", m.editor.mode, m.editor.dueDatePickerSelected)
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyHome})
+	if m.editor.mode != editorDueDatePicker || m.editor.dueDatePickerSelected != 0 || m.editor.cursor != 5 {
+		t.Fatalf("Home = mode:%v selected:%d cursor:%d, want picker/0/5", m.editor.mode, m.editor.dueDatePickerSelected, m.editor.cursor)
+	}
+	if m.editor.draft.DueDate != "2026-09-04" {
+		t.Fatalf("picker navigation changed date: %q", m.editor.draft.DueDate)
+	}
+}
+
+func TestCommentComposerInsertHomeEndUseCurrentLine(t *testing.T) {
+	m := testModel()
+	m.comments = &commentsUI{composer: &commentComposer{
+		text:   "first\nMöwen bilder\nlast",
+		cursor: 9,
+		mode:   editorInsert,
+	}}
+
+	m = pressKey(m, tea.Key{Code: tea.KeyHome})
+	if m.comments.composer.mode != editorInsert || m.comments.composer.cursor != 6 {
+		t.Fatalf("Comment Home = mode:%v cursor:%d, want Insert/6", m.comments.composer.mode, m.comments.composer.cursor)
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEnd})
+	if m.comments.composer.mode != editorInsert || m.comments.composer.cursor != 18 {
+		t.Fatalf("Comment End = mode:%v cursor:%d, want Insert/18", m.comments.composer.mode, m.comments.composer.cursor)
+	}
+}
+
 func TestEditorInsertPastesSystemClipboardAtCursor(t *testing.T) {
 	m := testModel()
 	m.currentProjectID = 1

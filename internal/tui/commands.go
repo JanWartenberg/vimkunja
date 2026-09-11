@@ -89,6 +89,52 @@ func (r *CommandRegistry) Execute(m *model, input string) (tea.Model, tea.Cmd, e
 	return updated, cmd, nil
 }
 
+// dispatchModalGlobalCommand handles application-wide commands before modal
+// key handlers. Local commands (q, w, wq, etc.) remain owned by each prompt.
+// Resolve through the main registry so aliases and unique prefixes cannot drift.
+func (m *model) dispatchModalGlobalCommand(key tea.KeyMsg) (tea.Model, tea.Cmd, bool) {
+	if key.String() != "enter" {
+		return m, nil, false
+	}
+	var active *bool
+	var input *string
+	switch {
+	case m.searchOpen:
+		active, input = &m.searchCommandMode, &m.searchCommandInput
+	case m.comments != nil:
+		if m.comments.saving || m.commentDeleteConfirm {
+			return m, nil, false
+		}
+		active, input = &m.comments.commandMode, &m.comments.commandInput
+	case m.labelUI != nil:
+		if m.labelUI.loading {
+			return m, nil, false
+		}
+		active, input = &m.labelUI.commandMode, &m.labelUI.commandInput
+	default:
+		return m, nil, false
+	}
+	if !*active {
+		return m, nil, false
+	}
+	fields := strings.Fields(strings.TrimPrefix(strings.TrimSpace(*input), ":"))
+	if len(fields) == 0 {
+		return m, nil, false
+	}
+	command, _ := m.commands.resolve(fields[0])
+	if command == nil {
+		return m, nil, false
+	}
+	switch command.canonical {
+	case "quitall", "quitall!", "writequitall":
+		*active, *input = false, ""
+		updated, cmd := command.handler(m, fields[1:])
+		return updated, cmd, true
+	default:
+		return m, nil, false
+	}
+}
+
 // Complete returns the canonical command for a unique prefix or all canonical
 // candidates for an ambiguous prefix. An exact spelling does not take precedence.
 func (r *CommandRegistry) Complete(prefix string) (string, []string) {
@@ -222,6 +268,13 @@ func writeQuitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 }
 
 func writeQuitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if m.comments != nil && m.comments.composer != nil {
+		cmd := m.saveTaskWithComment(true)
+		if cmd != nil {
+			m.quitAfterSave = true
+		}
+		return m, cmd
+	}
 	if m.showDetail && m.focus == paneDetail && m.editor != nil {
 		cmd := m.saveEditor(true)
 		if cmd != nil {
@@ -233,7 +286,7 @@ func writeQuitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 }
 
 func quitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
-	if m.editor != nil && m.editor.dirty() {
+	if (m.editor != nil && m.editor.dirty()) || (m.comments != nil && m.comments.composer != nil) {
 		m.recordError(fmt.Errorf("unsaved changes; use :wqa or :qa!"))
 		return m, nil
 	}

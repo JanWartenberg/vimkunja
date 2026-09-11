@@ -285,13 +285,6 @@ func (m *model) updateLabelCommand(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m, m.saveTaskPickerLabels(command == "wq")
-		case "qa", "quitall", "qa!", "quitall!", "wqa":
-			updated, cmd, err := m.commands.Execute(m, command)
-			if err != nil {
-				m.recordError(err)
-				return m, nil
-			}
-			return updated, cmd
 		case "":
 		default:
 			m.recordError(fmt.Errorf("unknown Labels command: %s", command))

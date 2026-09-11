@@ -176,8 +176,6 @@ func (m *model) updateSearchCommandKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch command {
 		case "q", "quit":
 			m.closeSearch()
-		case "qa", "quitall", "qa!", "quitall!":
-			return m, tea.Quit
 		case "":
 		default:
 			m.recordError(fmt.Errorf("unknown Search command: %s", command))

@@ -414,6 +414,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		if updated, cmd, handled := m.dispatchModalGlobalCommand(key); handled {
+			return updated, cmd
+		}
 		if m.searchOpen {
 			return m.updateSearchKeys(key)
 		}
@@ -620,7 +623,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
-		if m.projectViewPreference == projectViewKanban {
+		// Overview reloads project metadata after a save, but must not activate
+		// a project Board: its selection would replace the open Overview Task.
+		if !m.inOverview() && m.projectViewPreference == projectViewKanban {
 			if kanbanView := m.pickManualKanbanViewIndex(); kanbanView >= 0 {
 				m.viewSelected = kanbanView
 				m.currentViewID = m.projectViews[kanbanView].ID
@@ -705,6 +710,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case taskCommentSavedMsg:
+		quitAfterSave := m.quitAfterSave
+		m.quitAfterSave = false
 		if m.comments != nil {
 			m.comments.loading = false
 			m.comments.saving = false
@@ -734,6 +741,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.closeComments()
 		}
 		m.pendingTaskID = typed.task.ID
+		if quitAfterSave {
+			return m, tea.Quit
+		}
 		return m, m.refreshActiveTasks()
 
 	case taskLabelsLoadedMsg:
@@ -1679,6 +1689,11 @@ func (m *model) nativeEditorCursorActive() bool {
 	if m.disableCursorShapes || m.focus != paneDetail || m.editor == nil || m.editor.field == fieldMoreFields {
 		return false
 	}
+	// Relative-date helpers use their inline blinking marker rather than the
+	// date row's native cursor coordinates.
+	if m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected != 0 {
+		return false
+	}
 	// The tiny focused Description workspace has a different row geometry from
 	// the compact Detail document, so it renders its own cursor marker.
 	return !(m.editor.descriptionActive && m.detailTextHeight() < 12)
@@ -1693,7 +1708,7 @@ func (m *model) editorCursor() *tea.Cursor {
 		cursor.Shape = tea.CursorBar
 		return cursor
 	}
-	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.editor.dueDatePickerActive() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
+	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
 		return nil
 	}
 	if m.editor.mode == editorNormal && m.editor.field != fieldDescription {
@@ -1710,8 +1725,15 @@ func (m *model) editorCursor() *tea.Cursor {
 	}
 
 	x, y := m.editorCursorPosition()
+	if m.editor.dueDatePickerActive() {
+		// Masked entry skips separators; indicate the digit typing will replace.
+		x += m.editor.dueDateOverwriteCursor() - m.editor.cursor
+	}
 	cursor := tea.NewCursor(x, y)
-	if m.editor.mode == editorInsert {
+	if m.editor.dueDatePickerActive() {
+		cursor.Shape = tea.CursorBlock
+		cursor.Blink = true
+	} else if m.editor.mode == editorInsert {
 		cursor.Shape = tea.CursorBar
 	} else {
 		cursor.Shape = tea.CursorBlock
@@ -2259,7 +2281,7 @@ func (m *model) renderStatusBar(w int) string {
 		}
 	}
 	if m.comments != nil {
-		hint = "[COMMENTS] j/k select  •  gg/G jump  •  a append  •  Esc close"
+		hint = "[COMMENTS] j/k select  •  gg/G jump  •  a/i/o append  •  Esc close"
 		if m.comments.saving {
 			hint = "[COMMENTS] Saving Task and Comment…"
 		} else if m.comments.composer != nil {

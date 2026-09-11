@@ -126,7 +126,7 @@ func (m *model) updateComments(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case ":":
 		ui.commandMode = true
 		ui.commandInput = ""
-	case "a":
+	case "a", "i", "o":
 		m.startCommentComposer()
 		return m, cursorBlinkCmd()
 	case "d":
@@ -167,6 +167,10 @@ func (m *model) updateCommentInsert(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		moveTextCursor(&composer.cursor, composer.text, -1)
 	case "right":
 		moveTextCursor(&composer.cursor, composer.text, 1)
+	case "home":
+		composer.cursor = textLineStart(composer.text, composer.cursor)
+	case "end":
+		composer.cursor = textLineEnd(composer.text, composer.cursor)
 	case "up":
 		moveCommentCursorLine(composer, -1)
 	case "down":
@@ -364,7 +368,7 @@ func (m *model) renderCommentsOverlay(background string, width int) string {
 	} else if ui.err != nil && len(ui.items) == 0 {
 		threadRows = []string{"Unable to load Comments: " + ui.err.Error()}
 	} else if len(threadRows) == 0 {
-		threadRows = []string{"No comments yet. Press a to append one."}
+		threadRows = []string{"No comments yet. Press a, i, or o to append one."}
 	}
 	ui.viewport = clamp(ui.viewport, 0, max(0, len(threadRows)-available))
 	if selectedStart < ui.viewport {
@@ -398,16 +402,19 @@ func renderCommentThread(ui *commentsUI, width int) ([]string, int, int) {
 		marker := "  "
 		if index == ui.selected {
 			marker = "> "
+			if ui.composer == nil && !ui.commandMode && !ui.saving {
+				marker = normalCursorText(">", 0) + " "
+			}
 		}
 		when := comment.Created.In(time.Local).Format("2006-01-02 15:04")
-		header := marker + comment.Author + " · " + when
+		header := comment.Author + " · " + when
 		if comment.Edited() {
 			header += " · edited"
 		}
 		if index == ui.selected {
 			header = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(header)
 		}
-		rows = append(rows, header)
+		rows = append(rows, marker+header)
 		for _, line := range wrapDescription(descriptionTerminalText(comment.HTML), max(1, width-2)) {
 			rows = append(rows, "  "+line.text)
 		}

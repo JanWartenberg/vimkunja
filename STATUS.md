@@ -22,7 +22,7 @@ Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End
 
 Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md), die [kompakte Task-Detail-Ansicht](.archive/2026-08-14/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md), die [Ex-Command-History samt Completion](.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md), die [inline Task-Titelbearbeitung in List und Overview](.archive/2026-08-18/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-overview.md), die [feldlokalen Detail-Picker-Overlays](.archive/2026-09-03/detail-picker-overlay/issues/01-render-detail-pickers-as-field-local-overlays.md), der Due-Date-Picker mit relativen Helfern, kanonische UTC-Zeitstempel, der einzeilige Status-Footer und schmale Modal-Layouts sind implementiert; Kanban-Title-Editing bleibt bewusst ausgenommen, der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
 
-5. [Home/End im Insert Mode unterstützen](.scratch/insert-mode-home-end/issues/01-support-home-end-in-insert-mode.md) – höchste Priorität; `Home`/`Pos1` zum Anfang und `End` zum Ende während des Editierens.
+5. [Home/End im Insert Mode unterstützen](.scratch/insert-mode-home-end/issues/01-support-home-end-in-insert-mode.md) – höchste Priorität; teilweise implementiert. Vor Abschluss Picker-Tastenkonflikt und Abdeckung weiterer Texteingaben klären.
 6. [Benutzerkonfiguration hinzufügen](.scratch/user-configuration/issues/01-add-user-facing-tui-configuration.md) – zunächst Konfigurationsrahmen und nur tatsächlich benötigte Einstellungen.
 
 ### Meilenstein 3

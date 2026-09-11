@@ -501,6 +501,20 @@ func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "right":
 		e.moveCursor(1)
 		return m, nil
+	case "home":
+		if e.field == fieldDescription {
+			e.cursor = e.lineStart()
+		} else {
+			e.cursor = 0
+		}
+		return m, nil
+	case "end":
+		if e.field == fieldDescription {
+			e.cursor = e.lineEnd()
+		} else {
+			e.cursor = e.fieldRuneLen()
+		}
+		return m, nil
 	case "up":
 		if e.field == fieldDescription {
 			e.moveCursorLine(-1)
@@ -596,8 +610,11 @@ func (m *model) openDueDatePicker() (tea.Model, tea.Cmd) {
 	e := m.editor
 	if e.draft.DueDate == "" {
 		e.draft.DueDate = "YYYY-MM-DD"
-		e.cursor = 0
 	}
+	// The shared cursor may be past the date mask after editing another
+	// field or completing a date. Start each new picker session at its first
+	// digit; preserve the date cursor only when switching rows within it.
+	e.cursor = 0
 	e.dueDatePickerSelected = 0
 	e.dueDatePickerInputs = [3]string{}
 	e.dueDatePickerDateCursor = e.cursor
@@ -1168,6 +1185,15 @@ func (e *taskEditor) moveCursorLine(delta int) {
 	}
 	e.cursor = offset + min(col, len([]rune(lines[target])))
 	e.descScroll = max(0, target)
+}
+
+// dueDateOverwriteCursor mirrors the date mask's next writable position.
+func (e *taskEditor) dueDateOverwriteCursor() int {
+	cursor := clamp(e.cursor, 0, len("YYYY-MM-DD"))
+	if cursor == 4 || cursor == 7 {
+		cursor++
+	}
+	return cursor
 }
 
 func (e *taskEditor) insertDueDateDigit(digit rune) {
