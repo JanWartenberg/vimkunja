@@ -18,16 +18,17 @@ type commentComposer struct {
 }
 
 type commentsUI struct {
-	items        []vimkunja.TaskComment
-	selected     int
-	viewport     int
-	loading      bool
-	saving       bool
-	err          error
-	gArmed       bool
-	composer     *commentComposer
-	commandMode  bool
-	commandInput string
+	items         []vimkunja.TaskComment
+	selected      int
+	viewport      int
+	loading       bool
+	saving        bool
+	err           error
+	gArmed        bool
+	composer      *commentComposer
+	commandMode   bool
+	commandInput  string
+	commandCursor int
 }
 
 type taskCommentsLoadedMsg struct {
@@ -124,8 +125,7 @@ func (m *model) updateComments(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		m.closeComments()
 	case ":":
-		ui.commandMode = true
-		ui.commandInput = ""
+		ui.commandMode, ui.commandInput, ui.commandCursor = true, "", 0
 	case "a", "i", "o":
 		m.startCommentComposer()
 		return m, cursorBlinkCmd()
@@ -188,8 +188,7 @@ func (m *model) updateCommentNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	s := normalizeArrow(key.String())
 	switch s {
 	case ":":
-		m.comments.commandMode = true
-		m.comments.commandInput = ""
+		m.comments.commandMode, m.comments.commandInput, m.comments.commandCursor = true, "", 0
 	case "i":
 		composer.mode = editorInsert
 		return m, cursorBlinkCmd()
@@ -286,12 +285,10 @@ func (m *model) updateCommentCommand(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch s {
 	case "esc":
 		ui.commandMode, ui.commandInput = false, ""
-	case "backspace":
-		runes := []rune(ui.commandInput)
-		if len(runes) == 0 {
+	case "backspace", "delete", "left", "right", "home", "end":
+		updateSingleLineTextInput(&ui.commandInput, &ui.commandCursor, key)
+		if ui.commandInput == "" && key.String() == "backspace" {
 			ui.commandMode = false
-		} else {
-			ui.commandInput = string(runes[:len(runes)-1])
 		}
 	case "enter":
 		command := strings.TrimSpace(ui.commandInput)
@@ -321,9 +318,7 @@ func (m *model) updateCommentCommand(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.recordError(fmt.Errorf("unknown Comments command: %s", command))
 		}
 	default:
-		if text := key.Key().Text; text != "" {
-			ui.commandInput += text
-		}
+		updateSingleLineTextInput(&ui.commandInput, &ui.commandCursor, key)
 	}
 	return m, nil
 }

@@ -69,8 +69,10 @@ func (m *model) openSearch() {
 	m.searchMode = searchInsertMode
 	m.searchCommandMode = false
 	m.searchCommandInput = ""
+	m.searchCommandCursor = 0
 	m.searchGArmed = false
 	m.searchInput = ""
+	m.searchInputCursor = 0
 	m.searchResults = nil
 	m.searchSelected = 0
 	m.searchViewport = 0
@@ -95,12 +97,12 @@ func (m *model) updateSearchInsertKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchMode = searchNormalMode
 		m.searchGArmed = false
 		return m, nil
-	case "backspace":
-		runes := []rune(m.searchInput)
-		if len(runes) > 0 {
-			m.searchInput = string(runes[:len(runes)-1])
+	case "backspace", "delete", "left", "right", "home", "end":
+		_, changed := updateSingleLineTextInput(&m.searchInput, &m.searchInputCursor, key)
+		if changed {
+			return m, m.beginSearchQuery()
 		}
-		return m, m.beginSearchQuery()
+		return m, nil
 	case "up", "ctrl+p":
 		m.moveSearchSelection(-1)
 		return m, nil
@@ -114,8 +116,7 @@ func (m *model) updateSearchInsertKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.moveSearchSelection(-m.searchVisibleResultRows() / 2)
 		return m, nil
 	}
-	if text := key.Key().Text; text != "" {
-		m.searchInput += text
+	if _, changed := updateSingleLineTextInput(&m.searchInput, &m.searchInputCursor, key); changed {
 		return m, m.beginSearchQuery()
 	}
 	return m, nil
@@ -137,7 +138,7 @@ func (m *model) updateSearchNormalKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchMode = searchInsertMode
 	case ":":
 		m.searchCommandMode = true
-		m.searchCommandInput = ""
+		m.searchCommandInput, m.searchCommandCursor = "", 0
 	case "j", "down", "ctrl+n":
 		m.moveSearchSelection(1)
 	case "k", "up", "ctrl+p":
@@ -163,11 +164,8 @@ func (m *model) updateSearchCommandKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.searchCommandMode = false
 		m.searchCommandInput = ""
 		return m, nil
-	case "backspace":
-		runes := []rune(m.searchCommandInput)
-		if len(runes) > 0 {
-			m.searchCommandInput = string(runes[:len(runes)-1])
-		}
+	case "backspace", "delete", "left", "right", "home", "end":
+		updateSingleLineTextInput(&m.searchCommandInput, &m.searchCommandCursor, key)
 		return m, nil
 	case "enter":
 		command := strings.ToLower(strings.TrimSpace(m.searchCommandInput))
@@ -182,9 +180,7 @@ func (m *model) updateSearchCommandKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if text := key.Key().Text; text != "" {
-		m.searchCommandInput += text
-	}
+	updateSingleLineTextInput(&m.searchCommandInput, &m.searchCommandCursor, key)
 	return m, nil
 }
 
@@ -312,6 +308,7 @@ func (m *model) restoreLastSearch() tea.Cmd {
 	origin := snapshot.origin
 	m.searchOrigin = &origin
 	m.searchOpen, m.searchInput = true, snapshot.input
+	m.searchInputCursor = len([]rune(m.searchInput))
 	m.searchMode = snapshot.mode
 	m.searchCommandMode = false
 	m.searchCommandInput = ""
@@ -439,7 +436,7 @@ func (m *model) renderSearchOverlay(background string, width int) string {
 	contentWidth := layout.contentWidth
 	query := fmt.Sprintf("Search: %s", m.searchInput)
 	if m.searchMode == searchInsertMode {
-		query += "_"
+		query = "Search: " + cursorMarkedText(m.searchInput, m.searchInputCursor)
 	}
 	body := []string{
 		lipgloss.NewStyle().Bold(true).Render("GLOBAL SEARCH · " + m.searchModeLabel()),
@@ -447,7 +444,7 @@ func (m *model) renderSearchOverlay(background string, width int) string {
 		"",
 	}
 	if m.searchCommandMode {
-		body = append(body, fmt.Sprintf(":%s_", m.searchCommandInput), "")
+		body = append(body, ":"+cursorMarkedText(m.searchCommandInput, m.searchCommandCursor), "")
 	}
 	switch {
 	case strings.TrimSpace(m.searchInput) == "":

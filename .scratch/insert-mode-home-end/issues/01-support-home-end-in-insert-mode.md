@@ -10,7 +10,7 @@
 
 **Priority:** Highest
 
-**Status:** completed
+**Status:** needs-triage
 
 - [ ] `Home` and `Pos1` move the Insert Mode cursor to the first position of the current editable line.
 - [ ] `End` moves the Insert Mode cursor to the last position of the current editable line.
@@ -26,8 +26,8 @@
 - Fixed a separate manual-date editing bug: opening the picker now resets its cursor to the first digit instead of inheriting an out-of-range cursor from a previously edited title or date. Regression tests exercise both actual entry sequences.
 - Fixed missing date-picker cursor: the manual date row now exposes a blinking native block cursor on the next overwritten digit (skipping separators). Relative helpers retain an inline blinking marker. Rendered-view tests cover regular, compact, and narrow layouts, typing, row switching, and closing the picker.
 - Legacy Due Date Insert Mode supports text motions, but normal `i` entry opens the Due Date picker. There, Home/End still select the first/last helper row, including while entering a date or relative value.
-- Label, Search, and command inputs remain append-only; the ticket's all-fields scope is not complete.
-- Next: resolve the picker key conflict and remaining input scope before implementing and closing this ticket. Existing picker navigation is intentionally unchanged meanwhile.
+- Label filter/create/rename, Global Search, and all Command prompts now support cursor-aware insertion, deletion, Left/Right, Home/Pos1, and End. Their visible cursor marks the insertion position.
+- Next: resolve the Due Date picker key conflict before implementing and closing this ticket. Existing picker navigation is intentionally unchanged meanwhile.
 
 ## Further context
 

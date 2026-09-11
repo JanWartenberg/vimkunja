@@ -723,8 +723,9 @@ func TestNarrowFooterPreservesInputAndErrorTails(t *testing.T) {
 	m := testModel()
 	m.commandMode = true
 	m.commandInput = "a-very-long-command"
+	m.commandCursor = len([]rune(m.commandInput))
 	footer := ansi.Strip(m.renderStatusBar(25))
-	if !strings.Contains(footer, ":…mmand_") {
+	if !strings.Contains(footer, ":…mmand│") {
 		t.Fatalf("command footer = %q, want input tail", footer)
 	}
 

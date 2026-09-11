@@ -158,6 +158,41 @@ func moveTextCursor(cursor *int, value string, delta int) {
 	*cursor = clamp(*cursor+delta, 0, len([]rune(value)))
 }
 
+// updateSingleLineTextInput applies cursor-aware edits shared by prompts and
+// single-line pickers. It reports whether it consumed the key and changed text.
+func updateSingleLineTextInput(value *string, cursor *int, key tea.KeyMsg) (handled, changed bool) {
+	*cursor = clamp(*cursor, 0, len([]rune(*value)))
+	switch key.String() {
+	case "home":
+		*cursor = 0
+		return true, false
+	case "end":
+		*cursor = len([]rune(*value))
+		return true, false
+	case "left":
+		moveTextCursor(cursor, *value, -1)
+		return true, false
+	case "right":
+		moveTextCursor(cursor, *value, 1)
+		return true, false
+	case "backspace":
+		updated := deleteTextBeforeCursor(*value, cursor)
+		changed := updated != *value
+		*value = updated
+		return true, changed
+	case "delete":
+		updated := deleteTextAtCursor(*value, cursor)
+		changed := updated != *value
+		*value = updated
+		return true, changed
+	}
+	if text := key.Key().Text; text != "" {
+		*value = insertTextAtCursor(*value, cursor, text)
+		return true, true
+	}
+	return false, false
+}
+
 func insertTextAtCursor(value string, cursor *int, text string) string {
 	r := []rune(value)
 	add := []rune(text)

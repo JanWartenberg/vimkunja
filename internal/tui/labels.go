@@ -32,6 +32,7 @@ type labelUI struct {
 	selected       int
 	viewport       int
 	input          string
+	inputCursor    int
 	inputMode      bool
 	createSelected bool
 	inputAction    labelInputAction
@@ -40,6 +41,7 @@ type labelUI struct {
 	deleteConfirm  bool
 	commandMode    bool
 	commandInput   string
+	commandCursor  int
 	gArmed         bool
 	loading        bool
 	origin         *searchOrigin
@@ -186,7 +188,7 @@ func (m *model) updateLabelNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	ui := m.labelUI
 	s := key.String()
 	if s == ":" {
-		ui.commandMode, ui.commandInput = true, ""
+		ui.commandMode, ui.commandInput, ui.commandCursor = true, "", 0
 		return m, nil
 	}
 	if ui.gArmed {
@@ -231,13 +233,13 @@ func (m *model) updateLabelNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if !ok {
 				return m, nil
 			}
-			ui.input, ui.inputAction, ui.inputLabelID, ui.inputMode = label.Title, labelInputRename, label.ID, true
+			ui.input, ui.inputCursor, ui.inputAction, ui.inputLabelID, ui.inputMode = label.Title, len([]rune(label.Title)), labelInputRename, label.ID, true
 		} else {
-			ui.inputAction, ui.inputMode = labelInputTaskPicker, true
+			ui.inputCursor, ui.inputAction, ui.inputMode = len([]rune(ui.input)), labelInputTaskPicker, true
 		}
 	case "o":
 		if ui.kind == labelUIGlobalOverview {
-			ui.input, ui.inputAction, ui.inputMode = "", labelInputCreate, true
+			ui.input, ui.inputCursor, ui.inputAction, ui.inputMode = "", 0, labelInputCreate, true
 		} else if ui.showsCreateOption() {
 			ui.createSelected, ui.viewport = true, 0
 		}
@@ -261,11 +263,8 @@ func (m *model) updateLabelCommand(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch strings.ToLower(key.String()) {
 	case "esc":
 		ui.commandMode, ui.commandInput = false, ""
-	case "backspace":
-		runes := []rune(ui.commandInput)
-		if len(runes) > 0 {
-			ui.commandInput = string(runes[:len(runes)-1])
-		}
+	case "backspace", "delete", "left", "right", "home", "end":
+		updateSingleLineTextInput(&ui.commandInput, &ui.commandCursor, key)
 	case "enter":
 		command := strings.ToLower(strings.TrimSpace(ui.commandInput))
 		ui.commandMode, ui.commandInput = false, ""
@@ -290,9 +289,7 @@ func (m *model) updateLabelCommand(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.recordError(fmt.Errorf("unknown Labels command: %s", command))
 		}
 	default:
-		if text := key.Key().Text; text != "" {
-			ui.commandInput += text
-		}
+		updateSingleLineTextInput(&ui.commandInput, &ui.commandCursor, key)
 	}
 	return m, nil
 }
@@ -304,12 +301,11 @@ func (m *model) updateLabelInput(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		ui.inputMode = false
 		return m, nil
-	case "backspace":
-		runes := []rune(ui.input)
-		if len(runes) > 0 {
-			ui.input = string(runes[:len(runes)-1])
+	case "backspace", "delete", "left", "right", "home", "end":
+		_, changed := updateSingleLineTextInput(&ui.input, &ui.inputCursor, key)
+		if changed {
+			m.resetLabelSelection()
 		}
-		m.resetLabelSelection()
 		return m, nil
 	case "up", "ctrl+p":
 		m.moveLabelSelection(-1)
@@ -320,8 +316,7 @@ func (m *model) updateLabelInput(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		return m, m.confirmLabelInput()
 	}
-	if text := key.Key().Text; text != "" {
-		ui.input += text
+	if _, changed := updateSingleLineTextInput(&ui.input, &ui.inputCursor, key); changed {
 		m.resetLabelSelection()
 	}
 	return m, nil
@@ -576,7 +571,7 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 		body = append(body, m.renderLabelMatches(matchWidth)...)
 	}
 	if ui.commandMode {
-		body = append(body, ":"+ui.commandInput+"_")
+		body = append(body, ":"+cursorMarkedText(ui.commandInput, ui.commandCursor))
 	} else if ui.deleteConfirm {
 		label, _ := ui.selectedLabel()
 		message := fmt.Sprintf("Delete %q?", label.Title)
@@ -590,7 +585,7 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 		if ui.inputAction == labelInputRename {
 			prompt = "Rename: "
 		}
-		body = append(body, prompt+ui.input+"_", "")
+		body = append(body, prompt+cursorMarkedText(ui.input, ui.inputCursor), "")
 		appendMatches()
 	} else if ui.loading {
 		body = append(body, "Loading…")

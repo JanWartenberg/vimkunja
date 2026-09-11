@@ -84,6 +84,7 @@ type model struct {
 
 	commandMode               bool
 	commandInput              string
+	commandCursor             int
 	commandCompletionFeedback string
 	commandHistory            []string
 	commandHistoryIndex       int
@@ -94,8 +95,10 @@ type model struct {
 	searchMode           searchInputMode
 	searchCommandMode    bool
 	searchCommandInput   string
+	searchCommandCursor  int
 	searchGArmed         bool
 	searchInput          string
+	searchInputCursor    int
 	searchResults        []vimkunja.SearchResult
 	searchSelected       int
 	searchViewport       int
@@ -1045,6 +1048,7 @@ func (m *model) recordError(err error) {
 func (m *model) openCommandPrompt() {
 	m.commandMode = true
 	m.commandInput = ""
+	m.commandCursor = 0
 	m.commandCompletionFeedback = ""
 	m.commandHistoryIndex = -1
 	m.commandHistoryDraft = ""
@@ -1059,12 +1063,9 @@ func (m *model) updateCommandModeKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.commandHistoryIndex = -1
 		m.commandHistoryDraft = ""
 		return m, nil
-	case "backspace":
+	case "backspace", "delete", "left", "right", "home", "end":
 		m.commandCompletionFeedback = ""
-		input := []rune(m.commandInput)
-		if len(input) > 0 {
-			m.commandInput = string(input[:len(input)-1])
-		}
+		updateSingleLineTextInput(&m.commandInput, &m.commandCursor, key)
 		return m, nil
 	case "up":
 		m.recallOlderCommand()
@@ -1092,9 +1093,8 @@ func (m *model) updateCommandModeKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return updated, cmd
 	}
 
-	if text := key.Key().Text; text != "" {
+	if handled, _ := updateSingleLineTextInput(&m.commandInput, &m.commandCursor, key); handled {
 		m.commandCompletionFeedback = ""
-		m.commandInput += text
 	}
 	return m, nil
 }
@@ -1122,6 +1122,7 @@ func (m *model) recallOlderCommand() {
 		m.commandHistoryIndex--
 	}
 	m.commandInput = m.commandHistory[m.commandHistoryIndex]
+	m.commandCursor = len([]rune(m.commandInput))
 }
 
 func (m *model) recallNewerCommand() {
@@ -1132,10 +1133,12 @@ func (m *model) recallNewerCommand() {
 	if m.commandHistoryIndex < len(m.commandHistory)-1 {
 		m.commandHistoryIndex++
 		m.commandInput = m.commandHistory[m.commandHistoryIndex]
+		m.commandCursor = len([]rune(m.commandInput))
 		return
 	}
 	m.commandHistoryIndex = -1
 	m.commandInput = m.commandHistoryDraft
+	m.commandCursor = len([]rune(m.commandInput))
 }
 
 func (m *model) completeCommandInput() {
@@ -2292,11 +2295,11 @@ func (m *model) renderStatusBar(w int) string {
 			hint = "[COMMENT " + mode + "] Esc normal  •  :w save  •  :q! discard"
 		}
 		if m.comments.commandMode {
-			hint = "COMMENTS COMMAND  :" + m.comments.commandInput + "_"
+			hint = "COMMENTS COMMAND  :" + cursorMarkedText(m.comments.commandInput, m.comments.commandCursor)
 		}
 	}
 	if m.commandMode {
-		hint = fmt.Sprintf(":%s_", m.commandInput)
+		hint = ":" + cursorMarkedText(m.commandInput, m.commandCursor)
 		if m.commandCompletionFeedback != "" {
 			hint += "  •  " + m.commandCompletionFeedback
 		}
@@ -2341,8 +2344,8 @@ func (m *model) renderStatusBar(w int) string {
 	case m.quitHint:
 		status = renderFooterMessage(contentWidth, info, "", ":q quit")
 	case m.commandMode:
-		input := ":" + m.commandInput + "_"
-		status = renderFooterMessage(contentWidth, info, ":", m.commandInput+"_")
+		input := ":" + cursorMarkedText(m.commandInput, m.commandCursor)
+		status = renderFooterMessage(contentWidth, info, ":", cursorMarkedText(m.commandInput, m.commandCursor))
 		if m.commandCompletionFeedback != "" && footerFits(contentWidth, info, []string{input, m.commandCompletionFeedback}) {
 			status = composeFooter(info, []string{input, m.commandCompletionFeedback})
 		}
@@ -2363,7 +2366,9 @@ func (m *model) renderStatusBar(w int) string {
 		prefix := fmt.Sprintf("SEARCH [%s] ", m.searchModeLabel())
 		input := m.searchInput
 		if m.searchCommandMode {
-			prefix, input = "SEARCH COMMAND  :", m.searchCommandInput
+			prefix, input = "SEARCH COMMAND  :", cursorMarkedText(m.searchCommandInput, m.searchCommandCursor)
+		} else if m.searchMode == searchInsertMode {
+			input = cursorMarkedText(m.searchInput, m.searchInputCursor)
 		}
 		if m.searchMode == searchInsertMode && !m.searchCommandMode {
 			input += "_"
