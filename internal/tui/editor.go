@@ -629,19 +629,26 @@ func (m *model) openDueDatePicker() (tea.Model, tea.Cmd) {
 func (m *model) updateDueDatePicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
-	if index, handled := m.updatePickerNavigation(s, e.dueDatePickerSelected, 4); handled {
-		if e.dueDatePickerSelected == 0 {
-			e.dueDatePickerDateCursor = e.cursor
+	// Home and End are text motions elsewhere, not picker-row shortcuts here.
+	// Keep the date picker free of vertical Home/End navigation; j/k select
+	// helpers and h/l (or arrows) move across the manual date mask.
+	if s != "home" && s != "end" {
+		if index, handled := m.updatePickerNavigation(s, e.dueDatePickerSelected, 4); handled {
+			if e.dueDatePickerSelected == 0 {
+				e.dueDatePickerDateCursor = e.cursor
+			}
+			e.dueDatePickerSelected = index
+			if index > 0 && index < 4 {
+				e.cursor = len([]rune(e.dueDatePickerInputs[index-1]))
+			} else if index == 0 {
+				e.cursor = clamp(e.dueDatePickerDateCursor, 0, e.fieldRuneLen())
+			}
+			return m, nil
 		}
-		e.dueDatePickerSelected = index
-		if index > 0 && index < 4 {
-			e.cursor = len([]rune(e.dueDatePickerInputs[index-1]))
-		} else if index == 0 {
-			e.cursor = clamp(e.dueDatePickerDateCursor, 0, e.fieldRuneLen())
-		}
-		return m, nil
 	}
 	switch s {
+	case "home", "end":
+		return m, nil
 	case "ctrl+v":
 		return m, m.pasteClipboard(e)
 	case "esc":
@@ -683,14 +690,14 @@ func (m *model) updateDueDatePicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			e.setDueDatePickerInput(deleteTextAtCursor(e.dueDatePickerInput(), &e.cursor))
 		}
 		return m, nil
-	case "left":
+	case "left", "h":
 		if e.dueDatePickerSelected == 0 {
 			e.moveCursor(-1)
 		} else if e.dueDatePickerSelected < 4 {
 			moveTextCursor(&e.cursor, e.dueDatePickerInput(), -1)
 		}
 		return m, nil
-	case "right":
+	case "right", "l":
 		if e.dueDatePickerSelected == 0 {
 			e.moveCursor(1)
 		} else if e.dueDatePickerSelected < 4 {

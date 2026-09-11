@@ -3916,8 +3916,8 @@ func TestEditorInsertHomeEndStayInInsertMode(t *testing.T) {
 }
 
 // Normal date entry uses the picker, not the legacy Insert Mode exercised
-// above. Preserve its navigation until the Home/End ticket resolves that conflict.
-func TestDueDateHomeEndThroughNormalEntryKeepPickerNavigation(t *testing.T) {
+// above. Home/End must not navigate picker rows; h/l move within the date mask.
+func TestDueDatePickerHomeEndDoNotNavigateRows(t *testing.T) {
 	m := testModel()
 	m.currentProjectID = 1
 	m.openNewEditor()
@@ -3935,12 +3935,17 @@ func TestDueDateHomeEndThroughNormalEntryKeepPickerNavigation(t *testing.T) {
 		m = pressKey(m, tea.Key{Code: tea.KeyRight})
 	}
 	m = pressKey(m, tea.Key{Code: tea.KeyEnd})
-	if m.editor.mode != editorDueDatePicker || m.editor.dueDatePickerSelected != 3 {
-		t.Fatalf("End = mode:%v selected:%d, want picker/3", m.editor.mode, m.editor.dueDatePickerSelected)
-	}
 	m = pressKey(m, tea.Key{Code: tea.KeyHome})
 	if m.editor.mode != editorDueDatePicker || m.editor.dueDatePickerSelected != 0 || m.editor.cursor != 5 {
-		t.Fatalf("Home = mode:%v selected:%d cursor:%d, want picker/0/5", m.editor.mode, m.editor.dueDatePickerSelected, m.editor.cursor)
+		t.Fatalf("Home/End = mode:%v selected:%d cursor:%d, want picker/0/5", m.editor.mode, m.editor.dueDatePickerSelected, m.editor.cursor)
+	}
+	m = pressKey(m, tea.Key{Code: 'h', Text: "h"})
+	if m.editor.cursor != 4 {
+		t.Fatalf("h cursor = %d, want 4", m.editor.cursor)
+	}
+	m = pressKey(m, tea.Key{Code: 'l', Text: "l"})
+	if m.editor.cursor != 5 {
+		t.Fatalf("l cursor = %d, want 5", m.editor.cursor)
 	}
 	if m.editor.draft.DueDate != "2026-09-04" {
 		t.Fatalf("picker navigation changed date: %q", m.editor.draft.DueDate)
