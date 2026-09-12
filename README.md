@@ -19,6 +19,37 @@ go run ./cmd/vimkunja-tutorial
 
 The separate tutorial executable runs the real Vimkunja UI and guides through every currently implemented feature group in English. Every run creates a freshly seeded SQLite database in the operating system's temporary directory. The tutorial accepts no database path, never opens `internal/db/vikunja.db` or another user database, and deletes its disposable database on exit.
 
+### Local TUI configuration
+
+Vimkunja optionally reads TOML from the platform's standard user configuration directory:
+
+```text
+<UserConfigDir>/vimkunja/config.toml
+```
+
+For example, on Linux this is usually `~/.config/vimkunja/config.toml` (or the directory selected by `XDG_CONFIG_HOME`). Vimkunja does not create this file automatically. A complete example is:
+
+```toml
+[tui]
+# How long Space waits for the second Leader key.
+leader_timeout = "500ms"
+
+# How long Ctrl-W waits for a pane direction or cycle key.
+ctrl_w_timeout = "2s"
+```
+
+Timeouts use Go duration syntax, such as `250ms`, `1s`, or `1.5s`. Values must be positive; zero and negative values are invalid. The built-in defaults are `500ms` for `leader_timeout` and `2s` for `ctrl_w_timeout`.
+
+The command-line equivalents override the TOML values:
+
+```bash
+go run ./cmd/vimkunja --leader-timeout 1s --ctrl-w-timeout 750ms
+```
+
+The precedence is CLI flags, then environment variables (reserved for a future release), then TOML, then built-in defaults. Configuration is read at startup; edit the file and relaunch Vimkunja to apply changes. `--help` lists the CLI flags.
+
+A missing file is normal. Invalid TOML, unreadable files, unknown sections/settings, and invalid TOML values are recoverable: supported unambiguous settings still apply, invalid fields use their defaults, and Vimkunja starts with warnings. Warnings are printed to stderr, shown briefly in the red startup footer, and retained in `:errors`. Invalid timeout values supplied explicitly on the command line are fatal and prevent startup.
+
 ## 2. Bedienung und Details
 
 - `hjkl`, `gg` / `G`, `Ctrl+D` / `Ctrl+U` – Navigation

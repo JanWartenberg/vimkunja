@@ -53,6 +53,26 @@ func TestTutorialConsumesWelcomeAndForwardsOnlyExpectedLessonKeys(t *testing.T) 
 	}
 }
 
+func TestTutorialSkipsInvisibleTitleCursorAndReachesWorkflowStatus(t *testing.T) {
+	steps := implementedTutorialSteps()
+	for _, step := range steps {
+		if step.title == "Title Motions" {
+			t.Fatal("tutorial must not teach the invisible Normal-mode title cursor")
+		}
+	}
+
+	var workflow tutorialStep
+	for _, step := range steps {
+		if step.title == "Workflow Status" {
+			workflow = step
+			break
+		}
+	}
+	if len(workflow.keys) != 2 || workflow.keys[0].value != "j" || workflow.keys[1].value != "j" {
+		t.Fatalf("workflow status keys = %#v, want j, j", workflow.keys)
+	}
+}
+
 func TestTutorialResizesRealApplicationAboveInstructionStrip(t *testing.T) {
 	app := &recordingModel{}
 	model := NewModel(app).(*Model)

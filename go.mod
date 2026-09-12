@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	charm.land/bubbletea/v2 v2.0.8
 	charm.land/lipgloss/v2 v2.0.5
+	github.com/BurntSushi/toml v1.3.2
 	github.com/atotto/clipboard v0.1.4
 	github.com/charmbracelet/x/ansi v0.11.7
 	golang.org/x/net v0.57.0

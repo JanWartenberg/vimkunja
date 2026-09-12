@@ -204,7 +204,9 @@ INSERT INTO buckets (id, title, project_view_id, position) VALUES
     (221, 'To-Do', 22, 100), (222, 'Doing', 22, 200), (223, 'Done', 22, 300);
 
 INSERT INTO tasks (id, project_id, title, description, done, done_at, priority, "index") VALUES
-    (101, 1, 'Practice the Vimkunja tutorial', 'Move through this description.\nEvery change is disposable.\nThe real database is safe.', 0, NULL, 2, 1),
+    (101, 1, 'Practice the Vimkunja tutorial', 'Move through this description.
+Every change is disposable.
+The real database is safe.', 0, NULL, 2, 1),
     (102, 1, 'Review keyboard shortcuts', 'Use the in-application Help Pane when needed.', 0, NULL, 3, 2),
     (103, 1, 'Move a card across the board', 'Kanban moves synchronize Workflow Status and Done.', 0, NULL, 4, 3),
     (104, 1, 'Celebrate a completed task', 'Completed Tasks use the Done Bucket.', 1, CURRENT_TIMESTAMP, 1, 4),

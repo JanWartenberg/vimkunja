@@ -41,6 +41,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 21. [Fehlerhafte Project-Hierarchien diagnostizieren und reparieren](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – Feedback und sichere Reparatur bewusst nach dem Hierarchie-Reader.
 22. [Native Rich-Text-Beschreibungen rendern und bearbeiten spezifizieren](.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md) – zweiter Schritt nach dem abgeschlossenen Plain-Text-Reader aus Meilenstein 2; basiert auf dem bestehenden Rich-Text-Contract.
 23. [Getrennte Historien für kontextspezifische Command-Prompts spezifizieren](.scratch/contextual-command-histories/issues/01-specify-independent-command-prompt-histories.md) – nach der M2-Ex-History; eigene session-lokale Historie je Prompt, ohne die Command-Grammatiken zu vereinheitlichen.
+23a. [Workspace-/Datenpräferenzen spezifizieren](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – Default-Project/View, Startfilter und persistierte Navigationspräferenzen; nach der lokalen TUI-Konfiguration.
 
 ### Meilenstein 4
 

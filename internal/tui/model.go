@@ -47,6 +47,7 @@ type Config struct {
 	LeaderTimeout       time.Duration
 	CtrlWTimeout        time.Duration
 	DisableCursorShapes bool
+	StartupWarnings     []string
 }
 
 type model struct {
@@ -78,9 +79,10 @@ type model struct {
 	zArmed                   bool
 	neighbors                map[paneID]paneNeighbors
 
-	lastErr  string
-	toast    string
-	quitHint bool
+	lastErr     string
+	lastWarning string
+	toast       string
+	quitHint    bool
 
 	commandMode               bool
 	commandInput              string
@@ -201,6 +203,10 @@ func NewModel(cfg Config) tea.Model {
 		commands:            newDefaultCommandRegistry(),
 		commandHistoryIndex: -1,
 		cursorVisible:       true,
+		lastWarning:         startupWarningSummary(cfg.StartupWarnings),
+	}
+	for _, warning := range cfg.StartupWarnings {
+		apperrors.Log(warning)
 	}
 	if cfg.InitialProjectID != 0 {
 		m.focus = paneTasks
@@ -398,6 +404,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// A footer error is transient feedback. The full error remains available
 		// in the session log for the future :errors pane.
 		m.lastErr = ""
+		m.lastWarning = ""
 		m.quitHint = false
 
 		k := key.String()
@@ -2329,6 +2336,9 @@ func (m *model) renderStatusBar(w int) string {
 	if m.lastErr != "" {
 		hint = fmt.Sprintf("Error: %s", m.lastErr)
 		statusStyle = statusStyle.Foreground(lipgloss.Color(tuiTheme.danger)).BorderForeground(lipgloss.Color(tuiTheme.danger))
+	} else if m.lastWarning != "" {
+		hint = "Warning: " + m.lastWarning
+		statusStyle = statusStyle.Foreground(lipgloss.Color(tuiTheme.danger)).BorderForeground(lipgloss.Color(tuiTheme.danger))
 	}
 
 	contentWidth := max(1, w-4) // rounded border plus horizontal padding
@@ -2341,6 +2351,8 @@ func (m *model) renderStatusBar(w int) string {
 	switch {
 	case m.lastErr != "":
 		status = renderFooterMessage(contentWidth, info, "Error: ", m.lastErr)
+	case m.lastWarning != "":
+		status = renderFooterMessage(contentWidth, info, "Warning: ", m.lastWarning)
 	case m.quitHint:
 		status = renderFooterMessage(contentWidth, info, "", ":q quit")
 	case m.commandMode:

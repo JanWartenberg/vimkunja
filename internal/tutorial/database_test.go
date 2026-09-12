@@ -30,6 +30,13 @@ func TestDemoDatabaseIsFreshMutableAndDisposable(t *testing.T) {
 	if len(projects) != 3 || projects[0].Title != "Learn Vimkunja" {
 		t.Fatalf("projects = %#v, want deterministic tutorial fixtures", projects)
 	}
+	tasks, _, err := database.Store.ListTasksInView(context.Background(), 1, 11, 1, 100)
+	if err != nil {
+		t.Fatalf("ListTasksInView: %v", err)
+	}
+	if len(tasks) == 0 || !strings.Contains(tasks[0].Description, "description.\nEvery") || strings.Contains(tasks[0].Description, `\n`) {
+		t.Fatalf("tutorial description = %q, want real line breaks", tasks[0].Description)
+	}
 	board, err := database.Store.LoadManualKanbanBoard(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("LoadManualKanbanBoard: %v", err)
