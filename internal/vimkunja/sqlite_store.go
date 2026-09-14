@@ -938,15 +938,21 @@ func (s *SQLiteStore) ProvisionStandardManualKanbanView(ctx context.Context, pro
 	return board, nil
 }
 
-// LoadManualKanbanBoard returns the one manual Kanban View for a Project,
-// including empty Buckets and Tasks in their persisted View order.
-func (s *SQLiteStore) LoadManualKanbanBoard(ctx context.Context, projectID int64) (KanbanBoard, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, title
+// LoadManualKanbanBoard returns a manual Kanban View for a Project,
+// including empty Buckets and Tasks in their persisted View order. Without a
+// view ID it retains the legacy single-view/ambiguous behavior.
+func (s *SQLiteStore) LoadManualKanbanBoard(ctx context.Context, projectID int64, requestedViewID ...int64) (KanbanBoard, error) {
+	query := `
+		SELECT id, title, default_bucket_id, done_bucket_id
 		FROM project_views
-		WHERE project_id = ? AND view_kind = ? AND bucket_configuration_mode = ?
-		ORDER BY position ASC, id ASC
-	`, projectID, viewKindKanban, bucketConfigurationManual)
+		WHERE project_id = ? AND view_kind = ? AND bucket_configuration_mode = ?`
+	args := []any{projectID, viewKindKanban, bucketConfigurationManual}
+	if len(requestedViewID) > 0 && requestedViewID[0] != 0 {
+		query += ` AND id = ?`
+		args = append(args, requestedViewID[0])
+	}
+	query += ` ORDER BY position ASC, id ASC`
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return KanbanBoard{}, fmt.Errorf("list manual kanban views: %w", err)
 	}
@@ -955,11 +961,18 @@ func (s *SQLiteStore) LoadManualKanbanBoard(ctx context.Context, projectID int64
 	var views []ProjectView
 	for rows.Next() {
 		var view ProjectView
-		if err := rows.Scan(&view.ID, &view.Title); err != nil {
+		var defaultBucketID, doneBucketID sql.NullInt64
+		if err := rows.Scan(&view.ID, &view.Title, &defaultBucketID, &doneBucketID); err != nil {
 			return KanbanBoard{}, fmt.Errorf("scan manual kanban view: %w", err)
 		}
 		view.ViewKind = "kanban"
 		view.BucketConfigurationMode = "manual"
+		if defaultBucketID.Valid {
+			view.DefaultBucketID = defaultBucketID.Int64
+		}
+		if doneBucketID.Valid {
+			view.DoneBucketID = doneBucketID.Int64
+		}
 		views = append(views, view)
 	}
 	if err := rows.Err(); err != nil {
@@ -1032,9 +1045,9 @@ func (s *SQLiteStore) LoadManualKanbanBoard(ctx context.Context, projectID int64
 }
 
 // GetTaskWorkflowStatus returns a Task's Bucket assignment and available
-// Buckets when the Project has exactly one manual Kanban View. With no manual
-// Kanban View the status is unavailable; with several it is ambiguous.
-func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, taskID int64) (WorkflowStatus, error) {
+// Buckets for the selected manual Kanban View. Without a View ID, Projects
+// with no manual View are unavailable and Projects with several are ambiguous.
+func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, taskID int64, requestedViewID ...int64) (WorkflowStatus, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id
 		FROM project_views
@@ -1056,6 +1069,19 @@ func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, task
 	}
 	if err := rows.Err(); err != nil {
 		return WorkflowStatus{}, fmt.Errorf("iterate manual kanban views: %w", err)
+	}
+	if len(requestedViewID) > 0 && requestedViewID[0] != 0 {
+		found := false
+		for _, id := range viewIDs {
+			if id == requestedViewID[0] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return WorkflowStatus{Availability: WorkflowStatusUnavailable}, nil
+		}
+		viewIDs = []int64{requestedViewID[0]}
 	}
 	switch len(viewIDs) {
 	case 0:
@@ -1099,9 +1125,10 @@ func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, task
 	return status, nil
 }
 
-// SetTaskWorkflowStatus assigns a Task to a Bucket in its single manual Kanban
-// View and atomically synchronizes its global Done state.
-func (s *SQLiteStore) SetTaskWorkflowStatus(ctx context.Context, taskID, bucketID int64) error {
+// SetTaskWorkflowStatus assigns a Task to a Bucket in the selected manual
+// Kanban View and atomically synchronizes its global Done state. Without a View
+// ID it retains the legacy requirement for exactly one manual View.
+func (s *SQLiteStore) SetTaskWorkflowStatus(ctx context.Context, taskID, bucketID int64, requestedViewID ...int64) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin set workflow status transaction: %w", err)
@@ -1112,7 +1139,7 @@ func (s *SQLiteStore) SetTaskWorkflowStatus(ctx context.Context, taskID, bucketI
 	if err := tx.QueryRowContext(ctx, `SELECT project_id FROM tasks WHERE id = ?`, taskID).Scan(&projectID); err != nil {
 		return fmt.Errorf("get task project for workflow status: %w", err)
 	}
-	if err := setTaskWorkflowStatus(ctx, tx, taskID, projectID, bucketID); err != nil {
+	if err := setTaskWorkflowStatus(ctx, tx, taskID, projectID, bucketID, requestedViewID...); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -1121,7 +1148,7 @@ func (s *SQLiteStore) SetTaskWorkflowStatus(ctx context.Context, taskID, bucketI
 	return nil
 }
 
-func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, bucketID int64) error {
+func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, bucketID int64, requestedViewID ...int64) error {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT id, done_bucket_id
 		FROM project_views
@@ -1147,6 +1174,33 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("iterate manual kanban views for workflow status: %w", err)
+	}
+	if len(requestedViewID) > 0 && requestedViewID[0] != 0 {
+		found := false
+		for _, candidate := range views {
+			if candidate.id == requestedViewID[0] {
+				views = []workflowView{candidate}
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("set workflow status: view does not belong to the task project")
+		}
+	} else if len(views) > 1 {
+		// A bucket ID is globally unique, so a status selected in a multi-View
+		// editor identifies its owning View even when the caller predates the
+		// explicit View-scoped API (notably task creation/update drafts).
+		var bucketViewID int64
+		err := tx.QueryRowContext(ctx, `SELECT project_view_id FROM buckets WHERE id = ?`, bucketID).Scan(&bucketViewID)
+		if err == nil {
+			for _, candidate := range views {
+				if candidate.id == bucketViewID {
+					views = []workflowView{candidate}
+					break
+				}
+			}
+		}
 	}
 	if len(views) != 1 {
 		return fmt.Errorf("set workflow status: project has %d manual kanban views", len(views))
@@ -1185,7 +1239,7 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 	return nil
 }
 
-func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool) error {
+func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool, selectedViewID ...int64) error {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT pv.id,
 			CASE WHEN ? THEN pv.done_bucket_id ELSE pv.default_bucket_id END
@@ -1206,6 +1260,9 @@ func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, 
 		if err := rows.Scan(&viewID, &bucketID); err != nil {
 			return fmt.Errorf("scan configured workflow bucket: %w", err)
 		}
+		if len(selectedViewID) > 0 && selectedViewID[0] != 0 && selectedViewID[0] != viewID {
+			continue
+		}
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE task_buckets
 			SET bucket_id = ?
@@ -1220,14 +1277,14 @@ func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, 
 	return nil
 }
 
-func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done bool) error {
+func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done bool, viewID ...int64) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin toggle task transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	if err := setTaskDoneState(ctx, tx, taskID, done); err != nil {
+	if err := setTaskDoneState(ctx, tx, taskID, done, viewID...); err != nil {
 		return err
 	}
 	if err := tx.Commit(); err != nil {
@@ -1238,7 +1295,24 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 
 // setTaskDoneState changes the global Task Done state and its configured
 // workflow buckets within an existing transaction.
-func setTaskDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool) error {
+func setTaskDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool, viewID ...int64) error {
+	if len(viewID) > 0 && viewID[0] != 0 {
+		var valid bool
+		if err := tx.QueryRowContext(ctx, `
+			SELECT EXISTS(
+				SELECT 1
+				FROM project_views pv
+				JOIN tasks t ON t.project_id = pv.project_id
+				WHERE t.id = ? AND pv.id = ?
+					AND pv.view_kind = ? AND pv.bucket_configuration_mode = ?
+			)
+		`, taskID, viewID[0], viewKindKanban, bucketConfigurationManual).Scan(&valid); err != nil {
+			return fmt.Errorf("validate task workflow view: %w", err)
+		}
+		if !valid {
+			return fmt.Errorf("toggle task: view does not belong to the task project")
+		}
+	}
 	var doneAt any
 	if done {
 		doneAt = utcTimestampNow()
@@ -1246,7 +1320,7 @@ func setTaskDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool) 
 	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`, boolToInt(done), doneAt, utcTimestampNow(), taskID); err != nil {
 		return fmt.Errorf("set task done state: %w", err)
 	}
-	if err := syncTaskBucketsForDoneState(ctx, tx, taskID, done); err != nil {
+	if err := syncTaskBucketsForDoneState(ctx, tx, taskID, done, viewID...); err != nil {
 		return err
 	}
 	return nil

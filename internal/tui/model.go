@@ -137,6 +137,8 @@ type model struct {
 	kanbanViewportStart         int
 	kanbanPicker                bool
 	kanbanPickerIndex           int
+	kanbanViewPicker            bool
+	kanbanViewPickerIndex       int
 	kanbanProvisionConfirm      bool
 	pendingKanbanTaskID         int64
 	pendingKanbanBucketID       int64
@@ -333,30 +335,48 @@ func (m *model) loadViews(projectID int64) tea.Cmd {
 }
 
 func (m *model) loadWorkflowStatus(projectID, taskID int64) tea.Cmd {
+	viewID := int64(0)
+	if m.kanbanActive {
+		viewID = m.currentViewID
+	}
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 
-		status, err := m.store.GetTaskWorkflowStatus(ctx, projectID, taskID)
+		var status vimkunja.WorkflowStatus
+		var err error
+		if viewID != 0 {
+			status, err = m.store.GetTaskWorkflowStatus(ctx, projectID, taskID, viewID)
+		} else {
+			status, err = m.store.GetTaskWorkflowStatus(ctx, projectID, taskID)
+		}
 		return workflowStatusLoadedMsg{taskID: taskID, status: status, err: err}
 	}
 }
 
 func (m *model) loadKanbanBoard(projectID int64) tea.Cmd {
+	viewID := m.currentKanbanViewID()
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 
-		board, err := m.store.LoadManualKanbanBoard(ctx, projectID)
+		var board vimkunja.KanbanBoard
+		var err error
+		if viewID != 0 {
+			board, err = m.store.LoadManualKanbanBoard(ctx, projectID, viewID)
+		} else {
+			board, err = m.store.LoadManualKanbanBoard(ctx, projectID)
+		}
 		return kanbanBoardLoadedMsg{board: board, err: err}
 	}
 }
 
 func (m *model) moveKanbanTask(taskID, bucketID int64) tea.Cmd {
+	viewID := m.currentViewID
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
-		return kanbanTaskMovedMsg{taskID: taskID, bucketID: bucketID, err: m.store.SetTaskWorkflowStatus(ctx, taskID, bucketID)}
+		return kanbanTaskMovedMsg{taskID: taskID, bucketID: bucketID, err: m.store.SetTaskWorkflowStatus(ctx, taskID, bucketID, viewID)}
 	}
 }
 
@@ -447,6 +467,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.kanbanProvisionConfirm {
 			return m.updateKanbanProvisionConfirmation(k)
+		}
+		if m.kanbanViewPicker {
+			return m.updateKanbanViewPicker(k)
 		}
 		if m.viewSwitchArmed {
 			m.viewSwitchArmed = false
@@ -636,6 +659,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Overview reloads project metadata after a save, but must not activate
 		// a project Board: its selection would replace the open Overview Task.
 		if !m.inOverview() && m.projectViewPreference == projectViewKanban {
+			if len(m.manualKanbanViewIndices()) > 1 {
+				return m, m.beginKanbanViewPicker()
+			}
 			if kanbanView := m.pickManualKanbanViewIndex(); kanbanView >= 0 {
 				m.viewSelected = kanbanView
 				m.currentViewID = m.projectViews[kanbanView].ID
@@ -909,15 +935,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.labelUI != nil && m.labelUI.kind == labelUITaskPicker && m.labelUI.closeAfterSave {
 			m.closeLabelUI()
 		}
+		projectChanged := m.currentProjectID != typed.task.ProjectID
 		if idx := m.findProjectIndex(typed.task.ProjectID); idx >= 0 {
 			m.projectSelected = idx
 		}
 		m.currentProjectID = typed.task.ProjectID
-		if wasKanban {
+		if wasKanban && !projectChanged {
 			m.pendingKanbanTaskID = typed.task.ID
 			return m, m.loadKanbanBoard(typed.task.ProjectID)
 		}
 		m.currentViewID = 0
+		if projectChanged {
+			m.kanbanActive = false
+			m.kanbanBoard = vimkunja.KanbanBoard{}
+			m.projectViews = nil
+		}
+		m.pendingTaskID = typed.task.ID
 		m.viewLoading = true
 		if wasOverview {
 			return m, tea.Batch(m.loadViews(typed.task.ProjectID), m.refreshActiveTasks())
@@ -1659,13 +1692,31 @@ func (m *model) findProjectIndex(id int64) int {
 	return m.findVisibleProjectIndex(id)
 }
 
-func (m *model) pickManualKanbanViewIndex() int {
-	for i, view := range m.projectViews {
-		if view.ViewKind == "kanban" && view.BucketConfigurationMode == "manual" {
-			return i
+func (m *model) currentKanbanViewID() int64 {
+	for _, view := range m.projectViews {
+		if view.ID == m.currentViewID && view.ViewKind == "kanban" && view.BucketConfigurationMode == "manual" {
+			return view.ID
 		}
 	}
-	return -1
+	return 0
+}
+
+func (m *model) manualKanbanViewIndices() []int {
+	indices := make([]int, 0)
+	for i, view := range m.projectViews {
+		if view.ViewKind == "kanban" && view.BucketConfigurationMode == "manual" {
+			indices = append(indices, i)
+		}
+	}
+	return indices
+}
+
+func (m *model) pickManualKanbanViewIndex() int {
+	indices := m.manualKanbanViewIndices()
+	if len(indices) == 0 {
+		return -1
+	}
+	return indices[0]
 }
 
 func (m *model) pickListViewIndex() int {
@@ -2317,6 +2368,9 @@ func (m *model) renderStatusBar(w int) string {
 	if m.viewSwitchArmed {
 		hint = "[VIEWS] l list  •  k Kanban  •  t table  •  g Gantt"
 	}
+	if m.kanbanViewPicker {
+		hint = "[KANBAN VIEWS] j/k choose  •  Enter open  •  Esc cancel"
+	}
 	if m.overviewPrompt == overviewPromptSort {
 		hint = "SORT  d Due  •  p Priority ↓  •  t Title  •  Esc cancel"
 	}
@@ -2327,7 +2381,7 @@ func (m *model) renderStatusBar(w int) string {
 		ctrlWHint := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.ctrlWHint)).Render("Ctrl-W")
 		hint = ctrlWHint + " h/j/k/l change pane  •  Ctrl-W/w cycle"
 	}
-	statusActive := m.commandMode || (m.comments != nil && m.comments.commandMode) || m.leaderArmed || m.viewSwitchArmed || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed
+	statusActive := m.commandMode || (m.comments != nil && m.comments.commandMode) || m.leaderArmed || m.viewSwitchArmed || m.kanbanViewPicker || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed
 	statusStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(paneBorderColor(statusActive))).

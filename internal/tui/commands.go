@@ -340,6 +340,9 @@ func kanbanCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 		m.projectsPaneCollapsed = m.lastProjectPaneCollapsed
 		m.focus = paneTasks
 	}
+	if len(m.manualKanbanViewIndices()) > 1 {
+		return m, m.beginKanbanViewPicker()
+	}
 	m.taskLoading = true
 	return m, m.loadKanbanBoard(m.currentProjectID)
 }

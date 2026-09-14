@@ -134,6 +134,63 @@ func (m *model) syncOpenDetailDoneState(board vimkunja.KanbanBoard) {
 	}
 }
 
+func (m *model) beginKanbanViewPicker() tea.Cmd {
+	indices := m.manualKanbanViewIndices()
+	if len(indices) <= 1 {
+		return nil
+	}
+	m.kanbanActive = true
+	m.kanbanViewPicker = true
+	m.kanbanViewPickerIndex = 0
+	m.taskLoading = false
+	return nil
+}
+
+func (m *model) updateKanbanViewPicker(key string) (tea.Model, tea.Cmd) {
+	indices := m.manualKanbanViewIndices()
+	if len(indices) <= 1 {
+		m.kanbanViewPicker = false
+		return m, nil
+	}
+	switch key {
+	case "esc":
+		m.kanbanViewPicker = false
+		m.kanbanActive = false
+		if listIndex := m.pickListViewIndex(); listIndex >= 0 && !m.inOverview() {
+			m.viewSelected = listIndex
+			m.currentViewID = m.projectViews[listIndex].ID
+			m.taskLoading = true
+			return m, m.loadTasks(m.currentProjectID, m.currentViewID)
+		}
+	case "j", "down":
+		m.kanbanViewPickerIndex = clamp(m.kanbanViewPickerIndex+1, 0, len(indices)-1)
+	case "k", "up":
+		m.kanbanViewPickerIndex = clamp(m.kanbanViewPickerIndex-1, 0, len(indices)-1)
+	case "enter":
+		viewIndex := indices[m.kanbanViewPickerIndex]
+		m.viewSelected = viewIndex
+		m.currentViewID = m.projectViews[viewIndex].ID
+		m.kanbanViewPicker = false
+		m.taskLoading = true
+		return m, m.loadKanbanBoard(m.currentProjectID)
+	}
+	return m, nil
+}
+
+func renderKanbanViewPicker(m *model, textW, textH int) string {
+	indices := m.manualKanbanViewIndices()
+	lines := []string{" Select Kanban View:"}
+	for i, viewIndex := range indices {
+		prefix := "  "
+		if i == m.kanbanViewPickerIndex {
+			prefix = "▸ "
+		}
+		lines = append(lines, prefix+m.projectViews[viewIndex].Title)
+	}
+	lines = append(lines, "", " j/k choose  •  Enter open  •  Esc cancel")
+	return fitBlock(lines, textW, textH)
+}
+
 func (m *model) activeKanbanBucket() (vimkunja.KanbanBucket, bool) {
 	if m.kanbanBucketSelected < 0 || m.kanbanBucketSelected >= len(m.kanbanBoard.Buckets) {
 		return vimkunja.KanbanBucket{}, false
@@ -217,9 +274,13 @@ func (m *model) updateKanbanKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if task, ok := m.selectedKanbanTask(); ok {
 			m.pendingKanbanTaskID = task.ID
 			m.taskLoading = true
+			viewID := m.currentViewID
 			return m, func() tea.Msg {
 				ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 				defer cancel()
+				if viewID != 0 {
+					return taskToggledMsg{err: m.store.ToggleTaskDone(ctx, task.ID, !task.Done, viewID)}
+				}
 				return taskToggledMsg{err: m.store.ToggleTaskDone(ctx, task.ID, !task.Done)}
 			}
 		}
@@ -360,11 +421,19 @@ func (m *model) ensureKanbanBucketVisible() {
 // owns a two-dimensional selection and horizontal viewport rather than a flat
 // Task slice.
 func renderKanbanBoard(m *model, textW, textH int) string {
+	if m.kanbanViewPicker {
+		return renderKanbanViewPicker(m, textW, textH)
+	}
 	if m.taskLoading {
 		return fitBlock([]string{" Kanban ", "  loading..."}, textW, textH)
 	}
 	if m.kanbanPicker {
 		return renderKanbanPicker(m, textW, textH)
+	}
+	showViewTitle := len(m.manualKanbanViewIndices()) > 1
+	boardHeight := textH
+	if showViewTitle {
+		boardHeight = max(1, textH-1)
 	}
 	visible := max(1, textW/25)
 	start := clamp(m.kanbanViewportStart, 0, max(0, len(m.kanbanBoard.Buckets)-visible))
@@ -395,7 +464,7 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 			header = lipgloss.NewStyle().Bold(true).Render(header)
 		}
 		lines := []string{header, ""}
-		visibleTaskRows := max(1, textH-4) // Bucket border, title, and separator.
+		visibleTaskRows := max(1, boardHeight-4) // Bucket border, title, and separator.
 		startTask := 0
 		if index == m.kanbanBucketSelected {
 			selected := clamp(m.kanbanTaskSelected, 0, max(0, len(bucket.Tasks)-1))
@@ -411,7 +480,7 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 		for taskIndex, task := range bucket.Tasks[startTask:endTask] {
 			lines = append(lines, renderKanbanTaskLine(task, index == m.kanbanBucketSelected && startTask+taskIndex == m.kanbanTaskSelected, contentWidth))
 		}
-		content := fitBlock(lines, contentWidth, max(1, textH-2))
+		content := fitBlock(lines, contentWidth, max(1, boardHeight-2))
 		bucketFocused := m.focus == paneTasks && index == m.kanbanBucketSelected
 		columns = append(columns, lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
@@ -419,9 +488,17 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 			Render(content))
 	}
 	if len(columns) == 0 {
-		return fitBlock([]string{" Kanban ", "  (no buckets)"}, textW, textH)
+		lines := []string{" Kanban ", "  (no buckets)"}
+		if showViewTitle {
+			lines[0] = " Kanban: " + m.kanbanBoard.View.Title
+		}
+		return fitBlock(lines, textW, textH)
 	}
-	return fitBlock(strings.Split(lipgloss.JoinHorizontal(lipgloss.Top, columns...), "\n"), textW, textH)
+	lines := strings.Split(lipgloss.JoinHorizontal(lipgloss.Top, columns...), "\n")
+	if showViewTitle {
+		lines = append([]string{" Kanban: " + m.kanbanBoard.View.Title}, lines...)
+	}
+	return fitBlock(lines, textW, textH)
 }
 
 func renderKanbanTaskLine(task vimkunja.Task, selected bool, contentWidth int) string {

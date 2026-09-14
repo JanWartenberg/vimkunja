@@ -42,6 +42,8 @@ type ProjectView struct {
 	Title                   string `json:"title"`
 	ViewKind                string `json:"view_kind"`
 	BucketConfigurationMode string `json:"bucket_configuration_mode"`
+	DefaultBucketID         int64  `json:"default_bucket_id"`
+	DoneBucketID            int64  `json:"done_bucket_id"`
 }
 
 // KanbanBoardAvailability explains whether a Project has one unambiguous

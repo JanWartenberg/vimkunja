@@ -25,13 +25,17 @@ type fakeStore struct {
 	toggleErr            error
 	toggleTaskID         int64
 	toggleDone           bool
+	toggleViewID         int64
 	deleteErr            error
 	deleteTaskID         int64
 	workflowStatus       vimkunja.WorkflowStatus
 	workflowStatusErr    error
+	workflowStatusViewID int64
 	kanbanBoard          vimkunja.KanbanBoard
 	kanbanBoards         map[int64]vimkunja.KanbanBoard
 	kanbanBoardErr       error
+	kanbanLoadProjectID  int64
+	kanbanLoadViewID     int64
 	views                []vimkunja.ProjectView
 	viewsByProject       map[int64][]vimkunja.ProjectView
 	tasksByView          map[int64][]vimkunja.Task
@@ -40,6 +44,7 @@ type fakeStore struct {
 	provisionCalls       int
 	workflowTaskID       int64
 	workflowBucketID     int64
+	workflowViewID       int64
 	workflowDone         map[int64]bool
 	updateErr            error
 	listTasksCalls       int
@@ -120,7 +125,12 @@ func (f *fakeStore) ListTasksInView(_ context.Context, _ int64, viewID int64, _ 
 	return append([]vimkunja.Task(nil), f.tasksByView[viewID]...), 0, nil
 }
 
-func (f *fakeStore) LoadManualKanbanBoard(_ context.Context, projectID int64) (vimkunja.KanbanBoard, error) {
+func (f *fakeStore) LoadManualKanbanBoard(_ context.Context, projectID int64, viewID ...int64) (vimkunja.KanbanBoard, error) {
+	f.kanbanLoadProjectID = projectID
+	f.kanbanLoadViewID = 0
+	if len(viewID) > 0 {
+		f.kanbanLoadViewID = viewID[0]
+	}
 	if board, ok := f.kanbanBoards[projectID]; ok {
 		return board, f.kanbanBoardErr
 	}
@@ -234,13 +244,21 @@ func (f *fakeStore) ReplaceTaskLabels(_ context.Context, taskID int64, labelIDs 
 	return f.labelErr
 }
 
-func (f *fakeStore) GetTaskWorkflowStatus(context.Context, int64, int64) (vimkunja.WorkflowStatus, error) {
+func (f *fakeStore) GetTaskWorkflowStatus(_ context.Context, _, _ int64, viewID ...int64) (vimkunja.WorkflowStatus, error) {
+	f.workflowStatusViewID = 0
+	if len(viewID) > 0 {
+		f.workflowStatusViewID = viewID[0]
+	}
 	return f.workflowStatus, f.workflowStatusErr
 }
 
-func (f *fakeStore) SetTaskWorkflowStatus(_ context.Context, taskID, bucketID int64) error {
+func (f *fakeStore) SetTaskWorkflowStatus(_ context.Context, taskID, bucketID int64, viewID ...int64) error {
 	f.workflowTaskID = taskID
 	f.workflowBucketID = bucketID
+	f.workflowViewID = 0
+	if len(viewID) > 0 {
+		f.workflowViewID = viewID[0]
+	}
 	var moved vimkunja.Task
 	found := false
 	for i := range f.kanbanBoard.Buckets {
@@ -270,9 +288,13 @@ func (f *fakeStore) SetTaskWorkflowStatus(_ context.Context, taskID, bucketID in
 	return nil
 }
 
-func (f *fakeStore) ToggleTaskDone(_ context.Context, taskID int64, done bool) error {
+func (f *fakeStore) ToggleTaskDone(_ context.Context, taskID int64, done bool, viewID ...int64) error {
 	f.toggleTaskID = taskID
 	f.toggleDone = done
+	f.toggleViewID = 0
+	if len(viewID) > 0 {
+		f.toggleViewID = viewID[0]
+	}
 	return f.toggleErr
 }
 
@@ -1505,6 +1527,100 @@ func TestKanbanProvisionCanCancelAndAmbiguousBoardIsNotSelected(t *testing.T) {
 			t.Fatalf("ambiguous board = active:%v prompt:%v err:%q", m.kanbanActive, m.kanbanProvisionConfirm, m.lastErr)
 		}
 	})
+}
+
+func TestKanbanCommandsCaptureSelectedView(t *testing.T) {
+	store := &fakeStore{workflowStatus: vimkunja.WorkflowStatus{Availability: vimkunja.WorkflowStatusAvailable}}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.currentViewID = 10
+	m.kanbanActive = true
+	m.projectViews = []vimkunja.ProjectView{
+		{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		{ID: 20, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+	}
+
+	boardCmd := m.loadKanbanBoard(1)
+	statusCmd := m.loadWorkflowStatus(1, 7)
+	moveCmd := m.moveKanbanTask(7, 100)
+	m.currentViewID = 20
+	boardCmd()
+	statusCmd()
+	moveCmd()
+
+	if store.kanbanLoadViewID != 10 || store.workflowStatusViewID != 10 || store.workflowViewID != 10 {
+		t.Fatalf("captured view IDs = board:%d status:%d move:%d, want 10", store.kanbanLoadViewID, store.workflowStatusViewID, store.workflowViewID)
+	}
+}
+
+func TestKanbanDoneToggleCapturesSelectedView(t *testing.T) {
+	store := &fakeStore{}
+	m := testModel()
+	m.store = store
+	m.currentViewID = 10
+	m.kanbanActive = true
+	m.focus = paneTasks
+	m.kanbanBoard = vimkunja.KanbanBoard{Buckets: []vimkunja.KanbanBucket{{Tasks: []vimkunja.Task{{ID: 7}}}}}
+	m.kanbanBucketSelected = 0
+	m.kanbanTaskSelected = 0
+
+	updated, cmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'x', Text: "x"}))
+	m = updated.(*model)
+	m.currentViewID = 20
+	cmd()
+	if store.toggleViewID != 10 {
+		t.Fatalf("toggle view ID = %d, want captured view 10", store.toggleViewID)
+	}
+}
+
+func TestTaskMovedFromKanbanLoadsDestinationProjectViewsBeforeBoard(t *testing.T) {
+	store := &fakeStore{
+		viewsByProject: map[int64][]vimkunja.ProjectView{
+			2: {{ID: 20, ViewKind: "kanban", BucketConfigurationMode: "manual"}},
+		},
+		kanbanBoards: map[int64]vimkunja.KanbanBoard{
+			2: {Availability: vimkunja.KanbanBoardAvailable, View: vimkunja.ProjectView{ID: 20, ViewKind: "kanban", BucketConfigurationMode: "manual"}},
+		},
+	}
+	m := testModel()
+	m.store = store
+	m.currentProjectID = 1
+	m.currentViewID = 10
+	m.kanbanActive = true
+	m.projectViewPreference = projectViewKanban
+	m.projectViews = []vimkunja.ProjectView{{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"}}
+
+	updated, cmd := m.Update(taskSavedMsg{task: vimkunja.Task{ID: 7, ProjectID: 2, Title: "Moved"}})
+	m = updated.(*model)
+	if cmd == nil || m.kanbanActive || m.currentViewID != 0 {
+		t.Fatalf("post-save state = cmd:%v Kanban:%v view:%d", cmd != nil, m.kanbanActive, m.currentViewID)
+	}
+	updated, cmd = m.Update(cmd())
+	m = updated.(*model)
+	if cmd == nil {
+		t.Fatal("destination views did not trigger a board load")
+	}
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if !m.kanbanActive || m.currentViewID != 20 || store.kanbanLoadProjectID != 2 || store.kanbanLoadViewID != 20 {
+		t.Fatalf("destination board = active:%v current view:%d loaded project:%d view:%d", m.kanbanActive, m.currentViewID, store.kanbanLoadProjectID, store.kanbanLoadViewID)
+	}
+}
+
+func TestMultiViewKanbanBoardShowsActiveViewTitle(t *testing.T) {
+	m := testModel()
+	m.projectViews = []vimkunja.ProjectView{
+		{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+		{ID: 20, ViewKind: "kanban", BucketConfigurationMode: "manual"},
+	}
+	m.kanbanBoard = vimkunja.KanbanBoard{
+		View:    vimkunja.ProjectView{ID: 20, Title: "Personal"},
+		Buckets: []vimkunja.KanbanBucket{{ID: 200, Title: "To-Do"}},
+	}
+	if rendered := renderKanbanBoard(m, 80, 20); !strings.Contains(rendered, "Kanban: Personal") {
+		t.Fatalf("board does not identify active view: %q", rendered)
+	}
 }
 
 func TestKanbanPickerMovesSelectedTaskToAnyBucket(t *testing.T) {

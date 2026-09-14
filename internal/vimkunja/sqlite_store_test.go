@@ -665,6 +665,13 @@ func TestGetTaskWorkflowStatus_ReportsUnavailableAndAmbiguousViews(t *testing.T)
 	if status.Availability != WorkflowStatusAmbiguous {
 		t.Fatalf("ambiguous status = %#v", status)
 	}
+	status, err = store.GetTaskWorkflowStatus(context.Background(), 1, 1, 10)
+	if err != nil {
+		t.Fatalf("get explicitly selected workflow status: %v", err)
+	}
+	if status.Availability != WorkflowStatusAvailable {
+		t.Fatalf("explicitly selected status = %#v, want available", status)
+	}
 }
 
 func TestSetTaskWorkflowStatus_UpdatesBucketAndDoneState(t *testing.T) {
@@ -841,6 +848,65 @@ func TestToggleTaskDone_MovesTaskToEachViewsDoneBucket(t *testing.T) {
 		if gotBucketID != wantBucketID {
 			t.Errorf("view %d bucket = %d, want %d", viewID, gotBucketID, wantBucketID)
 		}
+	}
+}
+
+func TestToggleTaskDone_ScopesBucketMoveToSelectedView(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title) VALUES (1, 'Test Project');
+		INSERT INTO project_views (id, project_id, title, view_kind, bucket_configuration_mode, done_bucket_id) VALUES
+			(1, 1, 'Team', 3, 1, 99),
+			(2, 1, 'Personal', 3, 1, 199);
+		INSERT INTO tasks (id, project_id, title) VALUES (1, 1, 'Task 1');
+		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES
+			(1, 1, 10, 1),
+			(2, 1, 20, 2);
+	`)
+	if err != nil {
+		t.Fatalf("insert test data: %v", err)
+	}
+
+	if err := store.ToggleTaskDone(context.Background(), 1, true, 1); err != nil {
+		t.Fatalf("toggle task done in selected view: %v", err)
+	}
+	for viewID, wantBucketID := range map[int64]int64{1: 99, 2: 20} {
+		var gotBucketID int64
+		if err := store.db.QueryRow(`SELECT bucket_id FROM task_buckets WHERE task_id = 1 AND project_view_id = ?`, viewID).Scan(&gotBucketID); err != nil {
+			t.Fatalf("query bucket for view %d: %v", viewID, err)
+		}
+		if gotBucketID != wantBucketID {
+			t.Errorf("view %d bucket = %d, want %d", viewID, gotBucketID, wantBucketID)
+		}
+	}
+}
+
+func TestToggleTaskDone_RejectsViewOutsideTaskProject(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO projects (id, title) VALUES (1, 'Task Project'), (2, 'Other Project');
+		INSERT INTO project_views (id, project_id, title, view_kind, bucket_configuration_mode, done_bucket_id) VALUES
+			(1, 1, 'Task Board', 3, 1, 99),
+			(2, 2, 'Other Board', 3, 1, 199);
+		INSERT INTO tasks (id, project_id, title, done) VALUES (1, 1, 'Task 1', 0);
+	`)
+	if err != nil {
+		t.Fatalf("insert test data: %v", err)
+	}
+
+	if err := store.ToggleTaskDone(context.Background(), 1, true, 2); err == nil {
+		t.Fatal("toggle with another project's view succeeded")
+	}
+	var done bool
+	if err := store.db.QueryRow(`SELECT done FROM tasks WHERE id = 1`).Scan(&done); err != nil {
+		t.Fatalf("query task done state: %v", err)
+	}
+	if done {
+		t.Fatal("invalid selected view changed global done state")
 	}
 }
 

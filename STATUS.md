@@ -1,10 +1,10 @@
 # Vimkunja – Status
 
-**Stand:** 2026-09-04 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 2
+**Stand:** 2026-09-04 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
 
 ## Aktueller Stand
 
-MVP und **Meilenstein 1** sind abgeschlossen: tägliche Aufgabenverwaltung ist ohne Wechsel zur Original-App praktikabel. Die weitere Arbeit beginnt mit Erweiterungen des Meilensteins 2.
+MVP, **Meilenstein 1** und **Meilenstein 2** sind abgeschlossen: tägliche Aufgabenverwaltung ist ohne Wechsel zur Original-App praktikabel. Die weitere Arbeit konzentriert sich auf die offenen Spezifikationen und Erweiterungen des Meilensteins 3.
 
 - Lokale Vikunja-SQLite-Datenbank: Projects, List View, All-Tasks-Overview, Task-Detail, Task-Editor und Task-Löschung
 - Hierarchischer Projects Pane mit Einrückung, session-lokaler Faltung, defensiven Recovery-Einträgen und persistenter Geschwister-Sortierung
@@ -16,17 +16,14 @@ MVP und **Meilenstein 1** sind abgeschlossen: tägliche Aufgabenverwaltung ist o
 
 ## Aktuelle Tickets
 
-Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End-Aliasse, [Home/End im Insert Mode](.archive/2026-09-11/insert-mode-home-end/issues/01-support-home-end-in-insert-mode.md), Done-Toggle im Detail, Task-Metadaten-Darstellung, Task Labels und Task Comments inklusive Einzel-Löschung sind abgeschlossen. Die Standard-Kanban-Provisionierung, die einzelne manuelle Kanban View, die Project-Hierarchie und die Globale Suche sind implementiert und archiviert. Die folgenden offenen Tickets sind nach Meilenstein eingeordnet; `needs-triage` in einem Ticket bedeutet weiterhin, dass dessen konkrete Spezifikation noch fehlt.
+Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End-Aliasse, [Home/End im Insert Mode](.archive/2026-09-11/insert-mode-home-end/issues/01-support-home-end-in-insert-mode.md), Done-Toggle im Detail, Task-Metadaten-Darstellung, Task Labels und Task Comments inklusive Einzel-Löschung sind abgeschlossen. Die Standard-Kanban-Provisionierung, die einzelne und mehrfache manuelle Kanban Views, die Project-Hierarchie und die Globale Suche sind implementiert und archiviert. Die folgenden offenen Tickets sind nach Meilenstein eingeordnet; `needs-triage` in einem Ticket bedeutet weiterhin, dass dessen konkrete Spezifikation noch fehlt.
 
-### Meilenstein 2
+### Meilenstein 2 — abgeschlossen
 
-Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md), die [kompakte Task-Detail-Ansicht](.archive/2026-08-14/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md), die [Ex-Command-History samt Completion](.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md), die [inline Task-Titelbearbeitung in List und Overview](.archive/2026-08-18/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-overview.md), die [feldlokalen Detail-Picker-Overlays](.archive/2026-09-03/detail-picker-overlay/issues/01-render-detail-pickers-as-field-local-overlays.md), der Due-Date-Picker mit relativen Helfern, kanonische UTC-Zeitstempel, der einzeilige Status-Footer und schmale Modal-Layouts sind implementiert; Kanban-Title-Editing bleibt bewusst ausgenommen, der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
+Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Keyboard-Shortcuts](.archive/2026-08-08/more-key-shortcuts/issues/01-keyboard-shortcuts.md), die [kompakte Task-Detail-Ansicht](.archive/2026-08-14/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md), die [Ex-Command-History samt Completion](.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md), die [inline Task-Titelbearbeitung in List und Overview](.archive/2026-08-18/inline-task-editing/issues/01-edit-task-titles-inline-in-list-and-overview.md), die [feldlokalen Detail-Picker-Overlays](.archive/2026-09-03/detail-picker-overlay/issues/01-render-detail-pickers-as-field-local-overlays.md), der Due-Date-Picker mit relativen Helfern, kanonische UTC-Zeitstempel, der einzeilige Status-Footer, schmale Modal-Layouts und die [Benutzerkonfiguration](.scratch/user-configuration/issues/01-add-user-facing-tui-configuration.md) sind implementiert; Kanban-Title-Editing bleibt bewusst ausgenommen, der vollständige native Rich-Text-Editor bleibt Meilenstein 3.
 
-5. [Benutzerkonfiguration hinzufügen](.scratch/user-configuration/issues/01-add-user-facing-tui-configuration.md) – zunächst Konfigurationsrahmen und nur tatsächlich benötigte Einstellungen.
+### Meilenstein 3 — aktuell
 
-### Meilenstein 3
-
-10. [Mehrere manuelle Kanban Views spezifizieren](.scratch/multi-kanban-view-semantics/issues/01-specify-workflow-for-projects-with-multiple-kanban-views.md)
 11. [Letzte Task-Aktionen rückgängig machen](.scratch/undo-task-actions/issues/01-undo-recent-task-actions.md)
 12. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md)
 13. [Project-Löschen semantisch spezifizieren](.scratch/project-deletion/issues/01-specify-project-deletion-semantics.md)
