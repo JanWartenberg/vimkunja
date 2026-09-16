@@ -640,29 +640,19 @@ func renderTaskDetail(m *model, textW, textH int) string {
 			lines = append(lines, placeholderText("  (no description)"))
 		}
 	} else {
-		available := availableDetailDescriptionRows(textH, len(lines), e.id != 0)
-		if available == 0 {
+		layout := m.taskDetailDescriptionLayout(textW, textH)
+		if layout.rows == 0 {
 			// The Description label remains an entry point; its body yields to
 			// metadata and Comments in the smallest regular layout.
 			return renderPinnedCommentsDetail(m, lines, textW, textH)
 		}
-		desc := wrapDescription(description, textW)
-		// Detect overflow before reserving the rail. Once it exists, the
-		// narrower render width determines the real scroll range.
-		if len(desc) > available {
-			descriptionScrollable = true
-			desc = wrapDescription(description, max(1, textW-2))
-		}
-		start := 0
-		if e.field == fieldDescription && len(desc) > available {
-			start = clamp(e.descScroll, 0, len(desc)-available)
-		}
-		descriptionScrollTop = start
-		descriptionRows = len(desc)
-		descriptionViewportStart = len(lines)
-		descriptionViewportRows = available
-		end := min(len(desc), start+available)
-		for _, line := range desc[start:end] {
+		descriptionScrollable = layout.scrollable
+		descriptionScrollTop = layout.start
+		descriptionRows = len(layout.lines)
+		descriptionViewportStart = layout.descriptionRow
+		descriptionViewportRows = layout.rows
+		end := min(len(layout.lines), layout.start+layout.rows)
+		for _, line := range layout.lines[layout.start:end] {
 			lines = append(lines, m.editorDescriptionText(line))
 		}
 	}
@@ -1226,6 +1216,31 @@ func (m *model) editorText(field editorField, value string) string {
 type descriptionLine struct {
 	text       string
 	start, end int
+}
+
+type multilineTextLayout struct {
+	lines                   []descriptionLine
+	start                   int
+	cursorRow, cursorColumn int
+}
+
+// layoutMultilineText is the shared seam between multiline rendering and
+// cursor placement. Callers remain responsible for their surrounding chrome.
+func layoutMultilineText(value string, width, rows, scroll, cursor int) multilineTextLayout {
+	lines := wrapDescription(value, width)
+	start := clamp(scroll, 0, max(0, len(lines)-max(0, rows)))
+	cursor = clamp(cursor, 0, len([]rune(value)))
+	cursorRow, cursorColumn := 0, 0
+	for row, line := range lines {
+		if cursor >= line.start && cursor <= line.end {
+			cursorRow, cursorColumn = row, cursor-line.start
+			break
+		}
+	}
+	return multilineTextLayout{
+		lines: lines, start: start,
+		cursorRow: cursorRow, cursorColumn: cursorColumn,
+	}
 }
 
 func wrapDescription(value string, width int) []descriptionLine {

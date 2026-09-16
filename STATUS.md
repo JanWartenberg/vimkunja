@@ -24,13 +24,12 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 
 ### Meilenstein 3 — aktuell
 
-12. [Description-Editor-Cursorversatz beheben](.scratch/description-editor-cursor-offset/issues/01-fix-description-editor-cursor-offset.md) – High-Priority-Bug: sichtbarer Cursor und tatsächliche Insert-Position liegen um eine Zeile auseinander.
-13. [Checkbox-Listen-Fortschritt anzeigen](.scratch/checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md) – zuerst als read-only Summary; native Bearbeitung bleibt Teil der Rich-Text-Arbeit.
-14. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md)
-15. [Project-Löschen semantisch spezifizieren](.scratch/project-deletion/issues/01-specify-project-deletion-semantics.md)
-15a. [Project-Erstellung spezifizieren](.scratch/project-creation/issues/01-specify-project-creation-workflow.md) – Entry Point, Hierarchie, initiale View und Vikunja-kompatible Persistenz vor der Implementierung festlegen.
-16. [Table View rendern](.scratch/table-view/issues/01-render-table-project-view.md)
-17. [Gantt View rendern](.scratch/gantt-view/issues/01-render-gantt-project-view.md)
+12. [Checkbox-Listen-Fortschritt anzeigen](.scratch/checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md) – zuerst als read-only Summary; native Bearbeitung bleibt Teil der Rich-Text-Arbeit.
+13. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md)
+14. [Project-Löschen semantisch spezifizieren](.scratch/project-deletion/issues/01-specify-project-deletion-semantics.md)
+14a. [Project-Erstellung spezifizieren](.scratch/project-creation/issues/01-specify-project-creation-workflow.md) – Entry Point, Hierarchie, initiale View und Vikunja-kompatible Persistenz vor der Implementierung festlegen.
+15. [Table View rendern](.scratch/table-view/issues/01-render-table-project-view.md)
+16. [Gantt View rendern](.scratch/gantt-view/issues/01-render-gantt-project-view.md)
 17. [Unabhängige Linktext-/URL-Bearbeitung evaluieren](.scratch/link-label-and-url-editor/issues/01-evaluate-independent-link-label-url-editing.md)
 18. [Manuelle Kanban-Buckets verwalten](.scratch/kanban-bucket-management/issues/01-manage-manual-kanban-buckets.md)
 19. [Lokale Suche im fokussierten Pane](.scratch/local-search/issues/01-search-within-focused-pane.md) – `/` sowie `n`/`N` sind vereinbart, die Pane-Semantik bleibt offen.
@@ -39,6 +38,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 22. [Native Rich-Text-Beschreibungen rendern und bearbeiten spezifizieren](.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md) – zweiter Schritt nach dem abgeschlossenen Plain-Text-Reader aus Meilenstein 2; basiert auf dem bestehenden Rich-Text-Contract.
 23. [Getrennte Historien für kontextspezifische Command-Prompts spezifizieren](.scratch/contextual-command-histories/issues/01-specify-independent-command-prompt-histories.md) – nach der M2-Ex-History; eigene session-lokale Historie je Prompt, ohne die Command-Grammatiken zu vereinheitlichen.
 23a. [Workspace-/Datenpräferenzen spezifizieren](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – Default-Project/View, Startfilter und persistierte Navigationspräferenzen; nach der lokalen TUI-Konfiguration.
+23b. [Multiline-Layout im Comment Composer wiederverwenden](.scratch/comment-composer-multiline-layout/issues/01-reuse-multiline-layout-in-comment-composer.md) – bewusst in eine spätere Session verschoben; zuerst screen-level Regressionstests ergänzen.
 
 ### Meilenstein 4
 

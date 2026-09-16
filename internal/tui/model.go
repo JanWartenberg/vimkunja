@@ -1964,10 +1964,9 @@ func (m *model) compactDescriptionCursorRendered() bool {
 }
 
 type taskDetailDescriptionLayout struct {
-	lines          []descriptionLine
-	start          int
-	rows           int
-	descriptionRow int
+	multilineTextLayout
+	rows, descriptionRow int
+	scrollable           bool
 }
 
 func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescriptionLayout {
@@ -1989,16 +1988,24 @@ func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescript
 		descriptionRow++ // Description separator.
 	}
 	descriptionRow++ // Description label.
-	available := availableDetailDescriptionRows(textH, descriptionRow, e.id != 0)
-	lines := wrapDescription(descriptionTerminalText(e.draft.Description), max(1, textW))
-	if len(lines) > available {
-		lines = wrapDescription(descriptionTerminalText(e.draft.Description), max(1, textW-2))
+	rows := availableDetailDescriptionRows(textH, descriptionRow, e.id != 0)
+	text := descriptionTerminalText(e.draft.Description)
+	scrollable := len(wrapDescription(text, max(1, textW))) > rows
+	width := textW
+	if scrollable {
+		width = max(1, textW-2)
 	}
-	start := 0
-	if e.field == fieldDescription && len(lines) > available {
-		start = clamp(e.descScroll, 0, len(lines)-available)
+	scroll := 0
+	if e.field == fieldDescription {
+		scroll = e.descScroll
 	}
-	return taskDetailDescriptionLayout{lines: lines, start: start, rows: available, descriptionRow: descriptionRow}
+	layout := layoutMultilineText(text, width, rows, scroll, e.cursor)
+	return taskDetailDescriptionLayout{
+		multilineTextLayout: layout,
+		rows:                rows,
+		descriptionRow:      descriptionRow,
+		scrollable:          scrollable,
+	}
 }
 
 func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
@@ -2008,17 +2015,9 @@ func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
 	textH := detailH - 2
 	layout := m.taskDetailDescriptionLayout(textW, textH)
 
-	cursor := clamp(m.editor.cursor, 0, m.editor.fieldRuneLen())
-	lineIndex, column := 0, 0
-	for i, line := range layout.lines {
-		if cursor >= line.start && cursor <= line.end {
-			lineIndex, column = i, cursor-line.start
-			break
-		}
-	}
-	visibleLine := clamp(lineIndex-layout.start, 0, layout.rows-1)
+	visibleLine := clamp(layout.cursorRow-layout.start, 0, layout.rows-1)
 	bodyRow := layout.descriptionRow + visibleLine
-	return clamp(2+column, 0, w-1), clamp(topH+1+bodyRow-m.editor.detailScroll, 0, h-1)
+	return clamp(2+layout.cursorColumn, 0, w-1), clamp(topH+1+bodyRow-m.editor.detailScroll, 0, h-1)
 }
 
 // tasksPaneTextX returns the screen column at which renderTasks's text begins.
@@ -2263,19 +2262,9 @@ func (m *model) focusedScrollPosition() (int, int, bool) {
 		}
 		detailH := max(4, contentH-topH)
 		textH := detailH - 2
-		precedingLines := 11
-		if m.editor.id == 0 {
-			precedingLines--
-		} else if textH >= 12 && !m.editor.isPickerMode() {
-			precedingLines++
-		}
-		viewportRows := max(1, textH-precedingLines)
-		descriptionWidth := w - 4
-		contentRows := len(wrapDescription(descriptionTerminalText(m.editor.draft.Description), descriptionWidth))
-		if contentRows > viewportRows {
-			contentRows = len(wrapDescription(descriptionTerminalText(m.editor.draft.Description), max(1, descriptionWidth-2)))
-			limit := contentRows - viewportRows
-			return clamp(m.editor.descScroll, 0, limit), limit, true
+		layout := m.taskDetailDescriptionLayout(w-4, textH)
+		if limit := len(layout.lines) - layout.rows; limit > 0 {
+			return layout.start, limit, true
 		}
 	case paneHelp, paneInfo:
 		pane := m.helpPane

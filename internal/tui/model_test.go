@@ -5254,11 +5254,30 @@ func TestDescriptionCursorStaysWithDescriptionLinesAfterEmptyLines(t *testing.T)
 	m.editor.mode = editorInsert
 	m.editor.cursor = len([]rune("Try to build\n- a Tool in Pi in general [x]\n- a small ticket tool [x]\n  - create scratch tickets [x]\n  - archive scratch tickets [x]\n  - update [x]\n\n\n  - query them [x]\n\n"))
 	m.editor.descScroll = 9
+	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
 
 	cursor := m.View().Cursor
 	rows := strings.Split(ansi.Strip(m.Render()), "\n")
-	if cursor == nil || cursor.Position.Y >= len(rows) || !strings.Contains(rows[cursor.Position.Y], "- compare token usage") {
-		t.Fatalf("description cursor = %#v, row=%q, want cursor on compare line", cursor, rows[max(0, min(len(rows)-1, cursor.Position.Y))])
+	if cursor == nil || cursor.Position.Y >= len(rows) || !strings.Contains(rows[cursor.Position.Y], "X- compare token usage") {
+		t.Fatalf("description cursor after insertion = %#v, row=%q, want cursor on inserted compare line", cursor, rows[max(0, min(len(rows)-1, cursor.Position.Y))])
+	}
+}
+
+func TestDescriptionCursorStaysWithWrappedInsertionLine(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 60, 40
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldDescription
+	m.editor.mode = editorInsert
+	m.editor.draft.Description = strings.Repeat("a", 54) + "target"
+	m.editor.cursor = 54
+	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
+
+	cursor := m.View().Cursor
+	rows := strings.Split(ansi.Strip(m.Render()), "\n")
+	if cursor == nil || cursor.Position.Y >= len(rows) || !strings.Contains(rows[cursor.Position.Y], "Xt") {
+		t.Fatalf("wrapped Description cursor after insertion = %#v, row=%q, want cursor on inserted wrapped segment", cursor, rows[max(0, min(len(rows)-1, cursor.Position.Y))])
 	}
 }
 
