@@ -39,10 +39,11 @@ type taskCommentsLoadedMsg struct {
 }
 
 type taskCommentSavedMsg struct {
-	task       vimkunja.Task
-	comment    vimkunja.TaskComment
-	closeAfter bool
-	err        error
+	task        vimkunja.Task
+	comment     vimkunja.TaskComment
+	closeAfter  bool
+	taskChanged bool
+	err         error
 }
 
 type taskCommentDeletedMsg struct {
@@ -333,12 +334,13 @@ func (m *model) saveTaskWithComment(closeAfter bool) tea.Cmd {
 		return nil
 	}
 	draft := cloneTaskDraft(m.editor.draft)
+	taskChanged := m.editor.dirty()
 	m.comments.saving = true
 	return func() tea.Msg {
 		ctx, cancel := contextWithTimeout()
 		defer cancel()
 		task, comment, err := m.store.SaveTaskWithComment(ctx, draft, vimkunja.TaskCommentDraft{Text: text})
-		return taskCommentSavedMsg{task: task, comment: comment, closeAfter: closeAfter, err: err}
+		return taskCommentSavedMsg{task: task, comment: comment, closeAfter: closeAfter, taskChanged: taskChanged, err: err}
 	}
 }
 

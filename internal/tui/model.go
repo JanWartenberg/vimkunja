@@ -174,6 +174,9 @@ type model struct {
 
 	initialProjectID int64
 	initialViewID    int64
+
+	undoHistory []*undoEntry
+	redoHistory []*undoEntry
 }
 
 func NewModel(cfg Config) tea.Model {
@@ -252,10 +255,12 @@ type (
 	kanbanTaskMovedMsg struct {
 		taskID   int64
 		bucketID int64
+		undo     *undoEntry
 		err      error
 	}
 	taskToggledMsg struct {
-		err error
+		undo *undoEntry
+		err  error
 	}
 	taskDeletedMsg struct {
 		err error
@@ -284,6 +289,7 @@ type (
 		taskID     int64
 		labelIDs   []int64
 		closeAfter bool
+		undo       *undoEntry
 		err        error
 	}
 	labelMutatedMsg struct {
@@ -294,6 +300,7 @@ type (
 	taskSavedMsg struct {
 		task       vimkunja.Task
 		closeAfter bool
+		undo       *undoEntry
 		err        error
 	}
 	cursorBlinkMsg   struct{}
@@ -376,7 +383,10 @@ func (m *model) moveKanbanTask(taskID, bucketID int64) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
-		return kanbanTaskMovedMsg{taskID: taskID, bucketID: bucketID, err: m.store.SetTaskWorkflowStatus(ctx, taskID, bucketID, viewID)}
+		undo, err := m.trackedTaskMutation(ctx, taskID, func() error {
+			return m.store.SetTaskWorkflowStatus(ctx, taskID, bucketID, viewID)
+		})
+		return kanbanTaskMovedMsg{taskID: taskID, bucketID: bucketID, undo: undo, err: err}
 	}
 }
 
@@ -425,6 +435,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// in the session log for the future :errors pane.
 		m.lastErr = ""
 		m.lastWarning = ""
+		m.toast = ""
 		m.quitHint = false
 
 		k := key.String()
@@ -512,6 +523,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.leaderEligible() && isSpaceKey(key) {
 			m.leaderArmed = true
 			return m, tea.Tick(m.leaderTimeout, func(time.Time) tea.Msg { return leaderTimeoutMsg{} })
+		}
+
+		if m.undoKeyAllowed() && (k == "u" || kLower == "ctrl+r") {
+			return m, m.startUndo(kLower == "ctrl+r")
 		}
 
 		// Ctrl+W must be handled before Detail input. Otherwise the direction key
@@ -759,6 +774,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.editor == nil || m.comments == nil {
 			return m, nil
 		}
+		if typed.taskChanged {
+			m.redoHistory = nil
+		}
 		m.editor.id = typed.task.ID
 		m.editor.draft.ID = typed.task.ID
 		m.editor.draft.Done = typed.task.Done
@@ -811,6 +829,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		m.rememberUndo(typed.undo)
 		m.editor.draft.LabelIDs = append([]int64(nil), typed.labelIDs...)
 		m.editor.draft.LabelIDsSet = false
 		m.editor.original.LabelIDs = append([]int64(nil), typed.labelIDs...)
@@ -906,6 +925,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.applyInlineTitleSave(typed)
 		return m, nil
 
+	case undoRestoredMsg:
+		return m, m.applyUndoRestore(typed)
+
 	case taskSavedMsg:
 		m.taskLoading = false
 		quitAfterSave := m.quitAfterSave
@@ -914,6 +936,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		m.rememberUndo(typed.undo)
 		if quitAfterSave {
 			return m, tea.Quit
 		}
@@ -979,6 +1002,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		m.rememberUndo(typed.undo)
 		return m, m.refreshActiveTasks()
 
 	case kanbanBoardLoadedMsg:
@@ -1017,6 +1041,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		m.rememberUndo(typed.undo)
 		m.pendingKanbanTaskID = typed.taskID
 		m.pendingKanbanBucketID = typed.bucketID
 		m.taskLoading = true
@@ -1549,7 +1574,10 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 				defer cancel()
-				return taskToggledMsg{err: m.store.ToggleTaskDone(ctx, t.ID, !t.Done)}
+				undo, err := m.trackedTaskMutation(ctx, t.ID, func() error {
+					return m.store.ToggleTaskDone(ctx, t.ID, !t.Done)
+				})
+				return taskToggledMsg{undo: undo, err: err}
 			}
 		}
 	}
@@ -2407,6 +2435,8 @@ func (m *model) renderStatusBar(w int) string {
 		status = renderFooterMessage(contentWidth, info, "Error: ", m.lastErr)
 	case m.lastWarning != "":
 		status = renderFooterMessage(contentWidth, info, "Warning: ", m.lastWarning)
+	case m.toast != "":
+		status = renderFooterMessage(contentWidth, info, "", m.toast)
 	case m.quitHint:
 		status = renderFooterMessage(contentWidth, info, "", ":q quit")
 	case m.commandMode:

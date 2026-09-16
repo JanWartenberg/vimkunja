@@ -72,6 +72,8 @@ type fakeStore struct {
 	savedCommentTask     vimkunja.TaskDraft
 	deletedCommentTaskID int64
 	deletedCommentID     int64
+	undoStates           map[int64]vimkunja.TaskUndoState
+	restoreUndoErr       error
 }
 
 func (f *fakeStore) ListProjects(context.Context) ([]vimkunja.Project, error) {
@@ -240,6 +242,9 @@ func (f *fakeStore) ReplaceTaskLabels(_ context.Context, taskID int64, labelIDs 
 			f.taskLabels = make(map[int64][]vimkunja.Label)
 		}
 		f.taskLabels[taskID] = labels
+		state := f.undoState(taskID)
+		state.LabelIDs = append([]int64(nil), labelIDs...)
+		f.setUndoState(state)
 	}
 	return f.labelErr
 }
@@ -285,6 +290,13 @@ func (f *fakeStore) SetTaskWorkflowStatus(_ context.Context, taskID, bucketID in
 			}
 		}
 	}
+	state := f.undoState(taskID)
+	assignedViewID := f.workflowViewID
+	state.BucketAssignments = []vimkunja.TaskBucketAssignment{{ViewID: assignedViewID, BucketID: bucketID}}
+	if done, ok := f.workflowDone[bucketID]; ok {
+		state.Done = done
+	}
+	f.setUndoState(state)
 	return nil
 }
 
@@ -294,6 +306,11 @@ func (f *fakeStore) ToggleTaskDone(_ context.Context, taskID int64, done bool, v
 	f.toggleViewID = 0
 	if len(viewID) > 0 {
 		f.toggleViewID = viewID[0]
+	}
+	if f.toggleErr == nil {
+		state := f.undoState(taskID)
+		state.Done = done
+		f.setUndoState(state)
 	}
 	return f.toggleErr
 }
@@ -313,12 +330,68 @@ func (f *fakeStore) UpdateTask(_ context.Context, draft vimkunja.TaskDraft) (vim
 	if f.updateErr != nil {
 		return vimkunja.Task{}, f.updateErr
 	}
-	return vimkunja.Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title, Done: draft.Done}, nil
+	state := f.undoState(draft.ID)
+	state.ProjectID, state.Title, state.Description = draft.ProjectID, draft.Title, draft.Description
+	state.Priority, state.DueDate = draft.Priority, draft.DueDate
+	if draft.DoneSet {
+		state.Done = draft.Done
+	}
+	if draft.LabelIDsSet {
+		state.LabelIDs = append([]int64(nil), draft.LabelIDs...)
+	}
+	f.setUndoState(state)
+	return vimkunja.Task{ID: draft.ID, ProjectID: draft.ProjectID, Title: draft.Title, Done: state.Done}, nil
 }
 
 func (f *fakeStore) UpdateTaskTitle(_ context.Context, taskID int64, title string) error {
 	f.updatedTaskID, f.updatedTaskTitle = taskID, title
+	if f.updateErr == nil {
+		state := f.undoState(taskID)
+		state.Title = title
+		f.setUndoState(state)
+	}
 	return f.updateErr
+}
+
+func (f *fakeStore) TaskUndoState(_ context.Context, taskID int64) (vimkunja.TaskUndoState, error) {
+	return f.undoState(taskID), nil
+}
+
+func (f *fakeStore) RestoreTaskUndoState(_ context.Context, expected, target vimkunja.TaskUndoState) error {
+	if f.restoreUndoErr != nil {
+		return f.restoreUndoErr
+	}
+	if !reflect.DeepEqual(f.undoState(expected.TaskID), expected) {
+		return errors.New("Task changed since this action")
+	}
+	f.setUndoState(target)
+	return nil
+}
+
+func (f *fakeStore) undoState(taskID int64) vimkunja.TaskUndoState {
+	if state, ok := f.undoStates[taskID]; ok {
+		return state
+	}
+	for _, tasks := range f.tasksByView {
+		for _, task := range tasks {
+			if task.ID == taskID {
+				return vimkunja.TaskUndoState{TaskID: task.ID, ProjectID: task.ProjectID, Identifier: task.Identifier, Title: task.Title, Description: task.Description, Priority: task.Priority, DueDate: task.DueDate, Done: task.Done}
+			}
+		}
+	}
+	for _, task := range f.overviewTasks {
+		if task.ID == taskID {
+			return vimkunja.TaskUndoState{TaskID: task.ID, ProjectID: task.ProjectID, Identifier: task.Identifier, Title: task.Title, Description: task.Description, Priority: task.Priority, DueDate: task.DueDate, Done: task.Done}
+		}
+	}
+	return vimkunja.TaskUndoState{TaskID: taskID, ProjectID: 1}
+}
+
+func (f *fakeStore) setUndoState(state vimkunja.TaskUndoState) {
+	if f.undoStates == nil {
+		f.undoStates = make(map[int64]vimkunja.TaskUndoState)
+	}
+	f.undoStates[state.TaskID] = state
 }
 
 func TestProjectsPaneRefreshToEmptyClearsStaleProjectContext(t *testing.T) {

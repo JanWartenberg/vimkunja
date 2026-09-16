@@ -278,10 +278,13 @@ func (m *model) updateKanbanKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 				defer cancel()
-				if viewID != 0 {
-					return taskToggledMsg{err: m.store.ToggleTaskDone(ctx, task.ID, !task.Done, viewID)}
-				}
-				return taskToggledMsg{err: m.store.ToggleTaskDone(ctx, task.ID, !task.Done)}
+				undo, err := m.trackedTaskMutation(ctx, task.ID, func() error {
+					if viewID != 0 {
+						return m.store.ToggleTaskDone(ctx, task.ID, !task.Done, viewID)
+					}
+					return m.store.ToggleTaskDone(ctx, task.ID, !task.Done)
+				})
+				return taskToggledMsg{undo: undo, err: err}
 			}
 		}
 	case "d":

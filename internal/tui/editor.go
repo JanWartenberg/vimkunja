@@ -855,13 +855,25 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 		ctx, cancel := contextWithTimeout()
 		defer cancel()
 		var task vimkunja.Task
+		var undo *undoEntry
 		var err error
 		if draft.ID == 0 {
 			task, err = m.store.CreateTask(ctx, draft)
 		} else {
+			before, snapshotErr := m.store.TaskUndoState(ctx, draft.ID)
+			if snapshotErr != nil {
+				return taskSavedMsg{closeAfter: closeAfter, err: snapshotErr}
+			}
 			task, err = m.store.UpdateTask(ctx, draft)
+			if err == nil {
+				var after vimkunja.TaskUndoState
+				after, err = m.store.TaskUndoState(ctx, draft.ID)
+				if err == nil {
+					undo = newUndoEntry(before, after)
+				}
+			}
 		}
-		return taskSavedMsg{task: task, closeAfter: closeAfter, err: err}
+		return taskSavedMsg{task: task, closeAfter: closeAfter, undo: undo, err: err}
 	}
 }
 

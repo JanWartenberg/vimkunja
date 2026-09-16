@@ -34,4 +34,10 @@ type Store interface {
 	CreateTask(ctx context.Context, draft TaskDraft) (Task, error)
 	UpdateTask(ctx context.Context, draft TaskDraft) (Task, error)
 	UpdateTaskTitle(ctx context.Context, taskID int64, title string) error
+
+	// TaskUndoState and RestoreTaskUndoState form the persistence boundary for
+	// session-local undo. Restore is atomic and writes only when the current
+	// state still exactly matches expected.
+	TaskUndoState(ctx context.Context, taskID int64) (TaskUndoState, error)
+	RestoreTaskUndoState(ctx context.Context, expected, target TaskUndoState) error
 }

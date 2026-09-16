@@ -58,6 +58,7 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 - Im Projects Pane: `Shift+J/K` Project unter seinen Geschwistern verschieben
 - `Enter` – Task-Detail öffnen
 - `x` – Task in den Done- bzw. Default-Bucket togglen
+- `u` / `Ctrl+R` – letzte persistierte Task-Aktion rückgängig machen bzw. wiederholen
 - `o` / `:new` – neuen Task anlegen
 - `:w`, `:wq`, `:wqa` – speichern
 - `:q`, `:q!`, `:qa`, `:qa!` – Pane bzw. Anwendung schließen

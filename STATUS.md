@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**Stand:** 2026-09-04 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
+**Stand:** 2026-09-16 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
 
 ## Aktueller Stand
 
@@ -16,7 +16,7 @@ MVP, **Meilenstein 1** und **Meilenstein 2** sind abgeschlossen: tägliche Aufga
 
 ## Aktuelle Tickets
 
-Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End-Aliasse, [Home/End im Insert Mode](.archive/2026-09-11/insert-mode-home-end/issues/01-support-home-end-in-insert-mode.md), Done-Toggle im Detail, Task-Metadaten-Darstellung, Task Labels und Task Comments inklusive Einzel-Löschung sind abgeschlossen. Die Standard-Kanban-Provisionierung, die einzelne und mehrfache manuelle Kanban Views, die Project-Hierarchie und die Globale Suche sind implementiert und archiviert. Die folgenden offenen Tickets sind nach Meilenstein eingeordnet; `needs-triage` in einem Ticket bedeutet weiterhin, dass dessen konkrete Spezifikation noch fehlt.
+Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End-Aliasse, [Home/End im Insert Mode](.archive/2026-09-11/insert-mode-home-end/issues/01-support-home-end-in-insert-mode.md), Done-Toggle im Detail, Task-Metadaten-Darstellung, Task Labels, Task Comments inklusive Einzel-Löschung und [session-lokales Undo/Redo](.archive/2026-09-16/undo-task-actions/issues/01-undo-recent-task-actions.md) sind abgeschlossen. Die Standard-Kanban-Provisionierung, die einzelne und mehrfache manuelle Kanban Views, die Project-Hierarchie und die Globale Suche sind implementiert und archiviert. Die folgenden offenen Tickets sind nach Meilenstein eingeordnet; `needs-triage` in einem Ticket bedeutet weiterhin, dass dessen konkrete Spezifikation noch fehlt.
 
 ### Meilenstein 2 — abgeschlossen
 
@@ -24,7 +24,6 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 
 ### Meilenstein 3 — aktuell
 
-11. [Letzte Task-Aktionen rückgängig machen](.scratch/undo-task-actions/issues/01-undo-recent-task-actions.md)
 12. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md)
 13. [Project-Löschen semantisch spezifizieren](.scratch/project-deletion/issues/01-specify-project-deletion-semantics.md)
 13a. [Project-Erstellung spezifizieren](.scratch/project-creation/issues/01-specify-project-creation-workflow.md) – Entry Point, Hierarchie, initiale View und Vikunja-kompatible Persistenz vor der Implementierung festlegen.

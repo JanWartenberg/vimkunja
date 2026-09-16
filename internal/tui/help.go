@@ -25,6 +25,7 @@ var helpLines = []string{
 	"  Enter                 Open task detail editor",
 	"  o                     Create a task in selected project",
 	"  x                     Toggle task done",
+	"  u / Ctrl+R            Undo / redo latest persisted Task action",
 	"  dd, then y            Delete selected task; n/Esc cancel",
 	"  r                     Reload current view",
 	"",

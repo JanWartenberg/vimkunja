@@ -149,3 +149,27 @@ type TaskDraft struct {
 	LabelIDsSet      bool // Labels participate only after the Detail has loaded or changed them.
 	CreatedByID      int64
 }
+
+// TaskBucketAssignment is one persisted Bucket assignment for a Task. A Task
+// may have one assignment per Project View, so undo snapshots retain all of
+// them rather than only the currently displayed Workflow Status.
+type TaskBucketAssignment struct {
+	ViewID   int64
+	BucketID int64
+}
+
+// TaskUndoState is the normalized, complete persisted state covered by Task
+// undo/redo. It intentionally excludes timestamps, position, Comments, and
+// editor drafts.
+type TaskUndoState struct {
+	TaskID            int64
+	ProjectID         int64
+	Identifier        string
+	Title             string
+	Description       string
+	Priority          int64
+	DueDate           string
+	Done              bool
+	LabelIDs          []int64
+	BucketAssignments []TaskBucketAssignment
+}

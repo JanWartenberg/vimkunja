@@ -65,6 +65,24 @@ _Avoid_: Line jump
 Description navigation between terminal rows produced by paragraph wrapping using `gj` and `gk`.
 _Avoid_: Paragraph jump
 
+## Task history
+
+**Persisted Task Action**:
+A successful change to an existing Task's persisted state, treated as one user-level unit for reversal. It excludes Task Comments and unsaved editor drafts.
+_Avoid_: keystroke, field change
+
+**Undo Entry**:
+A reversible record of one Persisted Task Action, identified with the affected Task and its before-and-after states.
+_Avoid_: audit log, change log
+
+**Undo History**:
+The session-local sequence of recent Undo Entries available for reversal; it is distinct from the local editing history of a Description.
+_Avoid_: status log, database history
+
+**Redo History**:
+The session-local sequence of Undo Entries that were reversed and can be reapplied before a new Task change branches the history.
+_Avoid_: replay log
+
 ## Task comments
 
 **Task Comment**:

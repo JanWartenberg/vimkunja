@@ -22,6 +22,7 @@ type inlineTitleEdit struct {
 type inlineTitleSavedMsg struct {
 	taskID int64
 	title  string
+	undo   *undoEntry
 	err    error
 }
 
@@ -82,8 +83,10 @@ func (m *model) saveInlineTitle() tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := contextWithTimeout()
 		defer cancel()
-		err := m.store.UpdateTaskTitle(ctx, e.task.ID, e.title)
-		return inlineTitleSavedMsg{taskID: e.task.ID, title: e.title, err: err}
+		undo, err := m.trackedTaskMutation(ctx, e.task.ID, func() error {
+			return m.store.UpdateTaskTitle(ctx, e.task.ID, e.title)
+		})
+		return inlineTitleSavedMsg{taskID: e.task.ID, title: e.title, undo: undo, err: err}
 	}
 }
 
@@ -130,6 +133,7 @@ func (m *model) applyInlineTitleSave(msg inlineTitleSavedMsg) {
 		m.recordError(msg.err)
 		return
 	}
+	m.rememberUndo(msg.undo)
 	pendingFocus := e.pendingFocus
 	if m.inOverview() {
 		for i := range m.overviewTasks {

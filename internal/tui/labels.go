@@ -134,12 +134,15 @@ func (m *model) saveTaskPickerLabels(closeAfter bool) tea.Cmd {
 		return cmd
 	}
 	labelIDs := editorLabelIDs(m.editor.labels)
+	taskID := m.editor.id
 	m.labelUI.loading = true
 	return func() tea.Msg {
 		ctx, cancel := contextWithTimeout()
 		defer cancel()
-		err := m.store.ReplaceTaskLabels(ctx, m.editor.id, labelIDs)
-		return taskLabelsSavedMsg{taskID: m.editor.id, labelIDs: labelIDs, closeAfter: closeAfter, err: err}
+		undo, err := m.trackedTaskMutation(ctx, taskID, func() error {
+			return m.store.ReplaceTaskLabels(ctx, taskID, labelIDs)
+		})
+		return taskLabelsSavedMsg{taskID: taskID, labelIDs: labelIDs, closeAfter: closeAfter, undo: undo, err: err}
 	}
 }
 

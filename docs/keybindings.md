@@ -23,6 +23,7 @@ This document is maintained manually for now. Generating or deriving `help.go` f
 | `:h` / `:help` | Open in-application help | Implemented |
 | `:errors` | Open the session error log | Implemented |
 | `:labels` | Open the global Label Overview from any normal context | Implemented |
+| `u` / `Ctrl+R` | Undo / redo the latest persisted Task action in List, Overview, Kanban, or Task Detail Normal Mode. | Implemented |
 | `:q`, `:qa`, and force variants | Close a Pane or quit Vimkunja | Implemented |
 
 ## Task context and View navigation
