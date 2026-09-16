@@ -1963,39 +1963,62 @@ func (m *model) compactDescriptionCursorRendered() bool {
 	return cursorRow >= e.detailScroll && cursorRow < e.detailScroll+bodyRows
 }
 
+type taskDetailDescriptionLayout struct {
+	lines          []descriptionLine
+	start          int
+	rows           int
+	descriptionRow int
+}
+
+func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescriptionLayout {
+	e := m.editor
+	constrainedRegular := e.id != 0 && textH < 14
+	descriptionRow := 1 // Detail header.
+	if !constrainedRegular {
+		descriptionRow++ // Header separator.
+	}
+	descriptionRow += 4 // Project, Title, Priority, Due Date.
+	descriptionRow += 2 // Labels and Workflow Status.
+	if e.id != 0 {
+		descriptionRow++ // Done.
+		if textH >= 12 && !e.isPickerMode() {
+			descriptionRow++ // Database identifier.
+		}
+	}
+	if !constrainedRegular {
+		descriptionRow++ // Description separator.
+	}
+	descriptionRow++ // Description label.
+	available := availableDetailDescriptionRows(textH, descriptionRow, e.id != 0)
+	lines := wrapDescription(descriptionTerminalText(e.draft.Description), max(1, textW))
+	if len(lines) > available {
+		lines = wrapDescription(descriptionTerminalText(e.draft.Description), max(1, textW-2))
+	}
+	start := 0
+	if e.field == fieldDescription && len(lines) > available {
+		start = clamp(e.descScroll, 0, len(lines)-available)
+	}
+	return taskDetailDescriptionLayout{lines: lines, start: start, rows: available, descriptionRow: descriptionRow}
+}
+
 func (m *model) descriptionCursorPosition(w, h, topH int) (int, int) {
 	textW := w - 4
 	contentH := max(4, h-3)
 	detailH := max(4, contentH-topH)
 	textH := detailH - 2
-	precedingLines := 11 // header, form fields, and Description label
-	if m.editor.id == 0 {
-		precedingLines-- // New Tasks omit the Done field.
-	} else if textH >= 12 && !m.editor.isPickerMode() {
-		precedingLines++ // Existing Tasks include the debugging identifier row.
-	}
-	available := max(1, textH-precedingLines)
-	description := wrapDescription(m.editor.draft.Description, textW)
-	if len(description) > available {
-		// Match the Detail renderer: overflow is detected at full width, then
-		// the rail reserves two columns before visual rows are calculated.
-		description = wrapDescription(m.editor.draft.Description, max(1, textW-2))
-	}
-	start := 0
-	if len(description) > available {
-		start = clamp(m.editor.descScroll, 0, len(description)-available)
-	}
+	layout := m.taskDetailDescriptionLayout(textW, textH)
 
 	cursor := clamp(m.editor.cursor, 0, m.editor.fieldRuneLen())
 	lineIndex, column := 0, 0
-	for i, line := range description {
+	for i, line := range layout.lines {
 		if cursor >= line.start && cursor <= line.end {
 			lineIndex, column = i, cursor-line.start
 			break
 		}
 	}
-	visibleLine := clamp(lineIndex-start, 0, available-1)
-	return clamp(2+column, 0, w-1), clamp(topH+1+precedingLines+visibleLine, 0, h-1)
+	visibleLine := clamp(lineIndex-layout.start, 0, layout.rows-1)
+	bodyRow := layout.descriptionRow + visibleLine
+	return clamp(2+column, 0, w-1), clamp(topH+1+bodyRow-m.editor.detailScroll, 0, h-1)
 }
 
 // tasksPaneTextX returns the screen column at which renderTasks's text begins.

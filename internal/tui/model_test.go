@@ -5227,6 +5227,41 @@ func TestNativeDescriptionCursorUsesTextPositionWithoutRenderedDuplicate(t *test
 	}
 }
 
+func TestDescriptionCursorStaysWithDescriptionLinesAfterEmptyLines(t *testing.T) {
+	description := strings.Join([]string{
+		"Try to build",
+		"- a Tool in Pi in general [x]",
+		"- a small ticket tool [x]",
+		"  - create scratch tickets [x]",
+		"  - archive scratch tickets [x]",
+		"  - update [x]",
+		"",
+		"",
+		"  - query them [x]",
+		"",
+		"- compare token usage [x]",
+		"- bring to Github [x]",
+		"",
+		"",
+		"LLM should not",
+		"last line",
+	}, "\n")
+	m := testModel()
+	m.width, m.height = 160, 50
+	m.currentProjectID = 1
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: description})
+	m.editor.field = fieldDescription
+	m.editor.mode = editorInsert
+	m.editor.cursor = len([]rune("Try to build\n- a Tool in Pi in general [x]\n- a small ticket tool [x]\n  - create scratch tickets [x]\n  - archive scratch tickets [x]\n  - update [x]\n\n\n  - query them [x]\n\n"))
+	m.editor.descScroll = 9
+
+	cursor := m.View().Cursor
+	rows := strings.Split(ansi.Strip(m.Render()), "\n")
+	if cursor == nil || cursor.Position.Y >= len(rows) || !strings.Contains(rows[cursor.Position.Y], "- compare token usage") {
+		t.Fatalf("description cursor = %#v, row=%q, want cursor on compare line", cursor, rows[max(0, min(len(rows)-1, cursor.Position.Y))])
+	}
+}
+
 func TestDescriptionCursorTracksNewDoneFieldAfterSavingNewTask(t *testing.T) {
 	m := NewModel(Config{Store: &fakeStore{}}).(*model)
 	m.width, m.height = 100, 40
