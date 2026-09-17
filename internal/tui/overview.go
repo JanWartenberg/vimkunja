@@ -127,7 +127,7 @@ func (m *model) closeTaskDetail() {
 	}
 }
 
-func (m *model) openOverviewNewEditor() {
+func (m *model) openOverviewNewEditor() tea.Cmd {
 	draft := vimkunja.TaskDraft{}
 	m.editor = &taskEditor{
 		draft: draft, original: draft, field: fieldProject,
@@ -135,6 +135,7 @@ func (m *model) openOverviewNewEditor() {
 	}
 	m.showDetail = true
 	m.focus = paneDetail
+	return nil
 }
 
 func (m *model) restoreProjectScope() tea.Cmd {

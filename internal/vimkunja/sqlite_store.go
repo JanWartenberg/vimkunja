@@ -1093,15 +1093,17 @@ func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, task
 	}
 
 	buckets, err := s.db.QueryContext(ctx, `
-		SELECT b.id, b.title, tb.task_id IS NOT NULL
+		SELECT b.id, b.title,
+			tb.task_id IS NOT NULL OR (? = 0 AND b.id = pv.default_bucket_id)
 		FROM buckets b
+		JOIN project_views pv ON pv.id = b.project_view_id
 		LEFT JOIN task_buckets tb
 			ON tb.bucket_id = b.id
 			AND tb.project_view_id = b.project_view_id
 			AND tb.task_id = ?
 		WHERE b.project_view_id = ?
 		ORDER BY b.position ASC, b.id ASC
-	`, taskID, viewIDs[0])
+	`, taskID, taskID, viewIDs[0])
 	if err != nil {
 		return WorkflowStatus{}, fmt.Errorf("list workflow buckets: %w", err)
 	}

@@ -262,7 +262,7 @@ func (m *model) updateKanbanKeys(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.kanbanActionBlockedByDirtyDetail() {
 			return m, nil
 		}
-		m.openNewEditor()
+		return m, m.openNewEditor()
 	case "r":
 		return m, m.refreshActiveTasks()
 	case "-":

@@ -2823,6 +2823,57 @@ func TestOpeningTaskDetailLoadsWorkflowStatus(t *testing.T) {
 	}
 }
 
+func TestNewTaskLoadsWorkflowStatusesForItsProject(t *testing.T) {
+	store := &fakeStore{workflowStatus: vimkunja.WorkflowStatus{
+		Availability:  vimkunja.WorkflowStatusAvailable,
+		CurrentBucket: vimkunja.WorkflowBucket{ID: 10, Title: "To-Do"},
+		Buckets:       []vimkunja.WorkflowBucket{{ID: 10, Title: "To-Do"}, {ID: 11, Title: "Doing"}},
+	}}
+	m := &model{store: store, currentProjectID: 1}
+	cmd := m.openNewEditor()
+	if cmd == nil || !m.editor.workflowStatusLoading {
+		t.Fatal("new editor did not start workflow status loading")
+	}
+	updated, _ := m.Update(cmd())
+	m = updated.(*model)
+	if got := m.editor.workflowStatusLabel(); got != "To-Do" {
+		t.Fatalf("new task workflow status = %q, want To-Do", got)
+	}
+	if m.editor.draft.WorkflowBucketID != 10 {
+		t.Fatalf("new task workflow bucket = %d, want 10", m.editor.draft.WorkflowBucketID)
+	}
+}
+
+func TestStaleWorkflowStatusLoadCannotOverwriteReopenedEditor(t *testing.T) {
+	store := &fakeStore{workflowStatus: vimkunja.WorkflowStatus{
+		Availability:  vimkunja.WorkflowStatusAvailable,
+		CurrentBucket: vimkunja.WorkflowBucket{ID: 11, Title: "Doing"},
+		Buckets: []vimkunja.WorkflowBucket{
+			{ID: 10, Title: "To-Do"}, {ID: 11, Title: "Doing"},
+		},
+	}}
+	m := &model{store: store, currentProjectID: 1}
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	oldEditor := m.editor
+	oldLoad := m.loadWorkflowStatus(1, 1)
+
+	m.openExistingEditor(vimkunja.Task{ID: 2, ProjectID: 1, Title: "Other"})
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})
+	newEditor := m.editor
+
+	updated, _ := m.Update(oldLoad())
+	m = updated.(*model)
+	if m.editor != newEditor || !m.editor.workflowStatusLoading {
+		t.Fatalf("stale workflow status changed reopened editor: old=%p current=%p loading=%v", oldEditor, m.editor, m.editor.workflowStatusLoading)
+	}
+
+	updated, _ = m.Update(m.loadWorkflowStatus(1, 1)())
+	m = updated.(*model)
+	if got := m.editor.workflowStatusLabel(); got != "Doing" {
+		t.Fatalf("current workflow status = %q, want Doing", got)
+	}
+}
+
 func TestLabelsFieldAllowsNavigationAndOpensPicker(t *testing.T) {
 	m := testModel()
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task"})

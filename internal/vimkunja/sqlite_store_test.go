@@ -639,6 +639,28 @@ func TestGetTaskWorkflowStatus_ReturnsCurrentBucketAndOrderedChoices(t *testing.
 	}
 }
 
+func TestGetTaskWorkflowStatus_UsesDefaultBucketForNewTask(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	_, err := store.db.Exec(`
+		INSERT INTO project_views (id, project_id, title, view_kind, default_bucket_id) VALUES (10, 1, 'Board', 3, 11);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES
+			(10, 'Doing', 10, 1), (11, 'To-Do', 10, 2);
+	`)
+	if err != nil {
+		t.Fatalf("seed database: %v", err)
+	}
+
+	status, err := store.GetTaskWorkflowStatus(context.Background(), 1, 0)
+	if err != nil {
+		t.Fatalf("get new-task workflow status: %v", err)
+	}
+	if status.CurrentBucket.ID != 11 || status.CurrentBucket.Title != "To-Do" {
+		t.Fatalf("new-task status = %#v, want default To-Do bucket", status.CurrentBucket)
+	}
+}
+
 func TestGetTaskWorkflowStatus_ReportsUnavailableAndAmbiguousViews(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()

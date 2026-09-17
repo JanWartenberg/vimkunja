@@ -267,6 +267,7 @@ type (
 	}
 	workflowStatusLoadedMsg struct {
 		taskID int64
+		editor *taskEditor
 		status vimkunja.WorkflowStatus
 		err    error
 	}
@@ -343,6 +344,7 @@ func (m *model) loadViews(projectID int64) tea.Cmd {
 
 func (m *model) loadWorkflowStatus(projectID, taskID int64) tea.Cmd {
 	viewID := int64(0)
+	editor := m.editor
 	if m.kanbanActive {
 		viewID = m.currentViewID
 	}
@@ -357,7 +359,7 @@ func (m *model) loadWorkflowStatus(projectID, taskID int64) tea.Cmd {
 		} else {
 			status, err = m.store.GetTaskWorkflowStatus(ctx, projectID, taskID)
 		}
-		return workflowStatusLoadedMsg{taskID: taskID, status: status, err: err}
+		return workflowStatusLoadedMsg{taskID: taskID, editor: editor, status: status, err: err}
 	}
 }
 
@@ -908,12 +910,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case workflowStatusLoadedMsg:
-		if m.editor != nil && m.editor.id == typed.taskID {
+		if m.editor != nil && ((typed.editor != nil && m.editor == typed.editor) || (typed.editor == nil && m.editor.id == typed.taskID)) {
 			m.editor.workflowStatusLoading = false
 			if typed.err == nil {
 				m.editor.workflowStatus = typed.status
-				m.editor.draft.WorkflowBucketID = typed.status.CurrentBucket.ID
-				m.editor.original.WorkflowBucketID = typed.status.CurrentBucket.ID
+				// A Kanban-created task already has an explicit target bucket;
+				// regular new tasks inherit the project's default bucket.
+				if m.editor.id != 0 || m.editor.draft.WorkflowBucketID == 0 {
+					m.editor.draft.WorkflowBucketID = typed.status.CurrentBucket.ID
+					m.editor.original.WorkflowBucketID = typed.status.CurrentBucket.ID
+				}
 			}
 		}
 		if typed.err != nil {
@@ -1372,8 +1378,7 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "o":
-		m.openNewEditor()
-		return m, nil
+		return m, m.openNewEditor()
 	case "-":
 		return m, m.openOverview()
 	case "r":
@@ -1518,11 +1523,9 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "o":
 		if m.inOverview() {
-			m.openOverviewNewEditor()
-		} else {
-			m.openNewEditor()
+			return m, m.openOverviewNewEditor()
 		}
-		return m, nil
+		return m, m.openNewEditor()
 	case "r":
 		m.lastErr = ""
 		return m, m.refreshActiveTasks()

@@ -247,8 +247,7 @@ func forceQuitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 }
 
 func newTaskCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
-	m.openNewEditor()
-	return m, nil
+	return m, m.openNewEditor()
 }
 
 func writeCommand(m *model, _ []string) (tea.Model, tea.Cmd) {

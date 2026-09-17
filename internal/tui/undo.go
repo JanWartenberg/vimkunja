@@ -192,10 +192,11 @@ func (m *model) refreshEditorAfterUndo(state vimkunja.TaskUndoState) {
 }
 
 func (m *model) loadUndoWorkflowStatus(projectID, taskID int64) tea.Cmd {
+	editor := m.editor
 	return func() tea.Msg {
 		ctx, cancel := contextWithTimeout()
 		defer cancel()
 		status, err := m.store.GetTaskWorkflowStatus(ctx, projectID, taskID)
-		return workflowStatusLoadedMsg{taskID: taskID, status: status, err: err}
+		return workflowStatusLoadedMsg{taskID: taskID, editor: editor, status: status, err: err}
 	}
 }

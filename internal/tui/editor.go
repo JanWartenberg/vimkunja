@@ -74,21 +74,26 @@ type taskEditor struct {
 	workflowStatusLoading   bool
 }
 
-func (m *model) openNewEditor() {
+func (m *model) openNewEditor() tea.Cmd {
 	draft := vimkunja.TaskDraft{ProjectID: m.currentProjectID}
 	field := fieldTitle
 	if draft.ProjectID == 0 {
 		field = fieldProject
 	}
-	m.editor = &taskEditor{draft: draft, original: draft, field: field}
+	m.editor = &taskEditor{draft: draft, original: draft, field: field, workflowStatusLoading: draft.ProjectID != 0}
 	m.showDetail = true
 	m.focus = paneDetail
+	if draft.ProjectID != 0 {
+		return m.loadWorkflowStatus(draft.ProjectID, 0)
+	}
+	return nil
 }
 
-func (m *model) openNewKanbanEditor(bucketID int64) {
-	m.openNewEditor()
+func (m *model) openNewKanbanEditor(bucketID int64) tea.Cmd {
+	cmd := m.openNewEditor()
 	m.editor.draft.WorkflowBucketID = bucketID
 	m.editor.original.WorkflowBucketID = bucketID
+	return cmd
 }
 
 func (m *model) openExistingEditor(task vimkunja.Task) {
@@ -134,7 +139,7 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if e == nil {
 		if m.kanbanActive && !m.inOverview() && (k.String() == "i" || k.String() == "o") {
 			if bucket, ok := m.activeKanbanBucket(); ok {
-				m.openNewKanbanEditor(bucket.ID)
+				return m, m.openNewKanbanEditor(bucket.ID)
 			}
 			return m, nil
 		}
@@ -562,6 +567,7 @@ func (m *model) updateProjectPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		e.mode = editorNormal
 	case "enter":
+		var cmd tea.Cmd
 		if len(m.projects) > 0 {
 			projectID := m.projects[clamp(e.pickerIndex, 0, len(m.projects)-1)].ID
 			if projectID != e.draft.ProjectID {
@@ -570,10 +576,12 @@ func (m *model) updateProjectPicker(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 				// the previous project must never be saved with this move.
 				e.draft.WorkflowBucketID = 0
 				e.workflowStatus = vimkunja.WorkflowStatus{}
-				e.workflowStatusLoading = false
+				e.workflowStatusLoading = true
+				cmd = m.loadWorkflowStatus(projectID, e.id)
 			}
 		}
 		e.mode = editorNormal
+		return m, cmd
 	}
 	return m, nil
 }
