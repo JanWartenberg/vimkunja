@@ -1010,13 +1010,13 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	bodyRows := max(1, textH-2-pinnedCommentRows)
 	descriptionRows := compactDescriptionRows(textH-pinnedCommentRows, staticRows)
 	description := e.draft.Description
-	desc := wrapTaskDescription(description, max(1, textW-2))
+	desc := wrapTaskDescriptionForEditor(e, description, max(1, textW-2))
 	if description == "" {
 		desc = []descriptionLine{{text: placeholderText("  (no description)")}}
 	}
 	descriptionScrollable := len(desc) > descriptionRows
 	if descriptionScrollable {
-		desc = wrapTaskDescription(description, max(1, textW-4))
+		desc = wrapTaskDescriptionForEditor(e, description, max(1, textW-4))
 	}
 	start := 0
 	if (e.descriptionActive || e.descViewportScroll) && len(desc) > descriptionRows {
@@ -1074,12 +1074,12 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 	lines := []string{" " + renderHeading("DESCRIPTION · "+mode) + " ", ""}
 	available := max(1, textH-len(lines))
 	description := e.draft.Description
-	desc := wrapTaskDescription(description, textW)
+	desc := wrapTaskDescriptionForEditor(e, description, textW)
 	if description == "" {
 		desc = []descriptionLine{{text: ""}}
 	}
 	if len(desc) > available {
-		desc = wrapTaskDescription(description, max(1, textW-2))
+		desc = wrapTaskDescriptionForEditor(e, description, max(1, textW-2))
 	}
 	cursorRow := 0
 	for row, line := range desc {
@@ -1268,9 +1268,9 @@ func (m *model) readOnlyDescriptionScrollLimit() int {
 	if m.compactDetail() {
 		w, _ := m.viewportSize()
 		descriptionRows := m.compactDescriptionRows()
-		lines := wrapTaskDescription(m.editor.draft.Description, w-4)
+		lines := wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, w-4)
 		if len(lines) > descriptionRows {
-			lines = wrapTaskDescription(m.editor.draft.Description, max(1, w-6))
+			lines = wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, max(1, w-6))
 		}
 		return max(0, len(lines)-descriptionRows)
 	}
@@ -1286,9 +1286,9 @@ func (m *model) readOnlyDescriptionScrollLimit() int {
 		precedingLines++
 	}
 	available := max(1, textH-precedingLines)
-	lines := wrapTaskDescription(m.editor.draft.Description, textW)
+	lines := wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, textW)
 	if len(lines) > available {
-		lines = wrapTaskDescription(m.editor.draft.Description, max(1, textW-2))
+		lines = wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, max(1, textW-2))
 	}
 	return max(0, len(lines)-available)
 }

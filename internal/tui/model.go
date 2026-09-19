@@ -1920,10 +1920,10 @@ func (m *model) compactEditorCursorPosition(w, h, topH int) (int, int) {
 
 func (m *model) compactDescriptionCursorPosition(w, h, topH, row int) (int, int) {
 	textW := w - 4
-	description := wrapTaskDescription(m.editor.draft.Description, textW)
+	description := wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, textW)
 	descriptionRows := m.compactDescriptionRows()
 	if len(description) > descriptionRows {
-		description = wrapTaskDescription(m.editor.draft.Description, max(1, textW-2))
+		description = wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, max(1, textW-2))
 	}
 	start := clamp(m.editor.descScroll, 0, max(0, len(description)-descriptionRows))
 	cursor := clamp(m.editor.cursor, 0, m.editor.fieldRuneLen())
@@ -1945,9 +1945,9 @@ func (m *model) compactDescriptionCursorRendered() bool {
 	}
 	w, _ := m.viewportSize()
 	descriptionRows := m.compactDescriptionRows()
-	description := wrapTaskDescription(e.draft.Description, w-4)
+	description := wrapTaskDescriptionForEditor(e, e.draft.Description, w-4)
 	if len(description) > descriptionRows {
-		description = wrapTaskDescription(e.draft.Description, max(1, w-6))
+		description = wrapTaskDescriptionForEditor(e, e.draft.Description, max(1, w-6))
 	}
 	cursor := clamp(e.cursor, 0, e.fieldRuneLen())
 	lineIndex := 0
@@ -2003,7 +2003,7 @@ func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescript
 	descriptionRow++ // Description label.
 	rows := availableDetailDescriptionRows(textH, descriptionRow, e.id != 0)
 	text := e.draft.Description
-	scrollable := len(wrapTaskDescription(text, max(1, textW))) > rows
+	scrollable := len(wrapTaskDescriptionForEditor(e, text, max(1, textW))) > rows
 	width := textW
 	if scrollable {
 		width = max(1, textW-2)
@@ -2012,7 +2012,7 @@ func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescript
 	if e.field == fieldDescription {
 		scroll = e.descScroll
 	}
-	layout := layoutTaskDescription(text, width, rows, scroll, e.cursor)
+	layout := layoutTaskDescription(text, width, rows, scroll, e.cursor, e)
 	if e.field == fieldDescription && !descriptionHasHTML(text) && rows > 0 && !e.descViewportScroll {
 		layout.start = descriptionViewportStart(layout.lines, rows, scroll, layout.cursorRow, e.mode == editorNormal && e.cursor == e.fieldRuneLen())
 	}
@@ -2258,9 +2258,9 @@ func (m *model) focusedScrollPosition() (int, int, bool) {
 				if !descriptionHasHTML(m.editor.draft.Description) {
 					w, _ := m.viewportSize()
 					rows := m.compactDescriptionRows()
-					lines := wrapTaskDescription(m.editor.draft.Description, w-4)
+					lines := wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, w-4)
 					if len(lines) > rows {
-						lines = wrapTaskDescription(m.editor.draft.Description, max(1, w-6))
+						lines = wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, max(1, w-6))
 					}
 					limit = max(0, len(lines)-rows)
 				}

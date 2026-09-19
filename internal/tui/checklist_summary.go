@@ -75,7 +75,7 @@ func wrapTaskDescription(source string, width int) []descriptionLine {
 	}
 	for _, line := range strings.Split(removeDangerousDescriptionControls(source), "\n") {
 		marker := strings.TrimLeftFunc(line, unicode.IsSpace)
-		isOpen, isDone := strings.HasPrefix(marker, "[ ]"), strings.HasPrefix(marker, "[x]")
+		isOpen, isDone := strings.HasPrefix(marker, "[ ]") || strings.HasPrefix(marker, "[]"), strings.HasPrefix(marker, "[x]")
 		if !isOpen && !isDone {
 			flush()
 		} else {
@@ -134,9 +134,9 @@ func (m *model) scrollDescriptionViewport(delta int) {
 		} else {
 			width -= 2
 		}
-		lines = wrapTaskDescription(e.draft.Description, width)
+		lines = wrapTaskDescriptionForEditor(e, e.draft.Description, width)
 		if len(lines) > rows {
-			lines = wrapTaskDescription(e.draft.Description, max(1, width-2))
+			lines = wrapTaskDescriptionForEditor(e, e.draft.Description, max(1, width-2))
 		}
 		start = e.descScroll
 	}
@@ -144,8 +144,19 @@ func (m *model) scrollDescriptionViewport(delta int) {
 	e.descViewportScroll = true
 }
 
-func layoutTaskDescription(source string, width, rows, scroll, cursor int) multilineTextLayout {
-	lines := wrapTaskDescription(source, width)
+func wrapTaskDescriptionForEditor(e *taskEditor, source string, width int) []descriptionLine {
+	if e != nil && e.field == fieldDescription && e.mode == editorInsert {
+		return wrapDescription(source, width)
+	}
+	return wrapTaskDescription(source, width)
+}
+
+func layoutTaskDescription(source string, width, rows, scroll, cursor int, editor ...*taskEditor) multilineTextLayout {
+	var e *taskEditor
+	if len(editor) > 0 {
+		e = editor[0]
+	}
+	lines := wrapTaskDescriptionForEditor(e, source, width)
 	layout := multilineTextLayout{lines: lines, start: clamp(scroll, 0, max(0, len(lines)-max(0, rows)))}
 	for row, line := range lines {
 		if cursor >= line.start && cursor <= line.end {

@@ -18,6 +18,7 @@ func TestChecklistSummaryProjection(t *testing.T) {
 		{"plain nested", "[ ] parent\n  [x] child\n\t[ ] deep", []string{"Checklist progress: 1/3"}},
 		{"plain boundaries", "[x] one\n\n[ ] two\nparagraph\n[x] three", []string{"Checklist progress: 1/1", "Checklist progress: 0/1", "Checklist progress: 1/1"}},
 		{"strict markers", "[X] no\n[  ] no\n[xx] no\ntext [x] no\n- [x] no", nil},
+		{"empty marker is open", "[] open\n[x] done", []string{"Checklist progress: 1/2"}},
 		{"empty entries", "[ ]\n[x]", []string{"Checklist progress: 1/2"}},
 		{"ordinary text", "Checklist progress: 3/5", nil},
 		{"html nested", `<ul data-type="taskList"><li data-type="taskItem" data-checked="TRUE"><p>Parent</p><ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>Child</p></li></ul></li></ul>`, []string{"Checklist progress: 1/2"}},
@@ -74,6 +75,24 @@ func TestChecklistSummaryWrappingAndSourceOffsets(t *testing.T) {
 	}
 }
 
+func TestChecklistSummaryIsSuppressedDuringInsertMode(t *testing.T) {
+	source := "[x] done\n[ ] open"
+	insertEditor := &taskEditor{field: fieldDescription, mode: editorInsert}
+	if lines := wrapTaskDescriptionForEditor(insertEditor, source, 100); len(lines) != 2 {
+		t.Fatalf("insert projection has synthetic rows: %v", lines)
+	}
+	normalEditor := &taskEditor{field: fieldDescription, mode: editorNormal}
+	var summaries int
+	for _, line := range wrapTaskDescriptionForEditor(normalEditor, source, 100) {
+		if line.start == -1 {
+			summaries++
+		}
+	}
+	if summaries != 1 {
+		t.Fatalf("normal projection summaries = %d, want 1", summaries)
+	}
+}
+
 func TestChecklistSummaryUsesDedicatedThemeRole(t *testing.T) {
 	old := tuiTheme.checkboxListSummary
 	defer func() { tuiTheme.checkboxListSummary = old }()
@@ -110,8 +129,8 @@ func TestChecklistSummaryScreenAndEditing(t *testing.T) {
 			if (cursor == nil && !strings.Contains(strings.Join(rows, "\n"), "Z│TARGET")) || (cursor != nil && (cursor.Position.Y >= len(rows) || !strings.Contains(rows[cursor.Position.Y], "ZTARGET"))) {
 				t.Fatalf("cursor=%#v, screen=%s", cursor, strings.Join(rows, "\n"))
 			}
-			if !strings.Contains(strings.Join(rows, "\n"), "Checklist progress: 1/1") {
-				t.Fatal("missing summary")
+			if strings.Contains(strings.Join(rows, "\n"), "Checklist progress:") {
+				t.Fatal("summary should be hidden during insert mode")
 			}
 			if m.editor.draft.Description != "[x] first\n\nZTARGET" {
 				t.Fatal("synthetic text entered draft")
