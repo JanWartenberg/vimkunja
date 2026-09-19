@@ -635,7 +635,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 			choices = append(choices, bucket.Title)
 		}
 		lines = append(lines, renderDetailPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, textW, textH, len(lines))...)
-	} else if description := descriptionTerminalText(e.draft.Description); description == "" {
+	} else if description := projectDescription(e.draft.Description, map[int]bool{}); description == "" {
 		if availableDetailDescriptionRows(textH, len(lines), e.id != 0) > 0 {
 			lines = append(lines, placeholderText("  (no description)"))
 		}
@@ -1009,17 +1009,17 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	}
 	bodyRows := max(1, textH-2-pinnedCommentRows)
 	descriptionRows := compactDescriptionRows(textH-pinnedCommentRows, staticRows)
-	description := descriptionTerminalText(e.draft.Description)
-	desc := wrapDescription(description, max(1, textW-2))
+	description := e.draft.Description
+	desc := wrapTaskDescription(description, max(1, textW-2))
 	if description == "" {
 		desc = []descriptionLine{{text: placeholderText("  (no description)")}}
 	}
 	descriptionScrollable := len(desc) > descriptionRows
 	if descriptionScrollable {
-		desc = wrapDescription(description, max(1, textW-4))
+		desc = wrapTaskDescription(description, max(1, textW-4))
 	}
 	start := 0
-	if e.descriptionActive && len(desc) > descriptionRows {
+	if (e.descriptionActive || e.descViewportScroll) && len(desc) > descriptionRows {
 		start = clamp(e.descScroll, 0, len(desc)-descriptionRows)
 	}
 	for row := 0; row < descriptionRows; row++ {
@@ -1073,13 +1073,13 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 	}
 	lines := []string{" " + renderHeading("DESCRIPTION · "+mode) + " ", ""}
 	available := max(1, textH-len(lines))
-	description := descriptionTerminalText(e.draft.Description)
-	desc := wrapDescription(description, textW)
+	description := e.draft.Description
+	desc := wrapTaskDescription(description, textW)
 	if description == "" {
 		desc = []descriptionLine{{text: ""}}
 	}
 	if len(desc) > available {
-		desc = wrapDescription(description, max(1, textW-2))
+		desc = wrapTaskDescription(description, max(1, textW-2))
 	}
 	cursorRow := 0
 	for row, line := range desc {
@@ -1088,10 +1088,8 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 		}
 	}
 	start := clamp(e.descScroll, 0, max(0, len(desc)-available))
-	if cursorRow < start {
-		start = cursorRow
-	} else if cursorRow >= start+available {
-		start = cursorRow - available + 1
+	if !e.descViewportScroll {
+		start = descriptionViewportStart(desc, available, e.descScroll, cursorRow, e.mode == editorNormal && e.cursor == e.fieldRuneLen())
 	}
 	e.descScroll = start
 	for row := 0; row < available; row++ {
@@ -1270,9 +1268,9 @@ func (m *model) readOnlyDescriptionScrollLimit() int {
 	if m.compactDetail() {
 		w, _ := m.viewportSize()
 		descriptionRows := m.compactDescriptionRows()
-		lines := wrapDescription(descriptionTerminalText(m.editor.draft.Description), w-4)
+		lines := wrapTaskDescription(m.editor.draft.Description, w-4)
 		if len(lines) > descriptionRows {
-			lines = wrapDescription(descriptionTerminalText(m.editor.draft.Description), max(1, w-6))
+			lines = wrapTaskDescription(m.editor.draft.Description, max(1, w-6))
 		}
 		return max(0, len(lines)-descriptionRows)
 	}
@@ -1288,9 +1286,9 @@ func (m *model) readOnlyDescriptionScrollLimit() int {
 		precedingLines++
 	}
 	available := max(1, textH-precedingLines)
-	lines := wrapDescription(descriptionTerminalText(m.editor.draft.Description), textW)
+	lines := wrapTaskDescription(m.editor.draft.Description, textW)
 	if len(lines) > available {
-		lines = wrapDescription(descriptionTerminalText(m.editor.draft.Description), max(1, textW-2))
+		lines = wrapTaskDescription(m.editor.draft.Description, max(1, textW-2))
 	}
 	return max(0, len(lines)-available)
 }

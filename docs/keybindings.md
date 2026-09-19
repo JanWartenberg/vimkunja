@@ -141,6 +141,7 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `w/b` | Move by word | Implemented |
 | `gg/G`, Home/End | Start/end of Description | Implemented |
 | `Ctrl+D` / `Ctrl+U`, PgDn/PgUp | Scroll by page | Implemented |
+| `Ctrl+E` / `Ctrl+Y` | Scroll the Description viewport down/up one rendered row without moving the source cursor; includes read-only checklist summaries. Editing or cursor navigation resumes cursor-following. | Implemented |
 | `a` / `Shift+I` / `Shift+A` | Enter Insert Mode after the cursor / at line start / end | Implemented |
 | `o` / `Shift+O` | Insert a blank line below / above the current line and enter Insert Mode | Implemented |
 | `j/k` | Move between navigable logical blocks:<br>paragraphs, headings, and list/Checkbox-list entries | Agreed |

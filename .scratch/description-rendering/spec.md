@@ -77,7 +77,7 @@ Tables are initially opaque and read-only, with a readable terminal-table projec
 - Validate the provisional Space-led formatting palette, its secondary-footer presentation, and the provisional formatting bindings against the prototype.
 - Choose the HTML parser/serializer implementation that fulfills the preservation, normalization, and read-only safety rules above; no schema change is permitted.
 - Specify URL validation and feedback in the Link prompt.
-- Checkbox-list progress summaries (`n/m`) are deferred to the low-priority backlog ticket `checkbox-list-progress-summary`.
+- Read-only Checkbox-list progress summaries are implemented under [checkbox-list-progress-summary](../checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md): one `Checklist progress: n/m` line after each outer Checkbox-list block, aggregating nested entries, with no summary for zero entries. Summaries are display-only and never serialized. Strict plain-text checkbox blocks are supported during the transitional reader phase. Native editing must recompute summaries immediately from the draft and remove empty list structures after deletion of the last entry; summaries are not editable or cursor targets.
 
 ## Related decisions outside Description scope
 

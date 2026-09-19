@@ -12,6 +12,10 @@ import (
 const descriptionHardBreak = '\ue000'
 
 func descriptionTerminalText(source string) string {
+	return projectDescription(source, nil)
+}
+
+func projectDescription(source string, summaries map[int]bool) string {
 	if !descriptionHasHTML(source) {
 		if descriptionHasUnterminatedMarkup(source) {
 			return "[Nicht lesbarer Beschreibungsinhalt]"
@@ -23,16 +27,38 @@ func descriptionTerminalText(source string) string {
 		return ""
 	}
 
+	text := projectDescriptionNode(document, summaries)
+	if text == "" && descriptionHasUnterminatedMarkup(source) {
+		return "[Nicht lesbarer Beschreibungsinhalt]"
+	}
+	return text
+}
+
+func projectDescriptionNode(document *html.Node, summaries map[int]bool) string {
 	var paragraphs []string
 	var visit func(*html.Node)
 	visit = func(node *html.Node) {
 		if node.Type == html.ElementNode {
 			switch node.Data {
-			case "ul", "ol":
-				paragraphs = append(paragraphs, renderDescriptionList(node, 0)...)
-				return
-			case "table":
-				paragraphs = append(paragraphs, renderDescriptionTable(node)...)
+			case "ul", "ol", "table":
+				local := map[int]bool{}
+				if summaries == nil {
+					local = nil
+				}
+				var lines []string
+				if node.Data == "table" {
+					lines = renderDescriptionTable(node, local)
+				} else {
+					lines = renderChecklistLists(node, 0, local, false)
+				}
+				base := 0
+				for _, paragraph := range paragraphs {
+					base += strings.Count(paragraph, "\n") + 1
+				}
+				for index := range local {
+					summaries[base+index] = true
+				}
+				paragraphs = append(paragraphs, lines...)
 				return
 			case "p":
 				if text := descriptionNodeText(node); text != "" {
@@ -67,11 +93,7 @@ func descriptionTerminalText(source string) string {
 	for len(paragraphs) > 0 && paragraphs[len(paragraphs)-1] == "" {
 		paragraphs = paragraphs[:len(paragraphs)-1]
 	}
-	text := strings.Join(paragraphs, "\n")
-	if text == "" && descriptionHasUnterminatedMarkup(source) {
-		return "[Nicht lesbarer Beschreibungsinhalt]"
-	}
-	return text
+	return strings.Join(paragraphs, "\n")
 }
 
 func descriptionHasHTML(source string) bool {
@@ -117,19 +139,55 @@ func descriptionHasBlock(node *html.Node) bool {
 	return false
 }
 
-func renderDescriptionTable(table *html.Node) []string {
+func renderDescriptionTable(table *html.Node, summaries map[int]bool) []string {
 	var rows []string
 	var visit func(*html.Node)
 	visit = func(node *html.Node) {
 		if node.Type == html.ElementNode && node.Data == "tr" {
-			var cells []string
+			var cells [][]string
+			var cellSummaries []map[int]bool
 			for child := node.FirstChild; child != nil; child = child.NextSibling {
-				if child.Type == html.ElementNode && (child.Data == "td" || child.Data == "th") {
-					cells = append(cells, strings.Join(strings.Fields(descriptionNodeText(child)), " "))
+				if child.Type != html.ElementNode || (child.Data != "td" && child.Data != "th") {
+					continue
 				}
+				text := strings.Join(strings.Fields(descriptionNodeText(child)), " ")
+				local := map[int]bool{}
+				if summaries != nil {
+					projected := projectDescriptionNode(child, local)
+					// Preserve the compact table projection unless a cell needs
+					// logical lines for its display-only checklist summaries.
+					if len(local) > 0 {
+						text = projected
+					}
+				}
+				cells = append(cells, strings.Split(text, "\n"))
+				cellSummaries = append(cellSummaries, local)
 			}
-			if len(cells) > 0 {
-				rows = append(rows, strings.Join(cells, " | "))
+			positions := make([]int, len(cells))
+			for {
+				remaining, summaryRow := false, false
+				for column, cell := range cells {
+					if positions[column] < len(cell) {
+						remaining = true
+						summaryRow = summaryRow || cellSummaries[column][positions[column]]
+					}
+				}
+				if !remaining {
+					break
+				}
+				parts := make([]string, len(cells))
+				for column, cell := range cells {
+					position := positions[column]
+					// Never style ordinary content in another cell as a summary.
+					if position < len(cell) && cellSummaries[column][position] == summaryRow {
+						parts[column] = cell[position]
+						positions[column]++
+					}
+				}
+				if summaryRow {
+					summaries[len(rows)] = true
+				}
+				rows = append(rows, strings.Join(parts, " | "))
 			}
 			return
 		}
@@ -142,6 +200,10 @@ func renderDescriptionTable(table *html.Node) []string {
 }
 
 func renderDescriptionList(list *html.Node, depth int) []string {
+	return renderChecklistLists(list, depth, nil, false)
+}
+
+func renderChecklistLists(list *html.Node, depth int, summaries map[int]bool, insideCheckbox bool) []string {
 	ordered := list.Data == "ol"
 	checkboxList := descriptionAttribute(list, "data-type") == "taskList"
 	ordinal := 1
@@ -162,7 +224,8 @@ func renderDescriptionList(list *html.Node, depth int) []string {
 			continue
 		}
 		prefix := "- "
-		if checkboxList {
+		checkboxEntry := (checkboxList || insideCheckbox) && isCheckboxEntry(child)
+		if checkboxEntry {
 			prefix = "- [ ] "
 			if strings.EqualFold(descriptionAttribute(child, "data-checked"), "true") {
 				prefix = "- [x] "
@@ -171,13 +234,44 @@ func renderDescriptionList(list *html.Node, depth int) []string {
 			prefix = strconv.Itoa(ordinal) + ". "
 			ordinal++
 		}
-		if text := descriptionListItemText(child); text != "" {
+		if text := descriptionListItemText(child); text != "" || checkboxEntry {
 			lines = append(lines, strings.Repeat("  ", depth)+prefix+text)
 		}
-		for nested := child.FirstChild; nested != nil; nested = nested.NextSibling {
-			if nested.Type == html.ElementNode && (nested.Data == "ul" || nested.Data == "ol") {
-				lines = append(lines, renderDescriptionList(nested, depth+1)...)
+		var visitNested func(*html.Node)
+		visitNested = func(n *html.Node) {
+			if n.Type == html.ElementNode && (n.Data == "ul" || n.Data == "ol") {
+				local := map[int]bool{}
+				if summaries == nil {
+					local = nil
+				}
+				nestedLines := renderChecklistLists(n, depth+1, local, insideCheckbox || checkboxList)
+				base := 0
+				for _, line := range lines {
+					base += strings.Count(line, "\n") + 1
+				}
+				for index := range local {
+					summaries[base+index] = true
+				}
+				lines = append(lines, nestedLines...)
+				return
 			}
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				visitNested(c)
+			}
+		}
+		for nested := child.FirstChild; nested != nil; nested = nested.NextSibling {
+			visitNested(nested)
+		}
+	}
+	if summaries != nil && checkboxList && !insideCheckbox {
+		checked, total := countCheckboxBlock(list)
+		if total > 0 {
+			index := 0
+			for _, line := range lines {
+				index += strings.Count(line, "\n") + 1
+			}
+			summaries[index] = true
+			lines = append(lines, strings.Repeat("  ", depth)+checklistSummary(checked, total))
 		}
 	}
 	return lines

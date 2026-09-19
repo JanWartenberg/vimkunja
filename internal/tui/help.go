@@ -70,6 +70,7 @@ var helpLines = []string{
 	"  a / Shift+I / Shift+A Insert after cursor / at line start / end",
 	"  o / Shift+O           Insert blank line below / above",
 	"  Ctrl+D/U, PgUp/PgDn   Scroll by page",
+	"  Ctrl+E / Ctrl+Y       Scroll Description down / up without moving cursor",
 	"  gg / G / Home / End  Start / end",
 	"",
 	"COMMANDS",

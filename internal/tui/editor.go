@@ -57,6 +57,7 @@ type taskEditor struct {
 	dueDatePickerDateCursor int
 	dueDatePickerInputs     [3]string // days, weeks, months
 	descScroll              int
+	descViewportScroll      bool // explicit reading scroll, independent of the source cursor
 	detailScroll            int
 	moreFieldsExpanded      bool
 	descriptionActive       bool
@@ -170,6 +171,15 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if e.field == fieldDescription && (s == "ctrl+e" || s == "ctrl+y") {
+		delta := 1
+		if s == "ctrl+y" {
+			delta = -1
+		}
+		m.scrollDescriptionViewport(delta)
+		return m, nil
+	}
+	e.descViewportScroll = false
 	if e.field == fieldDescription && descriptionHasHTML(e.draft.Description) && (s == "enter" || s == "i") {
 		m.recordError(fmt.Errorf("Description is read-only: HTML editing is not supported yet."))
 		return m, nil

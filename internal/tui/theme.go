@@ -29,6 +29,7 @@ var tuiTheme = struct {
 	dueSoon, dueUpcoming, ctrlWHint, bright, dark        string
 	scrollbarRail, scrollbarThumb, scrollbarThumbFocused string
 	heading                                              textFormat
+	checkboxListSummary                                  textFormat
 	priority                                             [6]string
 }{
 	selectionAccent:       "205",
@@ -42,6 +43,7 @@ var tuiTheme = struct {
 	scrollbarThumb:        "245",
 	scrollbarThumbFocused: "255",
 	heading:               textFormat{bold: true, underline: true},
+	checkboxListSummary:   textFormat{foreground: "245"},
 	bright:                "255",
 	dark:                  "0",
 	priority:              [6]string{"245", "34", "220", "208", "196", "196"},

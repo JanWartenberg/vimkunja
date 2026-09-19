@@ -24,7 +24,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 
 ### Meilenstein 3 — aktuell
 
-12. [Checkbox-Listen-Fortschritt anzeigen](.scratch/checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md) – zuerst als read-only Summary; native Bearbeitung bleibt Teil der Rich-Text-Arbeit.
+12. [Checkbox-Listen-Fortschritt anzeigen](.scratch/checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md) – read-only Summary für HTML und strikte Plain-Text-Checkbox-Blöcke implementiert; native Bearbeitung bleibt Teil der Rich-Text-Arbeit.
 13. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md)
 14. [Project-Löschen semantisch spezifizieren](.scratch/project-deletion/issues/01-specify-project-deletion-semantics.md)
 14a. [Project-Erstellung spezifizieren](.scratch/project-creation/issues/01-specify-project-creation-workflow.md) – Entry Point, Hierarchie, initiale View und Vikunja-kompatible Persistenz vor der Implementierung festlegen.

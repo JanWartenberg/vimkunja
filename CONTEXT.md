@@ -50,8 +50,12 @@ A logical unit inside a Description, such as a paragraph, heading, list item, co
 _Avoid_: Source line, HTML line
 
 **Checkbox list**:
-A checklist embedded in a Description, represented by Vikunja/Tiptap `data-type="taskList"` HTML; it is not a list of Vimkunja Task records.
+A checklist embedded in a Description, represented by Vikunja/Tiptap `data-type="taskList"` HTML or by a strict plain-text checkbox block during the transitional reader phase; it is not a list of Vimkunja Task records.
 _Avoid_: Task list
+
+**Checklist progress summary**:
+An informational `Checklist progress: n/m` line attached to one nonempty Checkbox-list block. It counts that block's valid checkbox entries, including nested entries flattened into the block, and never changes the enclosing Task's Done state.
+_Avoid_: Subtask status, Task Done state
 
 **Task Done state**:
 The top-level completion state of a Task record, distinct from every Checkbox-list entry in its Description.
