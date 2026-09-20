@@ -64,6 +64,7 @@ type taskEditor struct {
 	descriptionNavigated    bool
 	labelSelected           int
 	labels                  []vimkunja.Label
+	originalLabels          []vimkunja.Label
 	labelsLoading           bool
 	comments                []vimkunja.TaskComment
 	commentsLoading         bool
@@ -71,6 +72,7 @@ type taskEditor struct {
 	commentsErr             error
 	gArmed                  bool
 	dArmed                  bool
+	normal                  textNormalState
 	workflowStatus          vimkunja.WorkflowStatus
 	workflowStatusLoading   bool
 }
@@ -171,6 +173,10 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if s == "esc" && e.normal.pending() {
+		e.normal.reset()
+		return m, nil
+	}
 	if e.field == fieldDescription && (s == "ctrl+e" || s == "ctrl+y") {
 		delta := 1
 		if s == "ctrl+y" {
@@ -196,11 +202,17 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if e.gArmed {
 		e.gArmed = false
+		count := max(1, e.normal.count)
+		hadCount := e.normal.count > 0
+		e.normal.reset()
 		switch s {
 		case "g":
 			if e.field == fieldDescription {
 				e.cursor = 0
-				e.descScroll = 0
+				if hadCount {
+					e.cursor = nthLineStart([]rune(e.draft.Description), count-1)
+				}
+				e.descScroll = max(0, e.descriptionLine())
 			}
 		case "t":
 			m.focusDetailField(fieldTitle)
@@ -331,14 +343,22 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	if e.field == fieldTitle || (e.field == fieldDescription && e.descriptionActive) {
+		result := applyTextNormalKey(&e.normal, e.fieldValue(), e.cursor, s, e.field == fieldDescription)
+		if result.handled {
+			e.setFieldValue(result.text)
+			e.cursor = result.cursor
+			if e.field == fieldDescription {
+				e.descScroll = max(0, e.descriptionLine())
+			}
+			if result.enterInsert {
+				return m.startEditorInsert()
+			}
+			return m, nil
+		}
+	}
 	if e.field == fieldDescription {
 		switch s {
-		case "d":
-			e.dArmed = true
-			return m, nil
-		case "x":
-			e.deleteAtCursor()
-			return m, nil
 		case "X":
 			e.deleteBeforeCursor()
 			return m, nil
@@ -451,10 +471,6 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			e.moveCursor(-1)
 		case "l", "right":
 			e.moveCursor(1)
-		case "w":
-			e.moveWordForward()
-		case "b":
-			e.moveWordBackward()
 		case "j", "down":
 			e.moveCursorLine(1)
 		case "k", "up":
@@ -1165,34 +1181,6 @@ func (e *taskEditor) lineEnd() int {
 	}
 	return end
 }
-
-func (e *taskEditor) moveWordForward() {
-	r := []rune(e.draft.Description)
-	end := e.lineEnd()
-	pos := clamp(e.cursor, 0, end)
-	for pos < end && !isWordSpace(r[pos]) {
-		pos++
-	}
-	for pos < end && isWordSpace(r[pos]) {
-		pos++
-	}
-	e.cursor = pos
-}
-
-func (e *taskEditor) moveWordBackward() {
-	r := []rune(e.draft.Description)
-	start := e.lineStart()
-	pos := clamp(e.cursor, start, len(r))
-	for pos > start && isWordSpace(r[pos-1]) {
-		pos--
-	}
-	for pos > start && !isWordSpace(r[pos-1]) {
-		pos--
-	}
-	e.cursor = pos
-}
-
-func isWordSpace(r rune) bool { return r == ' ' || r == '\t' }
 
 func (e *taskEditor) descriptionLine() int {
 	r := []rune(e.draft.Description)

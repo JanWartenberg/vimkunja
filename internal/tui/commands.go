@@ -190,6 +190,7 @@ func newDefaultCommandRegistry() *CommandRegistry {
 		{"quit!", []string{"q!"}, forceQuitCommand},
 		{"quitall", []string{"qa"}, quitAllCommand},
 		{"quitall!", []string{"qa!"}, forceQuitAllCommand},
+		{"edit!", []string{"e!"}, forceEditCommand},
 		{"new", nil, newTaskCommand},
 		{"write", []string{"w"}, writeCommand},
 		{"writequit", []string{"wq"}, writeQuitCommand},
@@ -244,6 +245,27 @@ func forceQuitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	return m, tea.Quit
+}
+
+func forceEditCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if !m.showDetail || m.focus != paneDetail || m.editor == nil {
+		m.recordError(fmt.Errorf(":edit! requires an existing task detail pane"))
+		return m, nil
+	}
+	e := m.editor
+	if e.id == 0 {
+		m.recordError(fmt.Errorf(":edit! cannot reload an unsaved new Task; use :q! to discard it"))
+		return m, nil
+	}
+	e.draft = cloneTaskDraft(e.original)
+	e.labels = append([]vimkunja.Label(nil), e.originalLabels...)
+	e.labelSelected = clamp(e.labelSelected, 0, max(0, len(e.labels)-1))
+	e.mode = editorNormal
+	e.normal.reset()
+	e.gArmed = false
+	e.dArmed = false
+	e.cursor = clamp(e.cursor, 0, e.fieldRuneLen())
+	return m, nil
 }
 
 func newTaskCommand(m *model, _ []string) (tea.Model, tea.Cmd) {

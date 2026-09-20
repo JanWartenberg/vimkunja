@@ -3762,6 +3762,72 @@ func TestCommandPromptTabExplainsEmptyInputWithoutRecordingError(t *testing.T) {
 	}
 }
 
+func TestCommandForceEditDiscardsWholeTaskDraftAndKeepsDetailOpen(t *testing.T) {
+	for _, input := range []string{"e!", "edit!"} {
+		t.Run(input, func(t *testing.T) {
+			m := testModel()
+			m.openExistingEditor(vimkunja.Task{
+				ID: 7, ProjectID: 1, Title: "Saved title", Description: "saved description",
+				Priority: 2, DueDate: "2026-09-20", Done: true,
+			})
+			m.store.(*fakeStore).taskLabels = map[int64][]vimkunja.Label{7: {
+				{ID: 3, Title: "home"}, {ID: 5, Title: "next"},
+			}}
+			updated, _ := m.Update(m.loadEditorLabels(7)())
+			m = updated.(*model)
+			m.editor.original.WorkflowBucketID = 11
+			m.editor.draft = cloneTaskDraft(m.editor.original)
+			m.editor.draft.ProjectID = 2
+			m.editor.draft.Title = "Changed title"
+			m.editor.draft.Description = "changed description"
+			m.editor.draft.Priority = 4
+			m.editor.draft.DueDate = "2026-10-01"
+			m.editor.draft.Done = false
+			m.editor.draft.WorkflowBucketID = 12
+			m.editor.draft.LabelIDs = []int64{8}
+			m.editor.labels = []vimkunja.Label{{ID: 8, Title: "staged"}}
+			m.editor.field = fieldDescription
+			m.editor.cursor = len([]rune(m.editor.draft.Description))
+
+			m, cmd := typeCommand(t, m, input)
+
+			if cmd != nil {
+				t.Fatalf(":%s returned an unexpected command", input)
+			}
+			if !m.showDetail || m.focus != paneDetail || m.editor == nil {
+				t.Fatalf(":%s closed Task Detail", input)
+			}
+			if m.editor.mode != editorNormal || m.editor.dirty() {
+				t.Fatalf(":%s left mode:%v dirty:%v, want clean Normal mode", input, m.editor.mode, m.editor.dirty())
+			}
+			if got := m.editor.draft; got.ProjectID != 1 || got.Title != "Saved title" || got.Description != "saved description" ||
+				got.Priority != 2 || got.DueDate != "2026-09-20" || !got.Done || got.WorkflowBucketID != 11 ||
+				!sameLabelIDs(got.LabelIDs, []int64{3, 5}) {
+				t.Fatalf(":%s draft = %#v, want complete saved Task state", input, got)
+			}
+			if len(m.editor.labels) != 2 || m.editor.labels[0].ID != 3 || m.editor.labels[1].ID != 5 {
+				t.Fatalf(":%s labels = %#v, want saved labels", input, m.editor.labels)
+			}
+		})
+	}
+}
+
+func TestCommandForceEditRejectsUnsavedNewTaskWithoutChangingDraft(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "Unsaved new Task"
+
+	m, cmd := typeCommand(t, m, "e!")
+
+	if cmd != nil || m.editor == nil || m.editor.draft.Title != "Unsaved new Task" || !m.editor.dirty() {
+		t.Fatalf(":e! changed new Task draft: command:%v editor:%#v", cmd != nil, m.editor)
+	}
+	if !strings.Contains(m.lastErr, "cannot reload an unsaved new Task") || !strings.Contains(m.lastErr, "use :q!") {
+		t.Fatalf(":e! error = %q, want new-Task guidance", m.lastErr)
+	}
+}
+
 func TestCommandQuitClosesDetailPane(t *testing.T) {
 	m := testModel()
 	m.showDetail = true
@@ -4192,6 +4258,31 @@ func TestDueDatePickerHomeEndDoNotNavigateRows(t *testing.T) {
 	}
 }
 
+func TestCommentComposerNormalModeRendersBlockCursor(t *testing.T) {
+	for _, tc := range []struct {
+		name, text string
+		cursor     int
+		wantPlain  string
+	}{
+		{name: "text", text: "one two", cursor: 4, wantPlain: "one two"},
+		{name: "empty draft", wantPlain: " "},
+		{name: "empty line", text: "one\n\ntwo", cursor: 4, wantPlain: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := testModel()
+			m.comments = &commentsUI{composer: &commentComposer{text: tc.text, cursor: tc.cursor, mode: editorNormal}}
+
+			rows := m.renderCommentComposer(40, 8)
+			if len(rows) < 3 || !strings.Contains(strings.Join(rows[2:], "\n"), "\x1b[") {
+				t.Fatalf("Comment Normal-mode composer lacks visible block cursor: %q", rows)
+			}
+			if tc.name != "empty line" && ansi.Strip(rows[2]) != tc.wantPlain {
+				t.Fatalf("Comment row = %q, want %q", ansi.Strip(rows[2]), tc.wantPlain)
+			}
+		})
+	}
+}
+
 func TestCommentComposerInsertHomeEndUseCurrentLine(t *testing.T) {
 	m := testModel()
 	m.comments = &commentsUI{composer: &commentComposer{
@@ -4249,6 +4340,23 @@ func TestDescriptionInsertAcceptsTerminalPaste(t *testing.T) {
 
 	if got := m.editor.draft.Description; got != "before https://example.testafter" {
 		t.Fatalf("description after terminal paste = %q", got)
+	}
+}
+
+func TestDescriptionInsertNormalizesBrowserPasteLineEndings(t *testing.T) {
+	m := testModel()
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.field = fieldDescription
+	m.editor.mode = editorInsert
+
+	const pasted = "one two three\r\nalpha, beta\r\n  δelta epsilon\r\nlast word"
+	updated, _ := m.Update(tea.PasteMsg{Content: pasted})
+	m = updated.(*model)
+
+	const want = "one two three\nalpha, beta\n  δelta epsilon\nlast word"
+	if got := m.editor.draft.Description; got != want {
+		t.Fatalf("Description after browser paste = %q, want %q", got, want)
 	}
 }
 
@@ -5087,8 +5195,8 @@ func TestEditorViewUsesCursorShapeForCurrentMode(t *testing.T) {
 	m.openNewEditor()
 
 	view := m.View()
-	if view.Cursor != nil {
-		t.Fatalf("normal editor cursor = %#v, want no native cursor", view.Cursor)
+	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBlock {
+		t.Fatalf("normal editor cursor = %#v, want block cursor", view.Cursor)
 	}
 
 	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
@@ -5239,6 +5347,54 @@ func TestTitleNormalModeUsesHorizontalCursorPositionForInsert(t *testing.T) {
 
 	if got := m.editor.draft.Title; got != "aXbc" {
 		t.Fatalf("title after l then insert = %q, want %q", got, "aXbc")
+	}
+}
+
+func TestTitleNormalModeViewportFollowsCursorInLongText(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 54, 30
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = strings.Repeat("a", 60) + "TAIL"
+	m.editor.cursor = len([]rune(m.editor.draft.Title))
+	m.editor.mode = editorNormal
+
+	view := m.View()
+	if !strings.Contains(ansi.Strip(view.Content), "TAIL") {
+		t.Fatalf("long Title Normal-mode viewport does not show cursor context: %q", ansi.Strip(view.Content))
+	}
+	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBlock || view.Cursor.Position.X >= m.width-1 {
+		t.Fatalf("long Title cursor = %#v, want visible block cursor inside pane", view.Cursor)
+	}
+}
+
+func TestTitleNormalModeRendersStaticCursorWhenCursorShapesDisabled(t *testing.T) {
+	m := NewModel(Config{Store: &fakeStore{}, DisableCursorShapes: true}).(*model)
+	m.width, m.height = 100, 40
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "abc"
+	m.editor.cursor = 1
+	m.editor.mode = editorNormal
+
+	view := m.View()
+	if view.Cursor != nil || !strings.Contains(view.Content, normalCursorText("b", 0)) {
+		t.Fatalf("Title fallback = cursor:%#v view:%q, want static block cursor", view.Cursor, view.Content)
+	}
+}
+
+func TestNativeTitleNormalModeShowsBlockCursor(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 40
+	m.currentProjectID = 1
+	m.openNewEditor()
+	m.editor.draft.Title = "abc"
+	m.editor.cursor = 1
+	m.editor.mode = editorNormal
+
+	cursor := m.View().Cursor
+	if cursor == nil || cursor.Shape != tea.CursorBlock || cursor.Position != (tea.Position{X: 15, Y: 22}) {
+		t.Fatalf("Title Normal-mode cursor = %#v, want block cursor at text position (15,22)", cursor)
 	}
 }
 

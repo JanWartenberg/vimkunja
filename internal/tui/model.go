@@ -815,6 +815,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.editor.labels = append([]vimkunja.Label(nil), typed.labels...)
+		m.editor.originalLabels = append([]vimkunja.Label(nil), typed.labels...)
 		m.editor.draft.LabelIDs = editorLabelIDs(m.editor.labels)
 		m.editor.draft.LabelIDsSet = false
 		m.editor.original = cloneTaskDraft(m.editor.draft)
@@ -836,6 +837,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.editor.draft.LabelIDsSet = false
 		m.editor.original.LabelIDs = append([]int64(nil), typed.labelIDs...)
 		m.editor.original.LabelIDsSet = false
+		m.editor.originalLabels = append([]vimkunja.Label(nil), m.editor.labels...)
 		if m.labelUI != nil && m.labelUI.kind == labelUITaskPicker {
 			m.labelUI.labelSnapshot = append([]vimkunja.Label(nil), m.editor.labels...)
 			m.labelUI.labelIDsSnapshot = append([]int64(nil), typed.labelIDs...)
@@ -878,13 +880,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.PasteMsg:
+		text := normalizePastedText(typed.Content)
 		if m.comments != nil && m.comments.composer != nil && m.comments.composer.mode == editorInsert {
 			composer := m.comments.composer
-			composer.text = insertTextAtCursor(composer.text, &composer.cursor, typed.Content)
+			composer.text = insertTextAtCursor(composer.text, &composer.cursor, text)
 			return m, nil
 		}
 		if m.focus == paneDetail && m.editor != nil && (m.editor.mode == editorInsert || (m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) {
-			m.insertEditorText(typed.Content)
+			m.insertEditorText(text)
 		}
 		return m, nil
 
@@ -893,12 +896,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		text := normalizePastedText(typed.text)
 		if m.comments != nil && m.comments.composer == typed.composer && typed.composer != nil && typed.composer.mode == editorInsert {
-			typed.composer.text = insertTextAtCursor(typed.composer.text, &typed.composer.cursor, typed.text)
+			typed.composer.text = insertTextAtCursor(typed.composer.text, &typed.composer.cursor, text)
 			return m, nil
 		}
 		if m.focus == paneDetail && m.editor == typed.editor && (m.editor.mode == editorInsert || (m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) {
-			m.insertEditorText(typed.text)
+			m.insertEditorText(text)
 		}
 		return m, nil
 
@@ -1803,7 +1807,7 @@ func (m *model) editorCursor() *tea.Cursor {
 	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
 		return nil
 	}
-	if m.editor.mode == editorNormal && m.editor.field != fieldDescription {
+	if m.editor.mode == editorNormal && m.editor.field != fieldDescription && m.editor.field != fieldTitle {
 		return nil
 	}
 	// At the smallest regular Detail height, metadata and the pinned Comments
@@ -1824,6 +1828,12 @@ func (m *model) editorCursor() *tea.Cursor {
 		}
 	}
 	x, y := m.editorCursorPosition()
+	if m.editor.mode == editorNormal && (m.editor.field == fieldTitle || m.editor.field == fieldDescription) {
+		value := m.editor.fieldValue()
+		if m.editor.cursor > textLineStart(value, m.editor.cursor) && m.editor.cursor == textLineEnd(value, m.editor.cursor) {
+			x--
+		}
+	}
 	if m.editor.dueDatePickerActive() {
 		// Masked entry skips separators; indicate the digit typing will replace.
 		x += m.editor.dueDateOverwriteCursor() - m.editor.cursor

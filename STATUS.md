@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**Stand:** 2026-09-16 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
+**Stand:** 2026-09-20 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
 
 ## Aktueller Stand
 
@@ -25,7 +25,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 ### Meilenstein 3 — aktuell
 
 12. [Checkbox-Listen-Fortschritt anzeigen](.scratch/checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md) – read-only Summary für HTML und strikte Plain-Text-Checkbox-Blöcke implementiert; native Bearbeitung bleibt Teil der Rich-Text-Arbeit.
-13. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md)
+13. [Erweiterte Vim-Editor-Motions](.scratch/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md) – Tier-1-Motions, Counts, Word-Operatoren, Textobjekte und `~` für Title, Plain-Text-Description und Comment Composer implementiert und manuell akzeptiert; Browser-Paste normalisiert Zeilenenden, `:e!` verwirft den Task-weiten Draft ohne den Task zu schließen.
 14. [Project-Löschen semantisch spezifizieren](.scratch/project-deletion/issues/01-specify-project-deletion-semantics.md)
 14a. [Project-Erstellung spezifizieren](.scratch/project-creation/issues/01-specify-project-creation-workflow.md) – Entry Point, Hierarchie, initiale View und Vikunja-kompatible Persistenz vor der Implementierung festlegen.
 15. [Table View rendern](.scratch/table-view/issues/01-render-table-project-view.md)
@@ -44,6 +44,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 
 24. [View- und Global-Search-Navigationsverlauf hinzufügen](.scratch/navigation-history/issues/01-add-view-and-search-navigation-history.md) – `Ctrl+O` zurück und `Ctrl+I` vor über semantische TUI-Kontexte; zunächst den Restore-Contract spezifizieren.
 25. [Timeboxed Focus Plans brainstormen](.scratch/timeboxed-focus-plans/issues/01-brainstorm-timeboxed-focus-plans.md) – mögliche additive Vimkunja-Schicht für begrenzte, regelmäßige Aufmerksamkeit auf fortlaufende Projects; erst diskutieren und prototypisieren.
+26. [Full Vim Normal mode untersuchen](.scratch/full-vim-normal-mode/issues/01-investigate-full-vim-normal-mode.md) – vollständige Vim-Kompatibilität gegen Aufwand, Konflikte und einen begrenzten Scope bewerten; erst nach den Tier-1-Motions.
 
 ## Dokumentation
 

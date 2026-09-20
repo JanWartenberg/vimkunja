@@ -71,7 +71,7 @@ func truncateFieldValue(value string, width int) string {
 // text is marked with an ellipsis instead of overflowing the Detail Pane.
 func (m *model) editorFieldViewport(field editorField, value string, width int) string {
 	width = max(1, width)
-	if m.editor == nil || m.editor.mode != editorInsert || m.editor.field != field {
+	if m.editor == nil || m.editor.field != field || (m.editor.mode != editorInsert && !(m.editor.mode == editorNormal && field == fieldTitle)) {
 		return truncateFieldValue(value, width)
 	}
 	runes := []rune(value)
@@ -88,12 +88,16 @@ func (m *model) editorFieldViewport(field editorField, value string, width int) 
 	if start > 0 {
 		value = "…" + value
 	}
-	// Bubble Tea owns the sole native bar cursor. Only render a textual cursor
+	// Bubble Tea owns the sole native cursor. Render a textual fallback only
 	// when native cursor shapes are explicitly disabled.
 	if m.nativeEditorCursorActive() {
 		return value
 	}
-	return cursorMarkedText(value, cursor-start+boolToInt(start > 0))
+	visibleCursor := cursor - start + boolToInt(start > 0)
+	if m.editor.mode == editorNormal {
+		return normalCursorText(value, visibleCursor)
+	}
+	return cursorMarkedText(value, visibleCursor)
 }
 
 func boolToInt(value bool) int {
@@ -1317,15 +1321,16 @@ func (m *model) editorDescriptionText(line descriptionLine) string {
 // glyph, without adding a printable character to the line.
 func normalCursorText(value string, cursor int) string {
 	r := []rune(value)
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.dark)).Background(lipgloss.Color(tuiTheme.bright))
 	if len(r) == 0 {
-		return value
+		return style.Render(" ")
 	}
 	cursor = clamp(cursor, 0, len(r))
 	index := cursor
 	if index == len(r) {
 		index--
 	}
-	block := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.dark)).Background(lipgloss.Color(tuiTheme.bright)).Render(string(r[index]))
+	block := style.Render(string(r[index]))
 	return string(r[:index]) + block + string(r[index+1:])
 }
 

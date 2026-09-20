@@ -122,6 +122,7 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | Comments: `j/k`, arrows, `gg/G`, `Ctrl+D/U` | Navigate the chronological Comment thread. | Implemented |
 | Comments: `a`, then `:w` / `:wq` / `:q` / `:q!` | Append and save / save and close / retain / discard a Comment draft together with Task changes. | Implemented |
 | `:w`, `:wq`, `:wqa` | Save the Task | Implemented |
+| `:e!` / `:edit!` | Discard the complete existing Task draft, reload its last saved state, and keep Task Detail open. New unsaved Tasks cannot be reloaded. | Implemented |
 | `:q`, `:q!` | Close or discard the editor | Implemented |
 | `j/k` reaches Done after Workflow Status and before Description | Include Done in the field focus order | Agreed |
 | `x` while Done is focused | Toggle the enclosing Task's Done state | Agreed |
@@ -139,6 +140,7 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `h/l`, arrows | Move the cursor horizontally | Implemented |
 | `j/k`, arrows | Move between Description lines | Implemented; replaced by logical paragraph navigation in rich-text work |
 | `w/b` | Move by word | Implemented |
+| `~` / `count~` | Toggle Unicode-aware character case under the cursor, advance, and stop at the current line boundary. Also applies to Task Title and Comment drafts. | Implemented |
 | `gg/G`, Home/End | Start/end of Description | Implemented |
 | `Ctrl+D` / `Ctrl+U`, PgDn/PgUp | Scroll by page | Implemented |
 | `Ctrl+E` / `Ctrl+Y` | Scroll the Description viewport down/up one rendered row without moving the source cursor; includes read-only checklist summaries. Editing or cursor navigation resumes cursor-following. | Implemented |

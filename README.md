@@ -61,6 +61,7 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 - `u` / `Ctrl+R` – letzte persistierte Task-Aktion rückgängig machen bzw. wiederholen
 - `o` / `:new` – neuen Task anlegen
 - `:w`, `:wq`, `:wqa` – speichern
+- `:e!` / `:edit!` – ungespeicherte Änderungen am bestehenden Task verwerfen, Task geöffnet lassen
 - `:q`, `:q!`, `:qa`, `:qa!` – Pane bzw. Anwendung schließen
 - `:h` – integrierte Hilfe
 - `:errors` – Session-Fehlerlog

@@ -15,6 +15,7 @@ type commentComposer struct {
 	text   string
 	cursor int
 	mode   editorMode
+	normal textNormalState
 }
 
 type commentsUI struct {
@@ -187,6 +188,14 @@ func (m *model) updateCommentInsert(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateCommentNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	composer := m.comments.composer
 	s := normalizeArrow(key.String())
+	if result := applyTextNormalKey(&composer.normal, composer.text, composer.cursor, s, true); result.handled {
+		composer.text, composer.cursor = result.text, result.cursor
+		if result.enterInsert {
+			composer.mode = editorInsert
+			return m, cursorBlinkCmd()
+		}
+		return m, nil
+	}
 	switch s {
 	case ":":
 		m.comments.commandMode, m.comments.commandInput, m.comments.commandCursor = true, "", 0
@@ -224,10 +233,6 @@ func (m *model) updateCommentNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		moveCommentCursorLine(composer, 1)
 	case "k", "up":
 		moveCommentCursorLine(composer, -1)
-	case "w":
-		moveCommentWord(composer, "w")
-	case "b":
-		moveCommentWord(composer, "b")
 	case "0", "home":
 		composer.cursor = textLineStart(composer.text, composer.cursor)
 	case "$", "end":
@@ -248,17 +253,6 @@ func (m *model) updateCommentNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 func moveCommentCursorLine(composer *commentComposer, delta int) {
 	editor := taskEditor{draft: vimkunja.TaskDraft{Description: composer.text}, field: fieldDescription, cursor: composer.cursor}
 	editor.moveCursorLine(delta)
-	composer.cursor = editor.cursor
-}
-
-func moveCommentWord(composer *commentComposer, motion string) {
-	editor := taskEditor{draft: vimkunja.TaskDraft{Description: composer.text}, field: fieldDescription, cursor: composer.cursor}
-	switch motion {
-	case "w":
-		editor.moveWordForward()
-	case "b":
-		editor.moveWordBackward()
-	}
 	composer.cursor = editor.cursor
 }
 
@@ -485,6 +479,14 @@ func (m *model) renderCommentComposer(width, height int) []string {
 		text = insertTextAtCursor(text, &cursor, "_")
 	}
 	lines := wrapDescription(text, max(1, width))
+	if composer.mode == editorNormal {
+		for index, line := range lines {
+			if composer.cursor >= line.start && composer.cursor <= line.end {
+				lines[index].text = normalCursorText(line.text, composer.cursor-line.start)
+				break
+			}
+		}
+	}
 	rows := []string{divider, label}
 	if len(lines) == 0 {
 		rows = append(rows, "_")
