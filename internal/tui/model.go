@@ -263,7 +263,8 @@ type (
 		err  error
 	}
 	taskDeletedMsg struct {
-		err error
+		taskID int64
+		err    error
 	}
 	workflowStatusLoadedMsg struct {
 		taskID int64
@@ -1002,6 +1003,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.taskLoading = false
 			m.recordError(typed.err)
 			return m, nil
+		}
+		if m.editor != nil && m.editor.id == typed.taskID {
+			m.closeTaskDetail()
 		}
 		return m, m.refreshActiveTasks()
 

@@ -60,7 +60,7 @@ func (m *model) updateDeleteConfirmation(key string) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 			defer cancel()
-			return taskDeletedMsg{err: m.store.DeleteTask(ctx, taskID)}
+			return taskDeletedMsg{taskID: taskID, err: m.store.DeleteTask(ctx, taskID)}
 		}
 	case "n", "esc":
 		m.deleteConfirm = false

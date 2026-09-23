@@ -2544,6 +2544,37 @@ func TestTaskDeletionRequiresConfirmationAndRefreshesAfterSuccess(t *testing.T) 
 	}
 }
 
+func TestTaskDeletionClosesOpenDetailAfterSuccess(t *testing.T) {
+	store := &fakeStore{}
+	m := testModel()
+	m.store = store
+	m.focus = paneTasks
+	m.currentProjectID = 1
+	m.currentViewID = 1
+	m.tasks = []vimkunja.Task{{ID: 7, ProjectID: 1, Title: "Delete me"}}
+	m.showDetail = true
+	m.editor = &taskEditor{id: 7, draft: vimkunja.TaskDraft{ID: 7, ProjectID: 1, Title: "Delete me"}}
+
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
+	updated, deleteCmd := m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
+	m = updated.(*model)
+	updated, refreshCmd := m.Update(deleteCmd())
+	m = updated.(*model)
+	if refreshCmd == nil {
+		t.Fatal("successful deletion returned no refresh command")
+	}
+	updated, _ = m.Update(refreshCmd())
+	m = updated.(*model)
+
+	if store.deleteTaskID != 7 {
+		t.Fatalf("delete = id:%d, want task 7", store.deleteTaskID)
+	}
+	if m.showDetail || m.editor != nil || m.focus != paneTasks {
+		t.Fatalf("after deletion = detail:%v editor:%v focus:%v, want closed detail and Tasks Pane focus", m.showDetail, m.editor != nil, m.focus)
+	}
+}
+
 func TestKanbanTaskDeletionUsesTheStandardConfirmation(t *testing.T) {
 	store := &fakeStore{}
 	m := testModel()
