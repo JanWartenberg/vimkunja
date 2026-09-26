@@ -41,6 +41,10 @@ An Overview scope limited to Tasks assigned one Label. Its Label constraint comp
 
 ## Rich-text descriptions
 
+**Vikunja Original App (VOA)**:
+The upstream Vikunja application and its native user interface, distinguished from Vimkunja.
+_Avoid_: Vimkunja, Vikunja API
+
 **Description**:
 A Task's rich-text content stored by Vikunja as HTML.
 _Avoid_: Notes, body
@@ -48,6 +52,10 @@ _Avoid_: Notes, body
 **Description block**:
 A logical unit inside a Description, such as a paragraph, heading, list item, code block, quote, or table.
 _Avoid_: Source line, HTML line
+
+**Block quote**:
+A Description block backed by an HTML `<blockquote>` element: an extended quotation containing editable child blocks. It is distinct from the inline HTML `<q>` element.
+_Avoid_: Inline quote, quote marks
 
 **Checkbox list**:
 A checklist embedded in a Description, represented by Vikunja/Tiptap `data-type="taskList"` HTML or by a strict plain-text checkbox block during the transitional reader phase; it is not a list of Vimkunja Task records.
@@ -68,6 +76,10 @@ _Avoid_: Line jump
 **Visual row jump**:
 Description navigation between terminal rows produced by paragraph wrapping using `gj` and `gk`.
 _Avoid_: Paragraph jump
+
+**Paragraph-motion unit**:
+One navigable Description block traversed by `{` or `}`. Each heading, list or Checkbox-list entry, quote, rule, table, and complete Code block is one unit; a Code block's internal and empty lines do not split it.
+_Avoid_: Source line, visual row
 
 ## Task history
 

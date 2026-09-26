@@ -148,11 +148,14 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `o` / `Shift+O` | Insert a blank line below / above the current line and enter Insert Mode | Implemented |
 | `j/k` | Move between navigable logical blocks:<br>paragraphs, headings, and list/Checkbox-list entries | Agreed |
 | `gj/gk` | Move between wrapped visual terminal rows | Agreed |
-| `j/k` in a multi-line code block | Move between its unwrapped source lines | Agreed |
-| `zh/zl` in an overwide code block or table | Scroll that block horizontally | Agreed |
+| `j/k` in a multi-line Code block | Move between its unwrapped source lines | Agreed |
+| `j/k` in a Block quote | Move between its child blocks | Agreed |
+| `{` / `}` | Move backward / forward by paragraph-motion units; each navigable Description block is one unit and a complete Code block or Block quote remains one unit | Agreed |
+| `ö` / `ä` | German-keyboard aliases for `{` / `}` in Normal Mode | Agreed |
+| `zh/zl` in an overwide Code block or table | Scroll that block horizontally | Agreed |
 | `x` on a Checkbox-list entry | Toggle only that entry's checked state | Agreed |
-| `dd` | Delete the current logical Description block | Agreed |
-| `o` / `O` | Insert an empty paragraph after / before the current logical block;<br>then enter Insert Mode | Agreed rich-text behavior |
+| `dd` | Delete the current logical Description block; inside a nonempty Code block delete only the current source line, and on an empty Code block delete the block; inside a Block quote delete the current child block and remove the quote after its final child | Agreed |
+| `o` / `O` | Insert an empty paragraph after / before the current logical block;<br>inside a Code block insert a Code line, or inside a Block quote a same-depth quoted paragraph, below / above the current line; then enter Insert Mode | Agreed rich-text behavior |
 | `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end<br>of the current logical line | Agreed rich-text behavior |
 | `0` / `^` / `_` / `$` | Move to start / first nonblank / end of the current logical line | Agreed |
 | `w` / `b` / `e` / `ge` | Move by rendered semantic words, ignoring inline-format and Link boundaries;<br>stop at blocks | Agreed |
@@ -163,15 +166,17 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `Space+1/2/3` | Convert current block to H1/H2/H3 | Provisional |
 | `Space+0` | Convert current block to a paragraph | Provisional |
 | `Space+u/n/x` | Toggle current block between unordered, numbered, or Checkbox list<br>and a paragraph | Provisional |
-| `Space+c/q/r` | Toggle current block between code block or quote and a paragraph;<br>insert a horizontal rule after the current block | Provisional |
+| `Space+c/q/r` | Toggle current block between Code block or Block quote and a paragraph;<br>insert a horizontal rule after the current block | Provisional |
 | `Space+o` | Toggle Projects Pane; never a Description formatting command | Agreed |
 | `Space+l` inside an existing link | Prompt with its current URL; link text remains ordinary Description text | Provisional |
+| `Space+y` inside a link | Copy its destination URL to the system clipboard without opening it | Agreed |
 
 ## Description Insert Mode
 
 | Binding | Action | Status |
 | --- | --- | --- |
-| `Enter` | Split the current paragraph into two paragraphs | Agreed |
+| Three or four backticks in an empty paragraph | Create a structured Code block, canonicalize to triple-backtick disclosed fences, and place the cursor inside | Agreed |
+| `Enter` | Split the current paragraph into two paragraphs; inside a Code block insert a literal source line; inside a Block quote create a sibling quoted paragraph, or leave the quote from an empty quoted paragraph | Agreed |
 | `Shift+Enter` | Insert a hard line break inside the paragraph | Agreed |
 | `Enter` at end of a list entry | Add an entry of the same list type | Agreed |
 | `Enter` on an empty list entry | Leave the list and create a paragraph | Agreed |
