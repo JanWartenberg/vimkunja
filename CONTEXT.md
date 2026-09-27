@@ -53,6 +53,18 @@ _Avoid_: Notes, body
 A logical unit inside a Description, such as a paragraph, heading, list item, code block, quote, or table.
 _Avoid_: Source line, HTML line
 
+**Native node**:
+A safely parsed Description structure that Vimkunja understands and can edit through its terminal projection.
+_Avoid_: Supported node, editable HTML
+
+**Opaque subtree**:
+The outermost safely parsed Description structure that Vimkunja cannot edit internally; it is one atomic unit whose original HTML is preserved during unrelated edits.
+_Avoid_: Opaque node, unsupported text
+
+**Blocked Description**:
+A Description whose Source HTML is malformed, unsafe, or cannot be preserved reliably, so structured editing and saving remain disabled until explicit recovery.
+_Avoid_: Opaque Description, read-only node
+
 **Block quote**:
 A Description block backed by an HTML `<blockquote>` element: an extended quotation containing editable child blocks. It is distinct from the inline HTML `<q>` element.
 _Avoid_: Inline quote, quote marks
