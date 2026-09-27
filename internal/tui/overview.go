@@ -26,6 +26,7 @@ const (
 	overviewAll
 	overviewOverdue
 	overviewDueToday
+	overviewInProgress
 )
 
 type overviewSort int
@@ -174,6 +175,30 @@ func (m *model) setOverviewTasks(tasks []vimkunja.Task) {
 	m.applyOverview()
 }
 
+func (m *model) setActiveTaskFilter(filter overviewFilter) {
+	if m.inOverview() {
+		m.overviewFilter = filter
+		m.applyOverview()
+		return
+	}
+	m.taskFilter = filter
+	m.applyProjectTaskFilter()
+}
+
+func (m *model) applyProjectTaskFilter() {
+	// Project task loading replaces m.tasks, so filtering must retain the
+	// unfiltered source separately just like Overview does.
+	items := make([]vimkunja.Task, 0, len(m.projectTasks))
+	today := localStartOfDay(m.currentTime())
+	for _, task := range m.projectTasks {
+		if taskMatchesFilter(task, m.taskFilter, today) {
+			items = append(items, task)
+		}
+	}
+	m.tasks = items
+	m.taskSelected = clamp(m.taskSelected, 0, max(0, len(m.tasks)-1))
+}
+
 func (m *model) applyOverview() {
 	selectedID := int64(0)
 	if m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
@@ -182,7 +207,7 @@ func (m *model) applyOverview() {
 	items := make([]vimkunja.Task, 0, len(m.overviewTasks))
 	today := localStartOfDay(m.currentTime())
 	for _, task := range m.overviewTasks {
-		if overviewMatches(task, m.overviewFilter, today) {
+		if taskMatchesFilter(task, m.overviewFilter, today) {
 			items = append(items, task)
 		}
 	}
@@ -202,7 +227,7 @@ func (m *model) applyOverview() {
 	m.pendingTaskID = 0
 }
 
-func overviewMatches(task vimkunja.Task, filter overviewFilter, today time.Time) bool {
+func taskMatchesFilter(task vimkunja.Task, filter overviewFilter, today time.Time) bool {
 	if filter == overviewAll {
 		return true
 	}
@@ -217,9 +242,17 @@ func overviewMatches(task vimkunja.Task, filter overviewFilter, today time.Time)
 		return ok && due.Before(today)
 	case overviewDueToday:
 		return ok && due.Equal(today)
+	case overviewInProgress:
+		return task.Workflow.Available && task.Workflow.CurrentBucketID != 0 &&
+			task.Workflow.CurrentBucketID != task.Workflow.DefaultBucketID &&
+			task.Workflow.CurrentBucketID != task.Workflow.DoneBucketID
 	default:
 		return false
 	}
+}
+
+func overviewMatches(task vimkunja.Task, filter overviewFilter, today time.Time) bool {
+	return taskMatchesFilter(task, filter, today)
 }
 
 func overviewLess(left, right vimkunja.Task, mode overviewSort) bool {
@@ -270,7 +303,7 @@ func overviewDueDate(task vimkunja.Task) (time.Time, bool) {
 	return value, err == nil
 }
 
-func (m *model) updateOverviewPrompt(key string) bool {
+func (m *model) updateTaskFilterPrompt(key string) bool {
 	if m.overviewPrompt == overviewPromptNone {
 		return false
 	}
@@ -291,34 +324,55 @@ func (m *model) updateOverviewPrompt(key string) bool {
 			return true
 		}
 	} else {
+		var filter overviewFilter
 		switch key {
 		case "o":
-			m.overviewFilter = overviewOpen
+			filter = overviewOpen
 		case "a":
-			m.overviewFilter = overviewAll
+			filter = overviewAll
 		case "v":
-			m.overviewFilter = overviewOverdue
+			filter = overviewOverdue
 		case "t":
-			m.overviewFilter = overviewDueToday
+			filter = overviewDueToday
+		case "i":
+			filter = overviewInProgress
 		default:
 			return true
 		}
+		m.setActiveTaskFilter(filter)
+		return true
 	}
-	m.applyOverview()
+	if m.inOverview() {
+		m.applyOverview()
+	}
 	return true
 }
 
-func (m *model) overviewFilterLabel() string {
-	switch m.overviewFilter {
+func (m *model) updateOverviewPrompt(key string) bool {
+	return m.updateTaskFilterPrompt(key)
+}
+
+func taskFilterLabel(filter overviewFilter) string {
+	switch filter {
 	case overviewAll:
 		return "all"
 	case overviewOverdue:
 		return "overdue"
 	case overviewDueToday:
 		return "due today"
+	case overviewInProgress:
+		return "in progress"
 	default:
 		return "open"
 	}
+}
+
+func (m *model) overviewFilterLabel() string {
+	return taskFilterLabel(m.overviewFilter)
+}
+
+func (m *model) projectFilterLabel() string {
+	return taskFilterLabel(m.taskFilter)
 }
 
 func (m *model) overviewSortLabel() string {

@@ -100,7 +100,7 @@ var helpLines = []string{
 	"  -                     Open Overview (never toggles)",
 	"  Space+a               Toggle Overview / remembered Project context",
 	"  s d/p/t               Overview sort: Due, Priority ↓, Title",
-	"  f o/a/v/t             Overview filter: open, all, overdue, due today",
+	"  f o/a/v/t/i           Task filter: open, all, overdue, due today, in progress (not Kanban)",
 	"  :overview / :list     Open Overview / restore Project List",
 	"",
 	"PROJECT VIEWS",

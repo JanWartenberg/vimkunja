@@ -147,6 +147,8 @@ type model struct {
 
 	// Tasks pane
 	tasks               []vimkunja.Task
+	projectTasks        []vimkunja.Task
+	taskFilter          overviewFilter
 	taskSelected        int
 	taskLoading         bool
 	inlineTitle         *inlineTitleEdit
@@ -197,6 +199,7 @@ func NewModel(cfg Config) tea.Model {
 		leaderTimeout:       leaderTimeout,
 		ctrlWTimeout:        ctrlWTimeout,
 		initialViewID:       cfg.InitialViewID,
+		taskFilter:          overviewAll,
 		projectSelected:     0,
 		currentViewID:       cfg.InitialViewID,
 		neighbors: map[paneID]paneNeighbors{
@@ -1084,8 +1087,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.kanbanActive = false
 		m.kanbanBoard = vimkunja.KanbanBoard{}
-		m.tasks = typed.tasks
-		m.taskSelected = clamp(m.taskSelected, 0, max(0, len(m.tasks)-1))
+		m.projectTasks = typed.tasks
+		m.applyProjectTaskFilter()
 		if m.pendingTaskID != 0 {
 			for i, task := range m.tasks {
 				if task.ID == m.pendingTaskID {
@@ -1485,7 +1488,7 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.updateKanbanKeys(k)
 	}
 	s := normalizeArrow(k.String())
-	if m.inOverview() && m.updateOverviewPrompt(s) {
+	if m.updateTaskFilterPrompt(s) {
 		return m, nil
 	}
 	if m.deleteArmed {
@@ -1548,9 +1551,7 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case "f":
-		if m.inOverview() {
-			m.overviewPrompt = overviewPromptFilter
-		}
+		m.overviewPrompt = overviewPromptFilter
 		return m, nil
 	case "g":
 		m.gArmed = true
@@ -2445,7 +2446,7 @@ func (m *model) renderStatusBar(w int) string {
 		hint = "SORT  d Due  •  p Priority ↓  •  t Title  •  Esc cancel"
 	}
 	if m.overviewPrompt == overviewPromptFilter {
-		hint = "FILTER  o open  •  a all  •  v overdue  •  t due today  •  Esc cancel"
+		hint = "FILTER  o open  •  a all  •  v overdue  •  t due today  •  i in progress  •  Esc cancel"
 	}
 	if m.ctrlWArmed {
 		ctrlWHint := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.ctrlWHint)).Render("Ctrl-W")

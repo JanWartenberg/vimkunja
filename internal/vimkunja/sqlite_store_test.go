@@ -1229,6 +1229,34 @@ func TestListOverviewTasksIncludesProjectMetadataAndExcludesArchivedProjects(t *
 	}
 }
 
+func TestTaskListsIncludeUnambiguousWorkflowMetadata(t *testing.T) {
+	store, cleanup := setupTestDB(t)
+	defer cleanup()
+	if _, err := store.db.Exec(`
+		INSERT INTO projects (id, identifier, title) VALUES (1, 'VIM', 'Vimkunja');
+		INSERT INTO project_views (id, project_id, title, view_kind, bucket_configuration_mode, default_bucket_id, done_bucket_id) VALUES (10, 1, 'Kanban', 3, 1, 100, 102);
+		INSERT INTO buckets (id, project_view_id, title, position) VALUES (100, 10, 'TODO', 1), (101, 10, 'Doing', 2), (102, 10, 'Done', 3);
+		INSERT INTO tasks (id, project_id, title, done) VALUES (1, 1, 'Doing task', 0), (2, 1, 'TODO task', 0);
+		INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (1, 101, 10), (2, 100, 10);
+	`); err != nil {
+		t.Fatalf("insert workflow fixtures: %v", err)
+	}
+
+	tasks, _, err := store.ListOverviewTasks(context.Background(), 1, 50)
+	if err != nil {
+		t.Fatalf("list overview tasks: %v", err)
+	}
+	if len(tasks) != 2 {
+		t.Fatalf("tasks = %#v, want two tasks", tasks)
+	}
+	if tasks[0].Workflow.CurrentBucketID != 101 || tasks[0].Workflow.DefaultBucketID != 100 || tasks[0].Workflow.DoneBucketID != 102 || !tasks[0].Workflow.Available {
+		t.Fatalf("workflow = %#v, want available Doing status", tasks[0].Workflow)
+	}
+	if tasks[1].Workflow.CurrentBucketID != 100 {
+		t.Fatalf("TODO workflow = %#v, want current bucket 100", tasks[1].Workflow)
+	}
+}
+
 func TestListTasksInView_OrdersByPosition(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()

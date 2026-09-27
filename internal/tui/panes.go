@@ -188,6 +188,9 @@ func renderTasks(m *model, textW, textH int) string {
 		return renderKanbanBoard(m, textW, textH)
 	}
 	headerText := "Project Tasks"
+	if !m.inOverview() && m.taskFilter != overviewAll {
+		headerText = fmt.Sprintf("Project Tasks · %s", m.projectFilterLabel())
+	}
 	if m.inOverview() {
 		headerText = fmt.Sprintf("Overview · %s · %s", m.overviewSortLabel(), m.overviewFilterLabel())
 		if m.overviewLabel.ID != 0 {
@@ -205,7 +208,11 @@ func renderTasks(m *model, textW, textH int) string {
 		return fitBlock(lines, textW, textH)
 	}
 	if len(m.tasks) == 0 {
-		lines = append(lines, "  (no tasks)")
+		if (!m.inOverview() && m.taskFilter != overviewAll) || (m.inOverview() && m.overviewFilter != overviewAll) {
+			lines = append(lines, "  No matching tasks")
+		} else {
+			lines = append(lines, "  (no tasks)")
+		}
 		return fitBlock(lines, textW, textH)
 	}
 

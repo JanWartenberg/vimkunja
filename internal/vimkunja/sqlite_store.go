@@ -371,8 +371,78 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 	if err := rows.Err(); err != nil {
 		return nil, 0, fmt.Errorf("iterate tasks: %w", err)
 	}
+	if err := s.populateTaskWorkflow(ctx, out); err != nil {
+		return nil, 0, err
+	}
 
 	return out, totalPages, nil
+}
+
+// populateTaskWorkflow enriches task list read models with the status from a
+// project's only manual Kanban View. Multiple or missing manual Views remain
+// unavailable by design, matching GetTaskWorkflowStatus.
+func (s *SQLiteStore) populateTaskWorkflow(ctx context.Context, tasks []Task) error {
+	if len(tasks) == 0 {
+		return nil
+	}
+	placeholders := strings.TrimRight(strings.Repeat("?,", len(tasks)), ",")
+	args := make([]any, 0, len(tasks)+2)
+	args = append(args, viewKindKanban, bucketConfigurationManual)
+	for _, task := range tasks {
+		args = append(args, task.ID)
+	}
+	query := fmt.Sprintf(`
+		SELECT t.id, wf.default_bucket_id, wf.done_bucket_id,
+			(SELECT tb.bucket_id
+			 FROM task_buckets tb
+			 WHERE tb.task_id = t.id AND tb.project_view_id = wf.view_id
+			 LIMIT 1)
+		FROM tasks t
+		LEFT JOIN (
+			SELECT project_id, MIN(id) AS view_id,
+				MIN(default_bucket_id) AS default_bucket_id,
+				MIN(done_bucket_id) AS done_bucket_id
+			FROM project_views
+			WHERE view_kind = ? AND bucket_configuration_mode = ?
+			GROUP BY project_id
+			HAVING COUNT(1) = 1
+		) wf ON wf.project_id = t.project_id
+		WHERE t.id IN (%s)`, placeholders)
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("load task workflow status: %w", err)
+	}
+	defer rows.Close()
+
+	byID := make(map[int64]*Task, len(tasks))
+	for i := range tasks {
+		byID[tasks[i].ID] = &tasks[i]
+	}
+	for rows.Next() {
+		var id int64
+		var defaultBucketID, doneBucketID, currentBucketID sql.NullInt64
+		if err := rows.Scan(&id, &defaultBucketID, &doneBucketID, &currentBucketID); err != nil {
+			return fmt.Errorf("scan task workflow status: %w", err)
+		}
+		task := byID[id]
+		if task == nil || !defaultBucketID.Valid && !doneBucketID.Valid && !currentBucketID.Valid {
+			continue
+		}
+		task.Workflow.Available = true
+		if defaultBucketID.Valid {
+			task.Workflow.DefaultBucketID = defaultBucketID.Int64
+		}
+		if doneBucketID.Valid {
+			task.Workflow.DoneBucketID = doneBucketID.Int64
+		}
+		if currentBucketID.Valid {
+			task.Workflow.CurrentBucketID = currentBucketID.Int64
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate task workflow status: %w", err)
+	}
+	return nil
 }
 
 // ListOverviewTasks returns Tasks from every non-archived Project with enough
@@ -436,6 +506,9 @@ func (s *SQLiteStore) ListOverviewTasks(ctx context.Context, page, perPage int) 
 	}
 	if err := rows.Err(); err != nil {
 		return nil, 0, fmt.Errorf("iterate overview tasks: %w", err)
+	}
+	if err := s.populateTaskWorkflow(ctx, out); err != nil {
+		return nil, 0, err
 	}
 	return out, totalPages, nil
 }
@@ -572,6 +645,9 @@ func (s *SQLiteStore) ListTasksForLabel(ctx context.Context, labelID int64, page
 	}
 	if err := rows.Err(); err != nil {
 		return nil, 0, fmt.Errorf("iterate Label Tasks: %w", err)
+	}
+	if err := s.populateTaskWorkflow(ctx, tasks); err != nil {
+		return nil, 0, err
 	}
 	return tasks, totalPages, nil
 }

@@ -95,6 +95,16 @@ type WorkflowStatus struct {
 	Buckets       []WorkflowBucket
 }
 
+// TaskWorkflow contains the unambiguous manual-Kanban status needed by task
+// list filters. Available is false when the project has no unique manual
+// Kanban View or when its workflow status cannot be resolved.
+type TaskWorkflow struct {
+	Available       bool
+	CurrentBucketID int64
+	DefaultBucketID int64
+	DoneBucketID    int64
+}
+
 // Task represents a single task within a project.
 type Task struct {
 	ID                int64  `json:"id"`
@@ -107,6 +117,7 @@ type Task struct {
 	Priority          int64  `json:"priority"`
 	Index             int64  `json:"index"`
 	Description       string `json:"description"`
+	Workflow          TaskWorkflow
 	// Identifier is present on some responses; we still can fall back to "#<index>".
 	Identifier string `json:"identifier"`
 }
