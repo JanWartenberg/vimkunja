@@ -14,7 +14,7 @@ The `fi` filter must show only Tasks that are currently in work.
 
 **Priority:** Medium
 
-**Status:** implemented
+**Status:** completed
 
 ## Decisions confirmed
 
@@ -30,3 +30,11 @@ The `fi` filter must show only Tasks that are currently in work.
 - [x] Add `fv` for overdue Tasks in List and Overview Views.
 - [x] Add `fi` for Tasks currently in work only.
 - [x] Add regression coverage for shortcut handling and filter results.
+
+## Implementation
+
+Implemented in commit `64085a3` (`Implement task status filters`). Regression coverage verifies shortcut handling and filter results.
+
+### 2026-09-29 — Archived
+
+Implementation is complete; ticket moved from `.scratch/` to `.archive/2026-09-29/`.

@@ -49,6 +49,10 @@ _Avoid_: Vimkunja, Vikunja API
 A Task's rich-text content stored by Vikunja as HTML.
 _Avoid_: Notes, body
 
+**Source HTML**:
+The HTML representation of a Description read from and written to Vikunja's existing Task Description field; it is persistence data, not the user-facing terminal projection.
+_Avoid_: TUI markup, editor syntax
+
 **Description block**:
 A logical unit inside a Description, such as a paragraph, heading, list item, code block, quote, or table.
 _Avoid_: Source line, HTML line

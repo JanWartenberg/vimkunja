@@ -12,7 +12,7 @@
 
 **Status:** needs-triage
 
-**Current handoff:** The compatibility-corpus plan and initial risk-based fixture inventory are established. Basic blocks, inline marks, lists/Checkbox lists, Code blocks, Block quotes, hard breaks, Links, opaque structures, exact opaque-subtree preservation, unknown-node fallback, and malformed-HTML recovery are specified. No implementation has started. Resume with serialization, then settle fixtures, test evidence, and prototype validation before creating concrete HTML fixtures.
+**Current handoff:** The compatibility-corpus plan and initial risk-based fixture inventory are established. Basic blocks, inline marks, lists/Checkbox lists, Code blocks, Block quotes, hard breaks, Links, opaque structures, exact opaque-subtree preservation, unknown-node fallback, and malformed-HTML recovery are specified. Serialization now has a hybrid Native/Opaque policy, semantic-only Native canonicalization, compact canonical escaping, UUID v4 assignment for missing Checkbox IDs, VOA-synchronized Link targets and safe attribute preservation, structured semantic equivalence, standards-aligned mark semantics, and empty-structure rules. No implementation has started. Serialization is settled: duplicate Checkbox IDs use a confirmed preserve-first/regenerate-later repair flow; valid top-level inline fragments become paragraphs; ordinary prose whitespace follows HTML collapsing; duplicate Native attributes and document-level markup block the Description; styled elements and HTML comments become Opaque atoms. Fixture acceptance now requires a traceable corpus of focused VOA-generated, synthetic, and regression snippets with manually reviewed golden expectations. No implementation has started. Resume with the ordered grilling agenda under **Next grilling session**: acceptance evidence first, then editor grammar, cursor mapping, prototype validation, and parser/serializer selection.
 
 **Scope boundary:** This is phase 2 of the Description plan. It replaces neither Vikunja's HTML persistence format nor its SQLite schema. It aims to natively render and edit every HTML structure that is useful and feasible in a terminal. Content that is not suitably editable must remain as readable as practical and must be preserved without destructive rewriting.
 
@@ -182,7 +182,7 @@ Resume one question at a time. Decisions already recorded above should not be re
 - [x] **Opaque structures:** Images, generic attachment scope, Mentions, embedded media, Tables, unknown-node fallback, and safe-attribute preservation are settled.
 - [x] **Malformed HTML:** fail-closed safety, read-only projection, and confirmed Clear/Recover-text draft flows are settled.
 - [x] **Opaque preservation:** outermost atomic boundaries, byte-for-byte retention, cross-boundary operations, confirmed removal/replacement, safe copying, exact Undo, native-node attributes, structural validation, and save-time round trips are settled.
-- [ ] **Serialization:** decide acceptable normalization, Checkbox-list ID assignment timing, Link attributes, and semantic equivalence rules.
+- [x] **Serialization:** settled and recorded in the contract: canonical semantic serialization for Native nodes, byte-exact Opaque preservation, compact canonical escaping, Checkbox-ID assignment and confirmed deduplication, canonical VOA Link targets with safe meaningful attribute preservation, structured semantic equivalence, standards-aligned mark semantics, meaningful empty-block preservation, root-fragment normalization, prose-whitespace collapsing, duplicate-attribute safety, and Opaque handling for styles and comments.
 
 ### Remaining fixture categories
 
@@ -191,14 +191,57 @@ Resume one question at a time. Decisions already recorded above should not be re
 - [x] **Opaque structures:** Images, Mentions, embedded media, Tables, and unknown structures use readable safe projections and the atomic Opaque-subtree rules above. Their hidden source data is never disclosed; native formatting skips them, while complete deletion or replacement requires confirmation.
 - [x] **Opaque preservation:** unrelated edits retain original subtree bytes; native-node unknown attributes retain semantic values; structural edits and saves use the validation rules above.
 - [x] **Malformed and unsafe HTML:** executable/active content (`script`, event attributes, dangerous URLs such as `javascript:`) makes the entire Description read-only with a clear safety hint and safe neutral projection; never sanitize-and-save automatically. Input requiring structural parser repair is read-only, renders a safe best-effort text projection, and reports `Error: Malformed HTML`. Provide two explicit confirmed actions: **Clear Description** replaces it with empty content; **Recover text** replaces it with a new editable plain-text Description from the safe text projection. Both intentionally discard the malformed HTML; neither is automatic. After confirmation, each creates an ordinary unsaved Description draft (empty for Clear, prefilled and in Insert Mode for Recover text); normal save persists it and discard retains the malformed source. Malformed-input behavior is settled.
-- [ ] **Fixture acceptance:** define expected projection/editability/preservation/safety for every fixture and the required round-trip, regression, property, and fuzz evidence.
+- [ ] **Fixture acceptance:** use a corpus of many focused Source HTML snippets, grouped as Native, mixed Native/Opaque, or Blocked, plus a smaller set of risky compound cases. A traceability matrix must map every settled decision to at least one fixture. Each fixture records source, classification, projection, serialization/preservation, a representative edit when available, feedback/save behavior, and tested invariants. The corpus combines versioned VOA-generated, synthetic edge, and minimized regression inputs. Golden expectations are manually reviewed and may not be silently regenerated from implementation output. Continue with required regression/property/fuzz evidence.
 
-### Small follow-ups to settled areas
+## Next grilling session
 
-- [ ] Define the exact grammar for ambiguous combinations such as `***text***` and escaped backslashes.
-- [ ] Confirm source-disclosure layout/cursor mapping when syntax changes wrapping or visible width.
-- [ ] Confirm the friendly visual styles and narrow-width fallbacks through prototype testing.
+Ask these questions one at a time, in order. Do not reopen settled decisions unless a fixture exposes a contradiction.
+
+### Fixture acceptance and evidence
+
+1. What exact regression evidence is required for each fixture?
+2. Which semantic round-trip assertions are mandatory?
+3. Which byte-preservation assertions are mandatory for Opaque subtrees?
+4. Which parser/serializer properties require property tests?
+5. Which malformed, unsafe, and arbitrary inputs must fuzzing cover?
+6. What constitutes sufficient fuzz evidence: fixed regression seeds, bounded normal-CI runs, longer scheduled runs, or a combination?
+7. For every fixture in the inventory, what are its exact projection, classification, edit behavior, preservation guarantee, feedback, and save behavior?
+8. Which risky feature combinations require compound fixtures beyond focused one-decision snippets?
+
+### Editor syntax
+
+9. What is the exact meaning of ambiguous delimiter sequences such as `***text***`?
+10. How are nested or repeated `<strong>` and `<em>` layers disclosed when identical terminal styling hides their depth?
+11. What is the exact escaping grammar for backslashes and formatting delimiters?
+12. How are literal leading markers distinguished from structural heading, list, and Code-fence syntax?
+
+### Source disclosure and cursor mapping
+
+13. When revealing syntax changes visible width or wrapping, how does the cursor remain attached to the same semantic character?
+14. Does disclosure reflow the whole logical block, only its current visual row, or a stable reserved layout?
+15. How do selections and motions cross protected, non-editable syntax markers?
+16. What happens to scroll position when focusing or leaving a block changes its rendered height?
+17. How do narrow Panes behave when disclosed syntax exceeds the available width?
+
+### Prototype validation
+
+18. Do the proposed friendly styles and narrow-width fallbacks remain readable in real terminal layouts?
+19. Does the `Space`-led formatting palette work, or should it use an overlay instead of the secondary footer?
+20. Are the provisional Visual-Mode bindings—`Space+b/i/u/s/l` and `Space+0`—comfortable and conflict-free?
+21. Are the provisional block bindings—`Space+1/2/3/0`, `Space+u/n/x`, and `Space+c/q`—comfortable and discoverable?
+22. Does toggling formatting across mixed formatted/unformatted selections behave predictably?
+
+### Technical selection
+
+23. Which HTML parser and serializer can satisfy canonical Native serialization, exact Opaque preservation, malformed-input detection, and safety requirements?
+
+### Remaining deliverables after decisions
+
+- [ ] Create the concrete fixture corpus and traceability matrix.
+- [ ] Add expected projections and manually reviewed golden outputs.
+- [ ] Add regression, semantic round-trip, preservation, property, and fuzz tests.
 - [ ] Add the Vimkunja markup dialect to Help, durable documentation, and the dedicated markup tutorial.
+- [ ] Split implementation into concrete tickets after the contract and corpus are accepted.
 
 ## Out of scope
 
