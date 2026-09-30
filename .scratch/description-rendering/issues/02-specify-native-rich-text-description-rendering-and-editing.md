@@ -12,7 +12,7 @@
 
 **Status:** needs-triage
 
-**Current handoff:** The compatibility-corpus plan and initial risk-based fixture inventory are established. Basic blocks, inline marks, lists/Checkbox lists, Code blocks, Block quotes, hard breaks, Links, opaque structures, exact opaque-subtree preservation, unknown-node fallback, and malformed-HTML recovery are specified. Serialization now has a hybrid Native/Opaque policy, semantic-only Native canonicalization, compact canonical escaping, UUID v4 assignment for missing Checkbox IDs, VOA-synchronized Link targets and safe attribute preservation, structured semantic equivalence, standards-aligned mark semantics, and empty-structure rules. No implementation has started. Serialization is settled: duplicate Checkbox IDs use a confirmed preserve-first/regenerate-later repair flow; valid top-level inline fragments become paragraphs; ordinary prose whitespace follows HTML collapsing; duplicate Native attributes and document-level markup block the Description; styled elements and HTML comments become Opaque atoms. Fixture acceptance now requires a traceable corpus of focused VOA-generated, synthetic, and regression snippets with manually reviewed golden expectations. No implementation has started. Questions 1–23 have now been discussed. Acceptance evidence policy and editor grammar are agreed. Cursor anchoring, disclosure/reflow, scrolling, narrow layouts, and the Space formatting palette/bindings are provisionally accepted pending practical examples. Opaque subtrees are single word-motion units with configurable visible atomic boundaries. Mark toggling is uniform across the selection, replacing segment-by-segment inversion. Technical direction is accepted for evaluation, not final selection. Next: create concrete fixtures and traceability with reviewed expectations, validate provisional interactions in practical examples, then prove the parser/serializer direction. No native implementation is authorized.
+**Current handoff:** Questions 1–23 are discussed; serialization, acceptance-evidence policy, and editor grammar are agreed. Layout/cursor/palette interactions remain provisional. A [corpus draft and traceability matrix](../corpus.md) now index [34 synthetic HTML fixtures](../corpus.json) with hand-authored, unreviewed projections, outputs, edit scenarios, and preservation assertions. No captured VOA provenance or M3 test evidence exists yet. Known gaps include repeated emphasis removal/imported-variant disclosure, quote nesting versus toggle, active versus opaque embeds, unsafe neutral projection, empty/imported structure boundaries, and inline Code support tier. Next: review basic-block/mark fixtures and resolve those concrete ambiguities; expand coverage, capture representative VOA samples, and validate provisional interactions before accepting the corpus or selecting the parser/serializer. No native implementation is authorized.
 
 **Scope boundary:** This is phase 2 of the Description plan. It replaces neither Vikunja's HTML persistence format nor its SQLite schema. It aims to natively render and edit every HTML structure that is useful and feasible in a terminal. Content that is not suitably editable must remain as readable as practical and must be preserved without destructive rewriting.
 
@@ -59,8 +59,9 @@ The corpus is a specification deliverable and must exist before native editing i
 
 - [x] Establish the corpus plan and initial risk-based fixture inventory.
 - [ ] Grill the inventory and decide the expected projection, editability, preservation guarantee, and safety behavior for every fixture.
-- [ ] Add concrete HTML fixtures and expected terminal projections to the repository.
-- [ ] Define semantic round-trip and opaque-content preservation assertions for the fixtures.
+- [x] Add a concrete synthetic HTML fixture draft with proposed terminal projections; see [corpus](../corpus.md). Expectations are not accepted goldens yet.
+- [x] Draft semantic round-trip and opaque-content preservation assertions for those fixtures; no executable assertions or M3 evidence yet.
+- [ ] Review expectations, resolve flagged ambiguities, expand missing cases, and add representative VOA-generated fixtures.
 - [ ] Add parser/serializer boundary property or fuzz cases.
 - [ ] Split implementation tickets only after the corpus and preservation contract are accepted.
 
@@ -237,12 +238,13 @@ These are the recorded outcomes, not unanswered questions. Practical validation 
 
 ### Next session
 
-Create the concrete fixture corpus and traceability matrix with reviewed projections/goldens. Schedule practical validation of provisional interaction decisions, including the explicitly requested cursor examples. Use the corpus to evaluate the technical direction before final parser/serializer selection. Do not reopen settled policies unless concrete evidence exposes a contradiction.
+Review the [corpus draft](../corpus.md#next-review-slice), beginning with basic blocks and inline marks. Resolve repeated-layer toggling/imported-variant disclosure, then review the other explicitly flagged conflicts without guessing. Expand uncovered cases and obtain representative VOA samples. Schedule practical validation of provisional interactions, including cursor examples. Agree harness seams and use accepted expectations to evaluate the technical direction before final parser/serializer selection.
 
 ### Remaining deliverables after decisions
 
-- [ ] Create the concrete fixture corpus and traceability matrix.
-- [ ] Add expected projections and manually reviewed golden outputs.
+- [x] Create the initial synthetic fixture corpus and traceability matrix (draft only).
+- [ ] Complete known coverage gaps and add VOA-generated provenance.
+- [ ] Accept expected projections and manually reviewed golden outputs.
 - [ ] Add regression, semantic round-trip, preservation, property, and fuzz tests.
 - [ ] Add the Vimkunja markup dialect to Help, durable documentation, and the dedicated markup tutorial.
 - [ ] Split implementation into concrete tickets after the contract and corpus are accepted.
