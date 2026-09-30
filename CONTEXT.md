@@ -93,6 +93,18 @@ _Avoid_: Line jump
 Description navigation between terminal rows produced by paragraph wrapping using `gj` and `gk`.
 _Avoid_: Paragraph jump
 
+**Editable delimiter**:
+A user-editable character sequence expressing formatting in a Description's disclosed editor syntax; it is distinct from Source HTML and from a protected presentation marker.
+_Avoid_: HTML tag, protected marker
+
+**Protected presentation marker**:
+A visible structural or layout cue in a Description projection that is not editable text, such as a quote prefix, Code fence, or emphasis-layer separator.
+_Avoid_: Editable delimiter, Opaque subtree
+
+**Space formatting palette**:
+A temporary, context-sensitive menu of Description formatting actions opened with `Space` in Normal or Visual Mode; a second key selects an action.
+_Avoid_: Formatting toolbar, Insert-Mode menu
+
 **Paragraph-motion unit**:
 One navigable Description block traversed by `{` or `}`. Each heading, list or Checkbox-list entry, quote, rule, table, and complete Code block is one unit; a Code block's internal and empty lines do not split it.
 _Avoid_: Source line, visual row

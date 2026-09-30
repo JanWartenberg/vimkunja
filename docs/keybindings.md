@@ -158,15 +158,15 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `o` / `O` | Insert an empty paragraph after / before the current logical block;<br>inside a Code block insert a Code line, or inside a Block quote a same-depth quoted paragraph, below / above the current line; then enter Insert Mode | Agreed rich-text behavior |
 | `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end<br>of the current logical line | Agreed rich-text behavior |
 | `0` / `^` / `_` / `$` | Move to start / first nonblank / end of the current logical line | Agreed |
-| `w` / `b` / `e` / `ge` | Move by rendered semantic words, ignoring inline-format and Link boundaries;<br>stop at blocks | Agreed |
+| `w` / `b` / `e` / `ge` | Move by words across inline-format and Link boundaries; stop at blocks.<br>Disclosed editable delimiters are ordinary characters; protected markers consume no motion counts.<br>Each complete Opaque subtree is one word-motion unit for `w/b/e`. | Agreed |
 | `gg` / `G` | Jump to start / end of the whole Description document | Agreed |
 | `Ctrl+D` / `Ctrl+U` | Move the cursor about one visible Task Detail Pane height down / up | Agreed |
 | `u` / `Ctrl+R` | Undo / redo an unsaved Description-draft change | Agreed |
-| `Space` | Open the Description formatting palette in a secondary footer.<br>It closes on the second key, `Esc`, or the Leader timeout. | Provisional |
+| `Space` | Open the Space formatting palette below the primary footer; temporarily replace the primary footer if an extra row would leave fewer than three Description rows.<br>Close on the second key, `Esc`, or Leader timeout; restore the primary footer. | Provisional |
 | `Space+1/2/3` | Convert current block to H1/H2/H3 | Provisional |
 | `Space+0` | Convert current block to a paragraph | Provisional |
 | `Space+u/n/x` | Toggle current block between unordered, numbered, or Checkbox list<br>and a paragraph | Provisional |
-| `Space+c/q/r` | Toggle current block between Code block or Block quote and a paragraph;<br>insert a horizontal rule after the current block | Provisional |
+| `Space+c/q` | Apply Code-block / Block-quote formatting to the current block; container behavior follows the rich-text contract.<br>No dedicated `Space+r` rule insertion binding. | Provisional |
 | `Space+o` | Toggle Projects Pane; never a Description formatting command | Agreed |
 | `Space+l` inside an existing link | Prompt with its current URL; link text remains ordinary Description text | Provisional |
 | `Space+y` inside a link | Copy its destination URL to the system clipboard without opening it | Agreed |
@@ -176,6 +176,9 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | Binding | Action | Status |
 | --- | --- | --- |
 | Three or four backticks in an empty paragraph | Create a structured Code block, canonicalize to triple-backtick disclosed fences, and place the cursor inside | Agreed |
+| Typed block-start `# `/`## `/`### `; `- `/`+ `/`* `/`1. ` | Create heading / list entry after the required space; escape the first marker to keep it literal | Agreed |
+| Typed dash-only line of at least three dashes | Create a horizontal rule | Agreed |
+| Paste | Insert literal text, never trigger structural conversion; prose line breaks create paragraphs | Agreed |
 | `Enter` | Split the current paragraph into two paragraphs; inside a Code block insert a literal source line; inside a Block quote create a sibling quoted paragraph, or leave the quote from an empty quoted paragraph | Agreed |
 | `Shift+Enter` | Insert a hard line break inside the paragraph | Agreed |
 | `Enter` at end of a list entry | Add an entry of the same list type | Agreed |
@@ -192,7 +195,7 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `Esc` | Cancel Visual Mode | Agreed |
 | `viw` / `vaw` | Select inner word / word including surrounding whitespace | Agreed |
 | `Ctrl+V` | Rectangular selection | Deferred |
-| `Space+b/i/u/s` | Toggle bold/italic/underline/strikethrough on the selection | Provisional |
+| `Space+b/i/u/s` | Toggle bold/italic/underline/strikethrough uniformly: apply throughout if any selected Native text lacks the mark; otherwise remove throughout. Ignore and preserve Opaque subtrees. | Provisional bindings; agreed uniform behavior |
 | `Space+l` | Prompt for a URL and apply it to the selection; a blank URL removes the link | Provisional |
 | `Space+0` | Remove all inline formatting, including Links, while preserving text and blocks | Provisional |
 | `d` | Delete exactly the selected text; delete selected logical blocks after `V` | Agreed |
@@ -230,4 +233,6 @@ the useful error tail.
 - A **Pane** is focusable; a **View** is a Task representation inside the Tasks Pane. See [`../CONTEXT.md`](../CONTEXT.md).
 - A Checkbox list is embedded rich text in a Description; it is distinct from the Task Done state.
 - Preserve documented Vim Visual-Mode motions and operators. The rejected direct `b`, `i`, `u`, `s`, and `l` proposal and sources are recorded in [the binding review](../.scratch/description-rendering/research-vim-visual-bindings.md).
-- The Description format-palette presentation remains open in [the rich-text contract](../.scratch/description-rendering/spec.md).
+- The Space formatting palette's secondary-footer design and compact-height replacement threshold are provisionally accepted; practical validation remains outstanding in [the rich-text contract](../.scratch/description-rendering/spec.md).
+- Editable delimiters count as ordinary Vim characters, including in `5l`. Protected quote prefixes, Code fences, and emphasis-layer separators are never cursor targets, copied text, or independently editable content.
+- Opaque subtrees require discernible atomic boundaries with configurable bracket style and highlighting color; final styling awaits prototype review. Wrapped continuation rows retain a non-editable arrow, distinct from hard-break markers.
