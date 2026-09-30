@@ -236,9 +236,17 @@ These are the recorded outcomes, not unanswered questions. Practical validation 
 
 23. Evaluate the existing `golang.org/x/net/html` tokenizer with a source-preserving token layer, explicit structural/safety validation, original source slices for Opaque subtrees, and a dedicated Native serializer. The current tree parser repairs malformed input and is insufficient alone. Final selection requires representative fixture evidence for preservation and malformed-input detection; no implementation or dependency change is authorized.
 
-### Next session
+### Next session — resume here
 
-Review the [corpus draft](../corpus.md#next-review-slice), beginning with basic blocks and inline marks. Resolve repeated-layer toggling/imported-variant disclosure, then review the other explicitly flagged conflicts without guessing. Expand uncovered cases and obtain representative VOA samples. Schedule practical validation of provisional interactions, including cursor examples. Agree harness seams and use accepted expectations to evaluate the technical direction before final parser/serializer selection.
+**Saved checkpoint:** `1a5e5b7` records the accepted interview decisions; `927796d` adds the synthetic corpus draft. Artifact validation, `go test ./...`, and `go build ./cmd/vimkunja ./cmd/vimkunja-tutorial` passed. No fixture expectations have been approved and no M3 behavior tests have run.
+
+1. Resume `/grill-with-docs`, one example/question at a time, with [corpus.json](../corpus.json): `basic-blocks`, then `inline-marks`, `inline-boundaries`, and `uniform-toggle`. Show the source, proposed projection, and expected output; record explicit approvals in the [corpus review log](../corpus.md#next-review-slice).
+2. First unresolved semantic decision: selecting `<strong><strong>text</strong></strong>` and toggling bold off — remove every emphasis layer, or only one layer? Do not choose a golden until the user decides. Also settle how disclosure distinguishes imported `b`/`strong` and `i`/`em`.
+3. Then work through the [flagged decisions/gaps](../corpus.md#decisionsgaps-not-guessed): quote nesting versus toggle, active versus opaque embeds, unsafe neutral projection, empty/imported structure boundaries, and inline Code support tier. Do not silently reinterpret settled policies.
+4. Expand missing fixture cases and obtain representative VOA-generated HTML with version/provenance. Synthetic fixtures are not evidence of VOA compatibility.
+5. Later: practical cursor/reflow/scrolling and palette examples (still provisional), followed by agreed test seams and evidence-based parser/serializer evaluation.
+
+**Stop boundary:** no native editor, new harness, runtime Help bindings, or implementation-ticket split until the required contract/corpus approvals and prerequisites are satisfied.
 
 ### Remaining deliverables after decisions
 
