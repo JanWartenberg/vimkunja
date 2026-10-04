@@ -66,7 +66,7 @@ The outermost safely parsed Description structure that Vimkunja cannot edit inte
 _Avoid_: Opaque node, unsupported text
 
 **Blocked Description**:
-A Description whose Source HTML is malformed, unsafe, or cannot be preserved reliably, so structured editing and saving remain disabled until explicit recovery.
+A Description whose Source HTML boundaries cannot be preserved reliably enough to isolate a problem, so structured editing and saving remain disabled until explicit recovery. A reliably bounded unsupported, active, or ambiguous subtree is protected locally as Opaque; surrounding Native content remains editable and savable.
 _Avoid_: Opaque Description, read-only node
 
 **Block quote**:
@@ -101,8 +101,12 @@ _Avoid_: HTML tag, protected marker
 A visible structural or layout cue in a Description projection that is not editable text, such as a quote prefix, Code fence, or emphasis-layer separator.
 _Avoid_: Editable delimiter, Opaque subtree
 
+**Blockwise Visual Mode**:
+A Description selection mode whose units are complete logical blocks rather than wrapped screen rows; its user-facing label is `VISUAL BLOCKS`.
+_Avoid_: Line-Select Mode, rectangular selection
+
 **Space formatting palette**:
-A temporary, context-sensitive menu of Description formatting actions opened with `Space` in Normal or Visual Mode; a second key selects an action.
+A temporary, context-sensitive menu of Description formatting actions opened with `Space` in Normal or Visual Mode; a second key selects an action. Characterwise selection offers inline formatting; blockwise selection offers structural actions.
 _Avoid_: Formatting toolbar, Insert-Mode menu
 
 **Paragraph-motion unit**:
