@@ -1725,6 +1725,15 @@ func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, err
 	if err := tx.QueryRowContext(ctx, `SELECT project_id, done FROM tasks WHERE id = ?`, draft.ID).Scan(&oldProjectID, &done); err != nil {
 		return Task{}, fmt.Errorf("get task for update: %w", err)
 	}
+	// The destination may have disappeared since the editor loaded Projects.
+	// Validate it in this transaction before changing the Task or its relations.
+	var projectExists bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?)`, draft.ProjectID).Scan(&projectExists); err != nil {
+		return Task{}, fmt.Errorf("validate target project: %w", err)
+	}
+	if !projectExists {
+		return Task{}, fmt.Errorf("update task: project %d not found", draft.ProjectID)
+	}
 	dueDate, err := dueDateValue(draft.DueDate)
 	if err != nil {
 		return Task{}, err

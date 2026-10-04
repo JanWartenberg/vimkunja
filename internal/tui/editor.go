@@ -861,6 +861,10 @@ func (e *taskEditor) workflowStatusPickerIndex() int {
 }
 
 func (m *model) saveEditor(closeAfter bool) tea.Cmd {
+	if m.savingEditor != nil {
+		m.toast = "Saving Task…"
+		return nil
+	}
 	e := m.editor
 	if e == nil {
 		return nil
@@ -883,7 +887,9 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 			return cursorBlinkCmd()
 		}
 	}
-	draft := e.draft
+	draft := cloneTaskDraft(e.draft)
+	m.savingEditor = e
+	m.toast = "Saving Task…"
 	m.taskLoading = true
 	return func() tea.Msg {
 		ctx, cancel := contextWithTimeout()
@@ -896,7 +902,7 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 		} else {
 			before, snapshotErr := m.store.TaskUndoState(ctx, draft.ID)
 			if snapshotErr != nil {
-				return taskSavedMsg{closeAfter: closeAfter, err: snapshotErr}
+				return taskSavedMsg{editor: e, draft: draft, closeAfter: closeAfter, err: snapshotErr}
 			}
 			task, err = m.store.UpdateTask(ctx, draft)
 			if err == nil {
@@ -907,7 +913,7 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 				}
 			}
 		}
-		return taskSavedMsg{task: task, closeAfter: closeAfter, undo: undo, err: err}
+		return taskSavedMsg{task: task, editor: e, draft: draft, closeAfter: closeAfter, undo: undo, err: err}
 	}
 }
 

@@ -73,6 +73,12 @@ Im Detail-pane können Project, Title, Priority, Due Date, Labels, Description u
 
 In den Command-Prompts von Comments, Labels und Global Search gelten ebenfalls `:qa`, `:qa!` und `:wqa`. `:qa` schützt ungespeicherte Task-/Comment-Entwürfe; `:wqa` speichert einen vorhandenen Comment-Entwurf zusammen mit dem Task atomar und beendet erst nach erfolgreichem Speichern. Bei Fehlern bleibt der Entwurf offen. Im Insert Mode zuerst `Esc` drücken.
 
+While a Task Detail save is running, keyboard input pauses and the footer shows
+`Saving Task…`; `Ctrl+C` remains available for an emergency exit. Input resumes
+after success or failure. Failed saves keep the draft for retry. A late
+asynchronous draft change stays unsaved and prevents save-and-close or
+save-and-quit from discarding it.
+
 Tests:
 
 ```bash

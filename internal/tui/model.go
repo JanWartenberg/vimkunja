@@ -172,6 +172,7 @@ type model struct {
 	pendingSearchDetailTaskID int64
 	quitAfterSave             bool
 	editor                    *taskEditor
+	savingEditor              *taskEditor
 	cursorVisible             bool
 
 	initialProjectID int64
@@ -304,6 +305,8 @@ type (
 	}
 	taskSavedMsg struct {
 		task       vimkunja.Task
+		editor     *taskEditor
+		draft      vimkunja.TaskDraft
 		closeAfter bool
 		undo       *undoEntry
 		err        error
@@ -434,6 +437,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Windows input can report a key release after its press. Releases must
 		// not consume a pending multi-key command such as Ctrl+W h.
 		if _, released := key.(tea.KeyReleaseMsg); released {
+			return m, nil
+		}
+		// Keep the save's editor and close/quit intent stable until completion.
+		// Ctrl-C remains the explicit application-wide emergency exit.
+		if m.savingEditor != nil && strings.ToLower(key.String()) != "ctrl+c" {
+			m.toast = "Saving Task…"
 			return m, nil
 		}
 
@@ -822,7 +831,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.editor.originalLabels = append([]vimkunja.Label(nil), typed.labels...)
 		m.editor.draft.LabelIDs = editorLabelIDs(m.editor.labels)
 		m.editor.draft.LabelIDsSet = false
-		m.editor.original = cloneTaskDraft(m.editor.draft)
+		m.editor.original.LabelIDs = append([]int64(nil), m.editor.draft.LabelIDs...)
+		m.editor.original.LabelIDsSet = false
 		return m, nil
 
 	case taskLabelsSavedMsg:
@@ -943,7 +953,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.applyUndoRestore(typed)
 
 	case taskSavedMsg:
+		if typed.editor == nil || typed.editor != m.savingEditor {
+			return m, nil
+		}
+		m.savingEditor = nil
 		m.taskLoading = false
+		if m.toast == "Saving Task…" {
+			m.toast = ""
+		}
 		quitAfterSave := m.quitAfterSave
 		m.quitAfterSave = false
 		if typed.err != nil {
@@ -951,6 +968,32 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.rememberUndo(typed.undo)
+		if typed.editor != m.editor {
+			// A background refresh replaced the Detail while the write ran.
+			// Refresh persisted data without attaching the result to another draft.
+			return m, m.refreshActiveTasks()
+		}
+		if m.editor != nil {
+			saved := cloneTaskDraft(typed.draft)
+			// Metadata loaded during the save was not part of a requested write.
+			if !saved.LabelIDsSet {
+				saved.LabelIDs = append([]int64(nil), m.editor.original.LabelIDs...)
+			}
+			if saved.WorkflowBucketID == 0 {
+				saved.WorkflowBucketID = m.editor.original.WorkflowBucketID
+			}
+			saved.ID, saved.Done, saved.DoneSet = typed.task.ID, typed.task.Done, false
+			m.editor.id, m.editor.draft.ID = typed.task.ID, typed.task.ID
+			if m.editor.draft.Done == typed.draft.Done {
+				m.editor.draft.Done = typed.task.Done
+			}
+			m.editor.original = saved
+			m.editor.draft.DoneSet = m.editor.draft.Done != saved.Done
+			if m.editor.dirty() && (typed.closeAfter || quitAfterSave) {
+				typed.closeAfter, quitAfterSave = false, false
+				m.recordError(fmt.Errorf("Task draft changed while saving; save again before closing."))
+			}
+		}
 		if quitAfterSave {
 			return m, tea.Quit
 		}
@@ -960,11 +1003,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if typed.closeAfter {
 			m.closeTaskDetail()
 		} else if m.editor != nil {
-			m.editor.id = typed.task.ID
-			m.editor.draft.ID = typed.task.ID
-			m.editor.draft.Done = typed.task.Done
-			m.editor.draft.DoneSet = false
-			m.editor.original = cloneTaskDraft(m.editor.draft)
 			m.editor.mode = editorNormal
 			m.showDetail = true
 			m.focus = paneDetail

@@ -1664,7 +1664,9 @@ func TestTaskMovedFromKanbanLoadsDestinationProjectViewsBeforeBoard(t *testing.T
 	m.projectViewPreference = projectViewKanban
 	m.projectViews = []vimkunja.ProjectView{{ID: 10, ViewKind: "kanban", BucketConfigurationMode: "manual"}}
 
-	updated, cmd := m.Update(taskSavedMsg{task: vimkunja.Task{ID: 7, ProjectID: 2, Title: "Moved"}})
+	m.editor = &taskEditor{draft: vimkunja.TaskDraft{ID: 7, ProjectID: 2, Title: "Moved"}}
+	m.savingEditor = m.editor
+	updated, cmd := m.Update(taskSavedMsg{task: vimkunja.Task{ID: 7, ProjectID: 2, Title: "Moved"}, editor: m.editor, draft: m.editor.draft})
 	m = updated.(*model)
 	if cmd == nil || m.kanbanActive || m.currentViewID != 0 {
 		t.Fatalf("post-save state = cmd:%v Kanban:%v view:%d", cmd != nil, m.kanbanActive, m.currentViewID)
