@@ -110,6 +110,8 @@ In den Command-Prompts von Comments, Labels und Global Search gelten ebenfalls `
 
 Ein geladener, unveränderter Workflow-Status wird beim Task- oder Comment-Save nicht erneut angewendet. Dadurch bleiben `Done` und der vorhandene Abschlusszeitstempel bei anderen Änderungen erhalten. Ein tatsächlicher Bucket-Wechsel synchronisiert den Status weiterhin wie bisher.
 
+Bucket-Konfigurationen mit `0` oder NULL gelten als nicht gesetzt. Ohne Default-Bucket wird der erste gültige Bucket nach Position verwendet; bei gleicher Position entscheidet die ID. Das gilt für neue Tasks, Project-Wechsel und das Wiederöffnen. Ohne Done-Bucket bleibt beim Abschließen die aktuelle Zuordnung erhalten. Gibt es keinen gültigen Bucket, wird keine Zuordnung erfunden. Ungültige konfigurierte Bucket-Verweise brechen den Schreibvorgang atomar ab.
+
 Beim Verschieben eines erledigten Tasks in ein anderes Project wird je Ziel-View der konfigurierte Done-Bucket verwendet. Fehlt dieser, bleibt die Default-Zuordnung. Ein reiner Project-Wechsel erhält `Done` und den Abschlusszeitstempel.
 
 Fälligkeitsdaten werden weiterhin als `YYYY-MM-DD` bearbeitet. Solange das Datum unverändert bleibt, erhalten Task-Saves und Undo/Redo die vorhandene Uhrzeit exakt. Ein geändertes Datum speichert Mitternacht UTC; das Löschen des Datums speichert NULL. Undo/Redo weist externe Änderungen am vollständigen Fälligkeitszeitstempel zurück.

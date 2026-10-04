@@ -23,7 +23,7 @@ the authorized F01/F02 follow-up is recorded below.
 
 The maintainer requested one Scratch ticket per finding and implementation of
 the save errors first. Completed F01/F02 tickets were moved to the archive per
-repository policy. F03/F04/F05/F06 were subsequently repaired and archived; five tickets
+repository policy. F03/F04/F05/F06/F07 were subsequently repaired and archived; four tickets
 remain in Scratch.
 
 | Finding | Ticket | Current state |
@@ -34,7 +34,7 @@ remain in Scratch.
 | F04 | [Preserve full due timestamp](../../.archive/2026-10-04/data-integrity-audit/issues/04-preserve-due-time-and-undo-conflicts.md) | completed |
 | F05 | [Preserve Done for unchanged workflow](../../.archive/2026-10-04/data-integrity-audit/issues/05-preserve-done-for-unchanged-workflow.md) | completed |
 | F06 | [Use destination Done Bucket](../../.archive/2026-10-04/data-integrity-audit/issues/06-place-completed-task-in-target-done-bucket.md) | completed |
-| F07 | [Handle zero/NULL Bucket configuration](issues/07-handle-zero-bucket-configuration.md) | ready-for-agent |
+| F07 | [Handle zero/NULL Bucket configuration](../../.archive/2026-10-04/data-integrity-audit/issues/07-handle-zero-bucket-configuration.md) | completed |
 | F08 | [Preserve completion timestamps](issues/08-preserve-unrelated-completion-timestamps.md) | ready-for-agent |
 | F09 | [Protect recurring Task completion](issues/09-protect-recurring-task-completion.md) | needs-triage |
 | F10 | [Clean polymorphic deletion links](issues/10-clean-task-polymorphic-relations.md) | ready-for-agent |
@@ -157,6 +157,34 @@ passed three repetitions; the isolated staged tree passes full race tests,
 build and vet. Opt-in audit safety controls pass. No remaining scoped review
 blocker, schema/dependency change, user data access, manual or native Windows
 acceptance. F07/F08 remain open; five findings remain in Scratch.
+
+## Zero/NULL Bucket-configuration repair — 2026-10-04
+
+F07 is repaired and reviewed. Zero and NULL defaults resolve to the first
+positive Bucket ID in the View, ordered by position and ID. Creation, Project
+moves (both Done states) and reopening share the rule. Completion without a
+positive Done configuration preserves the existing assignment. No candidates
+means no invented Bucket assignment; positions remain initialized. Configured
+positive references remain authoritative and must belong to their View before
+writes proceed. Invalid references roll back the full operation.
+
+Board metadata, new Detail workflow selection and task-list workflow metadata
+now expose the same effective default. Review corrected list availability when
+a manual View exists but configuration and current assignment are all NULL.
+The fallback reads run after closing result rows, without requiring extra DB
+connections. Old synthetic fixtures now include their configured Buckets; the
+F06 Done-only View expectation follows the new fallback for unfinished moves.
+
+The original two audit reproductions failed consistently before the fix and now
+run in ordinary regression coverage. Focused checks pass three repetitions:
+NULL/zero configuration, position/ID ordering, invalid zero candidates, creation,
+completed/unfinished Project moves, completion/reopening, selected-View scoping,
+no-Bucket Views, missing/foreign configuration rollback and combined Comment-save
+late failure rollback. Read and write checks also pass with one DB connection.
+The isolated staged tree passes full race tests (including corpus verification),
+both builds and vet; opt-in audit safety controls pass. No remaining scoped
+review blocker, schema/dependency change, user database access, manual acceptance
+or native Windows verification. F08–F11 remain open (four findings).
 
 ## Confirmed findings
 
@@ -284,5 +312,5 @@ altered to make these results pass.
 6. **F10/F11:** clean polymorphic links transactionally and allocate a stable UID
    where supported. Retain the explicit attachment-file preservation contract.
 
-F01/F02/F03/F04/F05/F06 were subsequently authorized and repaired as recorded above. The
+F01/F02/F03/F04/F05/F06/F07 were subsequently authorized and repaired as recorded above. The
 remaining proposed repair boundaries have not been implemented.

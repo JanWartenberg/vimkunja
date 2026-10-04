@@ -95,8 +95,9 @@ func TestProjectMoveInitializesEachViewFromPersistedDone(t *testing.T) {
 				if done {
 					want[0].BucketID = 201
 					want[1].BucketID = 211
-					want = append(want, TaskBucketAssignment{ViewID: 25, BucketID: 251})
 				}
+				// An unconfigured default falls back to the first Bucket, including a Done-only View.
+				want = append(want, TaskBucketAssignment{ViewID: 25, BucketID: 251})
 				if !reflect.DeepEqual(state.BucketAssignments, want) {
 					t.Fatalf("destination assignments = %#v, want %#v", state.BucketAssignments, want)
 				}

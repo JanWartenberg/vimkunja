@@ -785,6 +785,7 @@ func TestToggleTaskDone_MovesBucketWhenDone(t *testing.T) {
 	_, err := store.db.Exec(`
 		INSERT INTO projects (id, title) VALUES (1, 'Test Project');
 		INSERT INTO project_views (id, project_id, title, view_kind, done_bucket_id) VALUES (1, 1, 'Kanban', 3, 99);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES (10, 'Bucket', 1, 10), (99, 'Bucket', 1, 99);
 		INSERT INTO tasks (id, project_id, title) VALUES (1, 1, 'Task 1');
 		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES (1, 1, 10, 1);
 	`)
@@ -847,6 +848,7 @@ func TestToggleTaskDone_MovesTaskToEachViewsDoneBucket(t *testing.T) {
 		INSERT INTO project_views (id, project_id, title, view_kind, done_bucket_id) VALUES
 			(1, 1, 'Team', 3, 99),
 			(2, 1, 'Personal', 3, 199);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES (10, 'Bucket', 1, 10), (99, 'Bucket', 1, 99), (20, 'Bucket', 2, 20), (199, 'Bucket', 2, 199);
 		INSERT INTO tasks (id, project_id, title) VALUES (1, 1, 'Task 1');
 		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES
 			(1, 1, 10, 1),
@@ -882,6 +884,7 @@ func TestToggleTaskDone_ScopesBucketMoveToSelectedView(t *testing.T) {
 		INSERT INTO project_views (id, project_id, title, view_kind, bucket_configuration_mode, done_bucket_id) VALUES
 			(1, 1, 'Team', 3, 1, 99),
 			(2, 1, 'Personal', 3, 1, 199);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES (10, 'Bucket', 1, 10), (99, 'Bucket', 1, 99), (20, 'Bucket', 2, 20), (199, 'Bucket', 2, 199);
 		INSERT INTO tasks (id, project_id, title) VALUES (1, 1, 'Task 1');
 		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES
 			(1, 1, 10, 1),
@@ -942,6 +945,7 @@ func TestToggleTaskDone_MovesToDefaultBucketWhenUndone(t *testing.T) {
 	_, err := store.db.Exec(`
 		INSERT INTO projects (id, title) VALUES (1, 'Test Project');
 		INSERT INTO project_views (id, project_id, title, view_kind, done_bucket_id, default_bucket_id) VALUES (1, 1, 'Kanban', 3, 99, 10);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES (10, 'Bucket', 1, 10), (99, 'Bucket', 1, 99);
 		INSERT INTO tasks (id, project_id, title, done) VALUES (1, 1, 'Task 1', 1);
 		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES (1, 1, 99, 1);
 	`)
@@ -975,6 +979,7 @@ func TestToggleTaskDone_MovesTaskToEachViewsDefaultBucketWhenUndone(t *testing.T
 		INSERT INTO project_views (id, project_id, title, view_kind, done_bucket_id, default_bucket_id) VALUES
 			(1, 1, 'Team', 3, 99, 10),
 			(2, 1, 'Personal', 3, 199, 20);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES (10, 'Bucket', 1, 10), (99, 'Bucket', 1, 99), (20, 'Bucket', 2, 20), (199, 'Bucket', 2, 199);
 		INSERT INTO tasks (id, project_id, title, done) VALUES (1, 1, 'Task 1', 1);
 		INSERT INTO task_buckets (id, task_id, bucket_id, project_view_id) VALUES
 			(1, 1, 99, 1),

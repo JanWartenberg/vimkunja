@@ -412,7 +412,7 @@ func (s *SQLiteStore) populateTaskWorkflow(ctx context.Context, tasks []Task) er
 		args = append(args, task.ID)
 	}
 	query := fmt.Sprintf(`
-		SELECT t.id, wf.default_bucket_id, wf.done_bucket_id,
+		SELECT t.id, wf.view_id, wf.default_bucket_id, wf.done_bucket_id,
 			(SELECT tb.bucket_id
 			 FROM task_buckets tb
 			 WHERE tb.task_id = t.id AND tb.project_view_id = wf.view_id
@@ -438,19 +438,22 @@ func (s *SQLiteStore) populateTaskWorkflow(ctx context.Context, tasks []Task) er
 	for i := range tasks {
 		byID[tasks[i].ID] = &tasks[i]
 	}
+	unconfigured := make(map[int64][]*Task)
 	for rows.Next() {
 		var id int64
-		var defaultBucketID, doneBucketID, currentBucketID sql.NullInt64
-		if err := rows.Scan(&id, &defaultBucketID, &doneBucketID, &currentBucketID); err != nil {
+		var viewID, defaultBucketID, doneBucketID, currentBucketID sql.NullInt64
+		if err := rows.Scan(&id, &viewID, &defaultBucketID, &doneBucketID, &currentBucketID); err != nil {
 			return fmt.Errorf("scan task workflow status: %w", err)
 		}
 		task := byID[id]
-		if task == nil || !defaultBucketID.Valid && !doneBucketID.Valid && !currentBucketID.Valid {
+		if task == nil || !viewID.Valid {
 			continue
 		}
 		task.Workflow.Available = true
-		if defaultBucketID.Valid {
+		if defaultBucketID.Valid && defaultBucketID.Int64 > 0 {
 			task.Workflow.DefaultBucketID = defaultBucketID.Int64
+		} else if viewID.Valid {
+			unconfigured[viewID.Int64] = append(unconfigured[viewID.Int64], task)
 		}
 		if doneBucketID.Valid {
 			task.Workflow.DoneBucketID = doneBucketID.Int64
@@ -461,6 +464,18 @@ func (s *SQLiteStore) populateTaskWorkflow(ctx context.Context, tasks []Task) er
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("iterate task workflow status: %w", err)
+	}
+	if err := rows.Close(); err != nil {
+		return fmt.Errorf("close task workflow status: %w", err)
+	}
+	for viewID, affected := range unconfigured {
+		id, err := resolveDefaultBucket(ctx, s.db, viewID, sql.NullInt64{})
+		if err != nil {
+			return err
+		}
+		for _, task := range affected {
+			task.Workflow.DefaultBucketID = id
+		}
 	}
 	return nil
 }
@@ -1083,6 +1098,13 @@ func (s *SQLiteStore) LoadManualKanbanBoard(ctx context.Context, projectID int64
 	}
 
 	view := views[0]
+	if err := rows.Close(); err != nil {
+		return KanbanBoard{}, fmt.Errorf("close manual kanban views: %w", err)
+	}
+	view.DefaultBucketID, err = resolveDefaultBucket(ctx, s.db, view.ID, sql.NullInt64{Int64: view.DefaultBucketID, Valid: view.DefaultBucketID > 0})
+	if err != nil {
+		return KanbanBoard{}, err
+	}
 	bucketRows, err := s.db.QueryContext(ctx, `
 		SELECT b.id, b.title, b.position,
 			t.id, COALESCE(t.project_id, 0), COALESCE(t.title, ''), COALESCE(t.done, 0), t.due_date, COALESCE(t.priority, 0), t."index", t.description
@@ -1190,7 +1212,8 @@ func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, task
 
 	buckets, err := s.db.QueryContext(ctx, `
 		SELECT b.id, b.title,
-			tb.task_id IS NOT NULL OR (? = 0 AND b.id = pv.default_bucket_id)
+			tb.task_id IS NOT NULL OR (? = 0 AND b.id = CASE WHEN pv.default_bucket_id > 0 THEN pv.default_bucket_id ELSE
+				(SELECT fb.id FROM buckets fb WHERE fb.project_view_id = pv.id AND fb.id > 0 ORDER BY fb.position ASC, fb.id ASC LIMIT 1) END)
 		FROM buckets b
 		JOIN project_views pv ON pv.id = b.project_view_id
 		LEFT JOIN task_buckets tb
@@ -1346,20 +1369,40 @@ func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, 
 		WHERE t.id = ?
 			AND pv.view_kind = ?
 			AND pv.bucket_configuration_mode = ?
-			AND CASE WHEN ? THEN pv.done_bucket_id ELSE pv.default_bucket_id END IS NOT NULL
-	`, boolToInt(done), taskID, viewKindKanban, bucketConfigurationManual, boolToInt(done))
+	`, boolToInt(done), taskID, viewKindKanban, bucketConfigurationManual)
 	if err != nil {
 		return fmt.Errorf("list configured workflow buckets: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var viewID, bucketID int64
-		if err := rows.Scan(&viewID, &bucketID); err != nil {
+		var viewID int64
+		var configured sql.NullInt64
+		if err := rows.Scan(&viewID, &configured); err != nil {
 			return fmt.Errorf("scan configured workflow bucket: %w", err)
 		}
 		if len(selectedViewID) > 0 && selectedViewID[0] != 0 && selectedViewID[0] != viewID {
 			continue
+		}
+		bucketID := int64(0)
+		if done {
+			// No configured Done Bucket means completion does not move the card.
+			if !configured.Valid || configured.Int64 <= 0 {
+				continue
+			}
+			bucketID = configured.Int64
+		} else {
+			var err error
+			bucketID, err = resolveDefaultBucket(ctx, tx, viewID, configured)
+			if err != nil {
+				return err
+			}
+		}
+		if bucketID == 0 {
+			continue
+		}
+		if err := validateViewBucket(ctx, tx, viewID, bucketID); err != nil {
+			return err
 		}
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE task_buckets
@@ -1860,6 +1903,38 @@ func nextTaskIndex(ctx context.Context, tx *sql.Tx, projectID int64) (int64, err
 	return index, nil
 }
 
+type bucketQuerier interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}
+
+// Zero/NULL configuration is absent. Match Vikunja's position ordering and
+// make ties deterministic without ever inventing a Bucket-zero assignment.
+func resolveDefaultBucket(ctx context.Context, q bucketQuerier, viewID int64, configured sql.NullInt64) (int64, error) {
+	if configured.Valid && configured.Int64 > 0 {
+		return configured.Int64, nil
+	}
+	var id int64
+	err := q.QueryRowContext(ctx, `SELECT id FROM buckets WHERE project_view_id = ? AND id > 0 ORDER BY position ASC, id ASC LIMIT 1`, viewID).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, fmt.Errorf("resolve default Bucket: %w", err)
+	}
+	return id, nil
+}
+
+func validateViewBucket(ctx context.Context, tx *sql.Tx, viewID, bucketID int64) error {
+	var exists bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM buckets WHERE id = ? AND project_view_id = ?)`, bucketID, viewID).Scan(&exists); err != nil {
+		return fmt.Errorf("validate configured Bucket: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("configured Bucket %d does not belong to View %d", bucketID, viewID)
+	}
+	return nil
+}
+
 func initializeViewAssignments(ctx context.Context, tx *sql.Tx, taskID, projectID int64, done bool) error {
 	query := `SELECT id, default_bucket_id, NULL FROM project_views WHERE project_id = ?`
 	if done {
@@ -1876,16 +1951,19 @@ func initializeViewAssignments(ctx context.Context, tx *sql.Tx, taskID, projectI
 		if err := rows.Scan(&viewID, &bucketID, &doneBucketID); err != nil {
 			return fmt.Errorf("scan target project view: %w", err)
 		}
-		// Project moves initialize every destination View from the persisted
-		// Done state; zero/NULL Done configuration keeps the default assignment.
+		selectedBucket := int64(0)
 		if done && doneBucketID.Valid && doneBucketID.Int64 > 0 {
-			bucketID = doneBucketID
-			var exists bool
-			if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM buckets WHERE id = ? AND project_view_id = ?)`, bucketID.Int64, viewID).Scan(&exists); err != nil {
-				return fmt.Errorf("validate destination Done Bucket: %w", err)
+			selectedBucket = doneBucketID.Int64
+		} else {
+			var err error
+			selectedBucket, err = resolveDefaultBucket(ctx, tx, viewID, bucketID)
+			if err != nil {
+				return err
 			}
-			if !exists {
-				return fmt.Errorf("destination Done Bucket %d does not belong to View %d", bucketID.Int64, viewID)
+		}
+		if selectedBucket != 0 {
+			if err := validateViewBucket(ctx, tx, viewID, selectedBucket); err != nil {
+				return err
 			}
 		}
 		var position float64
@@ -1895,8 +1973,8 @@ func initializeViewAssignments(ctx context.Context, tx *sql.Tx, taskID, projectI
 		if _, err := tx.ExecContext(ctx, `INSERT INTO task_positions (task_id, project_view_id, position) VALUES (?, ?, ?)`, taskID, viewID, position); err != nil {
 			return fmt.Errorf("insert task position: %w", err)
 		}
-		if bucketID.Valid {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (?, ?, ?)`, taskID, bucketID.Int64, viewID); err != nil {
+		if selectedBucket != 0 {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (?, ?, ?)`, taskID, selectedBucket, viewID); err != nil {
 				return fmt.Errorf("insert initial task bucket: %w", err)
 			}
 		}

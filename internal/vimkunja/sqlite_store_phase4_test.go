@@ -13,6 +13,7 @@ func TestCreateTask_InitializesDefaultsAndNullDueDate(t *testing.T) {
 		INSERT INTO projects (id, title, owner_id) VALUES (1, 'Project', 7);
 		INSERT INTO project_views (id, project_id, title, view_kind, default_bucket_id) VALUES
 			(10, 1, 'List', 0, NULL), (11, 1, 'Board', 3, 99);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES (99, 'Default', 11, 1);
 		INSERT INTO task_positions (task_id, project_view_id, position) VALUES (42, 10, 4), (42, 11, 8);
 	`)
 	if err != nil {
@@ -263,6 +264,7 @@ func TestUpdateTask_MovesToTargetProjectDefaults(t *testing.T) {
 		INSERT INTO projects (id, title) VALUES (1, 'Old'), (2, 'New');
 		INSERT INTO project_views (id, project_id, title, view_kind, default_bucket_id) VALUES
 			(10, 1, 'Old Board', 3, 10), (20, 2, 'New Board', 3, 20);
+		INSERT INTO buckets (id, title, project_view_id, position) VALUES (10, 'Default', 10, 1), (20, 'Default', 20, 1);
 		INSERT INTO tasks (id, project_id, title, "index", created, updated, created_by_id) VALUES (1, 1, 'Old title', 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1);
 		INSERT INTO task_positions (task_id, project_view_id, position) VALUES (1, 10, 3);
 		INSERT INTO task_buckets (id, task_id, project_view_id, bucket_id) VALUES (1, 1, 10, 10);

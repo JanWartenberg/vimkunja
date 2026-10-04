@@ -46,44 +46,6 @@ func auditTitleChange(t *testing.T, store *SQLiteStore) (TaskUndoState, TaskUndo
 	return before, auditState(t, store)
 }
 
-func TestIntegrityAuditZeroBucketConfiguration(t *testing.T) {
-	t.Run("creation_uses_first_bucket_without_configured_default", func(t *testing.T) {
-		store := setupUndoStore(t)
-		auditExec(t, store, `UPDATE project_views SET default_bucket_id = 0 WHERE id = 10;
-			UPDATE buckets SET position = id;`)
-		task, err := store.CreateTask(context.Background(), TaskDraft{ProjectID: 1, Title: "New"})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if bucket := auditInt(t, store, `SELECT bucket_id FROM task_buckets WHERE task_id = ? AND project_view_id = 10`, task.ID); bucket != 100 {
-			t.Errorf("new Task assigned to Bucket %d, want first Bucket 100", bucket)
-		}
-		board, err := store.LoadManualKanbanBoard(context.Background(), 1)
-		if err != nil {
-			t.Fatal(err)
-		}
-		found := false
-		for _, bucket := range board.Buckets {
-			for _, card := range bucket.Tasks {
-				found = found || card.ID == task.ID
-			}
-		}
-		if !found {
-			t.Error("new Task disappeared from the manual Kanban board")
-		}
-	})
-	t.Run("no_done_bucket_preserves_current_assignment", func(t *testing.T) {
-		store := setupUndoStore(t)
-		auditExec(t, store, `UPDATE project_views SET done_bucket_id = 0 WHERE id = 10;`)
-		if err := store.ToggleTaskDone(context.Background(), 1, true); err != nil {
-			t.Fatal(err)
-		}
-		if bucket := auditInt(t, store, `SELECT bucket_id FROM task_buckets WHERE task_id = 1 AND project_view_id = 10`); bucket != 100 {
-			t.Errorf("no Done Bucket configured: current Bucket changed to %d, want 100", bucket)
-		}
-	})
-}
-
 func TestIntegrityAuditCompletionTimestampPreservation(t *testing.T) {
 	for _, action := range []string{"detail_title_save", "inline_title_undo"} {
 		t.Run(action, func(t *testing.T) {
