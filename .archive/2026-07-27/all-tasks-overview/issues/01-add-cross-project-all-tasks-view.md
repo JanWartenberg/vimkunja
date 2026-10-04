@@ -25,7 +25,7 @@ Archived source: `SPEC_FUNDAMENT.md`, “Feature: OverviewView”, and `TUI_IDEA
 
 ### 2026-07-22 — TUI prototype awaiting maintainer evaluation
 
-Throwaway prototype: [`prototype/overview_tui/`](../../../prototype/overview_tui/)
+Throwaway prototype: [`prototype/overview_tui/`](../../../../prototype/overview_tui/)
 
 Run it with:
 

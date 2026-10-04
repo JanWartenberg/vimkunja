@@ -50,6 +50,10 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 25. [Timeboxed Focus Plans brainstormen](.scratch/timeboxed-focus-plans/issues/01-brainstorm-timeboxed-focus-plans.md) – mögliche additive Vimkunja-Schicht für begrenzte, regelmäßige Aufmerksamkeit auf fortlaufende Projects; erst diskutieren und prototypisieren.
 26. [Full Vim Normal mode untersuchen](.scratch/full-vim-normal-mode/issues/01-investigate-full-vim-normal-mode.md) – vollständige Vim-Kompatibilität gegen Aufwand, Konflikte und einen begrenzten Scope bewerten; erst nach den Tier-1-Motions.
 
+## Veröffentlichung
+
+- [Publish to GitHub](.scratch/publish-to-github/issues/01-publish-to-github.md) – MIT, README-/Link-Korrekturen, Schutz vor versehentlicher DB-Neuanlage und Linux-/Windows-CI vorbereitet; produktives Start-Template und belegte Vikunja-Version offen. **Nur `main` und ausgewählte Tags veröffentlichen; keine Backup-Referenzen und kein Mirror-Push.**
+
 ## Dokumentation
 
 - [README.md](README.md) – Einführung, Bedienung, Vision

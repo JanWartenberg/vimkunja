@@ -50,9 +50,7 @@ func run() error {
 	// SQLite-only: always use local database file
 	store, err := vimkunja.NewSQLiteStore(*dbPathFlag)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open SQLite database at %s: %v\n", *dbPathFlag, err)
-		fmt.Fprintln(os.Stderr, "Please ensure the database file exists and is accessible.")
-		os.Exit(1)
+		return fmt.Errorf("%w; use --db with an existing Vikunja database, or run vimkunja-tutorial to try Vimkunja without one", err)
 	}
 
 	config.Store = store

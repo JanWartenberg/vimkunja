@@ -21,8 +21,8 @@ Archived sources: `SPEC_FUNDAMENT.md`, “Globale Suche/Filter”, and `TUI_IDEA
 
 ## Related follow-ups
 
-- [Search within the focused Pane](../../local-search/issues/01-search-within-focused-pane.md) — future `/` and `n`/`N` local-search contract.
-- [Add advanced global Search query and ranking](02-add-advanced-global-search-query-and-ranking.md) — future quoted phrases, negation, fuzzy matching, and ranking.
+- [Search within the focused Pane](../../../../.scratch/local-search/issues/01-search-within-focused-pane.md) — future `/` and `n`/`N` local-search contract.
+- [Add advanced global Search query and ranking](../../../../.scratch/global-search-filter/issues/02-add-advanced-global-search-query-and-ranking.md) — future quoted phrases, negation, fuzzy matching, and ranking.
 
 ## Comments
 

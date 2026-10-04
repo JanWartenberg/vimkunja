@@ -1,6 +1,7 @@
 
 # Documentation archive
-.archive/
+.archive/*
+!.archive/TUI_IDEA.md
 
 # Local Windows build artifacts
 *.exe

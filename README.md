@@ -4,12 +4,47 @@
 
 Vimkunja ist eine tastaturorientierte Terminal-Oberfläche für eine lokale [Vikunja](https://vikunja.io/)-SQLite-Datenbank. Sie richtet sich an Vim-Nutzer und ergänzt Vikunjas Task-Verwaltung um einen schnellen Terminal-Workflow mit Projects, List View, Task-Detail und Workflow-Status.
 
+### Installation und erster Start
+
+Voraussetzungen: Git, Go 1.25 oder neuer und ein interaktives Terminal. Linux amd64 wurde lokal geprüft; Windows amd64 lässt sich bauen, native Windows-Terminaltests stehen noch aus.
+
+Bis die GitHub-Adresse feststeht, steht `<repository-url>` für die tatsächliche Clone-URL:
+
 ```bash
-cd /workspace/vimkunja
-go run ./cmd/vimkunja --db internal/db/vikunja.db
+git clone <repository-url> vimkunja
 ```
 
-Der Datenbankpfad muss existieren und lesbar sein. Vimkunja greift direkt auf die lokale SQLite-Datenbank zu; es gibt keinen REST-Modus.
+```bash
+cd vimkunja
+```
+
+Zum Ausprobieren ohne eigene Datenbank:
+
+```bash
+go run ./cmd/vimkunja-tutorial
+```
+
+Beide Programme bauen (unter Windows erhalten die Binärdateien die Endung `.exe`):
+
+```bash
+go build -o bin/ ./cmd/vimkunja ./cmd/vimkunja-tutorial
+```
+
+Für echte Tasks eine vorhandene Vikunja-SQLite-Datenbank angeben:
+
+```bash
+go run ./cmd/vimkunja --db /path/to/vikunja.db
+```
+
+`/path/to/vikunja.db` durch den eigenen Pfad ersetzen und bei Leerzeichen in Anführungszeichen setzen. Der Datenbankpfad muss eine vorhandene, lesbare und beschreibbare Datei sein. Vimkunja greift direkt auf SQLite zu; es gibt keinen REST-Modus.
+
+### Datenbank und Kompatibilität
+
+Eine blanke SQLite-Datei enthält keine Vikunja-Tabellen und reicht für einen produktiven Start nicht aus. Vimkunja erstellt oder migriert kein Vikunja-Schema. Für einen frischen produktiven Datenbestand muss Vikunja selbst die Datenbank initialisieren; User, Project und View müssen für den gewünschten Workflow vorhanden sein. Ein dauerhaftes Start-Template ist noch nicht spezifiziert. Die synthetische Tutorial-Datenbank ist ausschließlich zum Ausprobieren gedacht und wird beim Beenden gelöscht.
+
+Noch ist keine konkrete Vikunja-Release-Version durch einen vollständigen Integrationstest mit der Original-App freigegeben. Store-Tests prüfen synthetische Schemas; sie ersetzen keine Versionszusage. Das Erstellen von Labels sowie das Schreiben/Löschen von Comments setzt genau einen lokalen User voraus. Direkte SQLite-Schreibzugriffe führen keine Vikunja-Serveraktionen wie Webhooks, Benachrichtigungen oder Reminder-Dienste aus. Gleichzeitige Bearbeitung mit dem Server ist nicht als sicherer Workflow verifiziert.
+
+Vor dem Arbeiten mit echten Daten ein Backup erstellen. Weitere Views und native Richtext-Bearbeitung sind geplant; der aktuelle Funktionsstand steht in [STATUS.md](STATUS.md).
 
 ### Interactive keystroke tutorial
 
@@ -90,3 +125,7 @@ go test ./...
 Das Fundament ist abgeschlossen: List View, Editor, Workflow-Status, Fehleranzeige, Vim-artige Pane-Navigation, die einzelne manuelle Kanban View und die hierarchische Projects Pane sind verifiziert. Weitere Views sowie Bucket-Verwaltung bleiben im Backlog.
 
 Der aktuelle, priorisierbare Backlog liegt in `.scratch/`; der Kurzstatus mit Verweisen steht in [STATUS.md](STATUS.md). Abgeschlossene Anforderungen und Implementierungsdetails liegen im [Archiv](.archive/).
+
+## Lizenz
+
+Vimkunja steht unter der [MIT-Lizenz](LICENSE). Abhängigkeiten behalten ihre jeweiligen Lizenzen.

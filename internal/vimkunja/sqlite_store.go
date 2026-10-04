@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"html"
 	"math"
+	"net/url"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -47,7 +50,24 @@ type SQLiteStore struct {
 }
 
 func NewSQLiteStore(path string) (*SQLiteStore, error) {
-	db, err := sql.Open("sqlite", path)
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("open existing Vikunja database %q: %w", path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("open existing Vikunja database %q: expected a regular file", path)
+	}
+	absolutePath, err := filepath.Abs(path)
+	if err != nil {
+		return nil, fmt.Errorf("resolve database path: %w", err)
+	}
+	// mode=rw also prevents SQLite from creating a file if it disappears after Stat.
+	uriPath := filepath.ToSlash(absolutePath)
+	if !strings.HasPrefix(uriPath, "/") {
+		uriPath = "/" + uriPath // Windows drive paths need file:///C:/... .
+	}
+	uri := url.URL{Scheme: "file", Path: uriPath, RawQuery: "mode=rw"}
+	db, err := sql.Open("sqlite", uri.String())
 	if err != nil {
 		return nil, fmt.Errorf("open sqlite: %w", err)
 	}

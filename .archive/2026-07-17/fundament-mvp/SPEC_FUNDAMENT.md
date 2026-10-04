@@ -1,7 +1,7 @@
 # Spec: Vimkunja — Fundament (MVP Core)
 
 **Status:** Completed — manual smoke test verified
-**Related:** [`.archive/TUI_IDEA.md`](.archive/TUI_IDEA.md) (historische Decisions #1-11)  
+**Related:** [`.archive/TUI_IDEA.md`](../../TUI_IDEA.md) (historische Decisions #1-11)
 **Priority:** P0 (Blocks all features)
 
 ---
