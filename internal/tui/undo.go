@@ -47,7 +47,7 @@ func changedUndoFields(before, after vimkunja.TaskUndoState) []string {
 	if before.Priority != after.Priority {
 		fields = append(fields, "priority")
 	}
-	if before.DueDate != after.DueDate {
+	if before.DueDate != after.DueDate || before.DueDateStored != after.DueDateStored {
 		fields = append(fields, "due date")
 	}
 	if !reflect.DeepEqual(before.LabelIDs, after.LabelIDs) {

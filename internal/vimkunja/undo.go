@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
+	"time"
 )
 
 type undoQuerier interface {
@@ -27,11 +29,12 @@ func loadTaskUndoState(ctx context.Context, q undoQuerier, taskID int64) (TaskUn
 	var index sql.NullInt64
 	err := q.QueryRowContext(ctx, `
 		SELECT t.id, t.project_id, COALESCE(p.identifier, ''), t."index",
-			t.title, t.description, t.priority, t.due_date, t.done
+			t.title, t.description, t.priority, t.due_date, t.done,
+			COALESCE(CAST(t.due_date AS TEXT), '')
 		FROM tasks t JOIN projects p ON p.id = t.project_id
 		WHERE t.id = ?
 	`, taskID).Scan(&state.TaskID, &state.ProjectID, &projectIdentifier, &index,
-		&state.Title, &description, &state.Priority, &due, &state.Done)
+		&state.Title, &description, &state.Priority, &due, &state.Done, &state.DueDateStored)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return TaskUndoState{}, fmt.Errorf("load Task undo state: Task %d not found", taskID)
@@ -117,6 +120,17 @@ func (s *SQLiteStore) RestoreTaskUndoState(ctx context.Context, expected, target
 	if err != nil {
 		return fmt.Errorf("restore Task undo state: %w", err)
 	}
+	if target.DueDateStored != "" {
+		storedDate, err := storedDueDate(target.DueDateStored)
+		if err != nil {
+			return fmt.Errorf("restore Task undo state: %w", err)
+		}
+		if storedDate != target.DueDate {
+			return fmt.Errorf("restore Task undo state: stored due timestamp does not match due date")
+		}
+		// Keep the validated original encoding, including its offset and precision.
+		dueDate = target.DueDateStored
+	}
 	index := int64(0)
 	if current.ProjectID == target.ProjectID {
 		if err := tx.QueryRowContext(ctx, `SELECT "index" FROM tasks WHERE id = ?`, target.TaskID).Scan(&index); err != nil {
@@ -166,6 +180,31 @@ func (s *SQLiteStore) RestoreTaskUndoState(ctx context.Context, expected, target
 		return fmt.Errorf("restore Task undo state: commit: %w", err)
 	}
 	return nil
+}
+
+// storedDueDate accepts the timestamp encodings recognized by our SQLite
+// driver. Keep the encoded calendar date, rather than converting it to UTC:
+// Task reads use that same date for the editor's date-only presentation.
+func storedDueDate(value string) (string, error) {
+	goTime := strings.TrimSpace(value)
+	if monotonic := strings.Index(goTime, "m="); monotonic > 0 {
+		goTime = strings.TrimSpace(goTime[:monotonic])
+	}
+	if parsed, err := time.Parse("2006-01-02 15:04:05.999999999 -0700 MST", goTime); err == nil {
+		return parsed.Format("2006-01-02"), nil
+	}
+	for _, layout := range []string{
+		"2006-01-02 15:04:05.999999999-07:00",
+		"2006-01-02T15:04:05.999999999-07:00",
+		"2006-01-02 15:04:05.999999999",
+		"2006-01-02T15:04:05.999999999",
+		"2006-01-02 15:04", "2006-01-02T15:04", "2006-01-02",
+	} {
+		if parsed, err := time.Parse(layout, strings.TrimSuffix(value, "Z")); err == nil {
+			return parsed.Format("2006-01-02"), nil
+		}
+	}
+	return "", fmt.Errorf("invalid stored due timestamp %q", value)
 }
 
 func sameTaskUndoState(left, right TaskUndoState) bool {

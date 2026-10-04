@@ -1742,7 +1742,8 @@ func (s *SQLiteStore) DeleteTaskComment(ctx context.Context, taskID, commentID i
 func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, error) {
 	var oldProjectID int64
 	var done bool
-	if err := tx.QueryRowContext(ctx, `SELECT project_id, done FROM tasks WHERE id = ?`, draft.ID).Scan(&oldProjectID, &done); err != nil {
+	var currentDue sql.NullTime
+	if err := tx.QueryRowContext(ctx, `SELECT project_id, done, due_date FROM tasks WHERE id = ?`, draft.ID).Scan(&oldProjectID, &done, &currentDue); err != nil {
 		return Task{}, fmt.Errorf("get task for update: %w", err)
 	}
 	// The destination may have disappeared since the editor loaded Projects.
@@ -1758,6 +1759,14 @@ func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, err
 	if err != nil {
 		return Task{}, err
 	}
+	// Date-only drafts cannot represent the existing time. Leave the column
+	// untouched when its displayed date is unchanged, including fractional
+	// seconds and timezone notation supplied by Vikunja.
+	currentDate := ""
+	if currentDue.Valid {
+		currentDate = currentDue.Time.Format("2006-01-02")
+	}
+	dueChanged := draft.DueDate != currentDate
 	index := int64(0)
 	if oldProjectID != draft.ProjectID {
 		index, err = nextTaskIndex(ctx, tx, draft.ProjectID)
@@ -1773,7 +1782,7 @@ func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, err
 	} else if err := tx.QueryRowContext(ctx, `SELECT "index" FROM tasks WHERE id = ?`, draft.ID).Scan(&index); err != nil {
 		return Task{}, fmt.Errorf("get task index: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET title = ?, description = ?, due_date = ?, project_id = ?, priority = ?, "index" = ?, updated = ? WHERE id = ?`, draft.Title, draft.Description, dueDate, draft.ProjectID, draft.Priority, index, utcTimestampNow(), draft.ID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET title = ?, description = ?, due_date = CASE WHEN ? THEN ? ELSE due_date END, project_id = ?, priority = ?, "index" = ?, updated = ? WHERE id = ?`, draft.Title, draft.Description, dueChanged, dueDate, draft.ProjectID, draft.Priority, index, utcTimestampNow(), draft.ID); err != nil {
 		return Task{}, fmt.Errorf("update task: %w", err)
 	}
 	if oldProjectID != draft.ProjectID {

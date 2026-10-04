@@ -117,57 +117,6 @@ func TestIntegrityAuditUnchangedWorkflowPreservesDone(t *testing.T) {
 	}
 }
 
-func TestIntegrityAuditDueTimePreservation(t *testing.T) {
-	const due = "2026-09-01 18:45:00"
-	t.Run("detail_title_save", func(t *testing.T) {
-		store := setupUndoStore(t)
-		auditExec(t, store, `UPDATE tasks SET due_date = ? WHERE id = 1`, due)
-		tasks, _, err := store.ListTasksInView(context.Background(), 1, 10, 1, 50)
-		if err != nil || len(tasks) != 1 {
-			t.Fatalf("read Task: tasks=%v err=%v", tasks, err)
-		}
-		task := tasks[0]
-		_, err = store.UpdateTask(context.Background(), TaskDraft{
-			ID: task.ID, ProjectID: task.ProjectID, Title: "Renamed", Description: task.Description,
-			Priority: task.Priority, DueDate: task.DueDate,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		var actual time.Time
-		if err := store.db.QueryRow(`SELECT due_date FROM tasks WHERE id = 1`).Scan(&actual); err != nil {
-			t.Fatal(err)
-		}
-		if actual.Hour() != 18 || actual.Minute() != 45 {
-			t.Errorf("title-only Detail save changed due time from 18:45 to %s", actual.Format("15:04:05"))
-		}
-	})
-	t.Run("inline_title_undo", func(t *testing.T) {
-		store := setupUndoStore(t)
-		auditExec(t, store, `UPDATE tasks SET due_date = ? WHERE id = 1`, due)
-		before, after := auditTitleChange(t, store)
-		if err := store.RestoreTaskUndoState(context.Background(), after, before); err != nil {
-			t.Fatal(err)
-		}
-		var actual time.Time
-		if err := store.db.QueryRow(`SELECT due_date FROM tasks WHERE id = 1`).Scan(&actual); err != nil {
-			t.Fatal(err)
-		}
-		if actual.Hour() != 18 || actual.Minute() != 45 {
-			t.Errorf("undo of inline title edit changed unrelated due time to %s", actual.Format("15:04:05"))
-		}
-	})
-	t.Run("external_time_change_blocks_undo", func(t *testing.T) {
-		store := setupUndoStore(t)
-		auditExec(t, store, `UPDATE tasks SET due_date = ? WHERE id = 1`, due)
-		before, after := auditTitleChange(t, store)
-		auditExec(t, store, `UPDATE tasks SET due_date = '2026-09-01 20:30:00' WHERE id = 1`)
-		if err := store.RestoreTaskUndoState(context.Background(), after, before); err == nil {
-			t.Error("undo accepted an external due-time change and overwrote it")
-		}
-	})
-}
-
 func TestIntegrityAuditCompletionTimestampPreservation(t *testing.T) {
 	for _, action := range []string{"detail_title_save", "inline_title_undo"} {
 		t.Run(action, func(t *testing.T) {

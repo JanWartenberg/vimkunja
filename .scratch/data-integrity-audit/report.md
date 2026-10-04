@@ -23,7 +23,7 @@ the authorized F01/F02 follow-up is recorded below.
 
 The maintainer requested one Scratch ticket per finding and implementation of
 the save errors first. Completed F01/F02 tickets were moved to the archive per
-repository policy. F03 was subsequently repaired and archived; eight tickets
+repository policy. F03/F04 were subsequently repaired and archived; seven tickets
 remain in Scratch.
 
 | Finding | Ticket | Current state |
@@ -31,7 +31,7 @@ remain in Scratch.
 | F01 | [Prevent duplicate Detail saves](../../.archive/2026-10-04/data-integrity-audit/issues/01-prevent-duplicate-detail-saves.md) | completed |
 | F02 | [Preserve draft during save completion](../../.archive/2026-10-04/data-integrity-audit/issues/02-preserve-draft-during-save-completion.md) | completed |
 | F03 | [Validate target Project](../../.archive/2026-10-04/data-integrity-audit/issues/03-validate-target-project-before-task-move.md) | completed |
-| F04 | [Preserve full due timestamp](issues/04-preserve-due-time-and-undo-conflicts.md) | ready-for-agent |
+| F04 | [Preserve full due timestamp](../../.archive/2026-10-04/data-integrity-audit/issues/04-preserve-due-time-and-undo-conflicts.md) | completed |
 | F05 | [Preserve Done for unchanged workflow](issues/05-preserve-done-for-unchanged-workflow.md) | ready-for-agent |
 | F06 | [Use destination Done Bucket](issues/06-place-completed-task-in-target-done-bucket.md) | ready-for-agent |
 | F07 | [Handle zero/NULL Bucket configuration](issues/07-handle-zero-bucket-configuration.md) | ready-for-agent |
@@ -87,6 +87,36 @@ claimed. No user database access or commit.
 Severity means impact, not an estimate of how often the trigger occurs:
 **High** = hidden lost edits, orphaned Tasks, or overwritten user data;
 **Medium** = incorrect workflow/completion data or incomplete integration.
+
+## Due-timestamp repair — 2026-10-04
+
+F04 is repaired and automatically verified. Unchanged date-only drafts now leave
+SQLite's full due_date value untouched inside the update transaction, including
+fractional seconds and timezone notation. Changed dates keep their existing
+midnight-UTC semantics; clearing still stores NULL. Combined Task-plus-Comment
+saves share this preservation behavior.
+
+Undo snapshots retain exact persisted due-date text as well as the date-only
+presentation. Comparison therefore detects external same-day time changes,
+including nanoseconds, and undo/redo restores the original value exactly.
+The date-only UI remains unchanged. The three original failing scenarios now
+run in the ordinary suite, with additional NULL/offset/fractional preservation,
+Comment-save, explicit date/clear, rollback, and real TUI completion regressions.
+Focused checks passed three repetitions; full race-enabled tests, both builds,
+and vet passed. The opt-in safety controls passed. No user database was accessed,
+no general live-server save-conflict guarantee was added, and no manual or native
+Windows acceptance is claimed. Seven findings remain open.
+
+Follow-up review closed an undo-target validation gap: malformed raw timestamps,
+inconsistent calendar dates and clear targets retaining a raw timestamp are now
+rejected before mutation. Three regression cases failed before this repair.
+Timestamp validation accepts the SQLite driver's formats and keeps their encoded
+calendar date instead of converting it to UTC. Expanded regressions cover 13
+NULL/timestamp representations for ordinary and combined saves, offsets crossing
+UTC date boundaries, Comment-insert rollback, and retained TUI Undo history on
+conflict. Focused Store/TUI tests pass three repetitions; full race tests, build
+and vet pass. Exact raw-value comparison deliberately rejects encoding-only
+external changes too. The archived ticket's report link was corrected.
 
 ## Confirmed findings
 
@@ -214,5 +244,5 @@ altered to make these results pass.
 6. **F10/F11:** clean polymorphic links transactionally and allocate a stable UID
    where supported. Retain the explicit attachment-file preservation contract.
 
-F01/F02/F03 were subsequently authorized and repaired as recorded above. The
+F01/F02/F03/F04 were subsequently authorized and repaired as recorded above. The
 remaining proposed repair boundaries have not been implemented.

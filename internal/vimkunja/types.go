@@ -146,6 +146,8 @@ type TaskCommentDraft struct {
 // TaskDraft contains the editable fields of a task. DueDate is either empty
 // (stored as NULL) or an ISO date in YYYY-MM-DD form. CreatedByID is optional:
 // SQLiteStore falls back to the target project's owner when it is zero.
+// Existing updates preserve the full due timestamp when the date is unchanged;
+// changing or clearing the date writes midnight UTC or NULL, respectively.
 type TaskDraft struct {
 	ID               int64
 	ProjectID        int64
@@ -170,8 +172,8 @@ type TaskBucketAssignment struct {
 }
 
 // TaskUndoState is the normalized, complete persisted state covered by Task
-// undo/redo. It intentionally excludes timestamps, position, Comments, and
-// editor drafts.
+// undo/redo. It includes the full due timestamp but excludes audit timestamps,
+// position, Comments, and editor drafts.
 type TaskUndoState struct {
 	TaskID            int64
 	ProjectID         int64
@@ -180,6 +182,7 @@ type TaskUndoState struct {
 	Description       string
 	Priority          int64
 	DueDate           string
+	DueDateStored     string // Exact SQLite text; when present it must encode DueDate.
 	Done              bool
 	LabelIDs          []int64
 	BucketAssignments []TaskBucketAssignment
