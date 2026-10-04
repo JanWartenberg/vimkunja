@@ -101,22 +101,6 @@ func TestIntegrityAuditZeroBucketConfiguration(t *testing.T) {
 	})
 }
 
-func TestIntegrityAuditUnchangedWorkflowPreservesDone(t *testing.T) {
-	store := setupUndoStore(t)
-	auditExec(t, store, `UPDATE project_views SET done_bucket_id = 0 WHERE id = 10;
-		UPDATE tasks SET done = 1, done_at = '2026-09-01 10:00:00' WHERE id = 1;`)
-	_, err := store.UpdateTask(context.Background(), TaskDraft{
-		ID: 1, ProjectID: 1, Title: "Renamed", Description: "old", Priority: 2,
-		DueDate: "2026-09-01", WorkflowBucketID: 100, Done: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if done := auditInt(t, store, `SELECT done FROM tasks WHERE id = 1`); done != 1 {
-		t.Error("title-only Detail save cleared Done although neither Done nor workflow was edited")
-	}
-}
-
 func TestIntegrityAuditCompletionTimestampPreservation(t *testing.T) {
 	for _, action := range []string{"detail_title_save", "inline_title_undo"} {
 		t.Run(action, func(t *testing.T) {

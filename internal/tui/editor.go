@@ -860,6 +860,16 @@ func (e *taskEditor) workflowStatusPickerIndex() int {
 	return 0
 }
 
+// saveDraft omits loaded workflow metadata from an existing Task's write.
+// Creation still needs its initial Bucket, and explicit changes keep their ID.
+func (e *taskEditor) saveDraft() vimkunja.TaskDraft {
+	draft := cloneTaskDraft(e.draft)
+	if draft.ID != 0 && draft.ProjectID == e.original.ProjectID && draft.WorkflowBucketID == e.original.WorkflowBucketID {
+		draft.WorkflowBucketID = 0
+	}
+	return draft
+}
+
 func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 	if m.savingEditor != nil {
 		m.toast = "Saving Task…"
@@ -887,7 +897,7 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 			return cursorBlinkCmd()
 		}
 	}
-	draft := cloneTaskDraft(e.draft)
+	draft := e.saveDraft()
 	m.savingEditor = e
 	m.toast = "Saving Task…"
 	m.taskLoading = true

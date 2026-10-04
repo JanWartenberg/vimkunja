@@ -1790,8 +1790,24 @@ func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, err
 			return Task{}, err
 		}
 	} else if draft.WorkflowBucketID != 0 {
-		if err := setTaskWorkflowStatus(ctx, tx, draft.ID, draft.ProjectID, draft.WorkflowBucketID); err != nil {
-			return Task{}, err
+		// Reapplying the loaded Bucket is not a workflow transition. In
+		// particular, a completed Task may have no configured Done Bucket.
+		var unchanged bool
+		if err := tx.QueryRowContext(ctx, `
+			SELECT EXISTS(
+				SELECT 1 FROM task_buckets tb
+				JOIN buckets b ON b.id = tb.bucket_id AND b.project_view_id = tb.project_view_id
+				JOIN project_views pv ON pv.id = tb.project_view_id
+				WHERE tb.task_id = ? AND tb.bucket_id = ? AND pv.project_id = ?
+					AND pv.view_kind = ? AND pv.bucket_configuration_mode = ?
+			)
+		`, draft.ID, draft.WorkflowBucketID, draft.ProjectID, viewKindKanban, bucketConfigurationManual).Scan(&unchanged); err != nil {
+			return Task{}, fmt.Errorf("check current workflow bucket: %w", err)
+		}
+		if !unchanged {
+			if err := setTaskWorkflowStatus(ctx, tx, draft.ID, draft.ProjectID, draft.WorkflowBucketID); err != nil {
+				return Task{}, err
+			}
 		}
 		if err := tx.QueryRowContext(ctx, `SELECT done FROM tasks WHERE id = ?`, draft.ID).Scan(&done); err != nil {
 			return Task{}, fmt.Errorf("get updated task done state: %w", err)

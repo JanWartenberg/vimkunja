@@ -155,7 +155,7 @@ type TaskDraft struct {
 	Description      string
 	Priority         int64
 	DueDate          string
-	WorkflowBucketID int64
+	WorkflowBucketID int64 // Zero omits workflow writes; an unchanged existing assignment preserves Done.
 	Done             bool
 	DoneSet          bool // Done participates in an existing Task update only when changed in the editor.
 	LabelIDs         []int64

@@ -23,7 +23,7 @@ the authorized F01/F02 follow-up is recorded below.
 
 The maintainer requested one Scratch ticket per finding and implementation of
 the save errors first. Completed F01/F02 tickets were moved to the archive per
-repository policy. F03/F04 were subsequently repaired and archived; seven tickets
+repository policy. F03/F04/F05 were subsequently repaired and archived; six tickets
 remain in Scratch.
 
 | Finding | Ticket | Current state |
@@ -32,7 +32,7 @@ remain in Scratch.
 | F02 | [Preserve draft during save completion](../../.archive/2026-10-04/data-integrity-audit/issues/02-preserve-draft-during-save-completion.md) | completed |
 | F03 | [Validate target Project](../../.archive/2026-10-04/data-integrity-audit/issues/03-validate-target-project-before-task-move.md) | completed |
 | F04 | [Preserve full due timestamp](../../.archive/2026-10-04/data-integrity-audit/issues/04-preserve-due-time-and-undo-conflicts.md) | completed |
-| F05 | [Preserve Done for unchanged workflow](issues/05-preserve-done-for-unchanged-workflow.md) | ready-for-agent |
+| F05 | [Preserve Done for unchanged workflow](../../.archive/2026-10-04/data-integrity-audit/issues/05-preserve-done-for-unchanged-workflow.md) | completed |
 | F06 | [Use destination Done Bucket](issues/06-place-completed-task-in-target-done-bucket.md) | ready-for-agent |
 | F07 | [Handle zero/NULL Bucket configuration](issues/07-handle-zero-bucket-configuration.md) | ready-for-agent |
 | F08 | [Preserve completion timestamps](issues/08-preserve-unrelated-completion-timestamps.md) | ready-for-agent |
@@ -117,6 +117,26 @@ UTC date boundaries, Comment-insert rollback, and retained TUI Undo history on
 conflict. Focused Store/TUI tests pass three repetitions; full race tests, build
 and vet pass. Exact raw-value comparison deliberately rejects encoding-only
 external changes too. The archived ticket's report link was corrected.
+
+## Unchanged-workflow repair — 2026-10-04
+
+F05 is repaired and reviewed. Existing Detail and combined Comment saves omit an
+unchanged loaded Bucket from the write snapshot. New Task creation and explicit
+workflow changes still submit their Bucket, and DoneSet remains independent.
+Store updates also recognize a valid unchanged assignment transactionally and
+preserve Done and the exact completion timestamp. Bucket/View ownership and
+manual-View configuration remain validated; unrelated Views are preserved.
+
+The original scenario now runs in ordinary coverage. Focused Store/TUI checks
+pass three repetitions for NULL/zero/configured Done Buckets, exact completion
+metadata, combined Comment saves, creation snapshots, explicit Bucket/Done
+changes, stale external assignments, invalid ownership rollback and multi-View
+preservation. Review found no remaining blocker after those adjacent checks.
+The isolated staged tree passes full race tests, both builds and vet; opt-in
+safety controls pass. No user database or schema/dependency changes, no manual or
+native Windows acceptance. F08 remains open for completion timestamp rewriting
+in Undo; its unchanged-workflow Detail-save trigger is removed by F05. Six
+findings remain open.
 
 ## Confirmed findings
 
@@ -244,5 +264,5 @@ altered to make these results pass.
 6. **F10/F11:** clean polymorphic links transactionally and allocate a stable UID
    where supported. Retain the explicit attachment-file preservation contract.
 
-F01/F02/F03/F04 were subsequently authorized and repaired as recorded above. The
+F01/F02/F03/F04/F05 were subsequently authorized and repaired as recorded above. The
 remaining proposed repair boundaries have not been implemented.

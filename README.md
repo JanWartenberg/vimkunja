@@ -108,6 +108,8 @@ Im Detail-pane können Project, Title, Priority, Due Date, Labels, Description u
 
 In den Command-Prompts von Comments, Labels und Global Search gelten ebenfalls `:qa`, `:qa!` und `:wqa`. `:qa` schützt ungespeicherte Task-/Comment-Entwürfe; `:wqa` speichert einen vorhandenen Comment-Entwurf zusammen mit dem Task atomar und beendet erst nach erfolgreichem Speichern. Bei Fehlern bleibt der Entwurf offen. Im Insert Mode zuerst `Esc` drücken.
 
+Ein geladener, unveränderter Workflow-Status wird beim Task- oder Comment-Save nicht erneut angewendet. Dadurch bleiben `Done` und der vorhandene Abschlusszeitstempel bei anderen Änderungen erhalten. Ein tatsächlicher Bucket-Wechsel synchronisiert den Status weiterhin wie bisher.
+
 Fälligkeitsdaten werden weiterhin als `YYYY-MM-DD` bearbeitet. Solange das Datum unverändert bleibt, erhalten Task-Saves und Undo/Redo die vorhandene Uhrzeit exakt. Ein geändertes Datum speichert Mitternacht UTC; das Löschen des Datums speichert NULL. Undo/Redo weist externe Änderungen am vollständigen Fälligkeitszeitstempel zurück.
 
 While a Task Detail save is running, keyboard input pauses and the footer shows

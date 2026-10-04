@@ -327,7 +327,7 @@ func (m *model) saveTaskWithComment(closeAfter bool) tea.Cmd {
 		m.recordError(fmt.Errorf("Comment text is required"))
 		return nil
 	}
-	draft := cloneTaskDraft(m.editor.draft)
+	draft := m.editor.saveDraft()
 	taskChanged := m.editor.dirty()
 	m.comments.saving = true
 	return func() tea.Msg {
