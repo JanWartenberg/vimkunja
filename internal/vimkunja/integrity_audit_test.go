@@ -46,23 +46,6 @@ func auditTitleChange(t *testing.T, store *SQLiteStore) (TaskUndoState, TaskUndo
 	return before, auditState(t, store)
 }
 
-func TestIntegrityAuditCompletedProjectMove(t *testing.T) {
-	store := setupUndoStore(t)
-	auditExec(t, store, `UPDATE tasks SET done = 1, done_at = '2026-09-01 10:00:00' WHERE id = 1;
-		INSERT INTO buckets (id, title, project_view_id) VALUES (201, 'Done Two', 20);
-		UPDATE project_views SET done_bucket_id = 201 WHERE id = 20;`)
-	task, err := store.UpdateTask(context.Background(), TaskDraft{ID: 1, ProjectID: 2, Title: "Completed"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !task.Done {
-		t.Fatal("Project move cleared Done")
-	}
-	if bucket := auditInt(t, store, `SELECT bucket_id FROM task_buckets WHERE task_id = 1 AND project_view_id = 20`); bucket != 201 {
-		t.Errorf("completed Task moved into Bucket %d, want target Done Bucket 201", bucket)
-	}
-}
-
 func TestIntegrityAuditZeroBucketConfiguration(t *testing.T) {
 	t.Run("creation_uses_first_bucket_without_configured_default", func(t *testing.T) {
 		store := setupUndoStore(t)

@@ -1592,7 +1592,7 @@ func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, er
 	if err != nil {
 		return Task{}, fmt.Errorf("get created task id: %w", err)
 	}
-	if err := initializeViewAssignments(ctx, tx, id, draft.ProjectID); err != nil {
+	if err := initializeViewAssignments(ctx, tx, id, draft.ProjectID, false); err != nil {
 		return Task{}, err
 	}
 	if draft.WorkflowBucketID != 0 {
@@ -1786,7 +1786,7 @@ func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, err
 		return Task{}, fmt.Errorf("update task: %w", err)
 	}
 	if oldProjectID != draft.ProjectID {
-		if err := initializeViewAssignments(ctx, tx, draft.ID, draft.ProjectID); err != nil {
+		if err := initializeViewAssignments(ctx, tx, draft.ID, draft.ProjectID, done); err != nil {
 			return Task{}, err
 		}
 	} else if draft.WorkflowBucketID != 0 {
@@ -1860,17 +1860,33 @@ func nextTaskIndex(ctx context.Context, tx *sql.Tx, projectID int64) (int64, err
 	return index, nil
 }
 
-func initializeViewAssignments(ctx context.Context, tx *sql.Tx, taskID, projectID int64) error {
-	rows, err := tx.QueryContext(ctx, `SELECT id, default_bucket_id FROM project_views WHERE project_id = ?`, projectID)
+func initializeViewAssignments(ctx context.Context, tx *sql.Tx, taskID, projectID int64, done bool) error {
+	query := `SELECT id, default_bucket_id, NULL FROM project_views WHERE project_id = ?`
+	if done {
+		query = `SELECT id, default_bucket_id, done_bucket_id FROM project_views WHERE project_id = ?`
+	}
+	rows, err := tx.QueryContext(ctx, query, projectID)
 	if err != nil {
 		return fmt.Errorf("list target project views: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var viewID int64
-		var defaultBucketID sql.NullInt64
-		if err := rows.Scan(&viewID, &defaultBucketID); err != nil {
+		var bucketID, doneBucketID sql.NullInt64
+		if err := rows.Scan(&viewID, &bucketID, &doneBucketID); err != nil {
 			return fmt.Errorf("scan target project view: %w", err)
+		}
+		// Project moves initialize every destination View from the persisted
+		// Done state; zero/NULL Done configuration keeps the default assignment.
+		if done && doneBucketID.Valid && doneBucketID.Int64 > 0 {
+			bucketID = doneBucketID
+			var exists bool
+			if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM buckets WHERE id = ? AND project_view_id = ?)`, bucketID.Int64, viewID).Scan(&exists); err != nil {
+				return fmt.Errorf("validate destination Done Bucket: %w", err)
+			}
+			if !exists {
+				return fmt.Errorf("destination Done Bucket %d does not belong to View %d", bucketID.Int64, viewID)
+			}
 		}
 		var position float64
 		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(position), 0) + 1 FROM task_positions WHERE project_view_id = ?`, viewID).Scan(&position); err != nil {
@@ -1879,9 +1895,9 @@ func initializeViewAssignments(ctx context.Context, tx *sql.Tx, taskID, projectI
 		if _, err := tx.ExecContext(ctx, `INSERT INTO task_positions (task_id, project_view_id, position) VALUES (?, ?, ?)`, taskID, viewID, position); err != nil {
 			return fmt.Errorf("insert task position: %w", err)
 		}
-		if defaultBucketID.Valid {
-			if _, err := tx.ExecContext(ctx, `INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (?, ?, ?)`, taskID, defaultBucketID.Int64, viewID); err != nil {
-				return fmt.Errorf("insert default task bucket: %w", err)
+		if bucketID.Valid {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (?, ?, ?)`, taskID, bucketID.Int64, viewID); err != nil {
+				return fmt.Errorf("insert initial task bucket: %w", err)
 			}
 		}
 	}

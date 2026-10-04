@@ -20,7 +20,7 @@ Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End
 
 ### Data integrity audit — 2026-10-04
 
-- [Audit report and ticket index](.scratch/data-integrity-audit/report.md#ticket-index) — eleven findings tracked individually. F01/F02 are repaired, manually accepted and closed. F03 rejects missing target Projects transactionally; F04 preserves full due timestamps and detects same-day undo time conflicts. F05 preserves Done and completion metadata when workflow is unchanged. Ordinary SQLite/TUI regressions pass; F03–F05 are archived. Six follow-ups remain open. Full race-enabled tests, build and vet pass; no manual acceptance of F03–F05 is claimed.
+- [Audit report and ticket index](.scratch/data-integrity-audit/report.md#ticket-index) — eleven findings tracked individually. F01/F02 are repaired, manually accepted and closed. F03 rejects missing target Projects transactionally; F04 preserves full due timestamps and detects same-day undo time conflicts. F05 preserves Done and completion metadata when workflow is unchanged. F06 initializes completed Project moves in destination Done Buckets. Ordinary SQLite/TUI regressions pass; F03–F06 are archived. Five follow-ups remain open. Full race-enabled tests, build and vet pass; no manual acceptance of F03–F06 is claimed.
 
 ### Meilenstein 2 — abgeschlossen
 

@@ -23,7 +23,7 @@ the authorized F01/F02 follow-up is recorded below.
 
 The maintainer requested one Scratch ticket per finding and implementation of
 the save errors first. Completed F01/F02 tickets were moved to the archive per
-repository policy. F03/F04/F05 were subsequently repaired and archived; six tickets
+repository policy. F03/F04/F05/F06 were subsequently repaired and archived; five tickets
 remain in Scratch.
 
 | Finding | Ticket | Current state |
@@ -33,7 +33,7 @@ remain in Scratch.
 | F03 | [Validate target Project](../../.archive/2026-10-04/data-integrity-audit/issues/03-validate-target-project-before-task-move.md) | completed |
 | F04 | [Preserve full due timestamp](../../.archive/2026-10-04/data-integrity-audit/issues/04-preserve-due-time-and-undo-conflicts.md) | completed |
 | F05 | [Preserve Done for unchanged workflow](../../.archive/2026-10-04/data-integrity-audit/issues/05-preserve-done-for-unchanged-workflow.md) | completed |
-| F06 | [Use destination Done Bucket](issues/06-place-completed-task-in-target-done-bucket.md) | ready-for-agent |
+| F06 | [Use destination Done Bucket](../../.archive/2026-10-04/data-integrity-audit/issues/06-place-completed-task-in-target-done-bucket.md) | completed |
 | F07 | [Handle zero/NULL Bucket configuration](issues/07-handle-zero-bucket-configuration.md) | ready-for-agent |
 | F08 | [Preserve completion timestamps](issues/08-preserve-unrelated-completion-timestamps.md) | ready-for-agent |
 | F09 | [Protect recurring Task completion](issues/09-protect-recurring-task-completion.md) | needs-triage |
@@ -137,6 +137,26 @@ safety controls pass. No user database or schema/dependency changes, no manual o
 native Windows acceptance. F08 remains open for completion timestamp rewriting
 in Undo; its unchanged-workflow Detail-save trigger is removed by F05. Six
 findings remain open.
+
+## Completed-Task Project-move repair — 2026-10-04
+
+F06 is repaired and reviewed. Destination assignments now use persisted Done:
+completed Tasks receive each View's positive configured Done Bucket; otherwise
+its existing default assignment is retained. Positions are initialized for all
+Views, including those without a Bucket. Pure moves preserve Done and the exact
+completion timestamp; explicit DoneSet changes retain their subsequent behavior.
+Creation and unfinished initialization retain the prior query requirements.
+
+The selected Done Bucket must belong to its destination View. Missing or foreign
+references fail transactionally. Regression coverage includes multiple Views,
+NULL/zero Done configuration, a Done-only View, unchanged unrelated Task rows,
+normal and combined Comment saves, explicit Done changes, and late Bucket/Comment
+failures restoring source assignments and positions. Real TUI tests drive the
+Project picker and verify the Done Bucket after reopening Detail. Focused checks
+passed three repetitions; the isolated staged tree passes full race tests,
+build and vet. Opt-in audit safety controls pass. No remaining scoped review
+blocker, schema/dependency change, user data access, manual or native Windows
+acceptance. F07/F08 remain open; five findings remain in Scratch.
 
 ## Confirmed findings
 
@@ -264,5 +284,5 @@ altered to make these results pass.
 6. **F10/F11:** clean polymorphic links transactionally and allocate a stable UID
    where supported. Retain the explicit attachment-file preservation contract.
 
-F01/F02/F03/F04/F05 were subsequently authorized and repaired as recorded above. The
+F01/F02/F03/F04/F05/F06 were subsequently authorized and repaired as recorded above. The
 remaining proposed repair boundaries have not been implemented.
