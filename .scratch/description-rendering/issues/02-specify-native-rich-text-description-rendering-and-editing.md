@@ -2,7 +2,7 @@
 
 **Phase:** M3 — structured reader and editor
 
-**What to decide:** Define the complete M3 scope for a native, keyboard-first terminal projection and editor for Vikunja HTML Task Descriptions.
+**Specification scope:** The M3 product rules for a native, keyboard-first terminal projection and editor are resolved. Maintain the accepted contract and examples, then prepare concrete implementation tickets.
 
 **Implementation prerequisites:** M2's read-only HTML-to-plain-text reader is complete; see its [archived ticket](../../../.archive/2026-08-05/description-rendering/issues/01-render-vikunja-html-descriptions.md). The decisions in this ticket govern the M3 implementation; the existing [Rich-Text Description Contract](../spec.md) is the starting point and must be updated only when a decision here changes it.
 
@@ -10,9 +10,11 @@
 
 **Priority:** Medium
 
-**Status:** needs-triage
+**Status:** ready-for-agent
 
-**Current handoff — 2026-10-04:** product feedback is resolved. Spec, keybindings, glossary and 81 independent synthetic examples are synchronized with accepted V2/V4/default decisions. Artifact/dependency probes and focused Store preservation/rollback tests pass; current native editor/serializer remains unimplemented. Concrete technical gaps: atomic baseline compare-and-save, source-slice Code decoding, Code-specific literal-prefix/Paste dispatch, real Windows/German terminal captures, Native round trips/fuzz/layout and versioned VOA output. The user authorizes this synchronization and technical verification pass; no production Native editor or dependency changes are included.
+**Current handoff — 2026-10-04:** product feedback is resolved. Spec, keybindings, glossary and 83 independent synthetic examples are synchronized with accepted V2/V4/default decisions. Artifact/dependency probes and focused Store preservation/rollback tests pass; current native editor/serializer remains unimplemented. Concrete technical gaps: atomic baseline compare-and-save, source-slice Code decoding, Code-specific literal-prefix/Paste dispatch, real Windows/German terminal captures, Native round trips/fuzz/layout and versioned VOA output. The user authorizes this synchronization and technical verification pass; no production Native editor or dependency changes are included.
+
+**Handoff state:** Ready for specification handoff and implementation-ticket preparation. The user can cross-check the [rule-card walkthrough](/workspace/tmp/explain-description-regeln-2026-10-04.html); it is a local review aid, not a required repository artifact or Native execution evidence. Native implementation has not started and requires a separate implementation instruction. This ticket remains open for the deliverables below; no blanket golden approval or completed Rich-text feature is claimed.
 
 **Scope boundary:** This is phase 2 of the Description plan. It replaces neither Vikunja's HTML persistence format nor its SQLite schema. It aims to natively render and edit every HTML structure that is useful and feasible in a terminal. Content that is not suitably editable must remain as readable as practical and must be preserved without destructive rewriting.
 
@@ -61,9 +63,10 @@ The corpus is a specification deliverable and must exist before native editing i
 - [x] Resolve product rules/defaults and synchronize applicable fixture expectations; technical execution and exact VOA output remain outstanding.
 - [x] Add a concrete synthetic HTML fixture draft with proposed terminal projections; see [corpus](../corpus.md). Expectations are not accepted goldens yet.
 - [x] Draft semantic round-trip and opaque-content preservation assertions for those fixtures; artifact/dependency and existing Store checks added; Native M3 execution still outstanding.
-- [ ] Review expectations, resolve flagged ambiguities, expand missing cases, and add representative VOA-generated fixtures.
-- [ ] Add parser/serializer boundary property or fuzz cases.
-- [ ] Split implementation tickets only after the corpus and preservation contract are accepted.
+- [x] Review synthetic expectations, resolve product ambiguities, correct stale references, and add Mention label/ID cases (83 records).
+- [ ] Add representative versioned VOA-generated fixtures; synthetic inputs do not certify VOA output.
+- [ ] Execute Native parser/serializer boundary property or fuzz cases during implementation.
+- [ ] Split concrete implementation tickets using the accepted product rules and current corpus; begin production changes only on explicit implementation instruction.
 
 ### Initial fixture inventory
 
@@ -298,7 +301,7 @@ All former queue topics have product rules. The [current traceability matrix](..
 
 #### Current verification scope and prerequisites
 
-The 2026-10-04 request authorizes Contract/example synchronization and HTML/Store/terminal checks. Completed: 81-record artifact validation, source-preserving tokenizer probes, terminal decoder probes and Store byte-preservation/rollback regressions. Source review identifies the remaining conflict and paste-dispatch gaps. Full details, commands and evidence limits: [corpus verification](../corpus.md#technical-verification--2026-10-04).
+The 2026-10-04 request authorizes Contract/example synchronization and HTML/Store/terminal checks. Completed: 83-record artifact validation, source-preserving tokenizer probes, terminal decoder probes and Store byte-preservation/rollback regressions. Source review identifies the remaining conflict and paste-dispatch gaps. Full details, commands and evidence limits: [corpus verification](../corpus.md#technical-verification--2026-10-04).
 
 **Next work:** production Native model/parser/serializer/editor preparation; transaction-baseline conflict handling including combined saves; Code CRLF-preserving decoding/Paste routing; independent Native round-trip/property/fuzz execution; versioned VOA captures and real native layout/Windows input checks. No further product-card vote is needed. This pass does not implement the Native editor or change dependencies/schema.
 
@@ -310,7 +313,7 @@ The 2026-10-04 request authorizes Contract/example synchronization and HTML/Stor
 - [ ] Validate Native execution and actual VOA serialization/projection expectations.
 - [ ] Add regression, semantic round-trip, preservation, property, and fuzz tests.
 - [ ] Add the Vimkunja markup dialect to Help, durable documentation, and the dedicated markup tutorial.
-- [ ] Split implementation into concrete tickets after the contract and corpus are accepted.
+- [ ] Prepare concrete Native model/preservation, persistence/conflict and rendering/editing tickets; production implementation remains separately authorized.
 
 ## Out of scope
 
@@ -323,3 +326,11 @@ The 2026-10-04 request authorizes Contract/example synchronization and HTML/Stor
 ### 2026-10-04 — decision synchronization and technical verification
 
 User requests continuing specification/example alignment and HTML-preservation, save and terminal checks. Synchronized previously missing V2 E01–E09/C04/C05/C08 and accepted defaults; added 39 focused examples to the existing 42 and explicitly corrected five obsolete blanket safety classifications. Added verification probes, current plain-text grouped-key input tests and Store regression tests without production behavior changes. Native behavior remains unexecuted; library probes expose CRLF normalization and automatic tree repair. Current clipboard/Paste handling and baseline-free UpdateTask require changes during Native implementation, not another policy interview. Real Windows/German input captures and real VOA output remain absent.
+
+### 2026-10-04 — stale references and Mention examples
+
+User requests the pre-implementation consistency cleanup. Replaced obsolete future-text-object and missing-list/triple-strong references with the current accepted rules and fixture links. Added `mention-label` and `mention-id-fallback`: independently authored synthetic Opaque inputs with label/id display, neighbor edits, skipped formatting, safe copy/paste, rejected internal edits and confirmed deletion/Undo. The corpus now contains 83 records. These are specification examples, not VOA captures or Native execution evidence; production implementation and dependencies/schema are unchanged.
+
+### 2026-10-04 — ticket/status handoff review
+
+User requests checking and committing ticket/status. Product triage is complete; ready-for-agent now applies to the remaining specification handoff and implementation-ticket preparation, not automatic production implementation. The current plan separates completed synthetic review/Mention coverage from missing versioned VOA output and Native execution. Spec and corpus are included in the same documentation commit so all 83-record references remain consistent.

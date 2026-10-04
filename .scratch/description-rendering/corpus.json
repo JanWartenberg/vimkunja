@@ -120,7 +120,7 @@
           "action": "Select deep in the original draft; Space+b toggles Bold off",
           "expected_html": "<p><b>Ä</b><strong>β</strong><i>猫</i><em>é</em>deep<em><em>twice</em></em></p>",
           "assertions": [
-            "User-approved rule: remove every selected bold-family layer; double and triple strong must both become plain. Other text and marks retain their original semantics. This source covers double strong; add a focused triple-strong input before claiming triple-layer test coverage."
+            "User-approved rule: remove every selected bold-family layer; double and triple strong must both become plain. Other text and marks retain their original semantics. This source covers double strong; triple-strong-off provides the focused triple-layer expectation. Both remain unexecuted Native requirements."
           ]
         }
       ],
@@ -450,7 +450,7 @@
           "- Two",
           "  1. Nested"
         ],
-        "presentation": "Rendered indentation reflects existing list structure; changing depth requires the agreed V, selection motions, Space+k/l workflow. Questions L01–L12 now define parent/sibling, subtree, atomic-selection, kind and boundary rules; dedicated structural edit inputs/outputs and evidence remain to be added. This record still exercises only unrelated text editing."
+        "presentation": "Rendered indentation reflects existing list structure; changing depth uses the agreed V, selection motions, Space+k/l workflow. L01–L12 define parent/sibling, subtree, atomic-selection, kind and boundary rules. Focused structural expectations are recorded in list-indent-existing-children, list-outdent-reading-order, list-selection-atomicity, list-kind-preservation, ordered-middle-exit and checkbox-middle-split; Native execution remains outstanding. This record exercises unrelated text editing."
       },
       "serialization": {
         "html": "<ul><li>One</li><li>Two<ol><li>Nested</li></ol></li></ul>",
@@ -3496,6 +3496,166 @@
       "unresolved": [],
       "decisions": [
         "E01"
+      ]
+    },
+    {
+      "id": "mention-label",
+      "classification": "mixed Native/Opaque",
+      "source_html": "<p>Hallo <mention-user class='mention' data-id='jan' data-label='Jan &amp; Co' data-note='hidden'></mention-user>!</p>",
+      "provenance": {
+        "kind": "synthetic",
+        "vikunja_version": null,
+        "description": "Hand-authored accepted-contract example, not a VOA getHTML capture. Local upstream TipTap.vue uses mention-user and MentionUser.vue displays label ?? id; data attributes here are synthetic input assumptions, not verified extension output."
+      },
+      "projection": {
+        "content_lines": [
+          "Hallo @Jan & Co!"
+        ],
+        "presentation": "One readable inline Opaque atom displays @label or, when label is absent, @id. Its visible label is one word-motion unit. No avatar/user request; no internal editing or creation. Frame/style remain illustrative."
+      },
+      "serialization": {
+        "html": "<p>Hallo <mention-user class='mention' data-id='jan' data-label='Jan &amp; Co' data-note='hidden'></mention-user>!</p>",
+        "opaque_bytes": [
+          "<mention-user class='mention' data-id='jan' data-label='Jan &amp; Co' data-note='hidden'></mention-user>"
+        ]
+      },
+      "edits": [
+        {
+          "action": "Replace Hallo with Guten Tag without editing the Mention",
+          "expected_html": "<p>Guten Tag <mention-user class='mention' data-id='jan' data-label='Jan &amp; Co' data-note='hidden'></mention-user>!</p>"
+        },
+        {
+          "action": "Select the whole paragraph; Space+b",
+          "expected_html": "<p><strong>Hallo </strong><mention-user class='mention' data-id='jan' data-label='Jan &amp; Co' data-note='hidden'></mention-user><strong>!</strong></p>",
+          "assertions": [
+            "Format only selected Native text; skip the complete Mention atom, preserving exact bytes and intended position."
+          ]
+        },
+        {
+          "action": "Attempt an internal Mention label or ID edit",
+          "expected_html": "<p>Hallo <mention-user class='mention' data-id='jan' data-label='Jan &amp; Co' data-note='hidden'></mention-user>!</p>",
+          "assertions": [
+            "Reject only the internal edit with a hint; Native neighbors remain editable and savable."
+          ]
+        },
+        {
+          "action": "Copy focused Mention; paste its visible projection after !",
+          "expected_html": "<p>Hallo <mention-user class='mention' data-id='jan' data-label='Jan &amp; Co' data-note='hidden'></mention-user>!@Jan &amp; Co</p>",
+          "assertions": [
+            "Clipboard contains exactly @Jan & Co; no hidden attributes, raw markup, avatar or user lookup. Paste creates Native text, not a duplicate Mention atom."
+          ]
+        },
+        {
+          "action": "x on focused Mention; confirm deletion",
+          "expected_html": "<p>Hallo !</p>",
+          "assertions": [
+            "One confirmation removes only the complete atom; enclosing Task Done is unchanged."
+          ]
+        },
+        {
+          "action": "x on focused Mention; cancel deletion",
+          "expected_html": "<p>Hallo <mention-user class='mention' data-id='jan' data-label='Jan &amp; Co' data-note='hidden'></mention-user>!</p>"
+        },
+        {
+          "action": "Confirm Mention deletion, then u",
+          "expected_html": "<p>Hallo <mention-user class='mention' data-id='jan' data-label='Jan &amp; Co' data-note='hidden'></mention-user>!</p>",
+          "assertions": [
+            "Undo restores exact original bytes, identity and position; Redo would remove the same atom without prompting again."
+          ]
+        }
+      ],
+      "feedback": [
+        "Opaque Mention is readable but preserved; no M3 Mention creation or internal-edit UI."
+      ],
+      "invariants": [
+        "All existing Opaque preservation, atomic selection, safe-copy and Task Done invariants apply.",
+        "Visible @id fallback is explicitly intended content; other metadata remains hidden."
+      ],
+      "unresolved": [],
+      "decisions": [
+        "First native editing set",
+        "Opaque mentions",
+        "18"
+      ]
+    },
+    {
+      "id": "mention-id-fallback",
+      "classification": "mixed Native/Opaque",
+      "source_html": "<p>Hallo <mention-user data-id=\"jan\" class=\"mention\"></mention-user>!</p>",
+      "provenance": {
+        "kind": "synthetic",
+        "vikunja_version": null,
+        "description": "Hand-authored accepted-contract example, not a VOA getHTML capture. Local upstream TipTap.vue uses mention-user and MentionUser.vue displays label ?? id; data attributes here are synthetic input assumptions, not verified extension output."
+      },
+      "projection": {
+        "content_lines": [
+          "Hallo @jan!"
+        ],
+        "presentation": "One readable inline Opaque atom displays @label or, when label is absent, @id. Its visible label is one word-motion unit. No avatar/user request; no internal editing or creation. Frame/style remain illustrative."
+      },
+      "serialization": {
+        "html": "<p>Hallo <mention-user data-id=\"jan\" class=\"mention\"></mention-user>!</p>",
+        "opaque_bytes": [
+          "<mention-user data-id=\"jan\" class=\"mention\"></mention-user>"
+        ]
+      },
+      "edits": [
+        {
+          "action": "Replace Hallo with Guten Tag without editing the Mention",
+          "expected_html": "<p>Guten Tag <mention-user data-id=\"jan\" class=\"mention\"></mention-user>!</p>"
+        },
+        {
+          "action": "Select the whole paragraph; Space+b",
+          "expected_html": "<p><strong>Hallo </strong><mention-user data-id=\"jan\" class=\"mention\"></mention-user><strong>!</strong></p>",
+          "assertions": [
+            "Format only selected Native text; skip the complete Mention atom, preserving exact bytes and intended position."
+          ]
+        },
+        {
+          "action": "Attempt an internal Mention label or ID edit",
+          "expected_html": "<p>Hallo <mention-user data-id=\"jan\" class=\"mention\"></mention-user>!</p>",
+          "assertions": [
+            "Reject only the internal edit with a hint; Native neighbors remain editable and savable."
+          ]
+        },
+        {
+          "action": "Copy focused Mention; paste its visible projection after !",
+          "expected_html": "<p>Hallo <mention-user data-id=\"jan\" class=\"mention\"></mention-user>!@jan</p>",
+          "assertions": [
+            "Clipboard contains exactly @jan; no hidden attributes, raw markup, avatar or user lookup. Paste creates Native text, not a duplicate Mention atom."
+          ]
+        },
+        {
+          "action": "x on focused Mention; confirm deletion",
+          "expected_html": "<p>Hallo !</p>",
+          "assertions": [
+            "One confirmation removes only the complete atom; enclosing Task Done is unchanged."
+          ]
+        },
+        {
+          "action": "x on focused Mention; cancel deletion",
+          "expected_html": "<p>Hallo <mention-user data-id=\"jan\" class=\"mention\"></mention-user>!</p>"
+        },
+        {
+          "action": "Confirm Mention deletion, then u",
+          "expected_html": "<p>Hallo <mention-user data-id=\"jan\" class=\"mention\"></mention-user>!</p>",
+          "assertions": [
+            "Undo restores exact original bytes, identity and position; Redo would remove the same atom without prompting again."
+          ]
+        }
+      ],
+      "feedback": [
+        "Opaque Mention is readable but preserved; no M3 Mention creation or internal-edit UI."
+      ],
+      "invariants": [
+        "All existing Opaque preservation, atomic selection, safe-copy and Task Done invariants apply.",
+        "Visible @id fallback is explicitly intended content; other metadata remains hidden."
+      ],
+      "unresolved": [],
+      "decisions": [
+        "First native editing set",
+        "Opaque mentions",
+        "18"
       ]
     }
   ],

@@ -1,6 +1,6 @@
 # Rich-text compatibility corpus — decision-synchronized examples
 
-**Stand 2026-10-04:** 81 synthetic, independently authored records; accepted product decisions synchronized. Static consistency checks and dependency/Store boundary probes pass. Native rendering/editing and semantic round trips are not implemented or verified by these records. No blanket user golden approval or captured VOA output is claimed.
+**Stand 2026-10-04:** 83 synthetic, independently authored records; accepted product decisions synchronized. Static consistency checks and dependency/Store boundary probes pass. Native rendering/editing and semantic round trips are not implemented or verified by these records. No blanket user golden approval or captured VOA output is claimed.
 
 **Contract:** [spec.md](spec.md). **Ticket:** [02](issues/02-specify-native-rich-text-description-rendering-and-editing.md). **Examples:** [corpus.json](corpus.json). **Checks:** [verification/boundaries_test.go](verification/boundaries_test.go).
 
@@ -40,14 +40,15 @@ Other synchronized examples cover C05 final Code-line deletion (leaves empty Cod
 | Opaque bytes/identities/allowed parent changes (18/20/29, T06) | `opaque-edit-neighbors`, `opaque-nesting`, `attribute-preservation`, `opaque-parent-conversion`, `opaque-identical-atom-identity` | Specified; Native execution outstanding. |
 | Smallest-region safety, duplicate attrs and media (S01–S05) | `duplicate-native-attributes`, `unsafe-html`, `unsafe-attributes-and-urls`, `unsafe-isolated-and-opaque`, `unsafe-url-only`, `embedded-media-neighbors`, `malformed-html`, `document-wrappers`, `valid-optional-end-tags` | Specified; Native execution outstanding. |
 | Tables, images, unknown inner boundaries (19, S07/S09–S11) | `table-mixed-content`, `table-irregular`, `empty-table`, `image-fallbacks`, `image-empty-alt`, `unknown-node`, `unknown-inner-block-boundaries`, `opaque-inline-q` | Specified; Native execution outstanding. |
+| Opaque Mentions: visible label/id, preserved bytes, skip-format, safe copy/paste and confirmed removal (18 / native subset) | `mention-label`, `mention-id-fallback` | Specified synthetic inputs; Native execution and real VOA captures outstanding. |
 | Palette/reflow/config design (28, P01–P12/C02) | `layout-and-palette`, `code-line-selection`, `code-tabs-retab`, `opaque-node` | Specified; Native execution outstanding. |
 | Conflict rejection and candidate retention (30, T07) | `external-save-conflict`, `checkbox-id-reservation-atomicity` | Specified; Native execution outstanding. |
 
-Task-level Attachments remain outside Description scope. Mentions need captured VOA markup before exact label/id projection expectations; known `mention-user` is a source lead, not generated-output evidence. HTTP/HTTPS/FTP host syntax and non-web scheme-specific URI checks need runtime validator examples; no DNS checks or new allowlist. Existing matrix coverage does not claim exhaustive URL/Unicode/attribute/fuzz coverage.
+Task-level Attachments remain outside Description scope. `mention-label` and `mention-id-fallback` now specify synthetic @label/@id inputs, neighbor edits, skipped formatting, safe copy/paste, internal-edit rejection and confirmed removal/Undo. Their data attributes are hand-authored input assumptions; local `mention-user`/label-or-id source is a lead, not captured generated-output evidence. Exact VOA/Tiptap serialization still needs versioned captures. HTTP/HTTPS/FTP host syntax and non-web scheme-specific URI checks need runtime validator examples; no DNS checks or new allowlist. Existing matrix coverage does not claim exhaustive URL/Unicode/attribute/fuzz coverage.
 
 ## Technical verification — 2026-10-04
 
-- Artifact checks: 81 unique records; null outputs justified; Blocked records have no ordinary-save golden; retained Opaque slices occur byte-for-byte in source/output in order and multiplicity.
+- Artifact checks: 83 unique records; null outputs justified; Blocked records have no ordinary-save golden; retained Opaque slices occur byte-for-byte in source/output in order and multiplicity.
 - Existing `x/net/html`: copied Raw tokens reconstruct original UTF-8, mixed quote/case/duplicate attributes and CRLF. Token/Text normalizes CRLF to LF. Native Code therefore needs decoding from original text slices. Tree parsing repairs malformed/unexpectedly nested HTML without an error; strict acceptance cannot rely on ParseFragment success alone.
 - Store regression tests: title-only/unrelated Native text changes retain exact supplied HTML bytes, CRLF, comments, unusual attributes and Task Done. Failure after UPDATE rolls title/Description back and leaves the caller draft unchanged. Tests use disposable databases.
 - Save conflict gap: current UpdateTask WHERE matches only Task ID; no baseline Description comparison exists. Persisted Undo conflict checks do not protect a stale editor save. Required M3 compare-and-save must read/check/write in one transaction and adopt generated IDs only after success, including combined Task/Comment saves.
@@ -70,6 +71,10 @@ Remaining execution work: Native model/parser/serializer/editor and identity-awa
 ## Next work
 
 No further product card confirmation is required. Use the accepted rules/examples to prepare the Native implementation and its test seams; do not substitute the existing lossy reader for the future serializer. Actual Native tests and versioned VOA captures remain prerequisites for claiming full rich-text compatibility.
+
+## Follow-up consistency cleanup — 2026-10-04
+
+Corrected stale references to future text objects and missing list/triple-strong examples. Added two independently authored synthetic Mention fixtures under the already accepted @label/@id and Opaque rules. No existing HTML input/output golden or product decision was changed; only stale presentation/assertion notes were corrected. Native execution and real VOA provenance remain outstanding.
 
 ## Historical review log — superseded status snapshots
 
