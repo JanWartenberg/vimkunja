@@ -114,6 +114,8 @@ Bucket-Konfigurationen mit `0` oder NULL gelten als nicht gesetzt. Ohne Default-
 
 Beim Verschieben eines erledigten Tasks in ein anderes Project wird je Ziel-View der konfigurierte Done-Bucket verwendet. Fehlt dieser, bleibt die Default-Zuordnung. Ein reiner Project-Wechsel erhält `Done` und den Abschlusszeitstempel.
 
+Wiederkehrende Tasks können in Vimkunja bearbeitet und wieder geöffnet werden. Der Wechsel zu erledigt wird abgelehnt: Den Abschluss in Vikunja durchführen, damit Termine, Reminder und Checklisten für die nächste Wiederholung aktualisiert werden.
+
 Fälligkeitsdaten werden weiterhin als `YYYY-MM-DD` bearbeitet. Solange das Datum unverändert bleibt, erhalten Task-Saves und Undo/Redo die vorhandene Uhrzeit exakt. Ein geändertes Datum speichert Mitternacht UTC; das Löschen des Datums speichert NULL. Undo/Redo weist externe Änderungen am vollständigen Fälligkeitszeitstempel zurück.
 
 While a Task Detail save is running, keyboard input pauses and the footer shows

@@ -1337,6 +1337,9 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 	}
 
 	done := view.doneBucketID.Valid && view.doneBucketID.Int64 == bucketID
+	if err := rejectRecurringCompletion(ctx, tx, taskID, done); err != nil {
+		return err
+	}
 	var doneAt any
 	if done {
 		doneAt = utcTimestampNow()
@@ -1438,6 +1441,9 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 // workflow buckets within an existing transaction. Completion metadata changes
 // only when Done transitions; the SQL preserves its exact stored encoding.
 func setTaskDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool, viewID ...int64) error {
+	if err := rejectRecurringCompletion(ctx, tx, taskID, done); err != nil {
+		return err
+	}
 	if len(viewID) > 0 && viewID[0] != 0 {
 		var valid bool
 		if err := tx.QueryRowContext(ctx, `
@@ -1991,4 +1997,44 @@ func boolToInt(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+// Optional historical columns are inspected inside the write transaction.
+func taskColumnExists(ctx context.Context, tx *sql.Tx, name string) (bool, error) {
+	var exists bool
+	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM pragma_table_info('tasks') WHERE name=?)`, name).Scan(&exists)
+	return exists, err
+}
+
+// Recurrence is owned by Vikunja: never freeze its next occurrence through a
+// local completion. Other edits and reopening do not advance recurrence.
+func rejectRecurringCompletion(ctx context.Context, tx *sql.Tx, taskID int64, done bool) error {
+	if !done {
+		return nil
+	}
+	var current bool
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(done,0) FROM tasks WHERE id=?`, taskID).Scan(&current); err != nil {
+		return fmt.Errorf("check recurring completion: %w", err)
+	}
+	if current {
+		return nil
+	}
+	expressions := []string{"0", "0"}
+	for i, column := range []string{"repeat_after", "repeat_mode"} {
+		exists, err := taskColumnExists(ctx, tx, column)
+		if err != nil {
+			return fmt.Errorf("check recurrence schema: %w", err)
+		}
+		if exists {
+			expressions[i] = "COALESCE(" + column + ",0)"
+		}
+	}
+	var recurring bool
+	if err := tx.QueryRowContext(ctx, "SELECT ("+expressions[0]+" != 0 OR "+expressions[1]+" != 0) FROM tasks WHERE id=?", taskID).Scan(&recurring); err != nil {
+		return fmt.Errorf("check recurrence: %w", err)
+	}
+	if recurring {
+		return fmt.Errorf("cannot complete recurring Task in Vimkunja; complete it in Vikunja to advance dates, reminders and checklists")
+	}
+	return nil
 }

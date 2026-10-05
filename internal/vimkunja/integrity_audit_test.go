@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"reflect"
 	"testing"
-	"time"
 )
 
 // These opt-in tests assert preservation/compatibility contracts. Known defects
@@ -44,27 +43,6 @@ func auditTitleChange(t *testing.T, store *SQLiteStore) (TaskUndoState, TaskUndo
 		t.Fatal(err)
 	}
 	return before, auditState(t, store)
-}
-
-func TestIntegrityAuditRecurringCompletion(t *testing.T) {
-	store := setupUndoStore(t)
-	auditExec(t, store, `ALTER TABLE tasks ADD COLUMN repeat_after INTEGER DEFAULT 0;
-		ALTER TABLE tasks ADD COLUMN repeat_mode INTEGER DEFAULT 0;
-		UPDATE tasks SET repeat_after = 86400, due_date = '2099-09-01 00:00:00' WHERE id = 1;
-		UPDATE project_views SET done_bucket_id = 101 WHERE id = 10;`)
-	if err := store.ToggleTaskDone(context.Background(), 1, true); err != nil {
-		t.Fatal(err)
-	}
-	if done := auditInt(t, store, `SELECT done FROM tasks WHERE id = 1`); done != 0 {
-		t.Error("recurring Task stayed Done instead of reopening for its next occurrence")
-	}
-	var due time.Time
-	if err := store.db.QueryRow(`SELECT due_date FROM tasks WHERE id = 1`).Scan(&due); err != nil {
-		t.Fatal(err)
-	}
-	if due.Format("2006-01-02") != "2099-09-02" {
-		t.Errorf("recurring due date did not advance: %s", due.Format("2006-01-02"))
-	}
 }
 
 func TestIntegrityAuditCalDAVIdentity(t *testing.T) {

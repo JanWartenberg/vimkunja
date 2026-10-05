@@ -112,6 +112,9 @@ func (s *SQLiteStore) RestoreTaskUndoState(ctx context.Context, expected, target
 	if !sameTaskUndoState(current, expected) {
 		return fmt.Errorf("restore Task undo state: Task changed since this action")
 	}
+	if err := rejectRecurringCompletion(ctx, tx, target.TaskID, target.Done); err != nil {
+		return err
+	}
 	if err := validateUndoTarget(ctx, tx, target); err != nil {
 		return err
 	}

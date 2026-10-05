@@ -6,7 +6,7 @@
 
 **Priority:** Medium
 
-**Status:** needs-triage
+**Status:** completed
 
 ## Problem
 
@@ -22,10 +22,16 @@ Decide whether recurrence is implemented or unsafe completion is rejected explic
 
 ## Evidence
 
-See [audit report](../report.md) and `TestIntegrityAuditRecurringCompletion` in the audit tests.
+See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditRecurringCompletion` in ordinary regression coverage.
 
 ## Comments
 
 ### 2026-10-04 — Created from integrity audit
 
 The maintainer requested one Scratch ticket per finding and implementation of the save errors first. F01/F02 are one coordinated save-lifecycle repair; the remaining runtime changes are not started.
+
+### 2026-10-05 — Implementation, review and validation
+
+F09 rejects incomplete-to-completed transitions for recurring Tasks, including interval, monthly, from-current-date and unknown nonzero configurations. Vikunja owns date advancement, reminder rescheduling and checklist resets; Vimkunja does not reproduce those semantics. The guard covers Done, workflow, draft/Comment and Undo writes transactionally. Reopening and unrelated edits remain allowed. Historical schemas without recurrence columns remain supported. Completion metadata and the history contract are unchanged.
+
+Focused regressions and the complete race-enabled Go suite pass. Both builds and vet pass. Review found no remaining scoped blocker. No user database, schema or dependency changes; no manual, native Windows or live server acceptance.

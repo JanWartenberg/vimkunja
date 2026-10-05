@@ -23,7 +23,7 @@ the authorized F01/F02 follow-up is recorded below.
 
 The maintainer requested one Scratch ticket per finding and implementation of
 the save errors first. Completed F01/F02 tickets were moved to the archive per
-repository policy. F03/F04/F05/F06/F07/F08 were subsequently repaired and archived; three tickets
+repository policy. F03/F04/F05/F06/F07/F08/F09 were subsequently repaired and archived; two tickets
 remain in Scratch.
 
 | Finding | Ticket | Current state |
@@ -36,7 +36,7 @@ remain in Scratch.
 | F06 | [Use destination Done Bucket](../../.archive/2026-10-04/data-integrity-audit/issues/06-place-completed-task-in-target-done-bucket.md) | completed |
 | F07 | [Handle zero/NULL Bucket configuration](../../.archive/2026-10-04/data-integrity-audit/issues/07-handle-zero-bucket-configuration.md) | completed |
 | F08 | [Preserve completion timestamps](../../.archive/2026-10-05/data-integrity-audit/issues/08-preserve-unrelated-completion-timestamps.md) | completed |
-| F09 | [Protect recurring Task completion](issues/09-protect-recurring-task-completion.md) | needs-triage |
+| F09 | [Protect recurring Task completion](../../.archive/2026-10-05/data-integrity-audit/issues/09-protect-recurring-task-completion.md) | completed |
 | F10 | [Clean polymorphic deletion links](issues/10-clean-task-polymorphic-relations.md) | ready-for-agent |
 | F11 | [Create CalDAV identity](issues/11-create-stable-caldav-task-identity.md) | ready-for-agent |
 
@@ -207,6 +207,12 @@ full race tests, corpus verification, both builds and vet; opt-in safety control
 pass. No remaining scoped review finding, schema/dependency change, user database
 access, manual acceptance or native Windows verification. F09–F11 remain open.
 
+## F09 repair — 2026-10-05
+
+F09 rejects incomplete-to-completed transitions for recurring Tasks, including interval, monthly, from-current-date and unknown nonzero configurations. Vikunja owns date advancement, reminder rescheduling and checklist resets; Vimkunja does not reproduce those semantics. The guard covers Done, workflow, draft/Comment and Undo writes transactionally. Reopening and unrelated edits remain allowed. Historical schemas without recurrence columns remain supported. Completion metadata and the history contract are unchanged.
+
+Focused regressions, full race tests, both builds and vet pass. No remaining scoped review blocker. No user database access or schema/dependency changes; native Windows and live server behavior remain unverified.
+
 ## Confirmed findings
 
 | ID | Severity | Trigger and observed result | Evidence / responsible boundary |
@@ -333,5 +339,5 @@ altered to make these results pass.
 6. **F10/F11:** clean polymorphic links transactionally and allocate a stable UID
    where supported. Retain the explicit attachment-file preservation contract.
 
-F01/F02/F03/F04/F05/F06/F07/F08 were subsequently authorized and repaired as recorded above. The
+F01/F02/F03/F04/F05/F06/F07/F08/F09 were subsequently authorized and repaired as recorded above. The
 remaining proposed repair boundaries have not been implemented.
