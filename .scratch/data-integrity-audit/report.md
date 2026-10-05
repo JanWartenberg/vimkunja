@@ -23,7 +23,7 @@ the authorized F01/F02 follow-up is recorded below.
 
 The maintainer requested one Scratch ticket per finding and implementation of
 the save errors first. Completed F01/F02 tickets were moved to the archive per
-repository policy. F03/F04/F05/F06/F07 were subsequently repaired and archived; four tickets
+repository policy. F03/F04/F05/F06/F07/F08 were subsequently repaired and archived; three tickets
 remain in Scratch.
 
 | Finding | Ticket | Current state |
@@ -35,7 +35,7 @@ remain in Scratch.
 | F05 | [Preserve Done for unchanged workflow](../../.archive/2026-10-04/data-integrity-audit/issues/05-preserve-done-for-unchanged-workflow.md) | completed |
 | F06 | [Use destination Done Bucket](../../.archive/2026-10-04/data-integrity-audit/issues/06-place-completed-task-in-target-done-bucket.md) | completed |
 | F07 | [Handle zero/NULL Bucket configuration](../../.archive/2026-10-04/data-integrity-audit/issues/07-handle-zero-bucket-configuration.md) | completed |
-| F08 | [Preserve completion timestamps](issues/08-preserve-unrelated-completion-timestamps.md) | ready-for-agent |
+| F08 | [Preserve completion timestamps](../../.archive/2026-10-05/data-integrity-audit/issues/08-preserve-unrelated-completion-timestamps.md) | completed |
 | F09 | [Protect recurring Task completion](issues/09-protect-recurring-task-completion.md) | needs-triage |
 | F10 | [Clean polymorphic deletion links](issues/10-clean-task-polymorphic-relations.md) | ready-for-agent |
 | F11 | [Create CalDAV identity](issues/11-create-stable-caldav-task-identity.md) | ready-for-agent |
@@ -186,6 +186,27 @@ both builds and vet; opt-in audit safety controls pass. No remaining scoped
 review blocker, schema/dependency change, user database access, manual acceptance
 or native Windows verification. F08–F11 remain open (four findings).
 
+## Completion-timestamp repair — 2026-10-05
+
+F08 is repaired and reviewed. The original Detail-save scenario already passes
+since F05; inline-title Undo still failed twice before this fix. The original
+reproduction now runs in ordinary coverage. Undo, direct workflow assignment
+and Done writes preserve the exact stored done_at whenever Done does not
+transition. SQL retains the stored value without parsing or re-encoding it,
+including NULL, offsets and fractional precision. True transitions to Done set
+a current timestamp; reopening clears it. updated remains an audit timestamp.
+
+The accepted history contract remains unchanged: completion timestamps are not
+snapshot fields or conflict keys. Timestamp-only external changes survive
+unrelated Undo/Redo; redoing a real completion creates a current timestamp rather
+than restoring historical metadata. Review covered same-Done Bucket moves,
+explicit DoneSet and combined Comment saves, NULL historical values,
+Undo/Redo transitions, selected-View writes and a late Undo Bucket failure.
+Focused Store checks pass three repetitions. The isolated staged tree passes
+full race tests, corpus verification, both builds and vet; opt-in safety controls
+pass. No remaining scoped review finding, schema/dependency change, user database
+access, manual acceptance or native Windows verification. F09–F11 remain open.
+
 ## Confirmed findings
 
 | ID | Severity | Trigger and observed result | Evidence / responsible boundary |
@@ -312,5 +333,5 @@ altered to make these results pass.
 6. **F10/F11:** clean polymorphic links transactionally and allocate a stable UID
    where supported. Retain the explicit attachment-file preservation contract.
 
-F01/F02/F03/F04/F05/F06/F07 were subsequently authorized and repaired as recorded above. The
+F01/F02/F03/F04/F05/F06/F07/F08 were subsequently authorized and repaired as recorded above. The
 remaining proposed repair boundaries have not been implemented.

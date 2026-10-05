@@ -108,7 +108,7 @@ Im Detail-pane können Project, Title, Priority, Due Date, Labels, Description u
 
 In den Command-Prompts von Comments, Labels und Global Search gelten ebenfalls `:qa`, `:qa!` und `:wqa`. `:qa` schützt ungespeicherte Task-/Comment-Entwürfe; `:wqa` speichert einen vorhandenen Comment-Entwurf zusammen mit dem Task atomar und beendet erst nach erfolgreichem Speichern. Bei Fehlern bleibt der Entwurf offen. Im Insert Mode zuerst `Esc` drücken.
 
-Ein geladener, unveränderter Workflow-Status wird beim Task- oder Comment-Save nicht erneut angewendet. Dadurch bleiben `Done` und der vorhandene Abschlusszeitstempel bei anderen Änderungen erhalten. Ein tatsächlicher Bucket-Wechsel synchronisiert den Status weiterhin wie bisher.
+Ein geladener, unveränderter Workflow-Status wird beim Task- oder Comment-Save nicht erneut angewendet. Dadurch bleiben `Done` und der vorhandene Abschlusszeitstempel bei anderen Änderungen erhalten. Ein tatsächlicher Bucket-Wechsel synchronisiert den Status weiterhin wie bisher. Bei unverändertem `Done` bleibt der gespeicherte Abschlusszeitstempel auch bei Done-/Bucket-Schreibvorgängen und Undo/Redo exakt erhalten. Ein echter Wechsel zu erledigt setzt einen aktuellen Zeitstempel, Wiederöffnen löscht ihn. Abschlusszeitstempel bleiben außerhalb der Undo-Historie.
 
 Bucket-Konfigurationen mit `0` oder NULL gelten als nicht gesetzt. Ohne Default-Bucket wird der erste gültige Bucket nach Position verwendet; bei gleicher Position entscheidet die ID. Das gilt für neue Tasks, Project-Wechsel und das Wiederöffnen. Ohne Done-Bucket bleibt beim Abschließen die aktuelle Zuordnung erhalten. Gibt es keinen gültigen Bucket, wird keine Zuordnung erfunden. Ungültige konfigurierte Bucket-Verweise brechen den Schreibvorgang atomar ab.
 

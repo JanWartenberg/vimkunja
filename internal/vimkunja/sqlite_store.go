@@ -1341,7 +1341,7 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 	if done {
 		doneAt = utcTimestampNow()
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`, boolToInt(done), doneAt, utcTimestampNow(), taskID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = CASE WHEN COALESCE(done, 0) = ? THEN done_at ELSE ? END, updated = ? WHERE id = ?`, boolToInt(done), boolToInt(done), doneAt, utcTimestampNow(), taskID); err != nil {
 		return fmt.Errorf("update task workflow done state: %w", err)
 	}
 	result, err := tx.ExecContext(ctx, `UPDATE task_buckets SET bucket_id = ? WHERE task_id = ? AND project_view_id = ?`, bucketID, taskID, view.id)
@@ -1435,7 +1435,8 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 }
 
 // setTaskDoneState changes the global Task Done state and its configured
-// workflow buckets within an existing transaction.
+// workflow buckets within an existing transaction. Completion metadata changes
+// only when Done transitions; the SQL preserves its exact stored encoding.
 func setTaskDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool, viewID ...int64) error {
 	if len(viewID) > 0 && viewID[0] != 0 {
 		var valid bool
@@ -1458,7 +1459,7 @@ func setTaskDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool, 
 	if done {
 		doneAt = utcTimestampNow()
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = ?, updated = ? WHERE id = ?`, boolToInt(done), doneAt, utcTimestampNow(), taskID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = CASE WHEN COALESCE(done, 0) = ? THEN done_at ELSE ? END, updated = ? WHERE id = ?`, boolToInt(done), boolToInt(done), doneAt, utcTimestampNow(), taskID); err != nil {
 		return fmt.Errorf("set task done state: %w", err)
 	}
 	if err := syncTaskBucketsForDoneState(ctx, tx, taskID, done, viewID...); err != nil {

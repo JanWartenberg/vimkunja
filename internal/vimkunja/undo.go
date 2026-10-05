@@ -148,15 +148,16 @@ func (s *SQLiteStore) RestoreTaskUndoState(ctx context.Context, expected, target
 			return err
 		}
 	}
+	// Completion metadata is outside history: preserve it unless Done transitions.
 	doneAt := any(nil)
 	if target.Done {
 		doneAt = utcTimestampNow()
 	}
 	if _, err := tx.ExecContext(ctx, `
 		UPDATE tasks SET project_id = ?, title = ?, description = ?, priority = ?, due_date = ?,
-			done = ?, done_at = ?, "index" = ?, updated = ? WHERE id = ?
+			done = ?, done_at = CASE WHEN COALESCE(done, 0) = ? THEN done_at ELSE ? END, "index" = ?, updated = ? WHERE id = ?
 	`, target.ProjectID, target.Title, target.Description, target.Priority, dueDate,
-		boolToInt(target.Done), doneAt, index, utcTimestampNow(), target.TaskID); err != nil {
+		boolToInt(target.Done), boolToInt(target.Done), doneAt, index, utcTimestampNow(), target.TaskID); err != nil {
 		return fmt.Errorf("restore Task undo state: update Task: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM label_tasks WHERE task_id = ?`, target.TaskID); err != nil {

@@ -46,38 +46,6 @@ func auditTitleChange(t *testing.T, store *SQLiteStore) (TaskUndoState, TaskUndo
 	return before, auditState(t, store)
 }
 
-func TestIntegrityAuditCompletionTimestampPreservation(t *testing.T) {
-	for _, action := range []string{"detail_title_save", "inline_title_undo"} {
-		t.Run(action, func(t *testing.T) {
-			store := setupUndoStore(t)
-			auditExec(t, store, `UPDATE project_views SET done_bucket_id = 101 WHERE id = 10;
-				UPDATE tasks SET done = 1, done_at = '2026-09-01 10:00:00' WHERE id = 1;
-				UPDATE task_buckets SET bucket_id = 101 WHERE task_id = 1;`)
-			if action == "detail_title_save" {
-				_, err := store.UpdateTask(context.Background(), TaskDraft{
-					ID: 1, ProjectID: 1, Title: "Renamed", Description: "old", Priority: 2,
-					DueDate: "2026-09-01", WorkflowBucketID: 101, Done: true,
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-			} else {
-				before, after := auditTitleChange(t, store)
-				if err := store.RestoreTaskUndoState(context.Background(), after, before); err != nil {
-					t.Fatal(err)
-				}
-			}
-			var doneAt time.Time
-			if err := store.db.QueryRow(`SELECT done_at FROM tasks WHERE id = 1`).Scan(&doneAt); err != nil {
-				t.Fatal(err)
-			}
-			if got := doneAt.Format(databaseTimestampLayout); got != "2026-09-01 10:00:00" {
-				t.Errorf("%s rewrote unchanged completion timestamp to %s", action, got)
-			}
-		})
-	}
-}
-
 func TestIntegrityAuditRecurringCompletion(t *testing.T) {
 	store := setupUndoStore(t)
 	auditExec(t, store, `ALTER TABLE tasks ADD COLUMN repeat_after INTEGER DEFAULT 0;
