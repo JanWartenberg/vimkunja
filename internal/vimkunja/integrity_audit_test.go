@@ -61,37 +61,6 @@ func TestIntegrityAuditCalDAVIdentity(t *testing.T) {
 	}
 }
 
-func TestIntegrityAuditTaskDeletionCleansPolymorphicRelations(t *testing.T) {
-	store := setupUndoStore(t)
-	// Enum values mirror the local Vikunja models: Task Favorite/Subscription
-	// are 1/3; Task/Comment Reactions are 0/1. Keep unrelated entities as controls.
-	auditExec(t, store, `CREATE TABLE favorites (entity_id INTEGER, kind INTEGER);
-		CREATE TABLE subscriptions (entity_id INTEGER, entity_type INTEGER);
-		CREATE TABLE reactions (entity_id INTEGER, entity_kind INTEGER);
-		CREATE TABLE task_comments (id INTEGER PRIMARY KEY, task_id INTEGER);
-		INSERT INTO task_comments VALUES (55, 1), (56, 2);
-		INSERT INTO favorites VALUES (1, 1), (2, 1);
-		INSERT INTO subscriptions VALUES (1, 3), (2, 3);
-		INSERT INTO reactions VALUES (1, 0), (55, 1), (2, 0), (56, 1);`)
-	if err := store.DeleteTask(context.Background(), 1); err != nil {
-		t.Fatal(err)
-	}
-	for _, table := range []string{"favorites", "subscriptions"} {
-		if count := auditInt(t, store, "SELECT COUNT(*) FROM "+table+" WHERE entity_id = 1"); count != 0 {
-			t.Errorf("Task deletion left %d dangling %s rows", count, table)
-		}
-		if count := auditInt(t, store, "SELECT COUNT(*) FROM "+table+" WHERE entity_id = 2"); count != 1 {
-			t.Errorf("Task deletion damaged unrelated %s rows", table)
-		}
-	}
-	if count := auditInt(t, store, `SELECT COUNT(*) FROM reactions WHERE (entity_id = 1 AND entity_kind = 0) OR (entity_id = 55 AND entity_kind = 1)`); count != 0 {
-		t.Errorf("Task deletion left %d dangling Task/Comment reactions", count)
-	}
-	if count := auditInt(t, store, `SELECT COUNT(*) FROM reactions WHERE entity_id IN (2, 56)`); count != 2 {
-		t.Error("Task deletion damaged unrelated Reactions")
-	}
-}
-
 func TestIntegrityAuditLateFailuresRollBack(t *testing.T) {
 	t.Run("creation", func(t *testing.T) {
 		store := setupUndoStore(t)

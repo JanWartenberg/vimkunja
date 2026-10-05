@@ -1486,6 +1486,10 @@ func (s *SQLiteStore) DeleteTask(ctx context.Context, taskID int64) error {
 	}
 	defer tx.Rollback()
 
+	if err := deleteTaskPolymorphicRelations(ctx, tx, taskID); err != nil {
+		return err
+	}
+
 	deletes := []struct {
 		table string
 		query string
@@ -2035,6 +2039,40 @@ func rejectRecurringCompletion(ctx context.Context, tx *sql.Tx, taskID int64, do
 	}
 	if recurring {
 		return fmt.Errorf("cannot complete recurring Task in Vimkunja; complete it in Vikunja to advance dates, reminders and checklists")
+	}
+	return nil
+}
+
+func deleteTaskPolymorphicRelations(ctx context.Context, tx *sql.Tx, taskID int64) error {
+	// Vikunja enums: Favorite Task=1, Subscription Task=3;
+	// Reaction Task=0, Comment=1. Entity IDs alone are not unique across kinds.
+	deletes := []struct{ table, query string }{
+		{"favorites", `DELETE FROM favorites WHERE entity_id=? AND kind=1`},
+		{"subscriptions", `DELETE FROM subscriptions WHERE entity_id=? AND entity_type=3`},
+		{"reactions", `DELETE FROM reactions WHERE entity_id=? AND entity_kind=0`},
+	}
+	for _, d := range deletes {
+		var exists bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name=?)`, d.table).Scan(&exists); err != nil {
+			return fmt.Errorf("check polymorphic %s: %w", d.table, err)
+		}
+		if !exists {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx, d.query, taskID); err != nil {
+			return fmt.Errorf("delete Task %s: %w", d.table, err)
+		}
+		if d.table == "reactions" {
+			var comments bool
+			if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='task_comments')`).Scan(&comments); err != nil {
+				return fmt.Errorf("check reaction Comments: %w", err)
+			}
+			if comments {
+				if _, err := tx.ExecContext(ctx, `DELETE FROM reactions WHERE entity_kind=1 AND entity_id IN (SELECT id FROM task_comments WHERE task_id=?)`, taskID); err != nil {
+					return fmt.Errorf("delete Task Comment reactions: %w", err)
+				}
+			}
+		}
 	}
 	return nil
 }
