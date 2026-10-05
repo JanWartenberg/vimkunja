@@ -114,6 +114,8 @@ Bucket-Konfigurationen mit `0` oder NULL gelten als nicht gesetzt. Ohne Default-
 
 Beim Verschieben eines erledigten Tasks in ein anderes Project wird je Ziel-View der konfigurierte Done-Bucket verwendet. Fehlt dieser, bleibt die Default-Zuordnung. Ein reiner Project-Wechsel erhält `Done` und den Abschlusszeitstempel.
 
+Neue Tasks erhalten eine stabile UUID für CalDAV, sofern die Datenbank eine `uid`-Spalte enthält. Änderungen, Project-Wechsel und Undo/Redo erhalten diese Identität. Bestehende Tasks werden nicht nachträglich geändert; ein Live-CalDAV-Test steht weiterhin aus.
+
 Die permanente Task-Löschung entfernt auch zugehörige Favoriten, Subscriptions sowie Task- und Comment-Reaktionen. Andere Objekttypen und Attachment-Dateien bleiben erhalten; die DB-Löschung erfolgt atomar.
 
 Wiederkehrende Tasks können in Vimkunja bearbeitet und wieder geöffnet werden. Der Wechsel zu erledigt wird abgelehnt: Den Abschluss in Vikunja durchführen, damit Termine, Reminder und Checklisten für die nächste Wiederholung aktualisiert werden.

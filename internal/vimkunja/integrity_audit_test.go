@@ -4,7 +4,6 @@ package vimkunja
 
 import (
 	"context"
-	"database/sql"
 	"reflect"
 	"testing"
 )
@@ -43,22 +42,6 @@ func auditTitleChange(t *testing.T, store *SQLiteStore) (TaskUndoState, TaskUndo
 		t.Fatal(err)
 	}
 	return before, auditState(t, store)
-}
-
-func TestIntegrityAuditCalDAVIdentity(t *testing.T) {
-	store := setupUndoStore(t)
-	auditExec(t, store, `ALTER TABLE tasks ADD COLUMN uid TEXT;`)
-	task, err := store.CreateTask(context.Background(), TaskDraft{ProjectID: 1, Title: "Calendar Task"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var uid sql.NullString
-	if err := store.db.QueryRow(`SELECT uid FROM tasks WHERE id = ?`, task.ID).Scan(&uid); err != nil {
-		t.Fatal(err)
-	}
-	if !uid.Valid || uid.String == "" {
-		t.Error("created Task has no CalDAV UID")
-	}
 }
 
 func TestIntegrityAuditLateFailuresRollBack(t *testing.T) {

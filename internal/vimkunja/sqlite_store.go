@@ -2,6 +2,7 @@ package vimkunja
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -1635,10 +1636,23 @@ func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, er
 		return Task{}, err
 	}
 	now := utcTimestampNow()
-	result, err := tx.ExecContext(ctx, `
-		INSERT INTO tasks (title, description, done, due_date, project_id, priority, "index", created, updated, created_by_id)
-		VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
-	`, draft.Title, draft.Description, dueDate, draft.ProjectID, draft.Priority, index, now, now, createdByID)
+	columns := `title, description, done, due_date, project_id, priority, "index", created, updated, created_by_id`
+	values := []any{draft.Title, draft.Description, 0, dueDate, draft.ProjectID, draft.Priority, index, now, now, createdByID}
+	hasUID, err := taskColumnExists(ctx, tx, "uid")
+	if err != nil {
+		return Task{}, fmt.Errorf("check Task UID schema: %w", err)
+	}
+	if hasUID {
+		uid, err := newTaskUID()
+		if err != nil {
+			return Task{}, err
+		}
+		columns += ", uid"
+		values = append(values, uid)
+	}
+	// Include UID in the initial insert, also supporting NOT NULL/unique schemas.
+	query := "INSERT INTO tasks (" + columns + ") VALUES (" + strings.TrimRight(strings.Repeat("?,", len(values)), ",") + ")"
+	result, err := tx.ExecContext(ctx, query, values...)
 	if err != nil {
 		return Task{}, fmt.Errorf("insert task: %w", err)
 	}
@@ -2006,7 +2020,7 @@ func boolToInt(b bool) int {
 // Optional historical columns are inspected inside the write transaction.
 func taskColumnExists(ctx context.Context, tx *sql.Tx, name string) (bool, error) {
 	var exists bool
-	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM pragma_table_info('tasks') WHERE name=?)`, name).Scan(&exists)
+	err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM pragma_table_info('tasks') WHERE name=? COLLATE NOCASE)`, name).Scan(&exists)
 	return exists, err
 }
 
@@ -2075,4 +2089,15 @@ func deleteTaskPolymorphicRelations(ctx context.Context, tx *sql.Tx, taskID int6
 		}
 	}
 	return nil
+}
+
+// UUID v4 matches Vikunja's stable CalDAV identity without a new dependency.
+func newTaskUID() (string, error) {
+	var value [16]byte
+	if _, err := rand.Read(value[:]); err != nil {
+		return "", fmt.Errorf("generate Task UID: %w", err)
+	}
+	value[6] = (value[6] & 0x0f) | 0x40
+	value[8] = (value[8] & 0x3f) | 0x80
+	return fmt.Sprintf("%x-%x-%x-%x-%x", value[:4], value[4:6], value[6:8], value[8:10], value[10:]), nil
 }

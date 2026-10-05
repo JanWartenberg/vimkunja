@@ -23,7 +23,7 @@ the authorized F01/F02 follow-up is recorded below.
 
 The maintainer requested one Scratch ticket per finding and implementation of
 the save errors first. Completed F01/F02 tickets were moved to the archive per
-repository policy. F03/F04/F05/F06/F07/F08/F09/F10 were subsequently repaired and archived; one ticket
+repository policy. F03/F04/F05/F06/F07/F08/F09/F10/F11 were subsequently repaired and archived; no audit tickets
 remain in Scratch.
 
 | Finding | Ticket | Current state |
@@ -38,7 +38,7 @@ remain in Scratch.
 | F08 | [Preserve completion timestamps](../../.archive/2026-10-05/data-integrity-audit/issues/08-preserve-unrelated-completion-timestamps.md) | completed |
 | F09 | [Protect recurring Task completion](../../.archive/2026-10-05/data-integrity-audit/issues/09-protect-recurring-task-completion.md) | completed |
 | F10 | [Clean polymorphic deletion links](../../.archive/2026-10-05/data-integrity-audit/issues/10-clean-task-polymorphic-relations.md) | completed |
-| F11 | [Create CalDAV identity](issues/11-create-stable-caldav-task-identity.md) | ready-for-agent |
+| F11 | [Create CalDAV identity](../../.archive/2026-10-05/data-integrity-audit/issues/11-create-stable-caldav-task-identity.md) | completed |
 
 ## Save-error repair — 2026-10-04
 
@@ -219,6 +219,14 @@ F10 removes Task favorites (kind 1), Task subscriptions (type 3), Task reactions
 
 Focused regressions, full race tests, both builds and vet pass. No remaining scoped review blocker. No user database access or schema/dependency changes; native Windows and live server behavior remain unverified.
 
+## F11 repair — 2026-10-05
+
+F11 assigns a cryptographically random RFC 4122 UUID v4 during Task insertion when the uid column exists. UID is supplied in the initial INSERT, including NOT NULL/unique schemas. Historical schemas without uid remain supported. Existing Task identities are not backfilled or rewritten. Ordinary regression coverage verifies UUID format and uniqueness, edits, completion, Project moves, Undo/Redo and late creation failure rollback. Live CalDAV client interoperability remains unverified.
+
+Focused regressions, full race tests, both builds and vet pass. No remaining scoped review blocker. No user database access or schema/dependency changes; native Windows and live server behavior remain unverified.
+
+All eleven findings are now repaired. The complete ordinary suite and all opt-in audit controls pass with the race detector. The initial failure counts below remain historical evidence. F11 review additionally covers case-insensitive UID column detection.
+
 ## Confirmed findings
 
 | ID | Severity | Trigger and observed result | Evidence / responsible boundary |
@@ -345,5 +353,5 @@ altered to make these results pass.
 6. **F10/F11:** clean polymorphic links transactionally and allocate a stable UID
    where supported. Retain the explicit attachment-file preservation contract.
 
-F01/F02/F03/F04/F05/F06/F07/F08/F09/F10 were subsequently authorized and repaired as recorded above. The
+F01/F02/F03/F04/F05/F06/F07/F08/F09/F10/F11 were subsequently authorized and repaired as recorded above. The
 remaining proposed repair boundaries have not been implemented.
