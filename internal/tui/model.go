@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	apperrors "github.com/vimkunja/vimkunja/internal/errors"
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	apperrors "github.com/JanWartenberg/vimkunja/internal/errors"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"

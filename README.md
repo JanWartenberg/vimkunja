@@ -8,10 +8,10 @@ Vimkunja ist eine tastaturorientierte Terminal-Oberfläche für eine lokale [Vik
 
 Voraussetzungen: Git, Go 1.25 oder neuer und ein interaktives Terminal. Linux amd64 wurde lokal geprüft; Windows amd64 lässt sich bauen, native Windows-Terminaltests stehen noch aus.
 
-Bis die GitHub-Adresse feststeht, steht `<repository-url>` für die tatsächliche Clone-URL:
+Die vorgesehene Clone-URL lautet:
 
 ```bash
-git clone <repository-url> vimkunja
+git clone https://github.com/JanWartenberg/vimkunja.git vimkunja
 ```
 
 ```bash

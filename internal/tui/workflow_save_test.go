@@ -2,7 +2,7 @@ package tui
 
 import (
 	"fmt"
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 	"testing"
 )
 

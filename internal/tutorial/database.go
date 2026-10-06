@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 
 	_ "modernc.org/sqlite"
 )

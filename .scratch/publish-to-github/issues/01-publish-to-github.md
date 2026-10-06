@@ -95,11 +95,12 @@ Für einen produktiven frischen Start sollte die gewählte Vikunja-Version selbs
 
 ## Offene Schritte / Abnahme
 
-- [ ] GitHub-Konto/Organisation, Repositoryname und öffentliche Sichtbarkeit festlegen; Go-Modulpfad mit dem Ziel abgleichen.
+- [x] Öffentliches Ziel `JanWartenberg/vimkunja` festgelegt; Go-Modulpfad und Imports abgeglichen. Repository-Erstellung/öffentlicher Push bleiben ausstehend.
 - [x] MIT-Projektlizenz ergänzen.
 - [ ] Herkunft übernommener Bestandteile und Drittanbieter-Lizenzbedingungen abschließend prüfen.
 - [x] README um Build-Anleitung, Voraussetzungen, Tutorial und aktuelle Plattform-/Kompatibilitätsgrenzen ergänzen; SQLite-Zugriff und fehlenden REST-Modus klar benennen.
-- [ ] Finale Clone-URL eintragen und konkrete Vikunja-Version durch Integrationstest belegen.
+- [x] Finale Clone-URL `https://github.com/JanWartenberg/vimkunja.git` eingetragen.
+- [ ] Konkrete Vikunja-Version durch Integrationstest belegen (Kompatibilitätsblocker).
 - [ ] Blanke DB / versioniertes Start-Template entscheiden; gegebenenfalls Schema-Prüfung und Initialisierungsworkflow spezifizieren.
 - [ ] Persönliche Inhalte und Commit-Metadaten prüfen; Veröffentlichungsumfang bestätigen.
 - [ ] Zeitpunkt der Erstveröffentlichung gegenüber dem HTML-Richtext-Feature entscheiden.

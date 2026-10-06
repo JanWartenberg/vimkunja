@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 )
 
 func TestDueDatePickerHasBlinkingOverwriteCursor(t *testing.T) {

@@ -3,7 +3,7 @@ package tui
 import (
 	tea "charm.land/bubbletea/v2"
 	"fmt"
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 	"testing"
 )
 

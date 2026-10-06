@@ -1,4 +1,4 @@
-module github.com/vimkunja/vimkunja
+module github.com/JanWartenberg/vimkunja
 
 go 1.25.0
 

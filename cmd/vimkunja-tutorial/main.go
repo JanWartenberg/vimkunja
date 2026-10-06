@@ -6,8 +6,8 @@ import (
 	"os"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/vimkunja/vimkunja/internal/tui"
-	"github.com/vimkunja/vimkunja/internal/tutorial"
+	"github.com/JanWartenberg/vimkunja/internal/tui"
+	"github.com/JanWartenberg/vimkunja/internal/tutorial"
 )
 
 func main() {

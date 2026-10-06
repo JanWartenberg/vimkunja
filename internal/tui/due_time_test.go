@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 )
 
 func TestDetailSaveAndUndoKeepDueTimestamp(t *testing.T) {

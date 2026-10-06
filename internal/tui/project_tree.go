@@ -3,7 +3,7 @@ package tui
 import (
 	"sort"
 
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 )
 
 type projectTreeRow struct {

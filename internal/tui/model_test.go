@@ -11,8 +11,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
-	apperrors "github.com/vimkunja/vimkunja/internal/errors"
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	apperrors "github.com/JanWartenberg/vimkunja/internal/errors"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 
 	tea "charm.land/bubbletea/v2"
 )

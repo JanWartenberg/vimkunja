@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 )
 
 // Exercise the real Ex-command -> asynchronous save -> SQLite -> completion

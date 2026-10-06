@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 )
 
 func TestTaskMatchesFilter(t *testing.T) {

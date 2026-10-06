@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vimkunja/vimkunja/internal/vimkunja"
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
