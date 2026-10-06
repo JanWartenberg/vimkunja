@@ -93,11 +93,54 @@ Für einen produktiven frischen Start sollte die gewählte Vikunja-Version selbs
 
 **Noch festzulegen:** zunächst den von Vikunja initialisierten Start dokumentieren oder zusätzlich ein versioniertes, synthetisches Template anbieten. Kein produktives Template und keine eigenständige Vimkunja-Schemaerstellung wurden ohne diesen Contract eingeführt.
 
+## Weitere Veröffentlichungsprüfung — 2026-10-05
+
+### Ziel, Modulpfad und direkt behobene Findings
+
+- Jan bestätigt `https://github.com/JanWartenberg/vimkunja` als öffentliches Ziel, analog zu Tagger. `go.mod`, alle bisherigen Go-Imports einschließlich Tests und README-Clone-URL sind angepasst. Dependency-Versionen und `go.sum` bleiben unverändert.
+- Der öffentliche GitHub-API-Aufruf für das Ziel liefert derzeit HTTP 404; das beweist nicht, ob das Repository fehlt oder privat ist. Es wurden kein Repository und kein externer Remote angelegt und nichts auf GitHub gepusht.
+- `/bin/` ist für die in der README beschriebenen lokalen Builds ignoriert. Globale DB-/WAL-/SHM-/SQLite-Ignore-Regeln schützen zusätzlich vor versehentlichem Staging temporärer Kompatibilitätsdatenbanken außerhalb von `internal/db`; vorhandene lokale DB-Dateien bleiben unverändert. Künftige bewusst veröffentlichte synthetische Fixtures brauchen eine ausdrückliche Ausnahme.
+
+### Lizenzprüfung
+
+- Die tatsächliche Dependency-Closure beider Entrypoints für Linux, Windows und macOS amd64 umfasst insgesamt **30 Drittmodule**. Die Modul-Root-Lizenzen sind MIT bzw. BSD. Die vertiefte Prüfung tatsächlich kompilierter Dependency-Dateien findet zusätzlich MIT-/BSD-2-/BSD-4-Texte und **APSL-2.0-Hinweise in generierten Darwin-Headerdateien von `modernc.org/libc`**; außerdem gelten Musl-/Netdb-/Unicode-Hinweise. Eine reine Root-LICENSE-Prüfung hätte diese zusätzlichen Bedingungen übersehen. Das SQLite-Original ist [Public Domain](https://www.sqlite.org/copyright.html), die `modernc`-Bindings haben eigene BSD-Bedingungen.
+- [THIRD_PARTY_NOTICES.txt](../../../THIRD_PARTY_NOTICES.txt) enthält versionierte Modulzuordnung, vollständige Root-Lizenztexte, zusätzliche Lizenz-Kommentarblöcke aus tatsächlich kompilierten Dependency-Dateien (einschließlich Darwin arm64), ergänzende Musl-/Netdb-/Unicode-Hinweise, APSL-1.1-/2.0-Texte samt Source-URLs und die Go-Lizenz. Die Datei und `LICENSE` müssen später bei Binary-Distributionen mitgeliefert werden; README dokumentiert dies. Unbenutzte Logos und ausschließlich in Dependency-Testdaten enthaltene Komponenten werden nicht als ausgelieferte Bestandteile behandelt.
+- [Vikunja 2.7.0 ist AGPL-3.0](https://raw.githubusercontent.com/go-vikunja/vikunja/v2.7.0/LICENSE). Vimkunjas Modulgraph bindet keinen Vikunja-Code ein. In den eigenen Go-Dateien wurden keine Übernahme-/Copyright-Vermerke Dritter gefunden. **561 historische Go-Blobs** der vorgesehenen Referenzen wurden mit den Backend-Go-Quellen des lokalen Upstream-Checkouts (`82ee780161c6ed250cdb1fc4d2952b72464cb724`) verglichen: keine identische Folge von acht nichttrivialen Codezeilen nach Entfernen von Leerraum/Kommentarzeilen.
+- **Ergebnis für den eigenen Code und die geplante Quellcode-Veröffentlichung:** kein konkreter Lizenzkonflikt gefunden; MIT bleibt bestehen. **Vor einem macOS-Binary-Release ist die APSL-Prüfung offen:** [APSL 2.0](https://opensource.apple.com/apsl/) Abschnitt 2.3 verlangt einen prominenten Hinweis im ausführbaren Code und in der Dokumentation zur Bezugsquelle des betroffenen Quellcodes. Die Notice-Datei allein belegt diese ausführbare Release-Bedingung nicht. Ein macOS-Binary-Release wird hier nicht freigegeben. Der technische Vergleich beweist keine lückenlose unabhängige Herkunft und erkennt insbesondere umgeschriebene oder kurze Übernahmen nicht. Künftige tatsächliche Upstream-Codeübernahmen brauchen eine erneute Herkunfts-/Lizenzprüfung; eine DB-Schnittstelle allein ist kein Nachweis einer Codeübernahme.
+
+### Links und persönliche Inhalte
+
+- **100 veröffentlichbare Markdown-Dateien im abschließenden Lauf:** lokale Dateilinks und sechs Markdown-Fragmente geprüft; nach der Korrektur kein defekter Link gefunden. Nicht getrackte, ignorierte lokale Artefakte wurden nicht als veröffentlichter Inhalt vorausgesetzt.
+- **34 externe Dokumentationslinks einschließlich der während des Audits ergänzten Lizenz-/Security-Quellen:** HTTP 200, einschließlich Prüfung der vorhandenen GitHub-Zeilenanker gegen die referenzierten Rohdateien. Externe Linkziele können sich später ändern.
+- Suche in veröffentlichbaren Textdateien nach persönlichen Home-Verzeichnissen und E-Mail-Adressen: keine zusätzlichen Kandidaten außerhalb der Drittanbieter-Lizenzhinweise und des hier dokumentierten Commit-Metadatenbefunds. Keine konkrete unangemessene persönliche Passage identifiziert; subjektive Inhaltsfreigabe bleibt bei Jan.
+- **Veröffentlichte Commit-Metadaten würden `Jan Wartenberg <5298128+JanWartenberg@users.noreply.github.com>` sowie die lokalen Agent-Identitäten enthalten.** Die persönliche E-Mail-Adresse ist damit öffentlich sichtbar, auch ohne Angabe in der README. Keine Historienumschreibung und keine Änderung der Git-Identität vorgenommen. Vor dem tatsächlichen Push diese Sichtbarkeit bewusst bestätigen oder eine gesonderte Bereinigung beauftragen.
+
+### Referenzen und erneute Secret-Prüfung
+
+- Frischer `--no-local --single-branch`-Clone von committed `main` (`b6aa06061cc0df1a4c78643c8ab06fb3fac14210`), anschließend Dry Run und tatsächlicher Push **ausschließlich in ein temporäres lokales Bare-Repository** mit expliziten Referenzen. Ziel enthält exakt `refs/heads/main`, `refs/tags/MVP` und `refs/tags/Milestone1`. Kein `refs/original/`, keine erreichbaren `.db`-/WAL-/SHM-/SQLite-/SQL-Dump-Dateien. Uncommitted Vorbereitungen sind nicht Teil dieser Historienprobe.
+- Workspace hat aktuell keine konfigurierten Remotes und somit keinen Mirror-Modus oder zusätzlichen Remote-Push-Refspec. Die Zielkonfiguration muss nach dem späteren Anlegen von `origin` erneut geprüft werden.
+- Gitleaks 8.30.1 erneut über alle Referenzen/Reflogs (**157 Commits**), den gesamten aktuellen Dateibestand und **alle lokalen Git-Objekte** einschließlich unerreichbarer Altstände (**1139 Blobs, 168 Commits, 2 Tags**). Keine echten Secrets gefunden. Ein `localStorage`-Schlüssel und vier alte `modernc.org/token`-Prüfsummen bleiben bestätigte Fehlalarme. Rohberichte sind temporär; diese Zahlen und Ergebnisse sind die dauerhafte Ticket-Evidenz.
+
+### Toolchain und Plattformen
+
+- Mit Go 1.27.1 zusätzlich beide CLI-Help-Aufrufe geprüft, fehlenden DB-Pfad mit hilfreichem Fehler ohne Dateineuanlage bestätigt und Tutorial in einem Linux-PTY mit sichtbarer Ausgabe und sauberem `Ctrl+C`-Exit gestartet. Separates temporäres Benutzerkonfigurationsverzeichnis; keine produktive DB über die Anwendung geöffnet.
+- Mit Go 1.25.0 und Go 1.27.1: `go test ./...`, beide Entrypoint-Builds und `go vet ./...` erfolgreich. `go mod verify` erfolgreich; CI nach Änderung erneut mit actionlint 1.7.12 geprüft.
+- Beide Entrypoints mit `CGO_ENABLED=0` für Windows amd64 und macOS arm64 cross-kompiliert. Das ist keine native Terminal-, Tastatur-, Clipboard- oder Betriebssystemabnahme. Native Windows-Tests und ein echter GitHub-Actions-Lauf bleiben offen.
+- **Neues konkretes Security-Finding:** govulncheck 1.8.0 erkennt mit lokalem Go 1.25.0 [GO-2026-4341](https://pkg.go.dev/vuln/GO-2026-4341) als erreichbaren `net/url.ParseQuery`-Aufruf über den SQLite-Treiber. Die produktive DSN hat nur den festen Queryparameter `mode=rw`; der Aufrufnachweis beweist keine praktische Ausnutzbarkeit durch Vimkunja. Trotzdem ist die ungepatchte Toolchain kein geeigneter Release-Stand.
+- **Behoben für CI/Build-Anleitung:** CI nutzt die aktuelle stabile Go-Version statt des festen, ungepatchten Go 1.25.0 aus `go.mod`. README empfiehlt eine aktuelle sicherheitsgepatchte Toolchain. Die Sprach-/Modul-Mindestversion und Dependency-Versionen werden dadurch nicht angehoben; die lokale Systeminstallation bleibt unverändert.
+- **Security-Nachprüfung:** govulncheck 1.8.0, mit Go 1.27.1 gebaut und auf Go 1.27.1 ausgeführt, endet erfolgreich ohne Findings (Go-Vulnerability-Datenbankstand 2026-10-01). Die erste Nachprüfung mit dem unter Go 1.26 gebauten Scanner konnte neue Go-1.27-Syntax nicht laden und war daher kein gültiger Scan; nach Neubau des Scanners erfolgreich wiederholt. Keine Dependency-Upgrades erforderlich.
+
+### Review der Veröffentlichungseinheit — 2026-10-06
+
+- Ignore-Regeln decken nun WAL-/SHM-/Rollback-Journal-Dateien für `.db`, `.sqlite` und `.sqlite3` ab; vorher waren nur `.db`-WAL-/SHM-Dateien geschützt.
+- Die erhaltenen Darwin-Header nennen APSL 1.1 und 2.0. Notices enthalten jetzt beide Lizenztexte mit Bezugsquellen; die spätere macOS-Binary-Abnahme bleibt offen.
+- Die Veröffentlichungseinheit wurde getrennt von uncommitted DB-/Richtext-Arbeit geprüft. Tests, beide Builds, Vet und Workflow-Lint bestehen auf einer isolierten Kopie des gestagten Codes mit Go 1.27.1. Kein Push oder Release beauftragt.
+
 ## Offene Schritte / Abnahme
 
 - [x] Öffentliches Ziel `JanWartenberg/vimkunja` festgelegt; Go-Modulpfad und Imports abgeglichen. Repository-Erstellung/öffentlicher Push bleiben ausstehend.
 - [x] MIT-Projektlizenz ergänzen.
-- [ ] Herkunft übernommener Bestandteile und Drittanbieter-Lizenzbedingungen abschließend prüfen.
+- [x] Technische Herkunfts- und Drittanbieter-Lizenzprüfung durchgeführt; Umfang und Grenzen siehe Prüfbericht vom 2026-10-05.
 - [x] README um Build-Anleitung, Voraussetzungen, Tutorial und aktuelle Plattform-/Kompatibilitätsgrenzen ergänzen; SQLite-Zugriff und fehlenden REST-Modus klar benennen.
 - [x] Finale Clone-URL `https://github.com/JanWartenberg/vimkunja.git` eingetragen.
 - [ ] Konkrete Vikunja-Version durch Integrationstest belegen (Kompatibilitätsblocker).
@@ -107,6 +150,7 @@ Für einen produktiven frischen Start sollte die gewählte Vikunja-Version selbs
 - [ ] Aktuelle Änderungen sauber ordnen; reine Zeilenendenänderungen nicht als fachliche Änderungen committen.
 - [x] CI für Tests, beide Builds und Vet auf Linux/Windows vorbereiten.
 - [ ] Ersten echten GitHub-Actions-Lauf prüfen und native Windows-Terminaltests durchführen.
+- [ ] Vor etwaigen macOS-Binary-Releases APSL-Source-/Executable-Notice-Bedingungen für generierte Darwin-Dependency-Dateien erfüllen; aktuell ist nur die technische Cross-Kompilation geprüft.
 - [ ] Separate Veröffentlichungskopie ohne Backup-Referenzen prüfen; Secret-Scan und DB-Historienprüfung auf dem finalen Stand wiederholen.
 - [ ] Tests und beide Builds auf dem finalen Stand ausführen.
 - [ ] Dry Run prüfen und ausschließlich `main` sowie bestätigte Tags veröffentlichen; Remote-Referenzen anschließend kontrollieren.

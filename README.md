@@ -6,7 +6,7 @@ Vimkunja ist eine tastaturorientierte Terminal-Oberfläche für eine lokale [Vik
 
 ### Installation und erster Start
 
-Voraussetzungen: Git, Go 1.25 oder neuer und ein interaktives Terminal. Linux amd64 wurde lokal geprüft; Windows amd64 lässt sich bauen, native Windows-Terminaltests stehen noch aus.
+Voraussetzungen: Git, Go 1.25 oder neuer und ein interaktives Terminal. Für Builds die aktuelle stabile, sicherheitsgepatchte Go-Version verwenden (CI nutzt `stable`); Go 1.25.0 ist veraltet. Linux amd64 wurde lokal geprüft; Windows amd64 lässt sich bauen, native Windows-Terminaltests stehen noch aus.
 
 Die vorgesehene Clone-URL lautet:
 
@@ -142,4 +142,4 @@ Der aktuelle, priorisierbare Backlog liegt in `.scratch/`; der Kurzstatus mit Ve
 
 ## Lizenz
 
-Vimkunja steht unter der [MIT-Lizenz](LICENSE). Abhängigkeiten behalten ihre jeweiligen Lizenzen.
+Vimkunja steht unter der [MIT-Lizenz](LICENSE). Abhängigkeiten behalten ihre jeweiligen Lizenzen; deren Hinweise stehen in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). Bei Binary-Releases beide Dateien mitliefern.

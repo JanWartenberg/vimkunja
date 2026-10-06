@@ -52,7 +52,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 
 ## Veröffentlichung
 
-- [Publish to GitHub](.scratch/publish-to-github/issues/01-publish-to-github.md) – MIT, README-/Link-Korrekturen, Schutz vor versehentlicher DB-Neuanlage und Linux-/Windows-CI vorbereitet; produktives Start-Template und belegte Vikunja-Version offen. **Nur `main` und ausgewählte Tags veröffentlichen; keine Backup-Referenzen und kein Mirror-Push.**
+- [Publish to GitHub](.scratch/publish-to-github/issues/01-publish-to-github.md) – Ziel `JanWartenberg/vimkunja`, Modulpfad/Imports, MIT samt Drittanbieter-Hinweisen und Linux-/Windows-CI mit aktueller stabiler Go-Version vorbereitet; Links, Secrets und lokale Push-Probe geprüft. Persönliche Commit-Mail, produktives Start-Template und belegte Vikunja-Version offen; macOS-Binary-Lizenzbedingungen separat vor einem entsprechenden Release klären. **Nur `main` und ausgewählte Tags veröffentlichen; keine Backup-Referenzen und kein Mirror-Push.**
 
 ## Dokumentation
 
