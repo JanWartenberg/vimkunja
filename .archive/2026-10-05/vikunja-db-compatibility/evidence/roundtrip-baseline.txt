@@ -1,0 +1,5 @@
+=== RUN   TestVikunja270OriginalAppRoundtrip
+    compatibility_roundtrip_test.go:217: Real VOA 2.7.0 roundtrip passed: create/edit/labels/comments/buckets/Done/move/delete/undo/redo, retired addresses and subsequent VOA creation
+--- PASS: TestVikunja270OriginalAppRoundtrip (1.34s)
+PASS
+ok  	github.com/JanWartenberg/vimkunja/internal/vimkunja	1.347s

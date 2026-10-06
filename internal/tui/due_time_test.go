@@ -11,7 +11,7 @@ import (
 func TestDetailSaveAndUndoKeepDueTimestamp(t *testing.T) {
 	m, db := auditEditorModel(t)
 	if _, err := db.Exec(`ALTER TABLE project_views ADD COLUMN done_bucket_id INTEGER;
-		CREATE TABLE buckets (id INTEGER PRIMARY KEY, title TEXT, project_view_id INTEGER);`); err != nil {
+		CREATE TABLE buckets (id INTEGER PRIMARY KEY, title TEXT, project_view_id INTEGER,"limit" INTEGER DEFAULT 0);`); err != nil {
 		t.Fatal(err)
 	}
 	const due = "2026-09-01T18:45:12.123456789+02:00"

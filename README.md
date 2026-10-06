@@ -38,11 +38,17 @@ go run ./cmd/vimkunja --db /path/to/vikunja.db
 
 `/path/to/vikunja.db` durch den eigenen Pfad ersetzen und bei Leerzeichen in Anführungszeichen setzen. Der Datenbankpfad muss eine vorhandene, lesbare und beschreibbare Datei sein. Vimkunja greift direkt auf SQLite zu; es gibt keinen REST-Modus.
 
+Ohne `--db` verwendet Vimkunja lokal `internal/db/vikunja.db`. Diese Datei ist nicht Teil des Repositories. Neue Installationen müssen eine eigene 2.7.0-Datenbank mit `--db` angeben. Ältere Datenbanken vor einem Upgrade einschließlich vorhandener WAL-Datei sichern und das Upgrade zuerst auf einer Kopie mit dem offiziellen Vikunja-2.7.0-Programm prüfen; Vimkunja führt keine Migrationen aus.
+
 ### Datenbank und Kompatibilität
 
 Eine blanke SQLite-Datei enthält keine Vikunja-Tabellen und reicht für einen produktiven Start nicht aus. Vimkunja erstellt oder migriert kein Vikunja-Schema. Für einen frischen produktiven Datenbestand muss Vikunja selbst die Datenbank initialisieren; User, Project und View müssen für den gewünschten Workflow vorhanden sein. Ein dauerhaftes Start-Template ist noch nicht spezifiziert. Die synthetische Tutorial-Datenbank ist ausschließlich zum Ausprobieren gedacht und wird beim Beenden gelöscht.
 
-Noch ist keine konkrete Vikunja-Release-Version durch einen vollständigen Integrationstest mit der Original-App freigegeben. Store-Tests prüfen synthetische Schemas; sie ersetzen keine Versionszusage. Das Erstellen von Labels sowie das Schreiben/Löschen von Comments setzt genau einen lokalen User voraus. Direkte SQLite-Schreibzugriffe führen keine Vikunja-Serveraktionen wie Webhooks, Benachrichtigungen oder Reminder-Dienste aus. Gleichzeitige Bearbeitung mit dem Server ist nicht als sicherer Workflow verifiziert.
+Einziges geprüftes Kompatibilitätsziel ist **Vikunja 2.7.0**. Echte Server-Roundtrips mit frischer Datenbank und einer Kopie der synthetischen Windows-Baseline sind im [Prüfbericht](.archive/2026-10-05/vikunja-db-compatibility/report.md) dokumentiert. Frühere, spätere und Entwicklungsversionen sind nicht unterstützt. Der produktive Start prüft Migrationshistorie und benötigte Schema-Merkmale und lehnt abweichende oder unvollständige DB-Revisionen vor fachlichen Schreibzugriffen ab. Releases mit identischer DB-Revision sind aus der Datei allein nicht unterscheidbar und erhalten keine zusätzliche Freigabe. Die Tutorial-Datenbank ist kein produktives Start-Template.
+
+VOA vor dem Start von Vimkunja beenden; Vimkunja vor dem Neustart von VOA beenden. Parallele Bearbeitung ist nicht verifiziert. Tasks im Papierkorb bleiben verborgen und können nicht bearbeitet werden. Archivierte Projects sind schreibgeschützt; Bucket-Limits werden berücksichtigt. Task-Nummern bleiben nach Löschungen reserviert; alte Adressen nach Project-Wechseln und Undo/Redo sind über VOA API v2 auflösbar.
+
+Vimkunja löscht Tasks weiterhin **endgültig**, ohne Papierkorb oder Lösch-Undo; Attachment-Dateien bleiben erhalten. Tasks mit Time Entries lassen sich nur in VOA löschen. Wiederkehrende Tasks ebenfalls in VOA abschließen. Das Erstellen von Labels sowie das Schreiben/Löschen von Comments setzt genau einen lokalen User voraus. Direkte SQLite-Schreibzugriffe führen keine Serveraktionen wie Webhooks, Benachrichtigungen oder Reminder-Dienste aus. Native Windows-Terminaltests und ein Live-CalDAV-Test stehen weiterhin aus.
 
 Vor dem Arbeiten mit echten Daten ein Backup erstellen. Weitere Views und native Richtext-Bearbeitung sind geplant; der aktuelle Funktionsstand steht in [STATUS.md](STATUS.md).
 

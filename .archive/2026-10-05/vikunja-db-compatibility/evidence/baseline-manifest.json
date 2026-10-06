@@ -1,0 +1,14 @@
+{
+  "compatibility.db": {
+    "size": 4096,
+    "sha256": "97e8d54f8a7255106f66cf1b213c4a4d7b558d21310b1c2bfedc3d0d526dddda"
+  },
+  "compatibility.db-shm": {
+    "size": 32768,
+    "sha256": "620be61f423151ab7e1c5b486d2dd13c96f811ef7c92fabe11f850b08d4b591b"
+  },
+  "compatibility.db-wal": {
+    "size": 3481432,
+    "sha256": "b8bf022ed0f6544e6605ac160fee82fc1a8486634e253833be7fab724204ad11"
+  }
+}

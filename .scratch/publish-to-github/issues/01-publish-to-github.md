@@ -8,6 +8,12 @@
 
 **Status:** needs-triage
 
+**Erfüllte Voraussetzung:** [Vikunja-DB-Kompatibilität ausschließlich 2.7.0](../../../.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md)
+
+## VERBINDLICHE VORAUSSETZUNG: DB-Kompatibilität abschließen
+
+**Keine öffentliche GitHub-Erstveröffentlichung, bevor das verlinkte Kompatibilitätsticket abgeschlossen ist und die Kompatibilität ausschließlich mit Vikunja 2.7.0 durch eine echte Testdatenbank und Roundtrips belegt ist.** Quellenrecherche oder die bisherigen synthetischen Store-Tests allein reichen nicht. Vorbereitung kann parallel fortgesetzt werden. Andere Releases sind nicht unterstützt; eine Mehrversions-/Upgrade-Matrix ist keine Voraussetzung.
+
 ## VERBINDLICHE ENTSCHEIDUNG: Backup-Referenz niemals veröffentlichen
 
 **Nur `main` und ausdrücklich ausgewählte Tags veröffentlichen. `refs/original/refs/heads/main` und andere Backup-Referenzen dürfen NICHT auf GitHub gelangen. KEIN `git push --mirror`.**
@@ -24,7 +30,7 @@ Beispiel für einen Dry Run, sofern `origin` auf das bestätigte Ziel zeigt und 
 git push --dry-run origin main refs/tags/MVP refs/tags/Milestone1
 ```
 
-Nach Prüfung erfolgt der tatsächliche Push mit denselben Referenzen ohne `--dry-run`.
+Nach Erfüllung der Veröffentlichungsvoraussetzungen und Prüfung erfolgt der tatsächliche Push mit denselben Referenzen ohne `--dry-run`.
 
 ## Veröffentlichungsumfang
 
@@ -138,12 +144,13 @@ Für einen produktiven frischen Start sollte die gewählte Vikunja-Version selbs
 
 ## Offene Schritte / Abnahme
 
+- [x] **Erfüllt:** [DB-Kompatibilitätsticket](../../../.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md) abschließen; belegte 2.7.0-Kompatibilität, Ablehnung ungetesteter DB-Revisionen und Abnahmeergebnisse übernehmen, bevor veröffentlicht wird.
 - [x] Öffentliches Ziel `JanWartenberg/vimkunja` festgelegt; Go-Modulpfad und Imports abgeglichen. Repository-Erstellung/öffentlicher Push bleiben ausstehend.
 - [x] MIT-Projektlizenz ergänzen.
 - [x] Technische Herkunfts- und Drittanbieter-Lizenzprüfung durchgeführt; Umfang und Grenzen siehe Prüfbericht vom 2026-10-05.
 - [x] README um Build-Anleitung, Voraussetzungen, Tutorial und aktuelle Plattform-/Kompatibilitätsgrenzen ergänzen; SQLite-Zugriff und fehlenden REST-Modus klar benennen.
 - [x] Finale Clone-URL `https://github.com/JanWartenberg/vimkunja.git` eingetragen.
-- [ ] Konkrete Vikunja-Version durch Integrationstest belegen (Kompatibilitätsblocker).
+- [x] Vikunja 2.7.0 durch die dokumentierten Fresh-/Baseline-Roundtrips belegt (Kompatibilitätsvoraussetzung erfüllt).
 - [ ] Blanke DB / versioniertes Start-Template entscheiden; gegebenenfalls Schema-Prüfung und Initialisierungsworkflow spezifizieren.
 - [ ] Persönliche Inhalte und Commit-Metadaten prüfen; Veröffentlichungsumfang bestätigen.
 - [ ] Zeitpunkt der Erstveröffentlichung gegenüber dem HTML-Richtext-Feature entscheiden.
@@ -166,3 +173,15 @@ Möglichst alles transparent veröffentlichen, mit höchster Priorität für Cod
 ### 2026-10-04 — MIT und direkte Umsetzung
 
 Jan wählt MIT, beauftragt die direkte Umsetzung der übrigen behebbaren Findings und möchte einen frischen Start mit blanker DB oder Template prüfen. Die oben dokumentierten Vorbereitungen sind umgesetzt; ein produktives Start-Template bleibt eine offene Entscheidung.
+
+### 2026-10-05 — Kompatibilität ist Veröffentlichungsvoraussetzung
+
+Jan verlangt ein separates Ticket für die DB-Änderungen von Vikunja 2.3.0 bis 2.7.0 und macht die GitHub-Veröffentlichung von dessen Abschluss abhängig. Die Blocker-Verknüpfung und Abnahmebedingung sind oben verbindlich festgehalten.
+
+### 2026-10-05 — Einziges Kompatibilitätsziel: 2.7.0
+
+Jan begrenzt den Prüf- und Unterstützungsumfang auf genau Vikunja 2.7.0. Die bisherige Mehrversions-/Upgrade-Matrix entfällt; der belegte 2.7.0-Roundtrip und die Ablehnung ungetesteter DB-Revisionen bleiben Veröffentlichungsvoraussetzungen. Keine Kompatibilitätsfreigabe und kein Push wurden ausgeführt.
+
+### 2026-10-05 — Kompatibilitätsvoraussetzung erfüllt
+
+Das verlinkte 2.7.0-Ticket ist abgeschlossen und archiviert. Produktive Schema-Prüfung, Store-Fixes, Regressionen und echte Server-Roundtrips auf frischer DB und Kopie der synthetischen Windows-Baseline bestehen. Tests, Vet und beide Builds grün; [Prüfbericht](../../../.archive/2026-10-05/vikunja-db-compatibility/report.md) dokumentiert Contract und Grenzen. Dieser DB-Blocker ist erfüllt; andere Veröffentlichungspunkte bleiben offen. Kein Commit oder Push beauftragt.

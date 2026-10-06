@@ -14,12 +14,12 @@ func TestDetailWorkflowSavePreservesDone(t *testing.T) {
 				const doneAt = "2026-09-01T10:00:00.123456789+02:00"
 				_, err := db.Exec(`ALTER TABLE project_views ADD COLUMN done_bucket_id INTEGER;
                     ALTER TABLE project_views ADD COLUMN position REAL;
-                    CREATE TABLE buckets (id INTEGER PRIMARY KEY,title TEXT,project_view_id INTEGER,position REAL);
+                    CREATE TABLE buckets (id INTEGER PRIMARY KEY,title TEXT,project_view_id INTEGER,position REAL,"limit" INTEGER DEFAULT 0);
                     CREATE TABLE users (id INTEGER PRIMARY KEY,name TEXT,username TEXT);
                     CREATE TABLE task_comments (id INTEGER PRIMARY KEY,comment TEXT,author_id INTEGER,task_id INTEGER,created DATETIME,updated DATETIME);
                     INSERT INTO users VALUES(1,'Local','local');
                     INSERT INTO project_views VALUES(10,1,3,1,100,0,1);
-                    INSERT INTO buckets VALUES(100,'Todo',10,1),(101,'Other',10,2);
+                    INSERT INTO buckets(id,title,project_view_id,position) VALUES(100,'Todo',10,1),(101,'Other',10,2);
                     INSERT INTO tasks(id,project_id,title,description,priority,done,done_at,"index") VALUES(1,1,'Before','',0,1,?,1);
                     INSERT INTO task_buckets VALUES(1,10,100);`, doneAt)
 				if err != nil {

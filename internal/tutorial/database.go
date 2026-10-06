@@ -121,6 +121,7 @@ CREATE TABLE tasks (
     description TEXT,
     done INTEGER DEFAULT 0,
     done_at DATETIME,
+    deleted_at DATETIME,
     priority INTEGER DEFAULT 0,
     "index" INTEGER,
     due_date DATETIME,
@@ -128,9 +129,12 @@ CREATE TABLE tasks (
     updated DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_by_id INTEGER DEFAULT 1
 );
+CREATE TABLE project_task_counters (project_id INTEGER PRIMARY KEY, last_index INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE task_index_aliases (project_id INTEGER NOT NULL, "index" INTEGER NOT NULL, task_id INTEGER NOT NULL, UNIQUE(project_id, "index"));
 CREATE TABLE buckets (
     id INTEGER PRIMARY KEY,
     title TEXT NOT NULL,
+    "limit" INTEGER DEFAULT 0,
     project_view_id INTEGER NOT NULL,
     position REAL,
     created DATETIME DEFAULT CURRENT_TIMESTAMP,

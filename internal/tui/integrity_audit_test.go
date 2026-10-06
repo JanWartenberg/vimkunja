@@ -23,16 +23,18 @@ func auditEditorModel(t *testing.T) (*model, *sql.DB) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	_, err = db.Exec(`
-		CREATE TABLE projects (id INTEGER PRIMARY KEY, identifier TEXT, owner_id INTEGER);
+		CREATE TABLE projects (id INTEGER PRIMARY KEY, identifier TEXT, owner_id INTEGER, is_archived INTEGER DEFAULT 0);
 		CREATE TABLE tasks (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER, title TEXT,
-			description TEXT, priority INTEGER, due_date DATETIME, done INTEGER, done_at DATETIME,
+			description TEXT, priority INTEGER, due_date DATETIME, done INTEGER, done_at DATETIME, deleted_at DATETIME,
 			"index" INTEGER, created DATETIME, updated DATETIME, created_by_id INTEGER);
 		CREATE TABLE project_views (id INTEGER PRIMARY KEY, project_id INTEGER,
 			view_kind INTEGER, bucket_configuration_mode INTEGER, default_bucket_id INTEGER);
 		CREATE TABLE task_positions (task_id INTEGER, project_view_id INTEGER, position REAL);
 		CREATE TABLE task_buckets (task_id INTEGER, project_view_id INTEGER, bucket_id INTEGER);
 		CREATE TABLE label_tasks (task_id INTEGER, label_id INTEGER);
-		INSERT INTO projects VALUES (1, 'AUDIT', 1);
+		CREATE TABLE project_task_counters (project_id INTEGER PRIMARY KEY, last_index INTEGER NOT NULL DEFAULT 0);
+		CREATE TABLE task_index_aliases (project_id INTEGER NOT NULL, "index" INTEGER NOT NULL, task_id INTEGER NOT NULL, UNIQUE(project_id, "index"));
+		INSERT INTO projects(id, identifier, owner_id) VALUES (1, 'AUDIT', 1);
 	`)
 	if err != nil {
 		t.Fatal(err)

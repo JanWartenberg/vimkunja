@@ -48,9 +48,9 @@ func run() error {
 	}
 
 	// SQLite-only: always use local database file
-	store, err := vimkunja.NewSQLiteStore(*dbPathFlag)
+	store, err := vimkunja.NewVerifiedSQLiteStore(*dbPathFlag)
 	if err != nil {
-		return fmt.Errorf("%w; use --db with an existing Vikunja database, or run vimkunja-tutorial to try Vimkunja without one", err)
+		return fmt.Errorf("database %q: %w; use --db with a verified Vikunja 2.7.0 database, or run vimkunja-tutorial to try Vimkunja without one", *dbPathFlag, err)
 	}
 
 	config.Store = store

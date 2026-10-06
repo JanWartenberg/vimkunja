@@ -26,7 +26,7 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 		t.Fatalf("open test db: %v", err)
 	}
 
-	// Minimal schema (projects, tasks, project_views, task_buckets, task_positions)
+	// Reduced synthetic schema with the 2.7.0 fields needed by Store operations.
 	schema := `
 		CREATE TABLE projects (
 			id INTEGER PRIMARY KEY,
@@ -60,6 +60,7 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			description TEXT,
 			done INTEGER DEFAULT 0,
 			done_at DATETIME,
+			deleted_at DATETIME,
 			priority INTEGER DEFAULT 0,
 			"index" INTEGER,
 			due_date DATETIME,
@@ -73,6 +74,7 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			title TEXT,
 			project_view_id INTEGER,
 			position REAL,
+			"limit" INTEGER DEFAULT 0,
 			created DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated DATETIME DEFAULT CURRENT_TIMESTAMP,
 			created_by_id INTEGER DEFAULT 1
@@ -84,6 +86,9 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			bucket_id INTEGER,
 			project_view_id INTEGER
 		);
+
+		CREATE TABLE project_task_counters (project_id INTEGER PRIMARY KEY, last_index INTEGER NOT NULL DEFAULT 0);
+		CREATE TABLE task_index_aliases (project_id INTEGER NOT NULL, "index" INTEGER NOT NULL, task_id INTEGER NOT NULL, UNIQUE(project_id, "index"));
 
 		CREATE TABLE task_positions (
 			task_id INTEGER,
@@ -189,6 +194,8 @@ func TestSQLiteStoreDeletesOnlyCommentsBySoleLocalUser(t *testing.T) {
 		CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, username TEXT NOT NULL);
 		CREATE TABLE task_comments (id INTEGER PRIMARY KEY, comment TEXT NOT NULL, author_id INTEGER NOT NULL, task_id INTEGER NOT NULL, created DATETIME, updated DATETIME);
 		INSERT INTO users (id, username) VALUES (1, 'local');
+		INSERT INTO projects (id,title) VALUES (1,'Project');
+		INSERT INTO tasks (id,project_id,title) VALUES (11,1,'Task');
 		INSERT INTO task_comments VALUES
 			(1, '<p>Own</p>', 1, 11, '2026-09-04 10:00:00', '2026-09-04 10:00:00'),
 			(2, '<p>Other</p>', 2, 11, '2026-09-04 10:00:00', '2026-09-04 10:00:00');
@@ -214,6 +221,8 @@ func TestListTaskCommentsAcceptsLegacyVimkunjaTimestamp(t *testing.T) {
 		CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, username TEXT NOT NULL);
 		CREATE TABLE task_comments (id INTEGER PRIMARY KEY, comment TEXT NOT NULL, author_id INTEGER NOT NULL, task_id INTEGER NOT NULL, created DATETIME, updated DATETIME);
 		INSERT INTO users (id, username) VALUES (1, 'local');
+		INSERT INTO projects (id,title) VALUES (1,'Project');
+		INSERT INTO tasks (id,project_id,title) VALUES (11,1,'Task');
 		INSERT INTO task_comments VALUES (1, '<p>Legacy</p>', 1, 11, '2026-09-04 13:00:00.123 +0200 CEST m=+1.25', '2026-09-04 13:00:00.123 +0200 CEST m=+1.25');
 	`); err != nil {
 		t.Fatal(err)
@@ -257,6 +266,10 @@ func TestSaveTaskWithCommentRollsBackTaskWhenCommentInsertFails(t *testing.T) {
 func TestSQLiteStoreWritesCanonicalUTCTimestamps(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
+	if _, err := store.db.Exec(`INSERT INTO projects(id,title) VALUES(1,'Project')`); err != nil {
+		t.Fatal(err)
+	}
+
 	if _, err := store.db.Exec(`INSERT INTO tasks (id, project_id, title) VALUES (1, 1, 'Task')`); err != nil {
 		t.Fatal(err)
 	}
@@ -664,6 +677,9 @@ func TestGetTaskWorkflowStatus_UsesDefaultBucketForNewTask(t *testing.T) {
 func TestGetTaskWorkflowStatus_ReportsUnavailableAndAmbiguousViews(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
+	if _, err := store.db.Exec(`INSERT INTO projects(id,title) VALUES(1,'Project'); INSERT INTO tasks(id,project_id,title) VALUES(1,1,'Task')`); err != nil {
+		t.Fatal(err)
+	}
 
 	status, err := store.GetTaskWorkflowStatus(context.Background(), 1, 1)
 	if err != nil {
@@ -699,6 +715,9 @@ func TestGetTaskWorkflowStatus_ReportsUnavailableAndAmbiguousViews(t *testing.T)
 func TestSetTaskWorkflowStatus_UpdatesBucketAndDoneState(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
+	if _, err := store.db.Exec(`INSERT INTO projects(id,title) VALUES(1,'Project')`); err != nil {
+		t.Fatal(err)
+	}
 
 	_, err := store.db.Exec(`
 		INSERT INTO project_views (id, project_id, title, view_kind, done_bucket_id) VALUES (10, 1, 'Board', 3, 12);
@@ -748,6 +767,9 @@ func TestSetTaskWorkflowStatus_UpdatesBucketAndDoneState(t *testing.T) {
 func TestToggleTaskDone_UpdatesTimestamp(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
+	if _, err := store.db.Exec(`INSERT INTO projects(id,title) VALUES(1,'Project')`); err != nil {
+		t.Fatal(err)
+	}
 
 	ctx := context.Background()
 
@@ -1343,6 +1365,9 @@ func TestDeleteTaskRemovesTaskAndRelationsTransactionally(t *testing.T) {
 func TestToggleTaskDone_SetsDoneAt(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
+	if _, err := store.db.Exec(`INSERT INTO projects(id,title) VALUES(1,'Project')`); err != nil {
+		t.Fatal(err)
+	}
 
 	ctx := context.Background()
 

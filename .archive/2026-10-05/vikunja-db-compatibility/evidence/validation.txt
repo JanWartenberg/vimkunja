@@ -1,0 +1,10 @@
+2026-10-05; Linux amd64; Go 1.25.0
+PASS go test ./... (tests.txt)
+PASS go vet ./...
+PASS go build ./cmd/vimkunja ./cmd/vimkunja-tutorial
+PASS fresh official VOA 2.7.0 roundtrip (roundtrip-fresh.txt)
+PASS copied synthetic baseline roundtrip (roundtrip-baseline.txt)
+PASS git diff --check
+PASS baseline main/WAL/SHM sizes and SHA256 unchanged from baseline-manifest.json
+Native Windows terminal and Live CalDAV were not tested.
+No commit, push or publication.

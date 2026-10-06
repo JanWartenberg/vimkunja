@@ -32,7 +32,7 @@ func loadTaskUndoState(ctx context.Context, q undoQuerier, taskID int64) (TaskUn
 			t.title, t.description, t.priority, t.due_date, t.done,
 			COALESCE(CAST(t.due_date AS TEXT), '')
 		FROM tasks t JOIN projects p ON p.id = t.project_id
-		WHERE t.id = ?
+		WHERE t.id = ? AND t.deleted_at IS NULL
 	`, taskID).Scan(&state.TaskID, &state.ProjectID, &projectIdentifier, &index,
 		&state.Title, &description, &state.Priority, &due, &state.Done, &state.DueDateStored)
 	if err != nil {
@@ -104,6 +104,9 @@ func (s *SQLiteStore) RestoreTaskUndoState(ctx context.Context, expected, target
 		return fmt.Errorf("restore Task undo state: begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+	if err := writableTask(ctx, tx, expected.TaskID); err != nil {
+		return err
+	}
 
 	current, err := loadTaskUndoState(ctx, tx, expected.TaskID)
 	if err != nil {
@@ -140,6 +143,9 @@ func (s *SQLiteStore) RestoreTaskUndoState(ctx context.Context, expected, target
 			return fmt.Errorf("restore Task undo state: load Task index: %w", err)
 		}
 	} else {
+		if err := recordTaskIndexAlias(ctx, tx, target.TaskID); err != nil {
+			return err
+		}
 		index, err = nextTaskIndex(ctx, tx, target.ProjectID)
 		if err != nil {
 			return fmt.Errorf("restore Task undo state: %w", err)
@@ -220,6 +226,9 @@ func sameTaskUndoState(left, right TaskUndoState) bool {
 }
 
 func validateUndoTarget(ctx context.Context, tx *sql.Tx, target TaskUndoState) error {
+	if err := writableProject(ctx, tx, target.ProjectID); err != nil {
+		return fmt.Errorf("restore Task undo state: %w", err)
+	}
 	var exists bool
 	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM projects WHERE id = ?)`, target.ProjectID).Scan(&exists); err != nil {
 		return fmt.Errorf("restore Task undo state: check Project: %w", err)
@@ -262,6 +271,9 @@ func validateUndoTarget(ctx context.Context, tx *sql.Tx, target TaskUndoState) e
 		}
 		if !exists {
 			return fmt.Errorf("restore Task undo state: Bucket %d is unavailable", assignment.BucketID)
+		}
+		if err := checkBucketCapacity(ctx, tx, target.TaskID, assignment.ViewID, assignment.BucketID); err != nil {
+			return err
 		}
 	}
 	return nil

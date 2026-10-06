@@ -329,12 +329,9 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 	offset := (page - 1) * perPage
 
 	var total int
-	// MVP: some schema versions (e.g. depending on export/source) may not
-	// have a deleted_at column. For prototype purposes we just rely on the
-	// project_id filter.
 	qTotal := `SELECT COUNT(1)
 		FROM tasks
-		WHERE project_id = ?`
+		WHERE project_id = ? AND deleted_at IS NULL`
 	if err := s.db.QueryRowContext(ctx, qTotal, projectID).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count tasks: %w", err)
 	}
@@ -357,7 +354,7 @@ func (s *SQLiteStore) ListTasksInView(ctx context.Context, projectID, viewID int
 		FROM tasks t
 		LEFT JOIN task_positions tp
 			ON tp.task_id = t.id AND tp.project_view_id = ?
-		WHERE t.project_id = ?
+		WHERE t.project_id = ? AND t.deleted_at IS NULL
 		ORDER BY COALESCE(tp.position, 0) ASC, t.id ASC
 		LIMIT ? OFFSET ?`
 
@@ -496,7 +493,7 @@ func (s *SQLiteStore) ListOverviewTasks(ctx context.Context, page, perPage int) 
 	var total int
 	if err := s.db.QueryRowContext(ctx, `SELECT COUNT(1)
 		FROM tasks t JOIN projects p ON p.id = t.project_id
-		WHERE (p.is_archived = 0 OR p.is_archived IS NULL)`).Scan(&total); err != nil {
+		WHERE (p.is_archived = 0 OR p.is_archived IS NULL) AND t.deleted_at IS NULL`).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count overview tasks: %w", err)
 	}
 	totalPages := (total + perPage - 1) / perPage
@@ -505,7 +502,7 @@ func (s *SQLiteStore) ListOverviewTasks(ctx context.Context, page, perPage int) 
 		t.id, t.project_id, p.identifier, p.title, t.title, t.done, t.due_date,
 		t.priority, t."index", t.description
 		FROM tasks t JOIN projects p ON p.id = t.project_id
-		WHERE (p.is_archived = 0 OR p.is_archived IS NULL)
+		WHERE (p.is_archived = 0 OR p.is_archived IS NULL) AND t.deleted_at IS NULL
 		ORDER BY t.due_date IS NULL ASC, t.due_date ASC, t.priority DESC,
 			p.identifier COLLATE NOCASE ASC, t.title COLLATE NOCASE ASC, t.id ASC
 		LIMIT ? OFFSET ?`, perPage, offset)
@@ -562,7 +559,7 @@ func (s *SQLiteStore) LoadSearchData(ctx context.Context) (SearchData, error) {
 		t.id, t.project_id, p.identifier, p.title, t.title, t.done, t.due_date,
 		t.priority, t."index", t.description
 		FROM tasks t JOIN projects p ON p.id = t.project_id
-		WHERE (p.is_archived = 0 OR p.is_archived IS NULL)
+		WHERE (p.is_archived = 0 OR p.is_archived IS NULL) AND t.deleted_at IS NULL
 		ORDER BY t.id ASC`)
 	if err != nil {
 		return SearchData{}, fmt.Errorf("list search tasks: %w", err)
@@ -634,7 +631,7 @@ func (s *SQLiteStore) ListTasksForLabel(ctx context.Context, labelID int64, page
 		FROM label_tasks lt
 		JOIN tasks t ON t.id = lt.task_id
 		JOIN projects p ON p.id = t.project_id
-		WHERE lt.label_id = ? AND (p.is_archived = 0 OR p.is_archived IS NULL)`, labelID).Scan(&total); err != nil {
+		WHERE lt.label_id = ? AND (p.is_archived = 0 OR p.is_archived IS NULL) AND t.deleted_at IS NULL`, labelID).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count Label Tasks: %w", err)
 	}
 	totalPages := (total + perPage - 1) / perPage
@@ -644,7 +641,7 @@ func (s *SQLiteStore) ListTasksForLabel(ctx context.Context, labelID int64, page
 		FROM label_tasks lt
 		JOIN tasks t ON t.id = lt.task_id
 		JOIN projects p ON p.id = t.project_id
-		WHERE lt.label_id = ? AND (p.is_archived = 0 OR p.is_archived IS NULL)
+		WHERE lt.label_id = ? AND (p.is_archived = 0 OR p.is_archived IS NULL) AND t.deleted_at IS NULL
 		ORDER BY t.due_date IS NULL ASC, t.due_date ASC, t.priority DESC,
 			p.identifier COLLATE NOCASE ASC, t.title COLLATE NOCASE ASC, t.id ASC
 		LIMIT ? OFFSET ?`, labelID, perPage, offset)
@@ -689,11 +686,12 @@ func (s *SQLiteStore) ListTasksForLabel(ctx context.Context, labelID int64, page
 }
 
 // ListLabels returns every global Label in alphabetical order. TaskCount includes
-// associations on archived Tasks because deleting a Label removes all of them.
+// active associations on archived Tasks; trashed Tasks are not counted.
 func (s *SQLiteStore) ListLabels(ctx context.Context) ([]Label, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT l.id, l.title, COUNT(lt.task_id)
+	rows, err := s.db.QueryContext(ctx, `SELECT l.id, l.title, COUNT(t.id)
 		FROM labels l
 		LEFT JOIN label_tasks lt ON lt.label_id = l.id
+		LEFT JOIN tasks t ON t.id = lt.task_id AND t.deleted_at IS NULL
 		GROUP BY l.id, l.title
 		ORDER BY l.title COLLATE NOCASE ASC, l.id ASC`)
 	if err != nil {
@@ -718,6 +716,9 @@ func (s *SQLiteStore) ListLabels(ctx context.Context) ([]Label, error) {
 // ListTaskLabels returns a Task's assigned Labels in the same stable order
 // used by the Task Detail field and picker.
 func (s *SQLiteStore) ListTaskLabels(ctx context.Context, taskID int64) ([]Label, error) {
+	if _, err := activeTaskProject(ctx, s.db, taskID); err != nil {
+		return nil, err
+	}
 	rows, err := s.db.QueryContext(ctx, `SELECT l.id, l.title
 		FROM label_tasks lt JOIN labels l ON l.id = lt.label_id
 		WHERE lt.task_id = ?
@@ -903,6 +904,9 @@ func replaceTaskLabels(ctx context.Context, tx *sql.Tx, taskID int64, labelIDs [
 	if taskID == 0 {
 		return fmt.Errorf("replace Task Labels: missing task id")
 	}
+	if err := writableTask(ctx, tx, taskID); err != nil {
+		return err
+	}
 	var taskExists int
 	if err := tx.QueryRowContext(ctx, `SELECT 1 FROM tasks WHERE id = ?`, taskID).Scan(&taskExists); err != nil {
 		if err == sql.ErrNoRows {
@@ -950,6 +954,9 @@ func (s *SQLiteStore) ProvisionStandardManualKanbanView(ctx context.Context, pro
 		return KanbanBoard{}, fmt.Errorf("begin provision kanban view: %w", err)
 	}
 	defer tx.Rollback()
+	if err := writableProject(ctx, tx, projectID); err != nil {
+		return KanbanBoard{}, err
+	}
 
 	var ownerID int64
 	if err := tx.QueryRowContext(ctx, `SELECT owner_id FROM projects WHERE id = ?`, projectID).Scan(&ownerID); err != nil {
@@ -1004,7 +1011,7 @@ func (s *SQLiteStore) ProvisionStandardManualKanbanView(ctx context.Context, pro
 		return KanbanBoard{}, fmt.Errorf("configure manual kanban view: %w", err)
 	}
 
-	taskRows, err := tx.QueryContext(ctx, `SELECT id, done FROM tasks WHERE project_id = ? ORDER BY id ASC`, projectID)
+	taskRows, err := tx.QueryContext(ctx, `SELECT id, done FROM tasks WHERE project_id = ? AND deleted_at IS NULL ORDER BY id ASC`, projectID)
 	if err != nil {
 		return KanbanBoard{}, fmt.Errorf("list tasks for kanban view: %w", err)
 	}
@@ -1111,7 +1118,7 @@ func (s *SQLiteStore) LoadManualKanbanBoard(ctx context.Context, projectID int64
 			t.id, COALESCE(t.project_id, 0), COALESCE(t.title, ''), COALESCE(t.done, 0), t.due_date, COALESCE(t.priority, 0), t."index", t.description
 		FROM buckets b
 		LEFT JOIN task_buckets tb ON tb.bucket_id = b.id AND tb.project_view_id = b.project_view_id
-		LEFT JOIN tasks t ON t.id = tb.task_id
+		LEFT JOIN tasks t ON t.id = tb.task_id AND t.deleted_at IS NULL
 		LEFT JOIN task_positions tp ON tp.task_id = t.id AND tp.project_view_id = b.project_view_id
 		WHERE b.project_view_id = ?
 		ORDER BY b.position ASC, b.id ASC, tp.position ASC, t.id ASC
@@ -1167,6 +1174,12 @@ func (s *SQLiteStore) LoadManualKanbanBoard(ctx context.Context, projectID int64
 // Buckets for the selected manual Kanban View. Without a View ID, Projects
 // with no manual View are unavailable and Projects with several are ambiguous.
 func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, taskID int64, requestedViewID ...int64) (WorkflowStatus, error) {
+	if taskID != 0 {
+		if _, err := activeTaskProject(ctx, s.db, taskID); err != nil {
+			return WorkflowStatus{}, err
+		}
+		// The editor also previews a destination Project before persisting a move.
+	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id
 		FROM project_views
@@ -1271,6 +1284,9 @@ func (s *SQLiteStore) SetTaskWorkflowStatus(ctx context.Context, taskID, bucketI
 }
 
 func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, bucketID int64, requestedViewID ...int64) error {
+	if err := writableTask(ctx, tx, taskID); err != nil {
+		return err
+	}
 	rows, err := tx.QueryContext(ctx, `
 		SELECT id, done_bucket_id
 		FROM project_views
@@ -1335,6 +1351,9 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 	}
 	if !bucketExists {
 		return fmt.Errorf("set workflow status: bucket does not belong to the manual kanban view")
+	}
+	if err := checkBucketCapacity(ctx, tx, taskID, view.id, bucketID); err != nil {
+		return err
 	}
 
 	done := view.doneBucketID.Valid && view.doneBucketID.Int64 == bucketID
@@ -1408,6 +1427,9 @@ func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, 
 		if err := validateViewBucket(ctx, tx, viewID, bucketID); err != nil {
 			return err
 		}
+		if err := checkBucketCapacity(ctx, tx, taskID, viewID, bucketID); err != nil {
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE task_buckets
 			SET bucket_id = ?
@@ -1442,6 +1464,9 @@ func (s *SQLiteStore) ToggleTaskDone(ctx context.Context, taskID int64, done boo
 // workflow buckets within an existing transaction. Completion metadata changes
 // only when Done transitions; the SQL preserves its exact stored encoding.
 func setTaskDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool, viewID ...int64) error {
+	if err := writableTask(ctx, tx, taskID); err != nil {
+		return err
+	}
 	if err := rejectRecurringCompletion(ctx, tx, taskID, done); err != nil {
 		return err
 	}
@@ -1486,7 +1511,25 @@ func (s *SQLiteStore) DeleteTask(ctx context.Context, taskID int64) error {
 		return fmt.Errorf("begin delete task: %w", err)
 	}
 	defer tx.Rollback()
+	if err := writableTask(ctx, tx, taskID); err != nil {
+		return err
+	}
+	var hasTimeEntries bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'time_entries')`).Scan(&hasTimeEntries); err != nil {
+		return err
+	}
+	if hasTimeEntries {
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM time_entries WHERE task_id = ?)`, taskID).Scan(&hasTimeEntries); err != nil {
+			return err
+		}
+		if hasTimeEntries {
+			return fmt.Errorf("Task has Time Entries; delete it in Vikunja to preserve time-tracking history")
+		}
+	}
 
+	if err := reserveDeletedTaskIndexes(ctx, tx, taskID); err != nil {
+		return err
+	}
 	if err := deleteTaskPolymorphicRelations(ctx, tx, taskID); err != nil {
 		return err
 	}
@@ -1504,6 +1547,7 @@ func (s *SQLiteStore) DeleteTask(ctx context.Context, taskID int64) error {
 		{"task_attachments", "DELETE FROM task_attachments WHERE task_id = ?"},
 		{"task_comments", "DELETE FROM task_comments WHERE task_id = ?"},
 		{"task_unread_statuses", "DELETE FROM task_unread_statuses WHERE task_id = ?"},
+		{"task_index_aliases", "DELETE FROM task_index_aliases WHERE task_id = ?"},
 	}
 	for _, delete := range deletes {
 		var exists int
@@ -1540,6 +1584,9 @@ func (s *SQLiteStore) DeleteTask(ctx context.Context, taskID int64) error {
 }
 
 func (s *SQLiteStore) ListTaskComments(ctx context.Context, taskID int64) ([]TaskComment, error) {
+	if _, err := activeTaskProject(ctx, s.db, taskID); err != nil {
+		return nil, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT tc.id, tc.task_id, tc.comment,
 			COALESCE(NULLIF(TRIM(u.name), ''), u.username, 'Unknown user'),
@@ -1618,6 +1665,9 @@ func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, er
 		return Task{}, fmt.Errorf("begin create task transaction: %w", err)
 	}
 	defer tx.Rollback()
+	if err := writableProject(ctx, tx, draft.ProjectID); err != nil {
+		return Task{}, err
+	}
 
 	var ownerID int64
 	if err := tx.QueryRowContext(ctx, `SELECT owner_id FROM projects WHERE id = ?`, draft.ProjectID).Scan(&ownerID); err != nil {
@@ -1696,7 +1746,15 @@ func (s *SQLiteStore) UpdateTaskTitle(ctx context.Context, taskID int64, title s
 	if strings.TrimSpace(title) == "" {
 		return fmt.Errorf("title is required")
 	}
-	result, err := s.db.ExecContext(ctx, `UPDATE tasks SET title = ?, updated = ? WHERE id = ?`, title, utcTimestampNow(), taskID)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin update task title: %w", err)
+	}
+	defer tx.Rollback()
+	if err := writableTask(ctx, tx, taskID); err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE tasks SET title = ?, updated = ? WHERE id = ?`, title, utcTimestampNow(), taskID)
 	if err != nil {
 		return fmt.Errorf("update task title: %w", err)
 	}
@@ -1707,7 +1765,7 @@ func (s *SQLiteStore) UpdateTaskTitle(ctx context.Context, taskID int64, title s
 	if rows == 0 {
 		return fmt.Errorf("update task title: task not found")
 	}
-	return nil
+	return tx.Commit()
 }
 
 func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, error) {
@@ -1784,6 +1842,9 @@ func (s *SQLiteStore) DeleteTaskComment(ctx context.Context, taskID, commentID i
 		return fmt.Errorf("delete Task Comment: begin transaction: %w", err)
 	}
 	defer tx.Rollback()
+	if err := writableTask(ctx, tx, taskID); err != nil {
+		return err
+	}
 	actorID, err := onlyLocalUser(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("delete Task Comment: %w", err)
@@ -1808,6 +1869,12 @@ func (s *SQLiteStore) DeleteTaskComment(ctx context.Context, taskID, commentID i
 }
 
 func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, error) {
+	if err := writableTask(ctx, tx, draft.ID); err != nil {
+		return Task{}, err
+	}
+	if err := writableProject(ctx, tx, draft.ProjectID); err != nil {
+		return Task{}, err
+	}
 	var oldProjectID int64
 	var done bool
 	var currentDue sql.NullTime
@@ -1837,6 +1904,9 @@ func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, err
 	dueChanged := draft.DueDate != currentDate
 	index := int64(0)
 	if oldProjectID != draft.ProjectID {
+		if err := recordTaskIndexAlias(ctx, tx, draft.ID); err != nil {
+			return Task{}, err
+		}
 		index, err = nextTaskIndex(ctx, tx, draft.ProjectID)
 		if err != nil {
 			return Task{}, err
@@ -1922,7 +1992,15 @@ func dueDateValue(value string) (any, error) {
 
 func nextTaskIndex(ctx context.Context, tx *sql.Tx, projectID int64) (int64, error) {
 	var index int64
-	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX("index"), 0) + 1 FROM tasks WHERE project_id = ?`, projectID).Scan(&index); err != nil {
+	// Include trash and retired addresses. The max also repairs a stale counter
+	// left by older direct writers without reusing any reserved number.
+	if err := tx.QueryRowContext(ctx, `INSERT INTO project_task_counters (project_id, last_index)
+		VALUES (?, (SELECT COALESCE(MAX("index"), 0) + 1 FROM (
+			SELECT "index" FROM tasks WHERE project_id = ?
+			UNION ALL SELECT "index" FROM task_index_aliases WHERE project_id = ?
+		))) ON CONFLICT(project_id) DO UPDATE
+		SET last_index = MAX(last_index + 1, excluded.last_index)
+		RETURNING last_index`, projectID, projectID, projectID).Scan(&index); err != nil {
 		return 0, fmt.Errorf("next task index: %w", err)
 	}
 	return index, nil
@@ -1988,6 +2066,9 @@ func initializeViewAssignments(ctx context.Context, tx *sql.Tx, taskID, projectI
 		}
 		if selectedBucket != 0 {
 			if err := validateViewBucket(ctx, tx, viewID, selectedBucket); err != nil {
+				return err
+			}
+			if err := checkBucketCapacity(ctx, tx, taskID, viewID, selectedBucket); err != nil {
 				return err
 			}
 		}

@@ -1,0 +1,8 @@
+?   	github.com/JanWartenberg/vimkunja/cmd/vimkunja	[no test files]
+?   	github.com/JanWartenberg/vimkunja/cmd/vimkunja-tutorial	[no test files]
+ok  	github.com/JanWartenberg/vimkunja/internal/errors	(cached)
+ok  	github.com/JanWartenberg/vimkunja/internal/tui	(cached)
+ok  	github.com/JanWartenberg/vimkunja/internal/tutorial	(cached)
+ok  	github.com/JanWartenberg/vimkunja/internal/vimkunja	40.070s
+?   	github.com/JanWartenberg/vimkunja/prototype/overview_tui	[no test files]
+?   	github.com/JanWartenberg/vimkunja/prototype/search_modal_modes	[no test files]
