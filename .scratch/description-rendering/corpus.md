@@ -70,7 +70,7 @@ Remaining execution work: Native model/parser/serializer/editor and identity-awa
 
 ## Next work
 
-No further product card confirmation is required. Use the accepted rules/examples to prepare the Native implementation and its test seams; do not substitute the existing lossy reader for the future serializer. Actual Native tests and versioned VOA captures remain prerequisites for claiming full rich-text compatibility.
+No further product card confirmation is required. Follow [the implementation index](issues/02-specify-native-rich-text-description-rendering-and-editing.md#implementation-tickets--2026-10-05), starting with ticket 03 when implementation is authorized. Tickets 04/05 follow 03; ticket 10 capture and case preparation can begin independently. Use the accepted rules/examples at those test seams; do not substitute the existing lossy reader for the future serializer. Actual Native tests and versioned VOA captures remain prerequisites for claiming full rich-text compatibility.
 
 ## Follow-up consistency cleanup — 2026-10-04
 

@@ -2,7 +2,7 @@
 
 **Phase:** M3 — structured reader and editor
 
-**Specification scope:** The M3 product rules for a native, keyboard-first terminal projection and editor are resolved. Maintain the accepted contract and examples, then prepare concrete implementation tickets.
+**Specification scope:** The M3 product rules for a native, keyboard-first terminal projection and editor are resolved. Maintain the accepted contract and examples and coordinate the existing implementation tickets 03–10.
 
 **Implementation prerequisites:** M2's read-only HTML-to-plain-text reader is complete; see its [archived ticket](../../../.archive/2026-08-05/description-rendering/issues/01-render-vikunja-html-descriptions.md). The decisions in this ticket govern the M3 implementation; the existing [Rich-Text Description Contract](../spec.md) is the starting point and must be updated only when a decision here changes it.
 
@@ -12,9 +12,9 @@
 
 **Status:** ready-for-agent
 
-**Current handoff — 2026-10-04:** product feedback is resolved. Spec, keybindings, glossary and 83 independent synthetic examples are synchronized with accepted V2/V4/default decisions. Artifact/dependency probes and focused Store preservation/rollback tests pass; current native editor/serializer remains unimplemented. Concrete technical gaps: atomic baseline compare-and-save, source-slice Code decoding, Code-specific literal-prefix/Paste dispatch, real Windows/German terminal captures, Native round trips/fuzz/layout and versioned VOA output. The user authorizes this synchronization and technical verification pass; no production Native editor or dependency changes are included.
+**Technical baseline — 2026-10-04:** product feedback is resolved. Spec, keybindings, glossary and 83 independent synthetic examples are synchronized with accepted V2/V4/default decisions. Artifact/dependency probes and focused Store preservation/rollback tests pass; current native editor/serializer remains unimplemented. Concrete technical gaps: atomic baseline compare-and-save, source-slice Code decoding, Code-specific literal-prefix/Paste dispatch, real Windows/German terminal captures, Native round trips/fuzz/layout and versioned VOA output. The user authorizes this synchronization and technical verification pass; no production Native editor or dependency changes are included.
 
-**Handoff state:** Ready for specification handoff and implementation-ticket preparation. The user can cross-check the [rule-card walkthrough](/workspace/tmp/explain-description-regeln-2026-10-04.html); it is a local review aid, not a required repository artifact or Native execution evidence. Native implementation has not started and requires a separate implementation instruction. This ticket remains open for the deliverables below; no blanket golden approval or completed Rich-text feature is claimed.
+**Handoff state — 2026-10-05:** The user reviewed the highlighted rule cards and accepted the current product-rule set (“ich denke, das passt alles”). L01/L10 and Opaque/selection/o/O/ü/Ü expectations are confirmed. A generated Checkbox UUID can be shown as an illustrative `<randomUUID>` placeholder; its randomness does not make L10's visible result undetermined. The specification/decision phase and implementation-ticket preparation are complete. This ticket stays as the coordination record for the execution deliverables delegated to 03–10; Native implementation has not begun and is not claimed complete.
 
 **Scope boundary:** This is phase 2 of the Description plan. It replaces neither Vikunja's HTML persistence format nor its SQLite schema. It aims to natively render and edit every HTML structure that is useful and feasible in a terminal. Content that is not suitably editable must remain as readable as practical and must be preserved without destructive rewriting.
 
@@ -57,6 +57,23 @@ For every fixture, specify the expected terminal projection, editable/opaque/rea
 
 The corpus is a specification deliverable and must exist before native editing implementation begins. It should support fixture-based regression tests, semantic round-trip tests, and property/fuzz tests for parser and serializer boundaries.
 
+## Implementation tickets — 2026-10-05
+
+The rules are accepted; these tickets make the remaining work executable. No new product confirmation round is required. Start with **03**; **10** can begin gathering real VOA examples early. After 03, 04 and 05 can proceed independently; 06 integrates their safe save and projection paths, then 07–09 finish editing features. Ticket 10 completes the integrated verification and user documentation.
+
+| Ticket | Deliverable | Blocked by |
+| --- | --- | --- |
+| [03 — Source-preserving Description document model](03-implement-source-preserving-description-model.md) | Document/HTML preservation | None |
+| [04 — Atomic Description saves and Checkbox identities](04-implement-atomic-description-save.md) | Transactional conflict check and UUID adoption | 03 |
+| [05 — Native terminal projection and document navigation](05-implement-native-description-projection-and-navigation.md) | Read/navigation and terminal layout | 03 |
+| [06 — Native draft editing, Visual Mode and local history](06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery integration | 04, 05 |
+| [07 — List, Checkbox and Quote structure editing](07-implement-list-and-quote-structure-editing.md) | L01–L12 / Q01–Q04 | 06 |
+| [08 — Code editing, Tabs and terminal input](08-implement-native-code-editing-and-terminal-input.md) | Exact Code input, exits, Tabs/retab | 06 |
+| [09 — Inline syntax, Inline-Code and Link editing](09-implement-inline-syntax-code-and-links.md) | Syntax, Inline-Code and Links | 06 |
+| [10 — Native Rich-text compatibility, terminal acceptance and documentation](10-verify-native-rich-text-compatibility-and-documentation.md) | VOA/terminal evidence, properties/fuzz, Help/tutorial | Integration completion: 03–09; preparation unblocked |
+
+Completed specification work is distinct from future Native test execution. The remaining deliverable checkboxes below remain open until their owning tickets provide evidence.
+
 ## Working plan
 
 - [x] Establish the corpus plan and initial risk-based fixture inventory.
@@ -66,7 +83,7 @@ The corpus is a specification deliverable and must exist before native editing i
 - [x] Review synthetic expectations, resolve product ambiguities, correct stale references, and add Mention label/ID cases (83 records).
 - [ ] Add representative versioned VOA-generated fixtures; synthetic inputs do not certify VOA output.
 - [ ] Execute Native parser/serializer boundary property or fuzz cases during implementation.
-- [ ] Split concrete implementation tickets using the accepted product rules and current corpus; begin production changes only on explicit implementation instruction.
+- [x] Prepare concrete implementation tickets 03–10 from the accepted rules and current corpus; production implementation has not begun.
 
 ### Initial fixture inventory
 
@@ -303,7 +320,7 @@ All former queue topics have product rules. The [current traceability matrix](..
 
 The 2026-10-04 request authorizes Contract/example synchronization and HTML/Store/terminal checks. Completed: 83-record artifact validation, source-preserving tokenizer probes, terminal decoder probes and Store byte-preservation/rollback regressions. Source review identifies the remaining conflict and paste-dispatch gaps. Full details, commands and evidence limits: [corpus verification](../corpus.md#technical-verification--2026-10-04).
 
-**Next work:** production Native model/parser/serializer/editor preparation; transaction-baseline conflict handling including combined saves; Code CRLF-preserving decoding/Paste routing; independent Native round-trip/property/fuzz execution; versioned VOA captures and real native layout/Windows input checks. No further product-card vote is needed. This pass does not implement the Native editor or change dependencies/schema.
+**Next work:** begin implementation with ticket 03 when separately authorized, then 04/05 and the dependent editor tickets in the implementation index. Ticket 10 capture and test-case preparation can begin independently; its final integration requires 03–09. Gather Native round-trip/property/fuzz, versioned VOA rich-text output and real native layout/Windows input evidence during execution. No further product-card vote is needed. This pass does not implement the Native editor or change dependencies/schema.
 
 ### Remaining deliverables after decisions
 
@@ -313,7 +330,7 @@ The 2026-10-04 request authorizes Contract/example synchronization and HTML/Stor
 - [ ] Validate Native execution and actual VOA serialization/projection expectations.
 - [ ] Add regression, semantic round-trip, preservation, property, and fuzz tests.
 - [ ] Add the Vimkunja markup dialect to Help, durable documentation, and the dedicated markup tutorial.
-- [ ] Prepare concrete Native model/preservation, persistence/conflict and rendering/editing tickets; production implementation remains separately authorized.
+- [x] Prepare Native implementation and integrated validation tickets 03–10; outstanding execution remains tracked in those tickets.
 
 ## Out of scope
 
@@ -334,3 +351,11 @@ User requests the pre-implementation consistency cleanup. Replaced obsolete futu
 ### 2026-10-04 — ticket/status handoff review
 
 User requests checking and committing ticket/status. Product triage is complete; ready-for-agent now applies to the remaining specification handoff and implementation-ticket preparation, not automatic production implementation. The current plan separates completed synthetic review/Mention coverage from missing versioned VOA output and Native execution. Spec and corpus are included in the same documentation commit so all 83-record references remain consistent.
+
+### 2026-10-05 — rule acceptance and implementation tickets
+
+User accepts the current rule-card set and requests preparing implementation tickets. Added 03–10 with scope, dependencies, focused corpus coverage and execution acceptance. Random UUIDs may be illustrated as `<randomUUID>` without pretending the visible Alpha/Beta/child result is unknown. Production behavior and existing corpus HTML expectations are unchanged; no implementation or automatic commit is part of this preparation.
+
+### 2026-10-06 — planning consistency review
+
+Replaced stale ticket-preparation instructions with the existing 03–10 handoff and dependencies. Clarified byte-exact transactional baselines, the Native Description save boundary and UUID validation for newly generated/repaired IDs; imported unique non-UUID IDs stay valid. VOA 2.7.0 database checks do not substitute for frontend rich-text captures or Native editor evidence. No product rules, corpus goldens or implementation changed.
