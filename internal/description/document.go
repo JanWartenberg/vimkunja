@@ -45,7 +45,8 @@ type Node struct {
 }
 
 // Anchor addresses a decoded-text boundary, not a terminal coordinate. Offset
-// is a byte boundary in UTF-8 Text; grapheme motions belong to the editor.
+// is a byte boundary in UTF-8 Text, or 0/1 before/after a structural node;
+// grapheme motions belong to the editor.
 type Anchor struct {
 	Node   ID
 	Offset int
@@ -63,6 +64,8 @@ var (
 	ErrBlocked      = errors.New("Error: Malformed HTML")
 	ErrPreservation = errors.New("Description Opaque preservation failed")
 	ErrStructure    = errors.New("invalid Native Description structure")
+	ErrAnchor       = errors.New("invalid Description cursor anchor")
+	ErrRoundTrip    = errors.New("Description Native meaning changed during serialization")
 )
 
 type atom struct {
@@ -75,12 +78,13 @@ type atom struct {
 }
 
 type Document struct {
-	source  string
-	nodes   []Node
-	class   Classification
-	problem error
-	atoms   []atom
-	byID    map[ID]int
+	source    string
+	nodes     []Node
+	class     Classification
+	problem   error
+	atoms     []atom
+	byID      map[ID]int
+	locations map[ID]Location
 	// IDs in source, including observable Opaque attributes, are reserved by
 	// the future save-candidate layer. Parsing never generates/replaces IDs.
 	reserved []string
@@ -121,10 +125,15 @@ func (d *Document) SerializeSnapshot(nodes []Node, intent Preservation) (string,
 	if d.class == Blocked {
 		return "", d.problem
 	}
-	nodes = cloneNodes(nodes)
 	if err := validateNative(nodes, "", false); err != nil {
 		return "", err
 	}
+	// Check the original draft: normalization may merge or remove nodes and
+	// must not hide repeated identities or an atom disguised as Native.
+	if err := d.validateIdentities(nodes, make(map[ID]bool)); err != nil {
+		return "", err
+	}
+	nodes = cloneNodes(nodes)
 	nodes = normalizeRoot(nodes)
 	removed := make(map[ID]bool, len(intent.Removed))
 	for _, id := range intent.Removed {
@@ -172,7 +181,28 @@ func (d *Document) SerializeSnapshot(nodes []Node, intent Preservation) (string,
 			return "", fmt.Errorf("%w: atom bytes or parent position changed", ErrPreservation)
 		}
 	}
+	if !sameMeaning(nodes, parsed.nodes) {
+		return "", ErrRoundTrip
+	}
 	return result, nil
+}
+
+func (d *Document) validateIdentities(nodes []Node, seen map[ID]bool) error {
+	for _, n := range nodes {
+		if n.ID != 0 && n.Kind != Opaque {
+			if _, collision := d.byID[n.ID]; collision {
+				return fmt.Errorf("%w: atom cannot become Native", ErrPreservation)
+			}
+			if seen[n.ID] {
+				return fmt.Errorf("%w: repeated Native identity", ErrStructure)
+			}
+			seen[n.ID] = true
+		}
+		if err := d.validateIdentities(n.Children, seen); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (d *Document) writeNodes(out *strings.Builder, nodes []Node, parent []int, parents []ID, removed map[ID]bool, positions map[ID][]int, retained *[]atom, nativeIDs map[ID]bool) error {
@@ -240,5 +270,5 @@ func escapeText(text string) string {
 }
 
 func escapeAttribute(text string) string {
-	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", "\"", "&quot;").Replace(text)
+	return strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", "\"", "&quot;", "\r", "&#13;").Replace(text)
 }

@@ -10,7 +10,9 @@
 
 **Status:** ready-for-agent
 
-**Blocked by:** 03
+**Blocked by:** None
+
+**Dependency satisfied:** [03 — document model](../../../.archive/2026-10-07/description-rendering/issues/03-implement-source-preserving-description-model.md), completed 2026-10-07.
 
 **Contract:** [spec.md](../spec.md), [decision/handoff ticket 02](02-specify-native-rich-text-description-rendering-and-editing.md), [corpus and traceability](../corpus.md), [83 synthetic fixtures](../corpus.json), [keybinding contract](../../../docs/keybindings.md).
 

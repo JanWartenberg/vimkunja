@@ -40,6 +40,9 @@ func normalizeNodes(nodes []Node, code bool) []Node {
 	var out []Node
 	for _, n := range nodes {
 		if n.Kind == Element {
+			for i := range n.Attributes {
+				n.Attributes[i].Name = htmlName(n.Attributes[i].Name)
+			}
 			if n.Tag == "strike" {
 				n.Tag = "s"
 			}
@@ -194,8 +197,18 @@ func normalizeFlow(nodes []Node) {
 }
 
 func validateNative(nodes []Node, parent string, linked bool) error {
+	return validateAtDepth(nodes, parent, linked, 0)
+}
+
+func validateAtDepth(nodes []Node, parent string, linked bool, depth int) error {
+	if len(nodes) != 0 && depth >= 512 {
+		return fmt.Errorf("%w: Native nesting exceeds import limit", ErrStructure)
+	}
 	for _, n := range nodes {
 		if n.Kind == Opaque {
+			if n.Tag != "" || n.Text != "" || len(n.Attributes) != 0 || len(n.Children) != 0 {
+				return fmt.Errorf("%w: atom has editable structure", ErrPreservation)
+			}
 			continue
 		}
 		if n.Kind == Text {
@@ -222,7 +235,7 @@ func validateNative(nodes []Node, parent string, linked bool) error {
 		if (n.Tag == "br" || n.Tag == "hr") && len(n.Children) != 0 {
 			return fmt.Errorf("%w: void element has children", ErrStructure)
 		}
-		if err := validateNative(n.Children, n.Tag, linked || n.Tag == "a"); err != nil {
+		if err := validateAtDepth(n.Children, n.Tag, linked || n.Tag == "a", depth+1); err != nil {
 			return err
 		}
 	}

@@ -1,6 +1,6 @@
 # Rich-text compatibility corpus — decision-synchronized examples
 
-**Stand 2026-10-04:** 83 synthetic, independently authored records; accepted product decisions synchronized. Static consistency checks and dependency/Store boundary probes pass. Native rendering/editing and semantic round trips are not implemented or verified by these records. No blanket user golden approval or captured VOA output is claimed.
+**Stand 2026-10-07:** 83 synthetic, independently authored records. Model classification and applicable ordinary serialization/semantic round trips execute in internal/description; Native editor/terminal actions and real VOA captures remain unverified. Expected fixture HTML is unchanged.
 
 **Contract:** [spec.md](spec.md). **Ticket:** [02](issues/02-specify-native-rich-text-description-rendering-and-editing.md). **Examples:** [corpus.json](corpus.json). **Checks:** [verification/boundaries_test.go](verification/boundaries_test.go).
 
@@ -23,30 +23,40 @@ Other synchronized examples cover C05 final Code-line deletion (leaves empty Cod
 
 | Decision / risk | Focused example records | Status |
 | --- | --- | --- |
-| HTML persistence, semantic serialization, escaping (1–8) | `basic-blocks`, `entities-and-whitespace`, `serialization-normalization`, `root-inline-fragment`, `root-block-grouping`, `empty-description` | Specified; Native execution outstanding. |
-| Checkbox identity/state, atomic repair (10/27, L07, S12/S13) | `checkbox-lists`, `checkbox-duplicate-ids`, `checkbox-id-reservation-atomicity`, `checkbox-middle-split` | Specified; Native execution outstanding. |
-| Marks, syntax variants, all-family off (12/21, E01–E03) | `inline-marks`, `inline-boundaries`, `uniform-toggle`, `triple-strong-off`, `all-mark-families-off` | Specified; Native execution outstanding. |
-| Literal import/paste and escape grammar (E04/E06–E10) | `editor-delimiters`, `typed-versus-pasted-markers`, `literal-import-edit`, `syntax-escape-parity` | Specified; Native execution outstanding. |
-| Native Inline-Code (S08) | `native-inline-code`, `inline-code-typed-literal` | Specified; Native execution outstanding. |
-| Code creation, boundaries, o/O/dd (14/32/33/36, C05–C08) | `code-trigger-events`, `standalone-code-editing`, `code-exit-boundaries`, `code-exit-nested`, `code-exit-list-entry`, `exact-code-import` | Specified; Native execution outstanding. |
-| Tabs/retab/indent, Code selection (C01–C04) | `code-tabs-retab`, `retaball-native-scope`, `code-indent-outdent`, `code-line-selection` | Specified; Native execution outstanding. |
-| List moves, kinds, overlaps, atomicity (13, L01–L09/L12) | `nested-lists`, `list-indent-existing-children`, `list-outdent-reading-order`, `list-selection-atomicity`, `list-kind-preservation` | Specified; Native execution outstanding. |
-| List splits/numbering/empty imports (26, L08/L10/L11, S06) | `list-editing`, `ordered-list-editing`, `ordered-middle-exit`, `checkbox-middle-split`, `empty-imported-ul`, `empty-imported-ol`, `empty-imported-checkbox` | Specified; Native execution outstanding. |
-| Quotes: local/shared/atomic scope and shared references (15/31, Q01–Q04) | `code-and-quotes`, `quote-shared-source-split`, `quote-unique-attribute-split`, `quote-shared-wrap-atomic`, `empty-structures` | Specified; Native execution outstanding. |
-| Links: label/URL independence, edges/schemes/copy (17, K01–K05) | `links`, `link-import-edges`, `empty-link-label-edit`, `cross-paragraph-links` | Specified; Native execution outstanding. |
-| Rules and incremental dash history (16, E11) | `basic-blocks`, `typed-rule-dash-history` | Specified; Native execution outstanding. |
-| Selection/motions/Unicode/history (9/20/22/29/34/35, E05/E13) | `native-selection-and-history`, `graphemes-and-delimiter-selection`, `code-line-selection`, `opaque-node`, `code-and-quotes` | Specified; Native execution outstanding. |
-| Breaks, empty blocks and normal block commands (11/23–25) | `hard-breaks`, `paragraph-creation-and-split`, `empty-structures`, `typed-versus-pasted-markers` | Specified; Native execution outstanding. |
-| Opaque bytes/identities/allowed parent changes (18/20/29, T06) | `opaque-edit-neighbors`, `opaque-nesting`, `attribute-preservation`, `opaque-parent-conversion`, `opaque-identical-atom-identity` | Specified; Native execution outstanding. |
-| Smallest-region safety, duplicate attrs and media (S01–S05) | `duplicate-native-attributes`, `unsafe-html`, `unsafe-attributes-and-urls`, `unsafe-isolated-and-opaque`, `unsafe-url-only`, `embedded-media-neighbors`, `malformed-html`, `document-wrappers`, `valid-optional-end-tags` | Specified; Native execution outstanding. |
-| Tables, images, unknown inner boundaries (19, S07/S09–S11) | `table-mixed-content`, `table-irregular`, `empty-table`, `image-fallbacks`, `image-empty-alt`, `unknown-node`, `unknown-inner-block-boundaries`, `opaque-inline-q` | Specified; Native execution outstanding. |
-| Opaque Mentions: visible label/id, preserved bytes, skip-format, safe copy/paste and confirmed removal (18 / native subset) | `mention-label`, `mention-id-fallback` | Specified synthetic inputs; Native execution and real VOA captures outstanding. |
-| Palette/reflow/config design (28, P01–P12/C02) | `layout-and-palette`, `code-line-selection`, `code-tabs-retab`, `opaque-node` | Specified; Native execution outstanding. |
-| Conflict rejection and candidate retention (30, T07) | `external-save-conflict`, `checkbox-id-reservation-atomicity` | Specified; Native execution outstanding. |
+| HTML persistence, semantic serialization, escaping (1–8) | `basic-blocks`, `entities-and-whitespace`, `serialization-normalization`, `root-inline-fragment`, `root-block-grouping`, `empty-description` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Checkbox identity/state, atomic repair (10/27, L07, S12/S13) | `checkbox-lists`, `checkbox-duplicate-ids`, `checkbox-id-reservation-atomicity`, `checkbox-middle-split` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Marks, syntax variants, all-family off (12/21, E01–E03) | `inline-marks`, `inline-boundaries`, `uniform-toggle`, `triple-strong-off`, `all-mark-families-off` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Literal import/paste and escape grammar (E04/E06–E10) | `editor-delimiters`, `typed-versus-pasted-markers`, `literal-import-edit`, `syntax-escape-parity` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Native Inline-Code (S08) | `native-inline-code`, `inline-code-typed-literal` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Code creation, boundaries, o/O/dd (14/32/33/36, C05–C08) | `code-trigger-events`, `standalone-code-editing`, `code-exit-boundaries`, `code-exit-nested`, `code-exit-list-entry`, `exact-code-import` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Tabs/retab/indent, Code selection (C01–C04) | `code-tabs-retab`, `retaball-native-scope`, `code-indent-outdent`, `code-line-selection` | Model import/serialization verified; editor/terminal execution outstanding. |
+| List moves, kinds, overlaps, atomicity (13, L01–L09/L12) | `nested-lists`, `list-indent-existing-children`, `list-outdent-reading-order`, `list-selection-atomicity`, `list-kind-preservation` | Model import/serialization verified; editor/terminal execution outstanding. |
+| List splits/numbering/empty imports (26, L08/L10/L11, S06) | `list-editing`, `ordered-list-editing`, `ordered-middle-exit`, `checkbox-middle-split`, `empty-imported-ul`, `empty-imported-ol`, `empty-imported-checkbox` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Quotes: local/shared/atomic scope and shared references (15/31, Q01–Q04) | `code-and-quotes`, `quote-shared-source-split`, `quote-unique-attribute-split`, `quote-shared-wrap-atomic`, `empty-structures` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Links: label/URL independence, edges/schemes/copy (17, K01–K05) | `links`, `link-import-edges`, `empty-link-label-edit`, `cross-paragraph-links` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Rules and incremental dash history (16, E11) | `basic-blocks`, `typed-rule-dash-history` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Selection/motions/Unicode/history (9/20/22/29/34/35, E05/E13) | `native-selection-and-history`, `graphemes-and-delimiter-selection`, `code-line-selection`, `opaque-node`, `code-and-quotes` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Breaks, empty blocks and normal block commands (11/23–25) | `hard-breaks`, `paragraph-creation-and-split`, `empty-structures`, `typed-versus-pasted-markers` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Opaque bytes/identities/allowed parent changes (18/20/29, T06) | `opaque-edit-neighbors`, `opaque-nesting`, `attribute-preservation`, `opaque-parent-conversion`, `opaque-identical-atom-identity` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Smallest-region safety, duplicate attrs and media (S01–S05) | `duplicate-native-attributes`, `unsafe-html`, `unsafe-attributes-and-urls`, `unsafe-isolated-and-opaque`, `unsafe-url-only`, `embedded-media-neighbors`, `malformed-html`, `document-wrappers`, `valid-optional-end-tags` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Tables, images, unknown inner boundaries (19, S07/S09–S11) | `table-mixed-content`, `table-irregular`, `empty-table`, `image-fallbacks`, `image-empty-alt`, `unknown-node`, `unknown-inner-block-boundaries`, `opaque-inline-q` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Opaque Mentions: visible label/id, preserved bytes, skip-format, safe copy/paste and confirmed removal (18 / native subset) | `mention-label`, `mention-id-fallback` | Synthetic model bytes/label/id fallback verified; editor and real VOA captures outstanding. |
+| Palette/reflow/config design (28, P01–P12/C02) | `layout-and-palette`, `code-line-selection`, `code-tabs-retab`, `opaque-node` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Conflict rejection and candidate retention (30, T07) | `external-save-conflict`, `checkbox-id-reservation-atomicity` | Model import/serialization verified; editor/terminal execution outstanding. |
 
 Task-level Attachments remain outside Description scope. `mention-label` and `mention-id-fallback` now specify synthetic @label/@id inputs, neighbor edits, skipped formatting, safe copy/paste, internal-edit rejection and confirmed removal/Undo. Their data attributes are hand-authored input assumptions; local `mention-user`/label-or-id source is a lead, not captured generated-output evidence. Exact VOA/Tiptap serialization still needs versioned captures. HTTP/HTTPS/FTP host syntax and non-web scheme-specific URI checks need runtime validator examples; no DNS checks or new allowlist. Existing matrix coverage does not claim exhaustive URL/Unicode/attribute/fuzz coverage.
 
-## Technical verification — 2026-10-04
+
+## Document-model verification — 2026-10-07
+
+[Completed ticket 03](../../.archive/2026-10-07/description-rendering/issues/03-implement-source-preserving-description-model.md) supplies the model seam without changing the TUI or Store:
+- [Model fixture tests](../../internal/description/document_test.go) execute classification for all 83 fixtures, 78 exact ordinary-save HTML goldens, two Blocked rejections and current-ID preservation for the three UUID-seam cases.
+- [Independent semantic tests](../../internal/description/meaning_test.go) compare all 81 savable outputs with hand-authored expected HTML using the independent HTML tree parser; mutation-sensitivity cases cover meaningful Native dimensions, and 100 deterministic generated examples exercise combinations. Original-slice Code goldens separately certify exact LF/CRLF/Tabs/final newline.
+- [Anchor tests](../../internal/description/anchor_test.go) check stable unique imported IDs, logical blocks/ancestors, UTF-8 boundaries, structural/empty/Opaque boundaries and detached data. [Regression tests](../../internal/description/regression_test.go) execute actual useful recovery text, local protection, preserved Code metadata and terminal-control escaping.
+- Opaque tests retain identity, order, bytes and declared positions/parents, including identical atoms and explicit removals. Failed serialization never mutates source or supplied draft.
+- Full tests, focused race/vet, builds with VCS stamping disabled and a bounded ten-second fuzz run pass. No fixture edit action, transactional save/UUID adoption, VOA capture or interactive native terminal layout is claimed executed.
+
+## Historical technical verification — 2026-10-04
 
 - Artifact checks: 83 unique records; null outputs justified; Blocked records have no ordinary-save golden; retained Opaque slices occur byte-for-byte in source/output in order and multiplicity.
 - Existing `x/net/html`: copied Raw tokens reconstruct original UTF-8, mixed quote/case/duplicate attributes and CRLF. Token/Text normalizes CRLF to LF. Native Code therefore needs decoding from original text slices. Tree parsing repairs malformed/unexpectedly nested HTML without an error; strict acceptance cannot rely on ParseFragment success alone.
@@ -70,7 +80,7 @@ Remaining execution work: Native model/parser/serializer/editor and identity-awa
 
 ## Next work
 
-No further product card confirmation is required. Use the accepted rules/examples to prepare the Native implementation and its test seams; do not substitute the existing lossy reader for the future serializer. Actual Native tests and versioned VOA captures remain prerequisites for claiming full rich-text compatibility.
+No further product card confirmation is required. Continue with ticket 04 atomic persistence and ticket 05 native projection/navigation using the completed model seam; do not substitute the existing lossy reader for its serializer. Model tests pass, while editor/terminal execution and versioned VOA captures remain prerequisites for claiming full rich-text compatibility.
 
 ## Follow-up consistency cleanup — 2026-10-04
 

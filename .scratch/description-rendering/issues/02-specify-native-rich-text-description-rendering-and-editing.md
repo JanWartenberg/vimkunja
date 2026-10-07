@@ -63,9 +63,9 @@ The rules are accepted; these tickets make the remaining work executable. No new
 
 | Ticket | Deliverable | Blocked by |
 | --- | --- | --- |
-| [03 — Source-preserving Description document model](03-implement-source-preserving-description-model.md) | Document/HTML preservation | None |
-| [04 — Atomic Description saves and Checkbox identities](04-implement-atomic-description-save.md) | Transactional conflict check and UUID adoption | 03 |
-| [05 — Native terminal projection and document navigation](05-implement-native-description-projection-and-navigation.md) | Read/navigation and terminal layout | 03 |
+| [03 — Source-preserving Description document model](../../../.archive/2026-10-07/description-rendering/issues/03-implement-source-preserving-description-model.md) | Document/HTML preservation — completed 2026-10-07 | None |
+| [04 — Atomic Description saves and Checkbox identities](04-implement-atomic-description-save.md) | Transactional conflict check and UUID adoption | None (03 completed) |
+| [05 — Native terminal projection and document navigation](05-implement-native-description-projection-and-navigation.md) | Read/navigation and terminal layout | None (03 completed) |
 | [06 — Native draft editing, Visual Mode and local history](06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery integration | 04, 05 |
 | [07 — List, Checkbox and Quote structure editing](07-implement-list-and-quote-structure-editing.md) | L01–L12 / Q01–Q04 | 06 |
 | [08 — Code editing, Tabs and terminal input](08-implement-native-code-editing-and-terminal-input.md) | Exact Code input, exits, Tabs/retab | 06 |
@@ -360,3 +360,8 @@ User accepts the current rule-card set and requests preparing implementation tic
 ### 2026-10-06 — implementation started on isolated branch
 
 User authorizes starting 03 while main cleanup continues. `internal/description` now supplies a UI-independent import/snapshot/serialization seam. Ticket 03 records execution evidence and remains in-progress; no TUI Native editor, transactional save, UUID repair or terminal acceptance is claimed.
+
+
+### 2026-10-07 — model completion
+
+03 is implemented, re-reviewed and archived after intermediate checkpoint 0890503. Stable imported identities, document anchors and Native semantic round-trip checks complete the model seam; 04/05 are now unblocked. Model/corpus execution evidence is recorded in corpus.md and the archived ticket. Editor operations, UUID persistence and real VOA/terminal acceptance remain in 04–10.

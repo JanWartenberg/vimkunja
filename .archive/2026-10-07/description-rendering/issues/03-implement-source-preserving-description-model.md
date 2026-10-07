@@ -8,9 +8,11 @@
 
 **Priority:** Medium
 
-**Status:** in-progress
+**Status:** completed
 
-**Contract:** [spec.md](../spec.md), [decision/handoff ticket 02](02-specify-native-rich-text-description-rendering-and-editing.md), [corpus and traceability](../corpus.md), [83 synthetic fixtures](../corpus.json), [keybinding contract](../../../docs/keybindings.md).
+**Completed:** 2026-10-07
+
+**Contract:** [spec.md](../../../../.scratch/description-rendering/spec.md), [decision/handoff ticket 02](../../../../.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md), [corpus and traceability](../../../../.scratch/description-rendering/corpus.md), [83 synthetic fixtures](../../../../.scratch/description-rendering/corpus.json), [keybinding contract](../../../../docs/keybindings.md).
 
 ## Scope
 
@@ -36,7 +38,7 @@ Run affected tests during implementation; before a commit run `go test ./...` an
 
 ## Boundaries
 
-Use the accepted product rules, including the smallest reliable Opaque protection and explicit metadata-loss exceptions. Preserve Vikunja HTML persistence and the existing SQLite schema. Do not change `internal/db/vikunja.db`, dependencies or generic Task Attachments. This ticket preparation does not start production implementation. Keep Title, plain-text editing and Comment composer behavior intact outside the explicitly affected Description paths.
+Use the accepted product rules, including the smallest reliable Opaque protection and explicit metadata-loss exceptions. Preserve Vikunja HTML persistence and the existing SQLite schema. Do not change `internal/db/vikunja.db`, dependencies or generic Task Attachments. This ticket implements the document model without activating Native TUI mutation or persistent save routes. Keep Title, plain-text editing and Comment composer behavior intact outside the explicitly affected Description paths.
 
 ## Comments
 
@@ -74,3 +76,30 @@ Known section-C completion work remains: generated import paragraphs need stable
 ### 2026-10-07 — authorized intermediate checkpoint
 
 User requests committing the tested/reviewed implementation and all six fixes as an intermediate checkpoint, then completing the remaining ticket-03 work. This checkpoint deliberately keeps status in-progress. Scope carried into the commit includes the accepted specification and implementation-ticket preparation already present in this isolated worktree; main cleanup is not included.
+
+### 2026-10-07 — remaining ticket-03 work completed after checkpoint
+
+Intermediate checkpoint: 0890503. Subsequent implementation completes the three remaining document-model deliverables:
+
+- Import normalization assigns unique nonzero identities to synthetic paragraphs before registering Opaque parent identities; repeated snapshots, anchor resolution and serialization retain those document-local identities.
+- ResolveAnchor validates UTF-8 text boundaries and before/after structural boundaries, resolves the nearest logical block and ancestor identities, and returns detached data. Empty blocks, hard breaks, Inline-Code, Code and Opaque atoms have representable boundaries; unknown nodes, internal Opaque offsets and Blocked documents reject. Grapheme motions, draft editing and anchor rebasing belong to 05/06.
+- Each serialization candidate undergoes one reparse and a linear Native semantic comparison alongside existing Opaque checks. It compares structure/order, decoded text, mark variants/depth, meaningful empty blocks, hard breaks, Code contents, list/Checkbox identities/state, quote references and Link metadata. Only accepted normalization is compared; IDs, attribute order and ordered-list boolean spelling are representation details. A failed comparison returns ErrRoundTrip without changing draft/source.
+
+Independent tests use the x/net/html tree parser on manually authored expected HTML rather than generating expectations from production code. All 83 corpus records execute classification and applicable exact-save assertions; all 81 non-Blocked records also run the independent HTML semantic oracle. The three null-HTML Checkbox cases check current model IDs, not future UUID repair. Mutation-sensitivity tests demonstrate comparison of each Native semantic dimension, and 100 deterministic generated Native examples test combined marks, Links, quotes, list numbering, empty entries/paragraphs and exact Code. Existing original-slice Code goldens separately preserve CRLF/LF/Tabs/final newline, because the browser tree parser normalizes CRLF.
+
+Additional reviewed regressions: decoded attribute CR must serialize as an entity; safe Unicode attribute names retain their distinct identity with ASCII-only HTML case folding; comments protect only their atom within Native lists; optional paragraph ends before unsupported block tags have explicit boundaries; excessive/cyclic draft nesting rejects before copying. No corpus expected HTML or source provenance was regenerated.
+
+Final verification after the interrupted command was resumed: go test ./... ./.scratch/description-rendering/verification; go test -race ./internal/description; go vet ./internal/description; go build -buildvcs=false ./cmd/vimkunja ./cmd/vimkunja-tutorial; ten-second two-worker FuzzParseAndSerialize. All pass. Renewed review of tracked diff and new interface/test files found no remaining actionable ticket-03 finding. The tree-parser oracle is a test oracle, not a replacement for strict source validation. No actual user database, dependency or TUI route changed.
+
+Implementation acceptance for 03 is complete; archived under repository conventions. Tickets 04/05 are unblocked. Native editor actions from corpus.edits, persistence/UUID repair, real VOA captures and real terminal acceptance are not certified by this ticket. Final completion changes remain uncommitted after the explicitly requested intermediate checkpoint.
+
+
+### 2026-10-07 — completion review and fixes
+
+Reviewed the uncommitted completion changes against checkpoint 0890503, including the new anchor/semantic files and ticket/status changes. Three actionable findings were independently reproduced by failing regression tests and fixed:
+
+- Medium: draft normalization could merge/drop duplicate Native identities or discard a Native node carrying an Opaque identity before validation. Validate original draft identities before normalization; source and draft remain unchanged on rejection.
+- Medium: listing/xmp starts did not close an optional paragraph, so serialization could change browser block boundaries. Recognize these unambiguous paragraph endings while keeping unsupported blocks as original-source atoms.
+- Low: safe uppercase ASCII attribute names in draft Links caused duplicate target attributes and rejected saves. Normalize attribute names with the same ASCII-only HTML rules used at import before applying Link defaults; distinct Unicode names remain intact.
+
+Focused red/green regressions cover all three findings. Re-review found no further actionable finding within ticket 03. Full tests including the corpus verification package, description race tests/vet, both entrypoint builds with -buildvcs=false, gofmt and diff whitespace checks pass. Completion changes and review fixes remain uncommitted; no master cleanup or persistent data changed.

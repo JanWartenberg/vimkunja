@@ -48,6 +48,28 @@ func isBlock(tag string) bool {
 
 func optionalEnd(tag string) bool { return tag == "p" || tag == "li" }
 
+func closesParagraph(tag string) bool {
+	if isBlock(tag) {
+		return true
+	}
+	switch tag {
+	case "address", "article", "aside", "details", "dialog", "dl", "dt", "dd", "fieldset", "figcaption", "figure", "footer", "form", "h4", "h5", "h6", "header", "hgroup", "main", "menu", "nav", "search", "section", "summary", "li", "listing", "xmp":
+		return true
+	}
+	return false
+}
+
+// HTML names are case-insensitive only for ASCII letters. Unicode names are
+// safe unknown metadata too; Unicode lowercasing would change their identity.
+func htmlName(name string) string {
+	return strings.Map(func(r rune) rune {
+		if r >= 'A' && r <= 'Z' {
+			return r + ('a' - 'A')
+		}
+		return r
+	}, name)
+}
+
 // Parse always returns a document, including a Blocked one with original source
 // and safe recovery text. It never uses a repairing HTML tree as its source of
 // Native boundaries. Token.Raw is copied before Token mutates its buffer.
@@ -106,7 +128,7 @@ func Parse(source string) *Document {
 			}
 			// HTML optional ends are accepted only at unambiguous boundaries;
 			// unclosed marks and other repair are not silently popped.
-			if parent.tag == "p" && (isBlock(token.Data) || token.Data == "li") {
+			if parent.tag == "p" && closesParagraph(token.Data) {
 				parent.end = start
 				stack = stack[:len(stack)-1]
 				parent = stack[len(stack)-1]
@@ -189,6 +211,19 @@ func Parse(source string) *Document {
 		d.nodes = append(d.nodes, converted(n))
 	}
 	d.nodes = normalizeRoot(d.nodes)
+	// Synthetic paragraphs are imported nodes too, not new draft nodes. Give
+	// them unique identities before registering Opaque parent identities.
+	var identify func([]Node)
+	identify = func(nodes []Node) {
+		for i := range nodes {
+			if nodes[i].ID == 0 {
+				nodes[i].ID = next
+				next++
+			}
+			identify(nodes[i].Children)
+		}
+	}
+	identify(d.nodes)
 	if err := validateNative(d.nodes, "", false); err != nil {
 		d.class, d.problem = Blocked, fmt.Errorf("%w: %v", ErrBlocked, err)
 		return d
@@ -206,6 +241,7 @@ func Parse(source string) *Document {
 		}
 	}
 	register(d.nodes, nil, nil)
+	d.indexAnchors()
 	return d
 }
 
@@ -229,6 +265,9 @@ func protectUnsupportedStructure(n *sourceNode, parent string) {
 	}
 	for _, child := range n.children {
 		if n.tag == "ul" || n.tag == "ol" {
+			if child.opaque {
+				continue
+			}
 			if child.tag != "li" && (child.tag != "" || strings.Trim(child.text, " \t\r\n\f") != "") {
 				n.opaque = true
 				return
@@ -294,7 +333,7 @@ func sourceAttributes(raw string) []Attribute {
 		for i < len(raw) && !htmlSpace(raw[i]) && raw[i] != '=' && raw[i] != '>' && raw[i] != '/' {
 			i++
 		}
-		name := strings.ToLower(raw[start:i])
+		name := htmlName(raw[start:i])
 		for i < len(raw) && htmlSpace(raw[i]) {
 			i++
 		}
@@ -358,7 +397,7 @@ func inlineOpaque(tag string) bool {
 
 func activeAttributes(attrs []Attribute) bool {
 	for _, a := range attrs {
-		name := strings.ToLower(a.Name)
+		name := htmlName(a.Name)
 		if strings.HasPrefix(name, "on") || name == "srcdoc" {
 			return true
 		}
@@ -383,7 +422,7 @@ func unsafeAttributes(attrs []Attribute) bool {
 	}
 	seen := map[string]bool{}
 	for _, a := range attrs {
-		name := strings.ToLower(a.Name)
+		name := htmlName(a.Name)
 		if name == "style" || name == "" || seen[name] || strings.ContainsAny(name, " \t\r\n\f\x00\"'<>/=") {
 			return true
 		}

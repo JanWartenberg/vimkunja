@@ -150,3 +150,35 @@ func TestSafeProjectionEscapesTerminalControls(t *testing.T) {
 		t.Fatalf("damaged useful whitespace/Unicode: %q", got)
 	}
 }
+
+func TestCommentsDoNotProtectEntireNativeLists(t *testing.T) {
+	source := "<ul><!-- secret --><li>Item</li></ul>"
+	d := Parse(source)
+	nodes := d.Snapshot()
+	if nodes[0].Kind != Element || nodes[0].Children[0].Kind != Opaque || nodes[0].Children[1].Kind != Element {
+		t.Fatalf("comment disabled editable list: %#v", nodes)
+	}
+	nodes[0].Children[1].Children[0].Text = "Changed"
+	out, err := d.SerializeSnapshot(nodes, Preservation{})
+	if err != nil || out != "<ul><!-- secret --><li>Changed</li></ul>" {
+		t.Fatalf("comment neighbor edit: %q %v", out, err)
+	}
+}
+
+func TestOptionalParagraphEndsBeforeUnsupportedBlocks(t *testing.T) {
+	for _, tag := range []string{"h4", "section", "aside", "listing", "xmp"} {
+		source := "<p>A<" + tag + ">B</" + tag + ">C"
+		d := Parse(source)
+		if d.Classification() != Mixed {
+			t.Fatalf("valid optional end: %s %v", d.Classification(), d.Problem())
+		}
+		out, err := d.Serialize()
+		want := "<p>A</p><" + tag + ">B</" + tag + "><p>C</p>"
+		if err != nil || out != want {
+			t.Fatalf("unsupported block relocated: %q %v", out, err)
+		}
+		if Parse(source+"</p>").Classification() != Blocked {
+			t.Fatal("unexpected extra p close silently repaired")
+		}
+	}
+}
