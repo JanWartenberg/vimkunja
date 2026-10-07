@@ -1,8 +1,10 @@
 Third-party notices for Vimkunja
 ================================
 
-Inventory checked 2026-10-05 against go.mod and the dependency closure of both
-entrypoints for Linux, Windows and macOS amd64 (CGO_ENABLED=0).
+Inventory rechecked 2026-10-07 against go.mod and the dependency closure of
+both entrypoints for Linux amd64, Windows amd64 and macOS amd64/arm64
+(CGO_ENABLED=0). All 30 module versions and their root license texts match.
+Additional embedded source notices and APSL 1.1/2.0 texts are included below.
 Include this file and LICENSE with binary distributions. Update this inventory
 when dependencies or the Go toolchain change. Each component retains its own
 license; Vimkunja's MIT license does not replace these terms.
@@ -1285,7 +1287,7 @@ authorization of the copyright holder.
 
 Additional notices embedded in compiled dependency source files
 ==============================================================
-These include BSD-2/BSD-4, MIT and Apple APSL-2.0 notices that a scan of
+These include BSD-2/BSD-4, MIT and Apple APSL-1.1/2.0 notices that a scan of
 module-root LICENSE files alone would miss. macOS binary distribution
 requires a separate check of the APSL source-availability and executable
 notice conditions; this inventory does not implement a macOS release flow.

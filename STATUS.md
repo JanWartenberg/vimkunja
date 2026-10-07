@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**Stand:** 2026-10-06 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
+**Stand:** 2026-10-07 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
 
 ## Aktueller Stand
 
@@ -56,7 +56,8 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 - Review-Fixes (2026-10-06): permanente Löschung reserviert Task-/Alias-Nummern auch bei fehlenden oder veralteten Zählern atomar. Startprüfung verlangt vollständige Unique-Indizes einschließlich Task/Bucket-Zuordnung und einen einspaltigen Zähler-Primärschlüssel. Regressionen, volle Tests, Vet, Builds und VOA-/Upgrade-Roundtrips grün.
 
 - [Vikunja-DB-Kompatibilität ausschließlich 2.7.0](.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md) — **abgeschlossen; Kompatibilitätsvoraussetzung der Veröffentlichung erfüllt**. Produktive Revisionsprüfung, Store-Fixes und Regressionen implementiert; [Prüfbericht](.archive/2026-10-05/vikunja-db-compatibility/report.md) belegt Fresh-/Baseline-Roundtrips mit offiziellem VOA 2.7.0. Tests, Vet und beide Builds grün. Nur 2.7.0, sequenzieller Betrieb; permanente Löschung von Tasks mit Time Entries gesperrt. Native Windows-Terminaltests weiterhin offen.
-- [Publish to GitHub](.scratch/publish-to-github/issues/01-publish-to-github.md) – Kompatibilitätsvoraussetzung erfüllt; **kein Push beauftragt**. Ziel `JanWartenberg/vimkunja`, Modulpfad/Imports, MIT samt Drittanbieter-Hinweisen und Linux-/Windows-CI mit aktueller stabiler Go-Version vorbereitet; Links, Secrets und lokale Push-Probe geprüft. Persönliche Commit-Mail und produktives Start-Template offen; macOS-Binary-Lizenzbedingungen separat vor einem entsprechenden Release klären. **Nur `main` und ausgewählte Tags veröffentlichen; keine Backup-Referenzen und kein Mirror-Push.**
+- [01 — Lizenz und Dokumentation für GitHub](.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) — **abgeschlossen und archiviert**. Lizenzinventar (30 Module/128 zusätzliche Hinweise), README, Beispiele und Links geprüft; HTML-Schreibschutz, Konfigurationspriorität, Binary-Start und Release-Grenzen präzisiert.
+- [02 — Veröffentlichung nach dem Richtext-Merge](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) — **wartet auf den vereinbarten Worktree-Merge; Ticket 01 ist abgeschlossen**. Danach CI/Tests, E-Mail-/Historienbereinigung in separater Veröffentlichungskopie, finale Secret-/DB-Prüfung und Push-Dry-Run. **Nur `main` und bestätigte Tags; keine Backup-Referenzen, kein Mirror-Push. Öffentlicher Push nur auf ausdrücklichen Auftrag.**
 
 ## Dokumentation
 

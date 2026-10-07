@@ -8,7 +8,7 @@
 
 **Status:** completed
 
-**Former blocker:** [Publish to GitHub](../../../../.scratch/publish-to-github/issues/01-publish-to-github.md) — Kompatibilitätsvoraussetzung erfüllt.
+**Former blocker:** [Publish to GitHub](../../../2026-10-07/publish-to-github/issues/01-publish-to-github.md) — Kompatibilitätsvoraussetzung erfüllt.
 
 ## VERBINDLICH: Veröffentlichung erst nach Abschluss dieses Tickets
 

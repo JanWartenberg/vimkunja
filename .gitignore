@@ -22,3 +22,8 @@
 *.sqlite3-shm
 *.sqlite3-wal
 *.sqlite3-journal
+
+# Completed publication documentation; keep other archives excluded
+!.archive/2026-10-07/
+.archive/2026-10-07/*
+!.archive/2026-10-07/publish-to-github/

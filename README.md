@@ -6,7 +6,7 @@ Vimkunja ist eine tastaturorientierte Terminal-Oberfläche für eine lokale [Vik
 
 ### Installation und erster Start
 
-Voraussetzungen: Git, Go 1.25 oder neuer und ein interaktives Terminal. Für Builds die aktuelle stabile, sicherheitsgepatchte Go-Version verwenden (CI nutzt `stable`); Go 1.25.0 ist veraltet. Linux amd64 wurde lokal geprüft; Windows amd64 lässt sich bauen, native Windows-Terminaltests stehen noch aus.
+Voraussetzungen: Git, ein interaktives Terminal und eine aktuelle, gepflegte Go-Version. Das Modul verwendet Go 1.25 als Sprachminimum; zum Bauen eine aktuelle sicherheitsgepatchte Toolchain verwenden (CI nutzt `stable`). Linux amd64 wurde lokal geprüft; Windows amd64 lässt sich bauen, native Windows-Terminaltests stehen noch aus.
 
 Die vorgesehene Clone-URL lautet:
 
@@ -30,7 +30,23 @@ Beide Programme bauen (unter Windows erhalten die Binärdateien die Endung `.exe
 go build -o bin/ ./cmd/vimkunja ./cmd/vimkunja-tutorial
 ```
 
-Für echte Tasks eine vorhandene Vikunja-SQLite-Datenbank angeben:
+Die gebauten Programme lassen sich aus dem Repository-Verzeichnis starten:
+
+```bash
+./bin/vimkunja-tutorial
+```
+
+```bash
+./bin/vimkunja --db "/path/to/vikunja.db"
+```
+
+Unter Windows PowerShell beispielsweise:
+
+```powershell
+.\bin\vimkunja.exe --db "C:\path\to\vikunja.db"
+```
+
+Für echte Tasks alternativ direkt aus dem Quellcode eine vorhandene Vikunja-SQLite-Datenbank angeben:
 
 ```bash
 go run ./cmd/vimkunja --db /path/to/vikunja.db
@@ -42,9 +58,9 @@ Ohne `--db` verwendet Vimkunja lokal `internal/db/vikunja.db`. Diese Datei ist n
 
 ### Datenbank und Kompatibilität
 
-Eine blanke SQLite-Datei enthält keine Vikunja-Tabellen und reicht für einen produktiven Start nicht aus. Vimkunja erstellt oder migriert kein Vikunja-Schema. Für einen frischen produktiven Datenbestand muss Vikunja selbst die Datenbank initialisieren; User, Project und View müssen für den gewünschten Workflow vorhanden sein. Ein dauerhaftes Start-Template ist noch nicht spezifiziert. Die synthetische Tutorial-Datenbank ist ausschließlich zum Ausprobieren gedacht und wird beim Beenden gelöscht.
+Eine blanke SQLite-Datei enthält keine Vikunja-Tabellen und reicht für einen produktiven Start nicht aus. Vimkunja erstellt oder migriert kein Vikunja-Schema. Für einen frischen produktiven Datenbestand muss Vikunja selbst die Datenbank initialisieren; User, Project und View müssen für den gewünschten Workflow vorhanden sein. Ein dauerhaftes Start-Template ist noch nicht spezifiziert. Die synthetische Tutorial-Datenbank ist ausschließlich zum Ausprobieren gedacht und wird beim regulären Beenden gelöscht.
 
-Einziges geprüftes Kompatibilitätsziel ist **Vikunja 2.7.0**. Echte Server-Roundtrips mit frischer Datenbank und einer Kopie der synthetischen Windows-Baseline sind im [Prüfbericht](.archive/2026-10-05/vikunja-db-compatibility/report.md) dokumentiert. Frühere, spätere und Entwicklungsversionen sind nicht unterstützt. Der produktive Start prüft Migrationshistorie und benötigte Schema-Merkmale und lehnt abweichende oder unvollständige DB-Revisionen vor fachlichen Schreibzugriffen ab. Releases mit identischer DB-Revision sind aus der Datei allein nicht unterscheidbar und erhalten keine zusätzliche Freigabe. Die Tutorial-Datenbank ist kein produktives Start-Template.
+**VOA** bezeichnet im Folgenden die Vikunja-Original-App bzw. ihren Server. Einziges geprüftes Kompatibilitätsziel ist **Vikunja 2.7.0**. Echte Server-Roundtrips mit frischer Datenbank und einer Kopie der synthetischen Windows-Baseline sind im [Prüfbericht](.archive/2026-10-05/vikunja-db-compatibility/report.md) dokumentiert. Frühere, spätere und Entwicklungsversionen sind nicht unterstützt. Der produktive Start prüft Migrationshistorie und benötigte Schema-Merkmale und lehnt abweichende oder unvollständige DB-Revisionen vor fachlichen Schreibzugriffen ab. Releases mit identischer DB-Revision sind aus der Datei allein nicht unterscheidbar und erhalten keine zusätzliche Freigabe. Die Tutorial-Datenbank ist kein produktives Start-Template.
 
 VOA vor dem Start von Vimkunja beenden; Vimkunja vor dem Neustart von VOA beenden. Parallele Bearbeitung ist nicht verifiziert. Tasks im Papierkorb bleiben verborgen und können nicht bearbeitet werden. Archivierte Projects sind schreibgeschützt; Bucket-Limits werden berücksichtigt. Task-Nummern bleiben nach Löschungen reserviert; alte Adressen nach Project-Wechseln und Undo/Redo sind über VOA API v2 auflösbar.
 
@@ -58,7 +74,7 @@ Vor dem Arbeiten mit echten Daten ein Backup erstellen. Weitere Views und native
 go run ./cmd/vimkunja-tutorial
 ```
 
-The separate tutorial executable runs the real Vimkunja UI and guides through every currently implemented feature group in English. Every run creates a freshly seeded SQLite database in the operating system's temporary directory. The tutorial accepts no database path, never opens `internal/db/vikunja.db` or another user database, and deletes its disposable database on exit.
+The separate tutorial executable runs the real Vimkunja UI and guides through every currently implemented feature group in English. Every run creates a freshly seeded SQLite database in the operating system's temporary directory. The tutorial accepts no database path, never opens `internal/db/vikunja.db` or another user database, and removes its disposable database on normal exit.
 
 ### Local TUI configuration
 
@@ -84,10 +100,10 @@ Timeouts use Go duration syntax, such as `250ms`, `1s`, or `1.5s`. Values must b
 The command-line equivalents override the TOML values:
 
 ```bash
-go run ./cmd/vimkunja --leader-timeout 1s --ctrl-w-timeout 750ms
+go run ./cmd/vimkunja --db "/path/to/vikunja.db" --leader-timeout 1s --ctrl-w-timeout 750ms
 ```
 
-The precedence is CLI flags, then environment variables (reserved for a future release), then TOML, then built-in defaults. Configuration is read at startup; edit the file and relaunch Vimkunja to apply changes. `--help` lists the CLI flags.
+The implemented precedence is CLI flags, then TOML, then built-in defaults. Environment-variable overrides are not implemented. Configuration is read at startup; edit the file and relaunch Vimkunja to apply changes. `--help` lists the CLI flags.
 
 A missing file is normal. Invalid TOML, unreadable files, unknown sections/settings, and invalid TOML values are recoverable: supported unambiguous settings still apply, invalid fields use their defaults, and Vimkunja starts with warnings. Warnings are printed to stderr, shown briefly in the red startup footer, and retained in `:errors`. Invalid timeout values supplied explicitly on the command line are fatal and prevent startup.
 
@@ -110,7 +126,7 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 - `:kanban` oder `Space+v`, dann `k` – einzelne manuelle Kanban View öffnen oder nach Bestätigung standardkonform provisionieren
 - Im Kanban Board: `h/l` Buckets, `j/k` Karten, `Shift+H/L` Nachbar-Move, `m` Ziel-Bucket wählen
 
-Im Detail-pane können Project, Title, Priority, Due Date, Labels, Description und der Workflow-Status bearbeitet werden. `gc` öffnet den Comments-Workspace; `gca` startet dort einen neuen Comment. Im Comment-Thread starten `a`, `i` und `o` einen neuen Comment; ein statischer Blockcursor markiert den ausgewählten Comment. `Space+l` öffnet den Label-Picker; `:labels` verwaltet globale Labels. Der Status verwendet die konfigurierten Buckets der eindeutigen Kanban View des Projects.
+Im Detail-Pane können Project, Title, Priority, Due Date, Labels, Plain-Text-Description und der Workflow-Status bearbeitet werden. **HTML-Beschreibungen werden lesbar projiziert und sind derzeit schreibgeschützt.** Native Richtext-Bearbeitung ist noch nicht implementiert. `gc` öffnet den Comments-Workspace; `gca` startet dort einen neuen Comment. Im Comment-Thread starten `a`, `i` und `o` einen neuen Comment; ein statischer Blockcursor markiert den ausgewählten Comment. `Space+l` öffnet den Label-Picker; `:labels` verwaltet globale Labels. Der Status verwendet die konfigurierten Buckets der eindeutigen Kanban View des Projects.
 
 In den Command-Prompts von Comments, Labels und Global Search gelten ebenfalls `:qa`, `:qa!` und `:wqa`. `:qa` schützt ungespeicherte Task-/Comment-Entwürfe; `:wqa` speichert einen vorhandenen Comment-Entwurf zusammen mit dem Task atomar und beendet erst nach erfolgreichem Speichern. Bei Fehlern bleibt der Entwurf offen. Im Insert Mode zuerst `Esc` drücken.
 
@@ -148,4 +164,8 @@ Der aktuelle, priorisierbare Backlog liegt in `.scratch/`; der Kurzstatus mit Ve
 
 ## Lizenz
 
-Vimkunja steht unter der [MIT-Lizenz](LICENSE). Abhängigkeiten behalten ihre jeweiligen Lizenzen; deren Hinweise stehen in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). Bei Binary-Releases beide Dateien mitliefern.
+Der eigene Vimkunja-Code steht unter der [MIT-Lizenz](LICENSE). Abhängigkeiten behalten ihre jeweiligen Lizenzen; versionierte Zuordnung, Lizenztexte und ergänzende Hinweise stehen in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). Beide Dateien bei Binary-Distributionen mitliefern und die dort dokumentierten komponentenspezifischen Bedingungen erfüllen.
+
+Vikunja ist ein separates [AGPL-3.0-Projekt](https://github.com/go-vikunja/vikunja/blob/v2.7.0/LICENSE); seine Lizenz wird durch Vimkunjas MIT-Lizenz nicht ersetzt. Eine spätere Übernahme von Upstream-Code muss gesondert geprüft werden.
+
+Die generierten Darwin-Dateien der SQLite-Abhängigkeiten enthalten zusätzliche APSL-1.1-/2.0-Hinweise. Die besonderen Bedingungen eines **macOS-Binary-Releases sind noch nicht abschließend erfüllt**; Cross-Kompilation und die Notice-Datei allein sind keine Release-Abnahme. Die betreffenden Lizenztexte und Quellcode-Bezugsquellen sind in der Notice-Datei dokumentiert.

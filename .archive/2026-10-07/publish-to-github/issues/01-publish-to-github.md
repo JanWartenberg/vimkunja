@@ -1,44 +1,75 @@
-# 01 — Publish Vimkunja to GitHub
+# 01 — Lizenz und Dokumentation für GitHub vorbereiten
 
-**What to deliver:** Prepare a public GitHub repository with usable code and documentation, preserving transparent development history where safe.
+**What to deliver:** Lizenz und Nutzerdokumentation für den aktuellen Vimkunja-Stand so vorbereiten, dass Code und Doku anschließend auf GitHub veröffentlicht werden können.
 
 **Category:** maintenance
 
-**Priority:** High for code and documentation; tickets, prototypes and Git history are secondary.
+**Priority:** High
 
-**Status:** needs-triage
+**Status:** completed
 
-**Erfüllte Voraussetzung:** [Vikunja-DB-Kompatibilität ausschließlich 2.7.0](../../../.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md)
+**Nachfolger:** [02 — Veröffentlichung nach dem Richtext-Merge vorbereiten](../../../../.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md)
 
-## VERBINDLICHE VORAUSSETZUNG: DB-Kompatibilität abschließen
+**Erfüllte Grundlage:** [Vikunja-DB-Kompatibilität ausschließlich 2.7.0](../../../2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md)
 
-**Keine öffentliche GitHub-Erstveröffentlichung, bevor das verlinkte Kompatibilitätsticket abgeschlossen ist und die Kompatibilität ausschließlich mit Vikunja 2.7.0 durch eine echte Testdatenbank und Roundtrips belegt ist.** Quellenrecherche oder die bisherigen synthetischen Store-Tests allein reichen nicht. Vorbereitung kann parallel fortgesetzt werden. Andere Releases sind nicht unterstützt; eine Mehrversions-/Upgrade-Matrix ist keine Voraussetzung.
+## Verbindlicher Umfang — 2026-10-07
 
-## VERBINDLICHE ENTSCHEIDUNG: Backup-Referenz niemals veröffentlichen
+Dieses bestehende Ticket übernimmt jetzt ausschließlich **Lizenz und Dokumentation**. Es kann vor dem Richtext-Merge abgeschlossen werden. Historienbereinigung, CI-Abnahme, Veröffentlichungskopie und Push-Prüfung gehören in Ticket 02 und starten erst nach dem vereinbarten Richtext-Merge.
 
-**Nur `main` und ausdrücklich ausgewählte Tags veröffentlichen. `refs/original/refs/heads/main` und andere Backup-Referenzen dürfen NICHT auf GitHub gelangen. KEIN `git push --mirror`.**
+- MIT für den eigenen Code beibehalten; `LICENSE`, README-Lizenzabschnitt und `THIRD_PARTY_NOTICES.txt` auf Konsistenz, Quellenzuordnung und Vollständigkeit für die vorhandenen Abhängigkeiten prüfen.
+- Vorhandene technische Herkunftsbefunde und Grenzen der Prüfung nachvollziehbar erhalten. Eigenen MIT-Code, fremde Lizenzbedingungen und offene Anforderungen späterer Binary-Releases klar beschreiben.
+- README-Einstieg, Build-/Startbefehle, Tutorial, Konfiguration und Bedienung gegen den aktuellen `main`-Stand prüfen. Keine geplante Richtext-Funktion als implementiert ausgeben.
+- Vikunja 2.7.0, sequenziellen Betrieb, DB-Voraussetzungen, bekannte Workflow-Abweichungen und Plattformgrenzen konsistent dokumentieren; veraltete Aussagen als historische Befunde kennzeichnen.
+- Lokale Dateilinks, Fragment-Anker und externe Quellenlinks prüfen; nicht mitgelieferte lokale Artefakte entsprechend kennzeichnen.
+- Änderungen auf Lizenz-/Dokumentationskorrekturen begrenzen. Keine Dependency-/Schema-Änderungen, keine CI-Änderungen, keine Änderung von Git-Identitäten oder Historie, keine Veröffentlichung.
 
-- Eine separate Veröffentlichungskopie vorbereiten, die nur `main` und die ausgewählten Tags übernimmt und keine Backup-Referenzen enthält.
-- Vor dem Push die vollständige erreichbare Historie dieser Referenzen auf Datenbanken und sensible Inhalte prüfen. Ein sauberer aktueller Dateibaum oder `.gitignore` reicht nicht aus.
-- Remote-Konfiguration auf Mirror-Modus und zusätzliche Push-Refspecs prüfen. Vor dem tatsächlichen Push einen Dry Run mit denselben expliziten Referenzen ausführen; die Ausgabe darf nur die ausgewählten Ziele enthalten.
-- Die lokale Backup-Referenz darf bestehen bleiben. Ihre Löschung und eine erneute Historienumschreibung sind für die Veröffentlichung nach aktuellem Befund nicht erforderlich.
-- Die lokale Nutzerdatenbank und laufende Richtext-Arbeit bleiben unangetastet. Dieses Ticket dokumentiert die Vorbereitung; es ist keine Anweisung zum sofortigen Push oder Löschen von Referenzen.
+## Bereits festgelegt / Vorabstatus
 
-Beispiel für einen Dry Run, sofern `origin` auf das bestätigte Ziel zeigt und beide Tags veröffentlicht werden sollen:
+- Jan hat MIT und das Ziel `JanWartenberg/vimkunja` festgelegt. Code und Dokumentation haben höchste Priorität; Tickets, Prototypen und sichere Historie sollen möglichst transparent mitgenommen werden.
+- README beschreibt bereits den Start über eine von Vikunja initialisierte DB und das synthetische Tutorial. Eine blanke DB ist kein produktiver Start. Ein zusätzliches versioniertes Start-Template bleibt eine optionale Produktentscheidung; dessen Umsetzung ist keine Abnahmebedingung dieses Dokumentationstickets.
+- Native Windows-/CalDAV-Abnahme und besondere Lizenzbedingungen etwaiger macOS-Binaries bleiben ausdrücklich offen. Dieses Ticket muss die Grenzen dokumentieren, keinen Binary-Release bauen oder freigeben.
+- **Vorabstatus 2026-10-07: keine blockierenden Rückfragen für Ticket 01.** Die Lizenzentscheidung, das Repositoryziel und der aktuelle Funktions-/DB-Contract reichen für die Arbeit aus. Bestehende Sprachmischung ohne beauftragte Komplettübersetzung beibehalten; Dokumentation des vorhandenen Startwegs genügt zunächst.
+- Der Vorabstatus wurde berichtet; anschließend hat Jan die Umsetzung von Ticket 01 beauftragt. Die unten dokumentierte Abnahme ist abgeschlossen.
 
-```bash
-git push --dry-run origin main refs/tags/MVP refs/tags/Milestone1
-```
+## Abnahme für Ticket 01
 
-Nach Erfüllung der Veröffentlichungsvoraussetzungen und Prüfung erfolgt der tatsächliche Push mit denselben Referenzen ohne `--dry-run`.
+- [x] MIT-Datei, README-Lizenzabschnitt und Drittanbieter-Hinweise abschließend gegen den aktuellen Stand geprüft; konkrete Korrekturen umgesetzt und Ergebnis dokumentiert.
+- [x] README beschreibt einen nachvollziehbaren Build, einen sicheren Tutorial-Einstieg und den produktiven Start mit bestehender 2.7.0-DB; Konfiguration und Bedienung entsprechen dem implementierten Stand.
+- [x] Kompatibilitäts-, Plattform- und Workflow-Grenzen sowie zusätzliche Binary-Lizenzanforderungen sind ohne unbelegte Freigaben dokumentiert.
+- [x] Dokumentationslinks und Beispiele geprüft; historische Befunde von aktuellen Aussagen getrennt.
+- [x] Ticket 02 übernimmt alle operativen Veröffentlichungsschritte; Ticket 01 kann unabhängig vom Richtext-Merge abgeschlossen werden. Bei späteren Feature-/Dependency-Änderungen wird die betroffene Doku/Lizenzzuordnung vor Veröffentlichung erneut abgeglichen.
 
-## Veröffentlichungsumfang
+## Abschluss und Prüfergebnisse — 2026-10-07
 
-- Code und Nutzerdokumentation haben höchste Priorität.
-- Tickets, Specs, Prototypen, Archiv und Git-Historie möglichst mitnehmen; unfertige Ideen und dokumentierte Fehlentscheidungen sind kein Ausschlussgrund.
-- Keine Secrets, echten Nutzerdatenbanken, privaten oder unangemessenen persönlichen Inhalte veröffentlichen. Persönliche Inhalte zusätzlich manuell prüfen.
-- Leere Samples und synthetische Fixtures/Templates sind zulässig, sofern sie keine echten Nutzerdaten enthalten.
-- Vorbereitung kann parallel zum HTML-Richtext-Feature erfolgen. Ob dieses Feature Voraussetzung für die Erstveröffentlichung wird, ist noch nicht entschieden.
+**Ticket 01 ist für den aktuellen `main`-Stand abgeschlossen.** Geprüfte Codebasis: `e77f00c69fba7f8cb69a56eb8b64732c896c1e17`; Die Dokumentationskorrekturen sind diesem abgeschlossenen Ticket zugeordnet. Die operative Veröffentlichung bleibt in Ticket 02 nach dem Richtext-Merge.
+
+### Umgesetzt
+
+- README beschreibt jetzt ausdrücklich die schreibgeschützte HTML-Description-Projektion und grenzt sie von editierbarem Plain Text und der noch geplanten nativen Richtext-Bearbeitung ab.
+- Konfigurationspriorität entspricht `LoadUserConfig`: CLI, TOML, Defaults. Environment-Overrides sind nicht implementiert. Das CLI-Konfigurationsbeispiel nennt einen expliziten DB-Pfad.
+- Starts der gebauten Programme für Linux und Windows PowerShell ergänzt; relative Pfade setzen das Repository-Verzeichnis voraus. Go-Sprachminimum und gepflegte Build-Toolchain unterschieden; VOA-Begriff erläutert und reguläre Tutorial-Bereinigung präzisiert.
+- Lizenzabschnitt trennt eigenen MIT-Code und fremde Bedingungen, verlinkt Vikunjas eigene Lizenz und benennt die noch offene macOS-Binary-Abnahme einschließlich APSL 1.1/2.0. Die bestehende MIT-Datei ist konsistent und benötigt keine Änderung.
+- Notice-Inventarkopf auf die tatsächlich geprüften Zielarchitekturen und das neue Prüfdatum korrigiert; APSL-1.1-/2.0-Zuordnung präzisiert. Vollständige fremde Lizenztexte und Copyright-Hinweise bleiben erhalten.
+
+### Validierung
+
+- Dependency-Closure beider Entrypoints für Linux amd64, Windows amd64 sowie Darwin amd64/arm64 mit `CGO_ENABLED=0` erneut bestimmt: **30 Drittmodule**, alle Versionszuordnungen und Root-Lizenztexte in `THIRD_PARTY_NOTICES.txt` enthalten. **128 zusätzliche Lizenz-Kommentarblöcke** aus den kompilierten Dependency-Quelldateien ebenfalls vollständig vorhanden. Keine Dependency-Änderung.
+- Lizenztexte und Herkunftsnachweise gegen die lokalen, versionierten Module sowie die verlinkten MIT-/APSL-Quellen abgeglichen. Diese technische Bestandsprüfung ist keine lückenlose Herkunftsbeweisführung oder pauschale Binary-Freigabe; frühere Herkunftsbefunde und ihre Grenzen bleiben unten erhalten.
+- Vor der Archivierung: **102 veröffentlichbare Markdown-Dateien**, alle erkannten lokalen Dateilinks und Markdown-Fragmente ohne defekte Ziele; **70 unterschiedliche externe Markdown-/Modularchiv-Quellen** HTTP 200, GitHub-Zeilenanker im Bereich der jeweiligen Rohdatei. Archivierungslinks anschließend erneut geprüft.
+- Frischer isolierter Clone des geprüften Codes, Go 1.27.1: exakt der dokumentierte Build `go build -o bin/ ./cmd/vimkunja ./cmd/vimkunja-tutorial` erfolgreich. Beide Help-Aufrufe erfolgreich; dokumentierte Timeout-Flags werden akzeptiert. Fehlender DB-Pfad liefert den Tutorial-Hinweis und legt keine DB an.
+- README-TOML-Beispiel in separatem temporärem Konfigurationsverzeichnis verwendet; Tutorial mit CLI-Override in einem Linux-PTY gestartet und sichtbare erste Lektion geprüft. `Ctrl+C` beendet sauber und entfernt die temporäre Demo-DB. Kein vollständiger manueller Tutorial-Durchlauf und kein nativer Windows-Test behauptet.
+- Bestehende gezielte Konfigurations-/HTML-Schreibschutztests (`TestLoadUserConfig*`, `TestHTMLDescriptionRemainsReadOnlyDuringReaderPhase`) erfolgreich. Änderungen betreffen ausschließlich Dokumentation und deren Tracking; keine neuen Implementierungstests erforderlich.
+
+### Verbleibende Grenzen und Übergabe
+
+- Produktiver frischer Start weiterhin über eine von Vikunja 2.7.0 initialisierte DB; ein zusätzliches Start-Template ist eine optionale spätere Produktentscheidung. Keine Nutzerdaten oder echten Datenbanken über die Anwendung geöffnet.
+- Native Windows-/CalDAV-Abnahme und Lizenz-/Packaging-Bedingungen eines späteren macOS-Binary-Releases bleiben offen und sind in der README gekennzeichnet. Sie verhindern den Abschluss dieses Dokumentationsumfangs nicht.
+- Nach dem Richtext-Merge gleicht Ticket 02 nur die betroffenen Funktions-/Dependency-Änderungen gegen README, STATUS und Lizenzinventar ab, bevor der endgültige Stand geprüft wird.
+- Keine CI-, Code-, Schema-, Git-Identitäts- oder Historienänderung; kein Commit, Merge, Remote-Anlegen oder Push mit dieser Umsetzung.
+
+## Historische Befunde des bisherigen Gesamttickets
+
+Die folgenden datierten Prüfberichte und Kommentare bleiben als Evidenz erhalten. Sie dokumentieren frühere Stände einschließlich inzwischen behobener Findings und früher hier geführter CI-/Datenschutzarbeit. **Sie erweitern den aktuellen Umfang von Ticket 01 nicht; operative Folgearbeit liegt jetzt in Ticket 02.**
 
 ## Prüfbefund vom 2026-10-04
 
@@ -110,7 +141,7 @@ Für einen produktiven frischen Start sollte die gewählte Vikunja-Version selbs
 ### Lizenzprüfung
 
 - Die tatsächliche Dependency-Closure beider Entrypoints für Linux, Windows und macOS amd64 umfasst insgesamt **30 Drittmodule**. Die Modul-Root-Lizenzen sind MIT bzw. BSD. Die vertiefte Prüfung tatsächlich kompilierter Dependency-Dateien findet zusätzlich MIT-/BSD-2-/BSD-4-Texte und **APSL-2.0-Hinweise in generierten Darwin-Headerdateien von `modernc.org/libc`**; außerdem gelten Musl-/Netdb-/Unicode-Hinweise. Eine reine Root-LICENSE-Prüfung hätte diese zusätzlichen Bedingungen übersehen. Das SQLite-Original ist [Public Domain](https://www.sqlite.org/copyright.html), die `modernc`-Bindings haben eigene BSD-Bedingungen.
-- [THIRD_PARTY_NOTICES.txt](../../../THIRD_PARTY_NOTICES.txt) enthält versionierte Modulzuordnung, vollständige Root-Lizenztexte, zusätzliche Lizenz-Kommentarblöcke aus tatsächlich kompilierten Dependency-Dateien (einschließlich Darwin arm64), ergänzende Musl-/Netdb-/Unicode-Hinweise, APSL-1.1-/2.0-Texte samt Source-URLs und die Go-Lizenz. Die Datei und `LICENSE` müssen später bei Binary-Distributionen mitgeliefert werden; README dokumentiert dies. Unbenutzte Logos und ausschließlich in Dependency-Testdaten enthaltene Komponenten werden nicht als ausgelieferte Bestandteile behandelt.
+- [THIRD_PARTY_NOTICES.txt](../../../../THIRD_PARTY_NOTICES.txt) enthält versionierte Modulzuordnung, vollständige Root-Lizenztexte, zusätzliche Lizenz-Kommentarblöcke aus tatsächlich kompilierten Dependency-Dateien (einschließlich Darwin arm64), ergänzende Musl-/Netdb-/Unicode-Hinweise, APSL-1.1-/2.0-Texte samt Source-URLs und die Go-Lizenz. Die Datei und `LICENSE` müssen später bei Binary-Distributionen mitgeliefert werden; README dokumentiert dies. Unbenutzte Logos und ausschließlich in Dependency-Testdaten enthaltene Komponenten werden nicht als ausgelieferte Bestandteile behandelt.
 - [Vikunja 2.7.0 ist AGPL-3.0](https://raw.githubusercontent.com/go-vikunja/vikunja/v2.7.0/LICENSE). Vimkunjas Modulgraph bindet keinen Vikunja-Code ein. In den eigenen Go-Dateien wurden keine Übernahme-/Copyright-Vermerke Dritter gefunden. **561 historische Go-Blobs** der vorgesehenen Referenzen wurden mit den Backend-Go-Quellen des lokalen Upstream-Checkouts (`82ee780161c6ed250cdb1fc4d2952b72464cb724`) verglichen: keine identische Folge von acht nichttrivialen Codezeilen nach Entfernen von Leerraum/Kommentarzeilen.
 - **Ergebnis für den eigenen Code und die geplante Quellcode-Veröffentlichung:** kein konkreter Lizenzkonflikt gefunden; MIT bleibt bestehen. **Vor einem macOS-Binary-Release ist die APSL-Prüfung offen:** [APSL 2.0](https://opensource.apple.com/apsl/) Abschnitt 2.3 verlangt einen prominenten Hinweis im ausführbaren Code und in der Dokumentation zur Bezugsquelle des betroffenen Quellcodes. Die Notice-Datei allein belegt diese ausführbare Release-Bedingung nicht. Ein macOS-Binary-Release wird hier nicht freigegeben. Der technische Vergleich beweist keine lückenlose unabhängige Herkunft und erkennt insbesondere umgeschriebene oder kurze Übernahmen nicht. Künftige tatsächliche Upstream-Codeübernahmen brauchen eine erneute Herkunfts-/Lizenzprüfung; eine DB-Schnittstelle allein ist kein Nachweis einer Codeübernahme.
 
@@ -142,28 +173,6 @@ Für einen produktiven frischen Start sollte die gewählte Vikunja-Version selbs
 - Die erhaltenen Darwin-Header nennen APSL 1.1 und 2.0. Notices enthalten jetzt beide Lizenztexte mit Bezugsquellen; die spätere macOS-Binary-Abnahme bleibt offen.
 - Die Veröffentlichungseinheit wurde getrennt von uncommitted DB-/Richtext-Arbeit geprüft. Tests, beide Builds, Vet und Workflow-Lint bestehen auf einer isolierten Kopie des gestagten Codes mit Go 1.27.1. Kein Push oder Release beauftragt.
 
-## Offene Schritte / Abnahme
-
-- [x] **Erfüllt:** [DB-Kompatibilitätsticket](../../../.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md) abschließen; belegte 2.7.0-Kompatibilität, Ablehnung ungetesteter DB-Revisionen und Abnahmeergebnisse übernehmen, bevor veröffentlicht wird.
-- [x] Öffentliches Ziel `JanWartenberg/vimkunja` festgelegt; Go-Modulpfad und Imports abgeglichen. Repository-Erstellung/öffentlicher Push bleiben ausstehend.
-- [x] MIT-Projektlizenz ergänzen.
-- [x] Technische Herkunfts- und Drittanbieter-Lizenzprüfung durchgeführt; Umfang und Grenzen siehe Prüfbericht vom 2026-10-05.
-- [x] README um Build-Anleitung, Voraussetzungen, Tutorial und aktuelle Plattform-/Kompatibilitätsgrenzen ergänzen; SQLite-Zugriff und fehlenden REST-Modus klar benennen.
-- [x] Finale Clone-URL `https://github.com/JanWartenberg/vimkunja.git` eingetragen.
-- [x] Vikunja 2.7.0 durch die dokumentierten Fresh-/Baseline-Roundtrips belegt (Kompatibilitätsvoraussetzung erfüllt).
-- [ ] Blanke DB / versioniertes Start-Template entscheiden; gegebenenfalls Schema-Prüfung und Initialisierungsworkflow spezifizieren.
-- [ ] Persönliche Inhalte und Commit-Metadaten prüfen; Veröffentlichungsumfang bestätigen.
-- [ ] Zeitpunkt der Erstveröffentlichung gegenüber dem HTML-Richtext-Feature entscheiden.
-- [ ] Aktuelle Änderungen sauber ordnen; reine Zeilenendenänderungen nicht als fachliche Änderungen committen.
-- [x] CI für Tests, beide Builds und Vet auf Linux/Windows vorbereiten.
-- [ ] Ersten echten GitHub-Actions-Lauf prüfen und native Windows-Terminaltests durchführen.
-- [ ] Vor etwaigen macOS-Binary-Releases APSL-Source-/Executable-Notice-Bedingungen für generierte Darwin-Dependency-Dateien erfüllen; aktuell ist nur die technische Cross-Kompilation geprüft.
-- [ ] Separate Veröffentlichungskopie ohne Backup-Referenzen prüfen; Secret-Scan und DB-Historienprüfung auf dem finalen Stand wiederholen.
-- [ ] Tests und beide Builds auf dem finalen Stand ausführen.
-- [ ] Dry Run prüfen und ausschließlich `main` sowie bestätigte Tags veröffentlichen; Remote-Referenzen anschließend kontrollieren.
-
-Automatische Release-Binaries und die Migration lokaler Tickets zu GitHub Issues sind keine Voraussetzung für die Erstveröffentlichung.
-
 ## Comments
 
 ### 2026-10-04 — Entscheidung mit Jan
@@ -184,4 +193,12 @@ Jan begrenzt den Prüf- und Unterstützungsumfang auf genau Vikunja 2.7.0. Die b
 
 ### 2026-10-05 — Kompatibilitätsvoraussetzung erfüllt
 
-Das verlinkte 2.7.0-Ticket ist abgeschlossen und archiviert. Produktive Schema-Prüfung, Store-Fixes, Regressionen und echte Server-Roundtrips auf frischer DB und Kopie der synthetischen Windows-Baseline bestehen. Tests, Vet und beide Builds grün; [Prüfbericht](../../../.archive/2026-10-05/vikunja-db-compatibility/report.md) dokumentiert Contract und Grenzen. Dieser DB-Blocker ist erfüllt; andere Veröffentlichungspunkte bleiben offen. Kein Commit oder Push beauftragt.
+Das verlinkte 2.7.0-Ticket ist abgeschlossen und archiviert. Produktive Schema-Prüfung, Store-Fixes, Regressionen und echte Server-Roundtrips auf frischer DB und Kopie der synthetischen Windows-Baseline bestehen. Tests, Vet und beide Builds grün; [Prüfbericht](../../../2026-10-05/vikunja-db-compatibility/report.md) dokumentiert Contract und Grenzen. Dieser DB-Blocker ist erfüllt; andere Veröffentlichungspunkte bleiben offen. Kein Commit oder Push beauftragt.
+
+### 2026-10-07 — Veröffentlichung in zwei Tickets aufgeteilt
+
+Jan trennt die Arbeit: Lizenz und Dokumentation jetzt in Ticket 01; E-Mail-/Historienbereinigung, CI und Push-Prüfung in Ticket 02 nach dem Richtext-Worktree-Merge. Die bestehenden Befunde bleiben erhalten. Der tatsächliche öffentliche Push braucht einen ausdrücklichen Auftrag. Keine Historienbereinigung oder Umsetzung der weiteren Lizenz-/Dokumentationskorrekturen mit dieser Ticketänderung gestartet.
+
+### 2026-10-07 — Lizenz-/Dokumentationsumfang abgeschlossen
+
+Jan beauftragt die Umsetzung. Die oben dokumentierten Korrekturen und Prüfungen erfüllen alle Abnahmepunkte von Ticket 01. Ticket abgeschlossen und gemäß Projektworkflow archiviert; Ticket 02 bleibt bis zum vereinbarten Richtext-Merge offen.
