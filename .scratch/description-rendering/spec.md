@@ -1,12 +1,18 @@
 # Rich-Text Description Contract
 
-**Decision status — 2026-10-04:** product rules and defaults accepted. Corpus expectations are synchronized and independently authored; native editor execution, real VOA captures and practical terminal evidence remain outstanding. Technical setting names and dispatch are implementation work, not another product questionnaire.
+**Decision status — 2026-10-05:** product rules and defaults accepted; highlighted rule-card review completed by the user. Corpus expectations are synchronized and independently authored; native editor execution, real VOA captures and practical terminal evidence remain outstanding. Technical setting names and dispatch are implementation work, not another product questionnaire.
 
 > This document defines Vimkunja's durable contract for reading, displaying, editing, and saving Vikunja Task Descriptions. It deliberately outlives the originating ticket: the contract may later inform terminal rich-text work outside Vimkunja, but it is currently specific to Vimkunja and does not define a new markup language.
 
 **Related tickets:** M2 reader: [01 — Render Vikunja HTML descriptions as readable terminal text (archived)](../../.archive/2026-08-05/description-rendering/issues/01-render-vikunja-html-descriptions.md); M3 structured reader/editor: [02 — Specify native Rich-Text Description rendering and editing](issues/02-specify-native-rich-text-description-rendering-and-editing.md)
 
 **Companion artifacts:** [Keybinding Contract](../../docs/keybindings.md), [TUI/Rich-text glossary](../../CONTEXT.md), [Vim Visual-Mode binding review](research-vim-visual-bindings.md), [Task Detail Done toggle (archived)](../../.archive/2026-07-30/task-detail-done-toggle/issues/01-toggle-task-done-from-detail-pane.md), [implemented read-only Checkbox-list summary](../checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md), and [deferred independent Link label/URL editor](../link-label-and-url-editor/issues/01-evaluate-independent-link-label-url-editing.md).
+
+## Implementation handoff — 2026-10-05
+
+[Ticket 02's implementation index](issues/02-specify-native-rich-text-description-rendering-and-editing.md#implementation-tickets--2026-10-05) links tickets 03–10 and their dependencies: document preservation, transactional saves, terminal rendering/navigation, draft editing, structure, Code, syntax/Links and integrated evidence/documentation. Product rules are accepted. Native execution and real VOA/terminal verification remain work in those tickets, not prerequisites for writing the first implementation.
+
+For L10, the visible Alpha/Beta/child result is fixed. Only Beta's fresh save-assigned UUID varies. Documentation may show `data-task-id="<randomUUID>"` as an explicitly illustrative placeholder; persisted HTML and tests must use/validate an actual unique lowercase UUID v4. This is a representation clarification, not a new serialization rule or a changed corpus golden.
 
 ## Purpose
 

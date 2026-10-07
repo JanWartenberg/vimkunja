@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**Stand:** 2026-10-05 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
+**Stand:** 2026-10-07 | **Branch:** feature/description-model | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
 
 ## Aktueller Stand
 
@@ -39,7 +39,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 19. [Lokale Suche im fokussierten Pane](.scratch/local-search/issues/01-search-within-focused-pane.md) – `/` sowie `n`/`N` sind vereinbart, die Pane-Semantik bleibt offen.
 20. [Erweiterte globale Suchabfragen und Ranking](.scratch/global-search-filter/issues/02-add-advanced-global-search-query-and-ranking.md) – Phrasen, Negation, Fuzzy-Matching und Ranking bewusst nach V1.
 21. [Fehlerhafte Project-Hierarchien diagnostizieren und reparieren](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – Feedback und sichere Reparatur bewusst nach dem Hierarchie-Reader.
-22. [Native Rich-Text-Beschreibungen rendern und bearbeiten spezifizieren](.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md) – `ready-for-agent` für Spec-Übergabe und Umsetzungstickets; Produktfragen geklärt, 83 synthetische Beispiele inklusive Mentions. Regelkarten für den Quercheck verfügbar. Native Implementierung und reale VOA-/Windows-/Layout-Nachweise stehen aus; [Prüfstand](.scratch/description-rendering/corpus.md#technical-verification--2026-10-04).
+22. [Native Rich-Text-Beschreibungen](.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md#implementation-tickets--2026-10-05) – Regel-Quercheck akzeptiert; 83 synthetische Beispiele. Acht Umsetzungstickets **03–10** vorbereitet, Start mit [03 — Dokumentmodell/HTML-Erhaltung](.scratch/description-rendering/issues/03-implement-source-preserving-description-model.md); reale VOA-Beispiele können parallel gesammelt werden. [03 — Dokumentmodell](.scratch/description-rendering/issues/03-implement-source-preserving-description-model.md) ist in Arbeit auf `feature/description-model` (separater Worktree): Native/Opaque/Blocked-Import und Serialisierung mit 83 Corpus-Prüfungen; sechs Review-Befunde behoben und mit Regressionstests abgesichert. Anker, Import-IDs und semantische Gesamtabnahme von 03 bleiben offen. TUI und persistenter Save-Pfad bleiben unverändert; technische Gesamtabnahme in Ticket 10.
 23. [Getrennte Historien für kontextspezifische Command-Prompts spezifizieren](.scratch/contextual-command-histories/issues/01-specify-independent-command-prompt-histories.md) – nach der M2-Ex-History; eigene session-lokale Historie je Prompt, ohne die Command-Grammatiken zu vereinheitlichen.
 23a. [Workspace-/Datenpräferenzen spezifizieren](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – Default-Project/View, Startfilter und persistierte Navigationspräferenzen; nach der lokalen TUI-Konfiguration.
 23b. [Multiline-Layout im Comment Composer wiederverwenden](.scratch/comment-composer-multiline-layout/issues/01-reuse-multiline-layout-in-comment-composer.md) – bewusst in eine spätere Session verschoben; zuerst screen-level Regressionstests ergänzen.
