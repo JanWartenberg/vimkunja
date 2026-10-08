@@ -1,6 +1,6 @@
 # Rich-text compatibility corpus — decision-synchronized examples
 
-**Stand 2026-10-07:** 83 synthetic, independently authored records. Model classification, applicable ordinary serialization/semantic round trips and focused save candidates execute in internal/description; atomic Store/Detail save tests also execute; Native editor/terminal actions and real VOA captures remain unverified. Expected fixture HTML is unchanged.
+**Stand 2026-10-08:** 83 synthetic, independently authored records. Model classification, applicable ordinary serialization/semantic round trips and focused save candidates execute in internal/description; atomic Store/Detail save tests also execute; Native read/navigation now executes in module and TUI tests; native editing, practical terminal acceptance and real VOA captures remain unverified. Expected fixture HTML is unchanged.
 
 **Contract:** [spec.md](spec.md). **Ticket:** [02](issues/02-specify-native-rich-text-description-rendering-and-editing.md). **Examples:** [corpus.json](corpus.json). **Checks:** [verification/boundaries_test.go](verification/boundaries_test.go).
 
@@ -245,3 +245,9 @@ User explicitly accepts cards 1–7 of `explain-description-restpunkte-2026-10-0
 ### Reduced critical review — noncritical defaults adopted
 
 The noncritical rest and, on 2026-10-04, the final Quote-source split rule are accepted. Both retained Quote fragments preserve the same known `data-comment-id`/`cite` reference without an extra confirmation for repeating it; genuinely unique IDs/unknown attributes still require lossless allocation, and actual metadata loss retains Q03 confirmation. Upstream `blockquoteWithCommentId.ts` identifies `data-comment-id` as the original comment reference, not a unique Quote identity. Existing fixture outputs remain untouched; a targeted split example and preservation assertions still need corpus synchronization and tests. No blanket golden/evidence approval or runtime authorization is inferred.
+
+### 2026-10-08 — Ticket 05 projection/navigation execution
+
+`internal/description/view_contract_test.go` runs all 83 synthetic sources at widths 1/4/12/40/80 and heights 1/3/12: bounded safe rows, anchor-preserving resize, navigation/scroll and unchanged Source HTML. Nine focused records check independently authored logical content: `layout-and-palette`, `graphemes-and-delimiter-selection`, `code-and-quotes`, `table-mixed-content`, `table-irregular`, `unknown-inner-block-boundaries`, `image-empty-alt`, `mention-label`, `mention-id-fallback`. Protected frames/list markers are excluded from semantic copy text; Code tabs/newlines remain exact. This does not execute the fixtures' edit actions.
+
+Additional tests cover style roles, graphemes, mark disclosure, hard/soft breaks, logical and visual motions, block-bounded semantic words, whole quote/Code paragraph units, counting, horizontal limits/restoration, simple/styled/irregular tables and captions, Opaque checkbox summaries, ASCII cues, malformed safety and short/narrow/wide Task Detail layouts. The SQLite-backed TUI test verifies no source/database/draft changes while navigating/resizing. Bounded projection fuzz seeds exercise arbitrary input. Native live editing/history/recovery and actual clipboard integration remain later-ticket work. Windows/German-terminal input captures, practical palette readability and versioned VOA captures remain outstanding; no manual acceptance is claimed.

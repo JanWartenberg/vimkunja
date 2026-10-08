@@ -10,9 +10,9 @@
 
 **Status:** ready-for-agent
 
-**Blocked by:** 05
+**Blocked by:** None
 
-**Dependency satisfied:** [04 — atomic saves](../../../.archive/2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md), completed 2026-10-07 (committed 2026-10-08).
+**Dependencies satisfied:** [05 — native projection/navigation](../../../.archive/2026-10-08/description-rendering/issues/05-implement-native-description-projection-and-navigation.md), completed 2026-10-08; [04 — atomic saves](../../../.archive/2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md), completed 2026-10-07 (committed 2026-10-08).
 
 **Contract:** [spec.md](../spec.md), [decision/handoff ticket 02](02-specify-native-rich-text-description-rendering-and-editing.md), [corpus and traceability](../corpus.md), [83 synthetic fixtures](../corpus.json), [keybinding contract](../../../docs/keybindings.md).
 

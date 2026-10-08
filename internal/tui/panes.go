@@ -490,6 +490,9 @@ func renderInfoPane(pane *infoPane, textW, textH int, focused bool) string {
 }
 
 func renderTaskDetail(m *model, textW, textH int) string {
+	if m.editor != nil {
+		m.editor.nativeFocused = m.focus == paneDetail && m.editor.field == fieldDescription && m.comments == nil && m.labelUI == nil && !m.commandMode
+	}
 	if m.editor == nil {
 		if m.kanbanActive && !m.inOverview() {
 			return renderEmptyKanbanDetail(textW, textH)
@@ -646,7 +649,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 			choices = append(choices, bucket.Title)
 		}
 		lines = append(lines, renderDetailPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, textW, textH, len(lines))...)
-	} else if description := projectDescription(e.draft.Description, map[int]bool{}); description == "" {
+	} else if description := projectDescription(e.draft.Description, map[int]bool{}); description == "" && e.descriptionView() == nil {
 		if availableDetailDescriptionRows(textH, len(lines), e.id != 0) > 0 {
 			lines = append(lines, placeholderText("  (no description)"))
 		}
@@ -1033,6 +1036,14 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	if (e.descriptionActive || e.descViewportScroll) && len(desc) > descriptionRows {
 		start = clamp(e.descScroll, 0, len(desc)-descriptionRows)
 	}
+	if e.descriptionView() != nil {
+		layout := e.nativeDescriptionLayout(max(1, textW-2), descriptionRows)
+		if descriptionScrollable {
+			layout = e.nativeDescriptionLayout(max(1, textW-4), descriptionRows)
+		}
+		desc = layout.lines
+		start = layout.start
+	}
 	for row := 0; row < descriptionRows; row++ {
 		if line := start + row; line < len(desc) {
 			body = append(body, "  "+m.editorDescriptionText(desc[line]))
@@ -1091,6 +1102,25 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 	}
 	if len(desc) > available {
 		desc = wrapTaskDescriptionForEditor(e, description, max(1, textW-2))
+	}
+	if e.descriptionView() != nil {
+		width := textW
+		if len(desc) > available {
+			width = max(1, textW-2)
+		}
+		layout := e.nativeDescriptionLayout(width, available)
+		desc = layout.lines
+		for row := 0; row < available; row++ {
+			if line := layout.start + row; line < len(desc) {
+				lines = append(lines, m.editorDescriptionText(desc[line]))
+			} else {
+				lines = append(lines, "")
+			}
+		}
+		if len(desc) > available {
+			return renderVerticalScrollbar(lines, textW, textH, layout.start, len(desc), 2, available, true)
+		}
+		return fitBlock(lines, textW, textH)
 	}
 	cursorRow := 0
 	for row, line := range desc {

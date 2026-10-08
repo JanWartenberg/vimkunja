@@ -145,6 +145,9 @@ func (m *model) scrollDescriptionViewport(delta int) {
 }
 
 func wrapTaskDescriptionForEditor(e *taskEditor, source string, width int) []descriptionLine {
+	if e != nil && e.descriptionView() != nil {
+		return renderNativeDescriptionFrame(e, e.nativeDescription.Layout(width, e.field == fieldDescription && e.descriptionActive), width)
+	}
 	if e != nil && e.field == fieldDescription && e.mode == editorInsert {
 		return wrapDescription(source, width)
 	}
@@ -155,6 +158,9 @@ func layoutTaskDescription(source string, width, rows, scroll, cursor int, edito
 	var e *taskEditor
 	if len(editor) > 0 {
 		e = editor[0]
+	}
+	if e != nil && e.descriptionView() != nil {
+		return e.nativeDescriptionLayout(width, rows)
 	}
 	lines := wrapTaskDescriptionForEditor(e, source, width)
 	layout := multilineTextLayout{lines: lines, start: clamp(scroll, 0, max(0, len(lines)-max(0, rows)))}

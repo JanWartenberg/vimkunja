@@ -89,6 +89,9 @@ func (m *model) rememberUndo(entry *undoEntry) {
 }
 
 func (m *model) undoKeyAllowed() bool {
+	if m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionActive && m.editor.descriptionView() != nil {
+		return false
+	}
 	if m.focus != paneTasks && m.focus != paneDetail {
 		return false
 	}

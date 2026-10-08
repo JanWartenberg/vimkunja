@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JanWartenberg/vimkunja/internal/description"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 
 	tea "charm.land/bubbletea/v2"
@@ -40,13 +41,17 @@ const (
 )
 
 type taskEditor struct {
-	id        int64
-	taskIndex int64
-	original  vimkunja.TaskDraft
-	draft     vimkunja.TaskDraft
-	field     editorField
-	mode      editorMode
-	cursor    int // rune offset in the active text field
+	id                int64
+	taskIndex         int64
+	original          vimkunja.TaskDraft
+	draft             vimkunja.TaskDraft
+	field             editorField
+	mode              editorMode
+	cursor            int // rune offset in the active text field
+	nativeDescription *description.View
+	nativeFocused     bool
+	nativePrefix      string
+	nativeCount       int
 
 	projectFilter           string
 	fieldViewportStart      int
@@ -173,6 +178,9 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if m.nativeDescriptionKey(s) {
+		return m, nil
+	}
 	if s == "esc" && e.normal.pending() {
 		e.normal.reset()
 		return m, nil

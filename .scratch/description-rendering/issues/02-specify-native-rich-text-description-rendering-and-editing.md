@@ -65,8 +65,8 @@ The rules are accepted; these tickets make the remaining work executable. No new
 | --- | --- | --- |
 | [03 — Source-preserving Description document model](../../../.archive/2026-10-07/description-rendering/issues/03-implement-source-preserving-description-model.md) | Document/HTML preservation — completed 2026-10-07 | None |
 | [04 — Atomic Description saves and Checkbox identities](../../../.archive/2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md) | Completed 2026-10-07; transactional conflict check and UUID adoption, committed 2026-10-08 | — |
-| [05 — Native terminal projection and document navigation](05-implement-native-description-projection-and-navigation.md) | Read/navigation and terminal layout | None (03 completed) |
-| [06 — Native draft editing, Visual Mode and local history](06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery integration | 05 |
+| [05 — Native terminal projection and document navigation](../../../.archive/2026-10-08/description-rendering/issues/05-implement-native-description-projection-and-navigation.md) | Read/navigation and terminal layout | Completed and committed 2026-10-08 |
+| [06 — Native draft editing, Visual Mode and local history](06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery integration | None (04/05 completed) |
 | [07 — List, Checkbox and Quote structure editing](07-implement-list-and-quote-structure-editing.md) | L01–L12 / Q01–Q04 | 06 |
 | [08 — Code editing, Tabs and terminal input](08-implement-native-code-editing-and-terminal-input.md) | Exact Code input, exits, Tabs/retab | 06 |
 | [09 — Inline syntax, Inline-Code and Link editing](09-implement-inline-syntax-code-and-links.md) | Syntax, Inline-Code and Links | 06 |
@@ -370,3 +370,7 @@ User authorizes starting 03 while main cleanup continues. `internal/description`
 ### 2026-10-07 — atomic-save completion
 
 04 implements immutable save candidates, minimal Checkbox UUID repair, atomic baseline comparison and Task/Comment persistence, failed-COMMIT cleanup and success-only editor adoption. It is archived with synthetic execution evidence; committed on 2026-10-08. 05 is next; 06 depends only on 05 and must integrate native live-document identity adoption/candidate rebuilding. Native editing and real VOA/terminal acceptance remain open.
+
+### 2026-10-08 — native projection/navigation (05)
+
+05 is implemented and archived on the isolated branch: safe structured rendering and document-anchored read/navigation now execute in module/TUI/SQLite tests. Nine focused projection fixtures and safety checks over all 83 synthetic sources cover the read seam. Native editing is deliberately disabled; 06 is unblocked and integrates draft/Visual/history/recovery through the 04/05 seams. Real VOA/terminal acceptance remains 10. Committed on 2026-10-08 on `feature/description-model` in the same worktree.

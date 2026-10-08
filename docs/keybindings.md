@@ -135,10 +135,13 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 
 ## Description Normal Mode
 
+
+HTML Descriptions currently expose read/navigation only: `gn`, `Enter` activates it; `Esc` leaves. Native edit/history/palette actions remain disabled until their implementation tickets. Plain-text editing retains the existing behavior.
+
 | Binding | Action | Status |
 | --- | --- | --- |
 | `h/l`, arrows | Move the cursor horizontally | Implemented |
-| `j/k`, arrows | Move between Description lines | Implemented; replaced by logical paragraph navigation in rich-text work |
+| `j/k`, arrows | Plain text: move between Description lines | Implemented |
 | `w/b` | Move by word | Implemented |
 | `~` / `count~` | Toggle Unicode-aware character case under the cursor, advance, and stop at the current line boundary. Also applies to Task Title and Comment drafts. | Implemented |
 | `gg/G`, Home/End | Start/end of Description | Implemented |
@@ -146,13 +149,13 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `Ctrl+E` / `Ctrl+Y` | Scroll the Description viewport down/up one rendered row without moving the source cursor; includes read-only checklist summaries. Editing or cursor navigation resumes cursor-following. | Implemented |
 | `a` / `Shift+I` / `Shift+A` | Enter Insert Mode after the cursor / at line start / end | Implemented |
 | `o` / `Shift+O` | Insert a blank line below / above the current line and enter Insert Mode | Implemented |
-| `j/k` | Move between navigable logical blocks:<br>paragraphs, headings, and list/Checkbox-list entries | Agreed |
-| `gj/gk` | Move between wrapped visual terminal rows | Agreed |
-| `j/k` in a multi-line Code block | Move between its unwrapped source lines | Agreed |
-| `j/k` in a Block quote | Move between its child blocks | Agreed |
-| `{` / `}` | Move backward / forward by paragraph-motion units; each navigable Description block is one unit and a complete Code block or Block quote remains one unit | Agreed |
-| `ö` / `ä` | German-keyboard aliases for `{` / `}` in Normal Mode | Agreed |
-| `zh/zl` in an overwide Code block or table | Scroll that block horizontally | Agreed |
+| `j/k` | Move between navigable logical blocks:<br>paragraphs, headings, and list/Checkbox-list entries | Implemented for native read/navigation (05) |
+| `gj/gk` | Move between wrapped visual terminal rows | Implemented for native read/navigation (05) |
+| `j/k` in a multi-line Code block | Move between its unwrapped source lines | Implemented for native read/navigation (05) |
+| `j/k` in a Block quote | Move between its child blocks | Implemented for native read/navigation (05) |
+| `{` / `}` | Move backward / forward by paragraph-motion units; each navigable Description block is one unit and a complete Code block or Block quote remains one unit | Implemented for native read/navigation (05) |
+| `ö` / `ä` | German-keyboard aliases for `{` / `}` in Normal Mode | Implemented for native read/navigation (05) |
+| `zh/zl` in an overwide Code block or table | Scroll that block horizontally | Implemented for native read/navigation (05) |
 | `x` on a Checkbox-list entry | Toggle only that entry's checked state | Agreed |
 | `dd` | Delete the current logical Description block, including Native text and inline Opaque content, even on inline-atom focus; confirm the whole deletion if Opaque content is included. Inside nonempty Code delete only the source line; final nonempty line deletion keeps empty Code. Another dd deletes that empty block. Inside a Block quote delete the current child block and remove the quote after its final child. | Agreed |
 | `o` / `O` | Insert an empty paragraph after / before the current logical block;<br>inside a Code block insert a Code line, or inside a Block quote a same-depth quoted paragraph, below / above the current line; then enter Insert Mode | Agreed rich-text behavior |
@@ -161,10 +164,10 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `:selectblock` | Explicitly select the entire current logical block in `VISUAL BLOCKS`, including a standalone Code block | Agreed; not implemented |
 | `:retab` / `:retaball` | Convert all Tabs to the next tabstop in the current Code block/selected Code lines, or all editable Description text including prose; preserve Opaque content. One Undo step; no V1 numeric arguments or bang variant. | Agreed; not implemented |
 | `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end<br>of the current logical line | Agreed rich-text behavior |
-| `0` / `^` / `_` / `$` | Move to start / first nonblank / end of the current logical line | Agreed |
-| `w` / `b` / `e` / `ge` | Move by words across inline-format and Link boundaries; stop at blocks.<br>Disclosed editable delimiters are ordinary characters; protected markers consume no motion counts.<br>Each complete Opaque subtree is one word-motion unit for `w/b/e`. | Agreed |
-| `gg` / `G` | Jump to start / end of the whole Description document | Agreed |
-| `Ctrl+D` / `Ctrl+U` | Move the cursor about one visible Task Detail Pane height down / up | Agreed |
+| `0` / `^` / `_` / `$` | Move to start / first nonblank / end of the current logical line | Implemented for native read/navigation (05) |
+| `w` / `b` / `e` / `ge` | Move by words across inline-format and Link boundaries; stop at blocks.<br>Disclosed editable delimiters are ordinary characters; protected markers consume no motion counts.<br>Each complete Opaque subtree is one word-motion unit for `w/b/e`. | Implemented for native read/navigation (05); word traversal follows semantic text across disclosed marks |
+| `gg` / `G` | Jump to start / end of the whole Description document | Implemented for native read/navigation (05) |
+| `Ctrl+D` / `Ctrl+U` | Move the cursor about one visible Task Detail Pane height down / up | Implemented for native read/navigation (05) |
 | `u` / `Ctrl+R` | Undo / redo an unsaved Description-draft change | Agreed |
 | `Space` | Open the Space formatting palette below the primary footer; temporarily replace the primary footer if an extra row would leave fewer than three Description rows.<br>Close on the second key, `Esc`, or Leader timeout; restore the primary footer. | Agreed design; practical evidence outstanding |
 | `Space+1/2/3` | Convert current block to H1/H2/H3 | Agreed design; practical evidence outstanding |

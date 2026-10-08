@@ -521,6 +521,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "f":
 				m.openSearch()
 			case "l":
+				if m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionActive && m.editor.descriptionView() != nil {
+					m.recordError(fmt.Errorf("Description is read-only: Link editing is not supported yet."))
+					return m, nil
+				}
 				if m.focus == paneDetail && m.editor != nil {
 					return m, m.openTaskLabelPicker()
 				}
@@ -1850,7 +1854,7 @@ func (m *model) editorCursor() *tea.Cursor {
 		cursor.Shape = tea.CursorBar
 		return cursor
 	}
-	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
+	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && m.editor.descriptionView() != nil) {
 		return nil
 	}
 	if m.editor.mode == editorNormal && m.editor.field != fieldDescription && m.editor.field != fieldTitle {
@@ -2069,7 +2073,7 @@ func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescript
 		scroll = e.descScroll
 	}
 	layout := layoutTaskDescription(text, width, rows, scroll, e.cursor, e)
-	if e.field == fieldDescription && !descriptionHasHTML(text) && rows > 0 && !e.descViewportScroll {
+	if e.field == fieldDescription && e.descriptionView() == nil && rows > 0 && !e.descViewportScroll {
 		layout.start = descriptionViewportStart(layout.lines, rows, scroll, layout.cursorRow, e.mode == editorNormal && e.cursor == e.fieldRuneLen())
 	}
 	return taskDetailDescriptionLayout{
@@ -2435,6 +2439,12 @@ func (m *model) renderStatusBar(w int) string {
 			hint = "[" + mode + "]  x/dd clear  •  i edit  •  j/k navigate  •  :h help  •  gt title  •  gd due  •  gp priority  •  gl labels  •  gc comments  •  gn description  •  :w save  •  :q close"
 		} else {
 			hint = "[" + mode + "]  i edit  •  j/k navigate  •  :h help  •  gt title  •  gd due  •  gp priority  •  gl labels  •  gc comments  •  gn description  •  :w save  •  :q close  •  Ctrl+W switch pane"
+		}
+	}
+	if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionView() != nil {
+		hint = "Enter read · j/k blocks · gj/gk rows · {/} paragraphs · zh/zl scroll · Esc fields · :h help"
+		if m.editor.descriptionActive {
+			hint = m.editor.nativeDescription.Hint() + "  •  j/k blocks  •  Esc fields  •  :h help"
 		}
 	}
 	if m.focus == paneHelp {
