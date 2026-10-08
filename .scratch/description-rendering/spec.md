@@ -221,3 +221,8 @@ The [corpus and traceability matrix](corpus.md) accompany [83 independent fixtur
 
 - The Task Detail Pane's Done field supersedes the archived read-only rule: it sits after Workflow Status and before Description, and `x` toggles the enclosing Task's Done state. The implementation ticket is linked above.
 - `docs/keybindings.md` is the durable, manually maintained exchange contract for all contexts. `internal/tui/help.go` remains restricted to implemented bindings until the design stabilizes.
+
+
+### Atomic persistence implementation evidence — 2026-10-07
+
+[Completed ticket 04](../../.archive/2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md) adds immutable candidate preparation and the Store baseline-aware transactional seam. Synthetic tests cover minimal UUID repair/reservation, success-only adoption, independent-handle conflicts, Task/Comment rollback and failed-COMMIT connection cleanup. Existing Task Detail saves supply their opened source baseline, preserving HTML on unrelated edits. Native live-node identity adoption and candidate rebuilding belong to ticket 06; native editing, terminal behavior and real VOA capture remain outstanding. Implementation committed on 2026-10-08.

@@ -10,7 +10,9 @@
 
 **Status:** ready-for-agent
 
-**Blocked by:** 04, 05
+**Blocked by:** 05
+
+**Dependency satisfied:** [04 — atomic saves](../../../.archive/2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md), completed 2026-10-07 (committed 2026-10-08).
 
 **Contract:** [spec.md](../spec.md), [decision/handoff ticket 02](02-specify-native-rich-text-description-rendering-and-editing.md), [corpus and traceability](../corpus.md), [83 synthetic fixtures](../corpus.json), [keybinding contract](../../../docs/keybindings.md).
 
@@ -22,6 +24,7 @@
 - Implement uniform bold/italic/underline/strike toggles; off removes all selected layers of that family, including triple strong; other marks persist. Space+0 removes all inline formatting including Links while preserving text/structure.
 - Provide mode-specific Space palette dispatch/footer behavior: secondary footer unless fewer than three Description rows remain, then primary replacement; Esc/timeout/action closes, Insert Space stays text, Space+o stays global. Unavailable later-ticket actions must not pretend success.
 - Opaque formatting skips atoms; complete removal/replacement and parent conversion use one confirmation plus identity-preserving validation. Cancellation retains draft/pending input. Copy only safe visible content and paste it as new Native text.
+- After successful persistence, adopt repaired Checkbox identities into the live document before preparing its next candidate. Rebuild pending candidates from the current live nodes; never reconcile independently generated IDs by text/position. The explicit Store persistence baseline may differ from the preservation document after our own save.
 - Implement local u/Ctrl+R separately from persisted Task-action history. Confirmed removal Undo restores exact bytes/identity/location; Redo does not prompt again. Each logical action is atomic.
 - Implement Blocked Clear/Recover/Discard flows as confirmed unsaved actions using safe text, excluding active source, hidden metadata and warning placeholders. Surface save conflicts with return-to-draft/hard-reload and no automatic merge.
 

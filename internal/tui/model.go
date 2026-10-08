@@ -310,6 +310,7 @@ type (
 		closeAfter bool
 		undo       *undoEntry
 		err        error
+		historyErr error
 	}
 	cursorBlinkMsg   struct{}
 	leaderTimeoutMsg struct{}
@@ -792,11 +793,23 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if typed.taskChanged {
 			m.redoHistory = nil
 		}
-		m.editor.id = typed.task.ID
-		m.editor.draft.ID = typed.task.ID
-		m.editor.draft.Done = typed.task.Done
-		m.editor.draft.DoneSet = false
-		m.editor.original = cloneTaskDraft(m.editor.draft)
+		if typed.editor != nil {
+			if typed.editor != m.editor {
+				return m, m.refreshActiveTasks()
+			}
+			m.editor.adoptSavedTask(typed.draft, typed.task)
+			if m.editor.dirty() && (typed.closeAfter || quitAfterSave) {
+				typed.closeAfter = false
+				quitAfterSave = false
+				m.recordError(fmt.Errorf("Task draft changed while saving; save again before closing."))
+			}
+		} else {
+			m.editor.id = typed.task.ID
+			m.editor.draft.ID = typed.task.ID
+			m.editor.draft.Done = typed.task.Done
+			m.editor.draft.DoneSet = false
+			m.editor.original = cloneTaskDraft(m.editor.draft)
+		}
 		m.commentRequest++
 		m.editor.commentsRequest = m.commentRequest
 		m.editor.commentsLoading = false
@@ -967,6 +980,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		if typed.historyErr != nil {
+			m.redoHistory = nil
+			m.recordError(fmt.Errorf("Task saved; undo history unavailable: %w", typed.historyErr))
+		}
 		m.rememberUndo(typed.undo)
 		if typed.editor != m.editor {
 			// A background refresh replaced the Detail while the write ran.
@@ -974,21 +991,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.refreshActiveTasks()
 		}
 		if m.editor != nil {
-			saved := cloneTaskDraft(typed.draft)
-			// Metadata loaded during the save was not part of a requested write.
-			if !saved.LabelIDsSet {
-				saved.LabelIDs = append([]int64(nil), m.editor.original.LabelIDs...)
-			}
-			if saved.WorkflowBucketID == 0 {
-				saved.WorkflowBucketID = m.editor.original.WorkflowBucketID
-			}
-			saved.ID, saved.Done, saved.DoneSet = typed.task.ID, typed.task.Done, false
-			m.editor.id, m.editor.draft.ID = typed.task.ID, typed.task.ID
-			if m.editor.draft.Done == typed.draft.Done {
-				m.editor.draft.Done = typed.task.Done
-			}
-			m.editor.original = saved
-			m.editor.draft.DoneSet = m.editor.draft.Done != saved.Done
+			m.editor.adoptSavedTask(typed.draft, typed.task)
 			if m.editor.dirty() && (typed.closeAfter || quitAfterSave) {
 				typed.closeAfter, quitAfterSave = false, false
 				m.recordError(fmt.Errorf("Task draft changed while saving; save again before closing."))

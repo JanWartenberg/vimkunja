@@ -1,6 +1,6 @@
 # Rich-text compatibility corpus — decision-synchronized examples
 
-**Stand 2026-10-07:** 83 synthetic, independently authored records. Model classification and applicable ordinary serialization/semantic round trips execute in internal/description; Native editor/terminal actions and real VOA captures remain unverified. Expected fixture HTML is unchanged.
+**Stand 2026-10-07:** 83 synthetic, independently authored records. Model classification, applicable ordinary serialization/semantic round trips and focused save candidates execute in internal/description; atomic Store/Detail save tests also execute; Native editor/terminal actions and real VOA captures remain unverified. Expected fixture HTML is unchanged.
 
 **Contract:** [spec.md](spec.md). **Ticket:** [02](issues/02-specify-native-rich-text-description-rendering-and-editing.md). **Examples:** [corpus.json](corpus.json). **Checks:** [verification/boundaries_test.go](verification/boundaries_test.go).
 
@@ -24,7 +24,7 @@ Other synchronized examples cover C05 final Code-line deletion (leaves empty Cod
 | Decision / risk | Focused example records | Status |
 | --- | --- | --- |
 | HTML persistence, semantic serialization, escaping (1–8) | `basic-blocks`, `entities-and-whitespace`, `serialization-normalization`, `root-inline-fragment`, `root-block-grouping`, `empty-description` | Model import/serialization verified; editor/terminal execution outstanding. |
-| Checkbox identity/state, atomic repair (10/27, L07, S12/S13) | `checkbox-lists`, `checkbox-duplicate-ids`, `checkbox-id-reservation-atomicity`, `checkbox-middle-split` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Checkbox identity/state, atomic repair (10/27, L07, S12/S13) | `checkbox-lists`, `checkbox-duplicate-ids`, `checkbox-id-reservation-atomicity`, `checkbox-middle-split` | Candidate repair and persistence verified; middle-split snapshot verified at save seam, editor split/terminal outstanding. |
 | Marks, syntax variants, all-family off (12/21, E01–E03) | `inline-marks`, `inline-boundaries`, `uniform-toggle`, `triple-strong-off`, `all-mark-families-off` | Model import/serialization verified; editor/terminal execution outstanding. |
 | Literal import/paste and escape grammar (E04/E06–E10) | `editor-delimiters`, `typed-versus-pasted-markers`, `literal-import-edit`, `syntax-escape-parity` | Model import/serialization verified; editor/terminal execution outstanding. |
 | Native Inline-Code (S08) | `native-inline-code`, `inline-code-typed-literal` | Model import/serialization verified; editor/terminal execution outstanding. |
@@ -42,7 +42,7 @@ Other synchronized examples cover C05 final Code-line deletion (leaves empty Cod
 | Tables, images, unknown inner boundaries (19, S07/S09–S11) | `table-mixed-content`, `table-irregular`, `empty-table`, `image-fallbacks`, `image-empty-alt`, `unknown-node`, `unknown-inner-block-boundaries`, `opaque-inline-q` | Model import/serialization verified; editor/terminal execution outstanding. |
 | Opaque Mentions: visible label/id, preserved bytes, skip-format, safe copy/paste and confirmed removal (18 / native subset) | `mention-label`, `mention-id-fallback` | Synthetic model bytes/label/id fallback verified; editor and real VOA captures outstanding. |
 | Palette/reflow/config design (28, P01–P12/C02) | `layout-and-palette`, `code-line-selection`, `code-tabs-retab`, `opaque-node` | Model import/serialization verified; editor/terminal execution outstanding. |
-| Conflict rejection and candidate retention (30, T07) | `external-save-conflict`, `checkbox-id-reservation-atomicity` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Conflict rejection and candidate retention (30, T07) | `external-save-conflict`, `checkbox-id-reservation-atomicity` | Atomic persistence and Detail/combined conflict retention verified on disposable DBs; native editing/terminal outstanding. |
 
 Task-level Attachments remain outside Description scope. `mention-label` and `mention-id-fallback` now specify synthetic @label/@id inputs, neighbor edits, skipped formatting, safe copy/paste, internal-edit rejection and confirmed removal/Undo. Their data attributes are hand-authored input assumptions; local `mention-user`/label-or-id source is a lead, not captured generated-output evidence. Exact VOA/Tiptap serialization still needs versioned captures. HTTP/HTTPS/FTP host syntax and non-web scheme-specific URI checks need runtime validator examples; no DNS checks or new allowlist. Existing matrix coverage does not claim exhaustive URL/Unicode/attribute/fuzz coverage.
 
@@ -55,6 +55,10 @@ Task-level Attachments remain outside Description scope. `mention-label` and `me
 - [Anchor tests](../../internal/description/anchor_test.go) check stable unique imported IDs, logical blocks/ancestors, UTF-8 boundaries, structural/empty/Opaque boundaries and detached data. [Regression tests](../../internal/description/regression_test.go) execute actual useful recovery text, local protection, preserved Code metadata and terminal-control escaping.
 - Opaque tests retain identity, order, bytes and declared positions/parents, including identical atoms and explicit removals. Failed serialization never mutates source or supplied draft.
 - Full tests, focused race/vet, builds with VCS stamping disabled and a bounded ten-second fuzz run pass. No fixture edit action, transactional save/UUID adoption, VOA capture or interactive native terminal layout is claimed executed.
+
+## Atomic-save verification — 2026-10-07
+
+[Completed ticket 04](../../.archive/2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md) is implemented and committed on 2026-10-08. [Candidate tests](../../internal/description/save_test.go) execute the four focused Checkbox corpus inputs with independently authored deterministic UUID goldens, Opaque/source-ID reservation, collision/failure and stable repeat saves. The middle split is supplied as the accepted edited snapshot; this does not execute editor keys. [Store tests](../../internal/vimkunja/description_save_test.go) exercise two-handle remote changes after preparation, transactional conflict rejection, create/update/combined success and rollback, unchanged HTML/Done, concurrent writers and failed COMMIT with an external reader. [Detail tests](../../internal/tui/description_save_test.go) cover baseline capture, conflict/draft retention, committed adoption, late edits and post-commit history-read errors. Full tests, affected race/vet and both builds pass; no live DB or real terminal/VOA evidence is claimed. Ticket 06 owns adopting committed node identities into its live editor and rebuilding future candidates.
 
 ## Historical technical verification — 2026-10-04
 
@@ -80,7 +84,7 @@ Remaining execution work: Native model/parser/serializer/editor and identity-awa
 
 ## Next work
 
-No further product card confirmation is required. Continue with ticket 04 atomic persistence and ticket 05 native projection/navigation using the completed model seam; do not substitute the existing lossy reader for its serializer. Model tests pass, while editor/terminal execution and versioned VOA captures remain prerequisites for claiming full rich-text compatibility.
+No further product card confirmation is required. Continue with ticket 05 native projection/navigation using the completed model/save seams; do not substitute the existing lossy reader for its serializer. Model tests pass, while editor/terminal execution and versioned VOA captures remain prerequisites for claiming full rich-text compatibility.
 
 ## Follow-up consistency cleanup — 2026-10-04
 

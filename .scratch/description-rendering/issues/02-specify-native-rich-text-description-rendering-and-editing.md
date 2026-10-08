@@ -64,9 +64,9 @@ The rules are accepted; these tickets make the remaining work executable. No new
 | Ticket | Deliverable | Blocked by |
 | --- | --- | --- |
 | [03 — Source-preserving Description document model](../../../.archive/2026-10-07/description-rendering/issues/03-implement-source-preserving-description-model.md) | Document/HTML preservation — completed 2026-10-07 | None |
-| [04 — Atomic Description saves and Checkbox identities](04-implement-atomic-description-save.md) | Transactional conflict check and UUID adoption | None (03 completed) |
+| [04 — Atomic Description saves and Checkbox identities](../../../.archive/2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md) | Completed 2026-10-07; transactional conflict check and UUID adoption, committed 2026-10-08 | — |
 | [05 — Native terminal projection and document navigation](05-implement-native-description-projection-and-navigation.md) | Read/navigation and terminal layout | None (03 completed) |
-| [06 — Native draft editing, Visual Mode and local history](06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery integration | 04, 05 |
+| [06 — Native draft editing, Visual Mode and local history](06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery integration | 05 |
 | [07 — List, Checkbox and Quote structure editing](07-implement-list-and-quote-structure-editing.md) | L01–L12 / Q01–Q04 | 06 |
 | [08 — Code editing, Tabs and terminal input](08-implement-native-code-editing-and-terminal-input.md) | Exact Code input, exits, Tabs/retab | 06 |
 | [09 — Inline syntax, Inline-Code and Link editing](09-implement-inline-syntax-code-and-links.md) | Syntax, Inline-Code and Links | 06 |
@@ -365,3 +365,8 @@ User authorizes starting 03 while main cleanup continues. `internal/description`
 ### 2026-10-07 — model completion
 
 03 is implemented, re-reviewed and archived after intermediate checkpoint 0890503. Stable imported identities, document anchors and Native semantic round-trip checks complete the model seam; 04/05 are now unblocked. Model/corpus execution evidence is recorded in corpus.md and the archived ticket. Editor operations, UUID persistence and real VOA/terminal acceptance remain in 04–10.
+
+
+### 2026-10-07 — atomic-save completion
+
+04 implements immutable save candidates, minimal Checkbox UUID repair, atomic baseline comparison and Task/Comment persistence, failed-COMMIT cleanup and success-only editor adoption. It is archived with synthetic execution evidence; committed on 2026-10-08. 05 is next; 06 depends only on 05 and must integrate native live-document identity adoption/candidate rebuilding. Native editing and real VOA/terminal acceptance remain open.

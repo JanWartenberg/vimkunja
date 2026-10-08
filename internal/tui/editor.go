@@ -864,10 +864,44 @@ func (e *taskEditor) workflowStatusPickerIndex() int {
 // Creation still needs its initial Bucket, and explicit changes keep their ID.
 func (e *taskEditor) saveDraft() vimkunja.TaskDraft {
 	draft := cloneTaskDraft(e.draft)
+	if draft.ID != 0 {
+		baseline := e.original.Description
+		draft.DescriptionBaseline = &baseline
+	} else {
+		draft.DescriptionBaseline = nil
+	}
 	if draft.ID != 0 && draft.ProjectID == e.original.ProjectID && draft.WorkflowBucketID == e.original.WorkflowBucketID {
 		draft.WorkflowBucketID = 0
 	}
 	return draft
+}
+
+// adoptSavedTask updates the baseline from committed data while preserving any
+// asynchronous edits made after dispatch. Save-only metadata stays out of drafts.
+func (e *taskEditor) adoptSavedTask(submitted vimkunja.TaskDraft, task vimkunja.Task) {
+	saved := cloneTaskDraft(submitted)
+	if submitted.DescriptionCandidate != nil {
+		saved.Description = task.Description
+		if e.draft.Description == submitted.Description && e.draft.DescriptionCandidate != nil && *e.draft.DescriptionCandidate == *submitted.DescriptionCandidate {
+			e.draft.Description = task.Description
+			e.draft.DescriptionCandidate = nil
+		}
+	}
+	saved.DescriptionBaseline = nil
+	saved.DescriptionCandidate = nil
+	if !saved.LabelIDsSet {
+		saved.LabelIDs = append([]int64(nil), e.original.LabelIDs...)
+	}
+	if saved.WorkflowBucketID == 0 {
+		saved.WorkflowBucketID = e.original.WorkflowBucketID
+	}
+	saved.ID, saved.Done, saved.DoneSet = task.ID, task.Done, false
+	e.id, e.draft.ID = task.ID, task.ID
+	if e.draft.Done == submitted.Done {
+		e.draft.Done = task.Done
+	}
+	e.original = saved
+	e.draft.DoneSet = e.draft.Done != saved.Done
 }
 
 func (m *model) saveEditor(closeAfter bool) tea.Cmd {
@@ -906,6 +940,7 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 		defer cancel()
 		var task vimkunja.Task
 		var undo *undoEntry
+		var historyErr error
 		var err error
 		if draft.ID == 0 {
 			task, err = m.store.CreateTask(ctx, draft)
@@ -917,13 +952,13 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 			task, err = m.store.UpdateTask(ctx, draft)
 			if err == nil {
 				var after vimkunja.TaskUndoState
-				after, err = m.store.TaskUndoState(ctx, draft.ID)
-				if err == nil {
+				after, historyErr = m.store.TaskUndoState(ctx, draft.ID)
+				if historyErr == nil {
 					undo = newUndoEntry(before, after)
 				}
 			}
 		}
-		return taskSavedMsg{task: task, editor: e, draft: draft, closeAfter: closeAfter, undo: undo, err: err}
+		return taskSavedMsg{task: task, editor: e, draft: draft, closeAfter: closeAfter, undo: undo, historyErr: historyErr, err: err}
 	}
 }
 
@@ -1110,6 +1145,14 @@ func (m *model) projectPickerIndex(projectID int64, filter string) int {
 
 func cloneTaskDraft(draft vimkunja.TaskDraft) vimkunja.TaskDraft {
 	draft.LabelIDs = append([]int64(nil), draft.LabelIDs...)
+	if draft.DescriptionBaseline != nil {
+		baseline := *draft.DescriptionBaseline
+		draft.DescriptionBaseline = &baseline
+	}
+	if draft.DescriptionCandidate != nil {
+		candidate := *draft.DescriptionCandidate
+		draft.DescriptionCandidate = &candidate
+	}
 	return draft
 }
 

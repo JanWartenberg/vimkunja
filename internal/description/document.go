@@ -86,7 +86,7 @@ type Document struct {
 	byID      map[ID]int
 	locations map[ID]Location
 	// IDs in source, including observable Opaque attributes, are reserved by
-	// the future save-candidate layer. Parsing never generates/replaces IDs.
+	// the save-candidate layer. Parsing never generates/replaces IDs.
 	reserved []string
 	recovery string
 }
@@ -113,7 +113,7 @@ func cloneNodes(nodes []Node) []Node {
 }
 
 // Serialize writes this document's snapshot. It does not save to a database or
-// repair Checkbox IDs; those are transactional candidate operations in ticket 04.
+// repair Checkbox IDs; use PrepareSave and Store persistence for those operations.
 func (d *Document) Serialize() (string, error) {
 	return d.SerializeSnapshot(d.Snapshot(), Preservation{})
 }

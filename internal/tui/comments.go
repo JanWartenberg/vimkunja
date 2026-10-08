@@ -40,6 +40,8 @@ type taskCommentsLoadedMsg struct {
 }
 
 type taskCommentSavedMsg struct {
+	editor      *taskEditor
+	draft       vimkunja.TaskDraft
 	task        vimkunja.Task
 	comment     vimkunja.TaskComment
 	closeAfter  bool
@@ -327,14 +329,15 @@ func (m *model) saveTaskWithComment(closeAfter bool) tea.Cmd {
 		m.recordError(fmt.Errorf("Comment text is required"))
 		return nil
 	}
-	draft := m.editor.saveDraft()
+	editor := m.editor
+	draft := editor.saveDraft()
 	taskChanged := m.editor.dirty()
 	m.comments.saving = true
 	return func() tea.Msg {
 		ctx, cancel := contextWithTimeout()
 		defer cancel()
 		task, comment, err := m.store.SaveTaskWithComment(ctx, draft, vimkunja.TaskCommentDraft{Text: text})
-		return taskCommentSavedMsg{task: task, comment: comment, closeAfter: closeAfter, taskChanged: taskChanged, err: err}
+		return taskCommentSavedMsg{editor: editor, draft: draft, task: task, comment: comment, closeAfter: closeAfter, taskChanged: taskChanged, err: err}
 	}
 }
 
