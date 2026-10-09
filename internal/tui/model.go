@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"reflect"
 	"strings"
 	"time"
 
@@ -461,6 +462,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.restoreLastSearch()
 		}
 
+		if m.focus == paneDetail && m.editor != nil && m.editor.nativePending != nil && kLower != "ctrl+c" {
+			m.nativeDescriptionKey(k)
+			return m, nil
+		}
+
 		// Quit
 		if kLower == "ctrl+c" {
 			return m, tea.Quit
@@ -517,6 +523,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.leaderArmed {
 			m.leaderArmed = false
+			if m.nativePaletteKey(k) {
+				return m, nil
+			}
 			switch k {
 			case "f":
 				m.openSearch()
@@ -911,6 +920,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.PasteMsg:
+		if m.editor != nil && m.editor.nativePending != nil {
+			return m, nil
+		}
 		text := normalizePastedText(typed.Content)
 		if m.comments != nil && m.comments.composer != nil && m.comments.composer.mode == editorInsert {
 			composer := m.comments.composer
@@ -923,6 +935,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case clipboardPastedMsg:
+		if m.editor != nil && m.editor.nativePending != nil {
+			return m, nil
+		}
 		if typed.err != nil {
 			m.recordError(typed.err)
 			return m, nil
@@ -969,6 +984,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case undoRestoredMsg:
 		return m, m.applyUndoRestore(typed)
 
+	case descriptionReloadedMsg:
+		if typed.editor != m.editor {
+			return m, nil
+		}
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		if !reflect.DeepEqual(typed.submitted, m.editor.draft) {
+			m.recordError(fmt.Errorf("Task draft changed while reloading; explicit reload again to discard it"))
+			return m, nil
+		}
+		m.editor.nativeDraft = nil
+		m.editor.nativeDescription = nil
+		m.editor.nativePending = nil
+		m.refreshEditorAfterUndo(typed.state)
+		m.editor.mode = editorNormal
+		return m, tea.Batch(m.loadEditorLabels(typed.state.TaskID), m.loadUndoWorkflowStatus(typed.state.ProjectID, typed.state.TaskID))
 	case taskSavedMsg:
 		if typed.editor == nil || typed.editor != m.savingEditor {
 			return m, nil
@@ -2109,7 +2142,7 @@ func (m *model) tasksPaneTextX() int {
 
 func (m *model) viewportSize() (int, int) {
 	if m.viewportReceived {
-		return max(1, m.width), max(1, m.height)
+		return max(1, m.width), max(1, m.height-boolInt(m.nativePaletteSecondary()))
 	}
 	w, h := m.width, m.height
 	if w < 40 {
@@ -2118,7 +2151,7 @@ func (m *model) viewportSize() (int, int) {
 	if h < 10 {
 		h = 24
 	}
-	return w, h
+	return w, max(1, h-boolInt(m.nativePaletteSecondary()))
 }
 
 func (m *model) detailPaneTop() int {
@@ -2242,6 +2275,9 @@ func (m *model) Render() string {
 		content = m.renderCommentDeleteConfirmationModal(content, w)
 	}
 	status := m.renderStatusBar(w)
+	if m.nativePaletteSecondary() {
+		return lipgloss.JoinVertical(lipgloss.Top, content, status, m.nativePaletteRow(w))
+	}
 	return lipgloss.JoinVertical(lipgloss.Top, content, status)
 }
 
@@ -2444,7 +2480,7 @@ func (m *model) renderStatusBar(w int) string {
 	if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionView() != nil {
 		hint = "Enter read · j/k blocks · gj/gk rows · {/} paragraphs · zh/zl scroll · Esc fields · :h help"
 		if m.editor.descriptionActive {
-			hint = m.editor.nativeDescription.Hint() + "  •  j/k blocks  •  Esc fields  •  :h help"
+			hint = m.nativeModeHint()
 		}
 	}
 	if m.focus == paneHelp {
@@ -2484,8 +2520,11 @@ func (m *model) renderStatusBar(w int) string {
 			hint += "  •  " + m.commandCompletionFeedback
 		}
 	}
-	if m.leaderArmed {
+	if m.leaderArmed && !m.nativePaletteSecondary() {
 		hint = "[LEADER] a Overview/return  •  o toggle projects pane  •  v views"
+		if palette := m.nativePalette(); palette != "" && !m.nativePaletteSecondary() {
+			hint = palette
+		}
 	}
 	if m.viewSwitchArmed {
 		hint = "[VIEWS] l list  •  k Kanban  •  t table  •  g Gantt"

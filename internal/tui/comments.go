@@ -330,6 +330,9 @@ func (m *model) saveTaskWithComment(closeAfter bool) tea.Cmd {
 		return nil
 	}
 	editor := m.editor
+	if !m.prepareNativeSave() {
+		return nil
+	}
 	draft := editor.saveDraft()
 	taskChanged := m.editor.dirty()
 	m.comments.saving = true

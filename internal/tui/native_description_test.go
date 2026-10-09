@@ -22,7 +22,7 @@ func TestNativeDescriptionDetailShowsCodeAndNavigatesWithoutEditing(t *testing.T
 	if !strings.Contains(detail, "```") || !strings.Contains(detail, "│ print(1)") {
 		t.Fatalf("native Code missing: %q", detail)
 	}
-	for _, key := range []string{"i", "o", "O", "x", "d", "d", "a", "v", "u"} {
+	for _, key := range []string{"h", "l", "j", "k", "0", "$", "w", "b"} {
 		m = pressKey(m, tea.Key{Code: []rune(key)[0], Text: key})
 	}
 	if m.editor.mode != editorNormal || m.editor.draft.Description != source || m.editor.dirty() {
@@ -58,7 +58,7 @@ func TestNativeDescriptionKeepsFieldShortcuts(t *testing.T) {
 }
 
 func TestNativeDescriptionProtectsEmptyAndMalformedSources(t *testing.T) {
-	for _, source := range []string{"<p></p>", "<!-- secret -->", "<p>Visible</unexpected>", "<unfinished"} {
+	for _, source := range []string{"<!-- secret -->", "<p>Visible</unexpected>", "<unfinished"} {
 		t.Run(source, func(t *testing.T) {
 			m := testModel()
 			m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: source})

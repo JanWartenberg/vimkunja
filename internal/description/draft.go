@@ -1,0 +1,883 @@
+package description
+
+import (
+	"errors"
+	"fmt"
+	"github.com/rivo/uniseg"
+	"reflect"
+	"slices"
+	"strings"
+)
+
+// Actions describe document operations, never edits to serialized HTML.
+type ActionKind uint8
+
+const (
+	Insert ActionKind = iota
+	Split
+	HardBreak
+	Backspace
+	Delete
+	DeleteBlock
+	OpenBelow
+	OpenAbove
+	Convert
+	ToggleMark
+	ClearMarks
+	DeleteSelection
+	ReplaceSelection
+	ClearDescription
+	RecoverText
+)
+
+type Action struct {
+	Kind ActionKind
+	Text string
+}
+
+var ErrConfirmation = errors.New("Preserved content would change; confirm this operation")
+var ErrQuoteMetadataConfirmation = fmt.Errorf("Zitat-Metadaten würden gelöscht werden. Bitte Löschung bestätigen.: %w", ErrConfirmation)
+
+type Selection struct {
+	Start, End         Anchor
+	Blocks, WholeBlock bool
+}
+type draftState struct {
+	nodes     []Node
+	cursor    Anchor
+	selection *Selection
+	recovered bool
+}
+
+// Draft owns live identities and local history. Its preservation source remains
+// immutable even after a save; the persistence baseline advances independently.
+type Draft struct {
+	origin         *Document
+	state          draftState
+	undo, redo     []draftState
+	next           ID
+	baseline       string
+	savedNodes     []Node
+	savedRecovered bool
+}
+
+func NewDraft(doc *Document) *Draft {
+	d := &Draft{origin: doc, baseline: doc.SourceHTML(), state: draftState{nodes: doc.Snapshot()}}
+	d.assign(d.state.nodes)
+	d.savedNodes = cloneNodes(d.state.nodes)
+	d.state.cursor = d.first(d.state.nodes)
+	return d
+}
+func (d *Draft) assign(ns []Node) {
+	var scan func([]Node)
+	scan = func(ns []Node) {
+		for _, n := range ns {
+			d.next = max(d.next, n.ID)
+			scan(n.Children)
+		}
+	}
+	scan(ns)
+	var fill func([]Node)
+	fill = func(ns []Node) {
+		for i := range ns {
+			if ns[i].ID == 0 {
+				d.next++
+				ns[i].ID = d.next
+			}
+			fill(ns[i].Children)
+		}
+	}
+	fill(ns)
+}
+func (d *Draft) Snapshot() []Node { return cloneNodes(d.state.nodes) }
+func (d *Draft) Cursor() Anchor   { return d.state.cursor }
+func (d *Draft) Baseline() string { return d.baseline }
+func (d *Draft) Classification() Classification {
+	if d.state.recovered {
+		return Native
+	}
+	return d.origin.class
+}
+func copyState(s draftState) draftState {
+	s.nodes = cloneNodes(s.nodes)
+	if s.selection != nil {
+		v := *s.selection
+		s.selection = &v
+	}
+	return s
+}
+func (d *Draft) live() *Document {
+	doc := *d.origin
+	doc.nodes = d.state.nodes
+	if d.state.recovered {
+		doc = *Parse("")
+		doc.nodes = d.state.nodes
+	}
+	doc.indexAnchors()
+	for id, loc := range doc.locations {
+		if loc.Node.Kind == Opaque {
+			for i := len(loc.Ancestors) - 1; i >= 0; i-- {
+				parent := doc.locations[loc.Ancestors[i]].Node
+				if parent.Tag == "p" || parent.Tag == "h1" || parent.Tag == "h2" || parent.Tag == "h3" {
+					loc.Block = parent.ID
+					doc.locations[id] = loc
+					break
+				}
+			}
+		}
+	}
+	return &doc
+}
+func (d *Draft) SetCursor(a Anchor) error {
+	if _, err := d.live().ResolveAnchor(a); err != nil {
+		return err
+	}
+	d.state.cursor = a
+	if d.state.selection != nil {
+		d.state.selection.End = a
+	}
+	return nil
+}
+func (d *Draft) Selection() *Selection {
+	if d.state.selection == nil {
+		return nil
+	}
+	s := *d.state.selection
+	return &s
+}
+func (d *Draft) Select(blocks, whole bool) {
+	d.state.selection = &Selection{Start: d.state.cursor, End: d.state.cursor, Blocks: blocks, WholeBlock: whole}
+}
+func (d *Draft) CancelSelection() { d.state.selection = nil }
+func (d *Draft) SwapSelection() {
+	if s := d.state.selection; s != nil {
+		s.Start, s.End = s.End, s.Start
+		d.state.cursor = s.End
+	}
+}
+func (d *Draft) first(ns []Node) Anchor {
+	for _, n := range ns {
+		if n.Kind == Text || n.Kind == Opaque || n.Tag == "br" {
+			return Anchor{n.ID, 0}
+		}
+		if len(n.Children) > 0 {
+			return d.first(n.Children)
+		}
+		return Anchor{n.ID, 0}
+	}
+	return Anchor{}
+}
+func (d *Draft) intent(ns []Node) Preservation {
+	p := Preservation{Positions: map[ID][]int{}}
+	var visit func([]Node, []int)
+	visit = func(ns []Node, path []int) {
+		for i, n := range ns {
+			next := append(slices.Clone(path), i)
+			if n.Kind == Opaque {
+				p.Positions[n.ID] = next
+			}
+			visit(n.Children, next)
+		}
+	}
+	visit(normalizeRoot(cloneNodes(ns)), nil)
+	for _, a := range d.origin.atoms {
+		if _, ok := p.Positions[a.id]; !ok {
+			p.Removed = append(p.Removed, a.id)
+		}
+	}
+	return p
+}
+func (d *Draft) HTML() (string, error) {
+	if d.state.recovered {
+		return Parse("").SerializeSnapshot(d.state.nodes, Preservation{})
+	}
+	return d.origin.SerializeSnapshot(d.state.nodes, d.intent(d.state.nodes))
+}
+func (d *Draft) PrepareSave() (SaveCandidate, error) {
+	doc := d.origin
+	if d.state.recovered {
+		doc = Parse("")
+	}
+	c, err := doc.PrepareSave(d.state.nodes, d.intentFor(doc), nil)
+	if err != nil {
+		return c, err
+	}
+	c.baseline = d.baseline
+	c.recovered = d.state.recovered
+	return c, nil
+}
+func (d *Draft) intentFor(doc *Document) Preservation {
+	if doc != d.origin {
+		return Preservation{}
+	}
+	return d.intent(d.state.nodes)
+}
+
+// AdoptSave uses the exact candidate's node identities, never matching by text
+// or position. Histories retain those identities on later undo and save.
+func (d *Draft) AdoptSave(c SaveCandidate) error {
+	if !c.Valid() || c.baseline != d.baseline || c.nodes == nil {
+		return fmt.Errorf("invalid draft save adoption")
+	}
+	ids := map[ID]string{}
+	var collect func([]Node)
+	collect = func(ns []Node) {
+		for _, n := range ns {
+			if n.Tag == "li" && attributeValue(n.Attributes, "data-type") == "taskItem" {
+				ids[n.ID] = attributeValue(n.Attributes, "data-task-id")
+			}
+			collect(n.Children)
+		}
+	}
+	collect(*c.nodes)
+	var apply func([]Node)
+	apply = func(ns []Node) {
+		for i := range ns {
+			if id, ok := ids[ns[i].ID]; ok {
+				setAttribute(&ns[i], "data-task-id", id)
+			}
+			apply(ns[i].Children)
+		}
+	}
+	apply(d.state.nodes)
+	for i := range d.undo {
+		apply(d.undo[i].nodes)
+	}
+	for i := range d.redo {
+		apply(d.redo[i].nodes)
+	}
+	d.savedNodes = cloneNodes(*c.nodes)
+	d.savedRecovered = c.recovered
+	d.baseline = c.HTML()
+	return nil
+}
+func setAttribute(n *Node, name, value string) {
+	for i := range n.Attributes {
+		if n.Attributes[i].Name == name {
+			n.Attributes[i].Value = value
+			return
+		}
+	}
+	n.Attributes = append(n.Attributes, Attribute{name, value})
+}
+func (d *Draft) View(options ...ViewOptions) *View {
+	v := NewView(d.live(), options...)
+	_ = v.SetAnchor(d.state.cursor)
+	return v
+}
+func (d *Draft) Undo() bool {
+	if len(d.undo) == 0 {
+		return false
+	}
+	d.redo = append(d.redo, copyState(d.state))
+	d.state = d.undo[len(d.undo)-1]
+	d.undo = d.undo[:len(d.undo)-1]
+	return true
+}
+func (d *Draft) Redo() bool {
+	if len(d.redo) == 0 {
+		return false
+	}
+	d.undo = append(d.undo, copyState(d.state))
+	d.state = d.redo[len(d.redo)-1]
+	d.redo = d.redo[:len(d.redo)-1]
+	return true
+}
+func (d *Draft) Apply(a Action, confirmed bool) error {
+	if d.Classification() == Blocked && a.Kind != ClearDescription && a.Kind != RecoverText {
+		return ErrBlocked
+	}
+	before := copyState(d.state)
+	oldNext := d.next
+	err := d.edit(a)
+	if err == nil && (a.Kind == DeleteBlock || a.Kind == DeleteSelection || a.Kind == ReplaceSelection) {
+		d.pruneDeletedContainers(before.nodes)
+	}
+	if err == nil {
+		d.assign(d.state.nodes)
+		err = validateNative(d.state.nodes, "", false)
+	}
+	if err == nil && (confirmed && d.needsConfirmation(before, a) || (a.Kind == ToggleMark || a.Kind == ClearMarks) && len(d.origin.atoms) > 0) {
+		_, err = d.HTML()
+	}
+	if err == nil && !confirmed && d.needsConfirmation(before, a) {
+		err = ErrConfirmation
+		if a.Kind == Split && d.quoteMetadataRemoved(before.nodes) {
+			err = ErrQuoteMetadataConfirmation
+		}
+	}
+	if err != nil {
+		d.state = before
+		d.next = oldNext
+		return err
+	}
+	d.undo = append(d.undo, before)
+	d.redo = nil
+	return nil
+}
+func (d *Draft) needsConfirmation(before draftState, a Action) bool {
+	if a.Kind == ToggleMark || a.Kind == ClearMarks {
+		return false
+	}
+	if a.Kind == ClearDescription || a.Kind == RecoverText {
+		return true
+	}
+	old := map[ID]string{}
+	var visit func([]Node, []ID, map[ID]string)
+	visit = func(ns []Node, parents []ID, out map[ID]string) {
+		for _, n := range ns {
+			if n.Kind == Opaque {
+				out[n.ID] = fmt.Sprint(parents)
+			}
+			visit(n.Children, append(slices.Clone(parents), n.ID), out)
+		}
+	}
+	visit(before.nodes, nil, old)
+	current := map[ID]string{}
+	visit(d.state.nodes, nil, current)
+	for id, path := range old {
+		if current[id] != path {
+			return true
+		}
+	}
+	if a.Kind == Split && d.quoteMetadataRemoved(before.nodes) {
+		return true
+	}
+	if a.Kind == Convert {
+		loc, _ := d.live().ResolveAnchor(d.state.cursor)
+		for _, id := range loc.Ancestors {
+			if n := findNode(before.nodes, id); n != nil && containsOpaque(*n) {
+				return true
+			}
+		}
+		n := findNode(before.nodes, loc.Block)
+		return n != nil && containsOpaque(*n)
+	}
+	return false
+}
+
+// Enter can remove an empty quote layer. Its metadata needs the same explicit
+// loss confirmation as other quote unwrap operations.
+func (d *Draft) quoteMetadataRemoved(ns []Node) bool {
+	for _, n := range ns {
+		if n.Tag == "blockquote" && len(n.Attributes) > 0 && findNode(d.state.nodes, n.ID) == nil {
+			return true
+		}
+		if d.quoteMetadataRemoved(n.Children) {
+			return true
+		}
+	}
+	return false
+}
+func containsOpaque(n Node) bool {
+	if n.Kind == Opaque {
+		return true
+	}
+	for _, c := range n.Children {
+		if containsOpaque(c) {
+			return true
+		}
+	}
+	return false
+}
+func findNode(ns []Node, id ID) *Node {
+	for i := range ns {
+		if ns[i].ID == id {
+			return &ns[i]
+		}
+		if n := findNode(ns[i].Children, id); n != nil {
+			return n
+		}
+	}
+	return nil
+}
+func nodeList(ns *[]Node, id ID) (*[]Node, int) {
+	for i := range *ns {
+		if (*ns)[i].ID == id {
+			return ns, i
+		}
+		if p, j := nodeList(&(*ns)[i].Children, id); p != nil {
+			return p, j
+		}
+	}
+	return nil, 0
+}
+func graphemeAfter(s string, offset int) int {
+	if offset >= len(s) {
+		return len(s)
+	}
+	g := uniseg.NewGraphemes(s[offset:])
+	if g.Next() {
+		_, end := g.Positions()
+		return offset + end
+	}
+	return offset
+}
+func graphemeBefore(s string, offset int) int {
+	g := uniseg.NewGraphemes(s)
+	prev := 0
+	for g.Next() {
+		start, end := g.Positions()
+		if end >= offset {
+			return start
+		}
+		prev = start
+	}
+	return prev
+}
+func (d *Draft) After(a Anchor) Anchor {
+	n := findNode(d.state.nodes, a.Node)
+	if n != nil && n.Kind == Text {
+		a.Offset = graphemeAfter(n.Text, a.Offset)
+	} else {
+		a.Offset = 1
+	}
+	return a
+}
+func (d *Draft) edit(a Action) error {
+	if a.Kind == ClearDescription || a.Kind == RecoverText {
+		d.state.nodes = nil
+		d.state.recovered = true
+		d.state.selection = nil
+		if a.Kind == RecoverText {
+			for _, line := range strings.Split(d.origin.RecoveryText(), "\n") {
+				if line != "" {
+					d.state.nodes = append(d.state.nodes, Node{Kind: Element, Tag: "p", Children: []Node{{Kind: Text, Text: line}}})
+				}
+			}
+		}
+		d.assign(d.state.nodes)
+		d.state.cursor = d.first(d.state.nodes)
+		return nil
+	}
+	if a.Kind == ToggleMark || a.Kind == ClearMarks {
+		return d.format(a)
+	}
+	if a.Kind == DeleteSelection || a.Kind == ReplaceSelection {
+		return d.deleteSelection(a)
+	}
+	if len(d.state.nodes) == 0 {
+		d.state.nodes = []Node{{Kind: Element, Tag: "p"}}
+		d.assign(d.state.nodes)
+		d.state.cursor = d.first(d.state.nodes)
+	}
+	loc, err := d.live().ResolveAnchor(d.state.cursor)
+	if err != nil {
+		return err
+	}
+	n := findNode(d.state.nodes, d.state.cursor.Node)
+	b := findNode(d.state.nodes, loc.Block)
+	if b == nil {
+		return ErrStructure
+	}
+	switch a.Kind {
+	case Insert:
+		if strings.Contains(a.Text, "\n") && b.Tag != "pre" {
+			parts := strings.Split(a.Text, "\n")
+			for i, part := range parts {
+				if i > 0 {
+					if err := d.edit(Action{Kind: Split}); err != nil {
+						return err
+					}
+				}
+				if part != "" {
+					if err := d.edit(Action{Kind: Insert, Text: part}); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		}
+		if n.Kind == Opaque {
+			list, i := nodeList(&d.state.nodes, n.ID)
+			if d.state.cursor.Offset > 0 {
+				i++
+			}
+			created := Node{Kind: Text, Text: a.Text}
+			blockAtom := n.blockOpaque
+			if len(loc.Ancestors) > 0 {
+				parent := findNode(d.state.nodes, loc.Ancestors[len(loc.Ancestors)-1])
+				if parent != nil && (parent.Tag == "p" || parent.Tag == "h1" || parent.Tag == "h2" || parent.Tag == "h3" || parent.Tag == "a" || isInlineMark(parent.Tag)) {
+					blockAtom = false
+				}
+			}
+			if blockAtom {
+				created = Node{Kind: Element, Tag: "p", Children: []Node{created}}
+			}
+			created = d.newNode(created)
+			*list = slices.Insert(*list, i, created)
+			d.state.cursor = d.first([]Node{created})
+			if t := findNode(d.state.nodes, d.state.cursor.Node); t != nil && t.Kind == Text {
+				d.state.cursor.Offset = len(a.Text)
+			}
+			return nil
+		}
+		if n.Kind == Text {
+			s := n.Text
+			off := d.state.cursor.Offset
+			n.Text = s[:off] + a.Text + s[off:]
+			d.state.cursor.Offset += len(a.Text)
+			return nil
+		}
+		if n.Tag == "br" {
+			list, i := nodeList(&d.state.nodes, n.ID)
+			if d.state.cursor.Offset > 0 {
+				i++
+			}
+			newNode := Node{Kind: Text, Text: a.Text}
+			newNode = d.newNode(newNode)
+			*list = slices.Insert(*list, i, newNode)
+			d.state.cursor = Anchor{newNode.ID, len(a.Text)}
+			return nil
+		}
+		if len(n.Children) == 0 && n.Tag != "hr" {
+			n.Children = []Node{{Kind: Text, Text: a.Text}}
+			d.assign(n.Children)
+			d.state.cursor = Anchor{n.Children[0].ID, len(a.Text)}
+			return nil
+		}
+		return ErrStructure
+	case Split, HardBreak:
+		if a.Kind == Split && b.Tag == "p" && len(b.Children) == 0 {
+			list, i := nodeList(&d.state.nodes, b.ID)
+			_ = i
+			for _, id := range loc.Ancestors {
+				q := findNode(d.state.nodes, id)
+				if q != nil && q.Tag == "blockquote" && list == &q.Children {
+					outer, j := nodeList(&d.state.nodes, q.ID)
+					p := d.newNode(Node{Kind: Element, Tag: "p"})
+					*list = slices.Delete(*list, i, i+1)
+					if len(q.Children) == 0 {
+						*outer = slices.Delete(*outer, j, j+1)
+					} else {
+						j++
+					}
+					*outer = slices.Insert(*outer, j, p)
+					d.state.cursor = Anchor{p.ID, 0}
+					return nil
+				}
+			}
+		}
+		if b.Tag == "pre" {
+			return d.edit(Action{Kind: Insert, Text: "\n"})
+		}
+		left, right, err := splitAt(b.Children, d.state.cursor)
+		if err != nil {
+			if n.ID == b.ID && len(b.Children) == 0 {
+				left = nil
+				right = nil
+			} else {
+				return err
+			}
+		}
+		if a.Kind == HardBreak {
+			br := Node{Kind: Element, Tag: "br"}
+			br = d.newNode(br)
+			b.Children = append(left, br)
+			b.Children = append(b.Children, right...)
+			d.state.cursor = Anchor{br.ID, 1}
+			return nil
+		}
+		if b.Tag != "p" && b.Tag != "h1" && b.Tag != "h2" && b.Tag != "h3" {
+			return fmt.Errorf("split for this structure belongs to Ticket 07")
+		}
+		list, i := nodeList(&d.state.nodes, b.ID)
+		b.Children = left
+		newBlock := Node{Kind: Element, Tag: b.Tag, Children: right}
+		newBlock = d.newNode(newBlock)
+		*list = slices.Insert(*list, i+1, newBlock)
+		d.state.cursor = d.first([]Node{(*list)[i+1]})
+		return nil
+	case OpenBelow, OpenAbove:
+		if b.Tag == "pre" && n.Kind != Text {
+			target := b
+			if len(b.Children) > 0 && b.Children[0].Tag == "code" {
+				target = &b.Children[0]
+			}
+			if len(target.Children) != 0 {
+				return ErrStructure
+			}
+			target.Children = []Node{d.newNode(Node{Kind: Text})}
+			n = &target.Children[0]
+			d.state.cursor = Anchor{n.ID, 0}
+		}
+		if b.Tag == "pre" && n.Kind == Text {
+			start := strings.LastIndex(n.Text[:d.state.cursor.Offset], "\n") + 1
+			end := len(n.Text)
+			if j := strings.Index(n.Text[d.state.cursor.Offset:], "\n"); j >= 0 {
+				end = d.state.cursor.Offset + j
+			}
+			if a.Kind == OpenAbove {
+				d.state.cursor.Offset = start
+				err = d.edit(Action{Kind: Insert, Text: "\n"})
+				d.state.cursor.Offset = start
+				return err
+			}
+			d.state.cursor.Offset = end
+			return d.edit(Action{Kind: Insert, Text: "\n"})
+		}
+		list, i := nodeList(&d.state.nodes, b.ID)
+		if a.Kind == OpenBelow {
+			i++
+		}
+		p := Node{Kind: Element, Tag: "p"}
+		d.next++
+		p.ID = d.next
+		*list = slices.Insert(*list, i, p)
+		d.state.cursor = Anchor{p.ID, 0}
+		return nil
+	case Convert:
+		if b.Kind == Opaque || (b.Tag != "p" && b.Tag != "h1" && b.Tag != "h2" && b.Tag != "h3") {
+			return ErrStructure
+		}
+		if a.Text != "p" && a.Text != "h1" && a.Text != "h2" && a.Text != "h3" {
+			return ErrStructure
+		}
+		if b.Tag == a.Text {
+			b.Tag = "p"
+		} else {
+			b.Tag = a.Text
+		}
+		return nil
+	case DeleteBlock:
+		if b.Tag == "pre" && n.Kind == Text && n.Text != "" {
+			start := strings.LastIndex(n.Text[:d.state.cursor.Offset], "\n") + 1
+			end := len(n.Text)
+			if start == end && start > 0 && n.Text[start-1] == '\n' {
+				start--
+			}
+			if j := strings.Index(n.Text[start:], "\n"); j >= 0 {
+				end = start + j + 1
+			}
+			n.Text = n.Text[:start] + n.Text[end:]
+			d.state.cursor.Offset = min(start, len(n.Text))
+			return nil
+		}
+		list, i := nodeList(&d.state.nodes, b.ID)
+		*list = slices.Delete(*list, i, i+1)
+		d.state.cursor = d.first(d.state.nodes)
+		d.state.selection = nil
+		return nil
+	case Backspace, Delete:
+		if n.Kind == Text {
+			off := d.state.cursor.Offset
+			start, end := off, off
+			if a.Kind == Backspace && off > 0 {
+				start = graphemeBefore(n.Text, off)
+			}
+			if a.Kind == Delete && off < len(n.Text) {
+				end = graphemeAfter(n.Text, off)
+			}
+			if start != end {
+				n.Text = n.Text[:start] + n.Text[end:]
+				d.state.cursor.Offset = start
+				return nil
+			}
+		}
+		if (n.Kind == Opaque || n.Tag == "br") && (a.Kind == Backspace && d.state.cursor.Offset == 0 || a.Kind == Delete && d.state.cursor.Offset == 1) {
+			return d.deleteBoundary(b, a.Kind)
+		}
+		if n.Kind == Opaque || n.Tag == "br" {
+			ext, _ := d.extents()
+			pos := ext[n.ID].start
+			list, i := nodeList(&d.state.nodes, n.ID)
+			*list = slices.Delete(*list, i, i+1)
+			d.state.cursor = d.anchorAt(pos)
+			return nil
+		}
+		return d.deleteBoundary(b, a.Kind)
+	}
+	return ErrStructure
+}
+func splitAt(ns []Node, a Anchor) ([]Node, []Node, error) {
+	for i, n := range ns {
+		if n.ID == a.Node {
+			left := cloneNodes(ns[:i])
+			right := cloneNodes(ns[i+1:])
+			if n.Kind == Text {
+				l, r := n, n
+				l.Text = n.Text[:a.Offset]
+				r.Text = n.Text[a.Offset:]
+				r.ID = 0
+				if l.Text != "" {
+					left = append(left, l)
+				}
+				if r.Text != "" {
+					right = append([]Node{r}, right...)
+				}
+			} else if a.Offset == 0 {
+				right = append([]Node{n}, right...)
+			} else {
+				left = append(left, n)
+			}
+			return left, right, nil
+		}
+		l, r, err := splitAt(n.Children, a)
+		if err == nil {
+			left := cloneNodes(ns[:i])
+			right := cloneNodes(ns[i+1:])
+			if len(l) > 0 {
+				v := n
+				v.Children = l
+				left = append(left, v)
+			}
+			if len(r) > 0 {
+				v := n
+				v.ID = 0
+				v.Children = r
+				for _, attr := range v.Attributes {
+					if attr.Name == "id" {
+						return nil, nil, ErrStructure
+					}
+				}
+				right = append([]Node{v}, right...)
+			}
+			return left, right, nil
+		}
+	}
+	return nil, nil, ErrAnchor
+}
+
+// DraftHTML is a cheap persistence-shaped dirty token for the surrounding Task
+// draft. Only PrepareSave performs the independent serialize/reparse check.
+func (d *Draft) DraftHTML() string {
+	if d.Classification() == Blocked {
+		return d.origin.SourceHTML()
+	}
+	if d.state.recovered == d.savedRecovered && reflect.DeepEqual(d.state.nodes, d.savedNodes) {
+		return d.baseline
+	}
+	var out strings.Builder
+	doc := d.origin
+	if d.state.recovered {
+		doc = Parse("")
+	}
+	var retained []atom
+	p := d.intentFor(doc)
+	removed := map[ID]bool{}
+	for _, id := range p.Removed {
+		removed[id] = true
+	}
+	// Use current (not normalized) paths for draft-only output.
+	p.Positions = map[ID][]int{}
+	var walk func([]Node, []int)
+	walk = func(ns []Node, path []int) {
+		for i, n := range ns {
+			at := append(slices.Clone(path), i)
+			if n.Kind == Opaque {
+				p.Positions[n.ID] = at
+			}
+			walk(n.Children, at)
+		}
+	}
+	walk(d.state.nodes, nil)
+	if err := doc.writeNodes(&out, d.state.nodes, nil, nil, removed, p.Positions, &retained, map[ID]bool{}); err != nil {
+		return d.origin.SourceHTML()
+	}
+	return out.String()
+}
+func (d *Draft) UpdateView(v *View) {
+	v.doc = d.live()
+	v.blocks = nil
+	if d.Classification() == Blocked {
+		other := NewView(v.doc, v.options)
+		v.blocks = other.blocks
+	} else {
+		v.compile(d.state.nodes, "", 0, 0, false)
+	}
+	v.ensureEmptyTarget()
+	if err := v.SetAnchor(d.state.cursor); err != nil && d.state.cursor.Node != 0 {
+		v.target = Target{Anchor: d.state.cursor}
+	}
+}
+func (d *Draft) newNode(n Node) Node { ns := []Node{n}; d.assign(ns); return ns[0] }
+func (d *Draft) pruneDeletedContainers(before []Node) {
+	var clean func([]Node) []Node
+	clean = func(ns []Node) []Node {
+		var out []Node
+		for _, n := range ns {
+			n.Children = clean(n.Children)
+			original := findNode(before, n.ID)
+			if len(n.Children) == 0 && original != nil && len(original.Children) > 0 && (n.Tag == "blockquote" || n.Tag == "ul" || n.Tag == "ol") {
+				continue
+			}
+			out = append(out, n)
+		}
+		return out
+	}
+	d.state.nodes = clean(d.state.nodes)
+	if findNode(d.state.nodes, d.state.cursor.Node) == nil {
+		d.state.cursor = d.first(d.state.nodes)
+	}
+}
+
+// InsertionView includes insertion boundaries without adding Normal-mode
+// motion targets. Returning to Normal chooses the preceding complete grapheme.
+func (d *Draft) InsertionView(v *View, on bool) {
+	v.inserting = on
+	if !on {
+		n := findNode(d.state.nodes, d.state.cursor.Node)
+		if n != nil && n.Kind == Text && d.state.cursor.Offset == len(n.Text) && n.Text != "" && !strings.HasSuffix(n.Text, "\n") {
+			d.state.cursor.Offset = graphemeBefore(n.Text, d.state.cursor.Offset)
+		}
+	}
+	d.UpdateView(v)
+	if !on {
+		if _, found := findPoint(v.Layout(80, true).points, v.target); !found {
+			n := findNode(d.state.nodes, d.state.cursor.Node)
+			if n != nil && (n.Kind == Opaque || n.Tag == "br") {
+				d.state.cursor.Offset = 0
+				d.UpdateView(v)
+			}
+		}
+	}
+}
+
+func (d *Draft) LineBoundary(end bool) Anchor {
+	loc, err := d.live().ResolveAnchor(d.state.cursor)
+	if err != nil {
+		return d.state.cursor
+	}
+	b := findNode(d.state.nodes, loc.Block)
+	if b == nil {
+		return d.state.cursor
+	}
+	if b.Tag == "pre" && loc.Node.Kind == Text {
+		value := loc.Node.Text
+		off := d.state.cursor.Offset
+		start := strings.LastIndex(value[:off], "\n") + 1
+		stop := len(value)
+		if j := strings.Index(value[off:], "\n"); j >= 0 {
+			stop = off + j
+		}
+		if end {
+			return Anchor{loc.Node.ID, stop}
+		}
+		return Anchor{loc.Node.ID, start}
+	}
+	var leaves []Node
+	var collect func([]Node)
+	collect = func(ns []Node) {
+		for _, n := range ns {
+			if n.Kind == Text || n.Kind == Opaque || n.Tag == "br" {
+				leaves = append(leaves, n)
+			} else {
+				collect(n.Children)
+			}
+		}
+	}
+	collect(b.Children)
+	if len(leaves) == 0 {
+		return Anchor{b.ID, 0}
+	}
+	n := leaves[0]
+	off := 0
+	if end {
+		n = leaves[len(leaves)-1]
+		off = 1
+		if n.Kind == Text {
+			off = len(n.Text)
+		}
+	}
+	return Anchor{n.ID, off}
+}

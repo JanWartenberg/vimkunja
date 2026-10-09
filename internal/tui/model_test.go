@@ -6167,13 +6167,13 @@ func TestHiddenDescriptionInExpandedCompactDetailHasNoCursor(t *testing.T) {
 	}
 }
 
-func TestHTMLDescriptionEditingReportsReadOnlyReason(t *testing.T) {
+func TestHTMLDescriptionEditingStartsNativeInsert(t *testing.T) {
 	m := testModel()
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "<p>HTML</p>"})
 	m.editor.field = fieldDescription
 	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
-	if m.editor.mode != editorNormal || !strings.Contains(m.lastErr, "read-only") {
-		t.Fatalf("HTML Description edit = mode:%v error:%q, want Normal Mode with read-only reason", m.editor.mode, m.lastErr)
+	if m.editor.mode != editorInsert || m.editor.nativeDraft==nil || m.lastErr!="" {
+		t.Fatalf("HTML Description edit = mode:%v error:%q, want Native Insert", m.editor.mode, m.lastErr)
 	}
 }
 

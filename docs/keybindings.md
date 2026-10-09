@@ -23,7 +23,7 @@ This document is maintained manually for now. Generating or deriving `help.go` f
 | `:h` / `:help` | Open in-application help | Implemented |
 | `:errors` | Open the session error log | Implemented |
 | `:labels` | Open the global Label Overview from any normal context | Implemented |
-| `u` / `Ctrl+R` | Undo / redo the latest persisted Task action in List, Overview, Kanban, or Task Detail Normal Mode. | Implemented |
+| `u` / `Ctrl+R` | Undo / redo the latest persisted Task action in List, Overview, Kanban, or Task Detail Normal Mode. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `:q`, `:qa`, and force variants | Close a Pane or quit Vimkunja | Implemented |
 
 ## Task context and View navigation
@@ -136,7 +136,7 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 ## Description Normal Mode
 
 
-HTML Descriptions currently expose read/navigation only: `gn`, `Enter` activates it; `Esc` leaves. Native edit/history/palette actions remain disabled until their implementation tickets. Plain-text editing retains the existing behavior.
+HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navigation; `i/a/I/A` enters Insert. Ordinary editing, Visual Mode, local history and the Space palette are implemented. Advanced structure, Code/Tab/retab and syntax/URL actions remain in 07–09. Plain-text editing retains the existing behavior.
 
 | Binding | Action | Status |
 | --- | --- | --- |
@@ -157,21 +157,21 @@ HTML Descriptions currently expose read/navigation only: `gn`, `Enter` activates
 | `ö` / `ä` | German-keyboard aliases for `{` / `}` in Normal Mode | Implemented for native read/navigation (05) |
 | `zh/zl` in an overwide Code block or table | Scroll that block horizontally | Implemented for native read/navigation (05) |
 | `x` on a Checkbox-list entry | Toggle only that entry's checked state | Agreed |
-| `dd` | Delete the current logical Description block, including Native text and inline Opaque content, even on inline-atom focus; confirm the whole deletion if Opaque content is included. Inside nonempty Code delete only the source line; final nonempty line deletion keeps empty Code. Another dd deletes that empty block. Inside a Block quote delete the current child block and remove the quote after its final child. | Agreed |
+| `dd` | Delete the current logical Description block, including Native text and inline Opaque content, even on inline-atom focus; confirm the whole deletion if Opaque content is included. Inside nonempty Code delete only the source line; final nonempty line deletion keeps empty Code. Another dd deletes that empty block. Inside a Block quote delete the current child block and remove the quote after its final child. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `o` / `O` | Insert an empty paragraph after / before the current logical block;<br>inside a Code block insert a Code line, or inside a Block quote a same-depth quoted paragraph, below / above the current line; then enter Insert Mode | Agreed rich-text behavior |
 | Code Normal Mode: `ü` / `Ü` | Create a normal paragraph after / before the entire current Code block, move there and enter Insert Mode; preserve Code contents | Agreed; not implemented |
 | Code Normal Mode: `]`, then `Space` / `[`, then `Space` | Create a normal paragraph after / before the entire current Code block and move there in Normal Mode; `i` starts typing | Agreed; not implemented |
-| `:selectblock` | Explicitly select the entire current logical block in `VISUAL BLOCKS`, including a standalone Code block | Agreed; not implemented |
+| `:selectblock` | Explicitly select the entire current logical block in `VISUAL BLOCKS`, including a standalone Code block | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `:retab` / `:retaball` | Convert all Tabs to the next tabstop in the current Code block/selected Code lines, or all editable Description text including prose; preserve Opaque content. One Undo step; no V1 numeric arguments or bang variant. | Agreed; not implemented |
-| `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end<br>of the current logical line | Agreed rich-text behavior |
+| `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end<br>of the current logical line | Implemented on Native content (06); delimiter editing follows in 09 |
 | `0` / `^` / `_` / `$` | Move to start / first nonblank / end of the current logical line | Implemented for native read/navigation (05) |
 | `w` / `b` / `e` / `ge` | Move by words across inline-format and Link boundaries; stop at blocks.<br>Disclosed editable delimiters are ordinary characters; protected markers consume no motion counts.<br>Each complete Opaque subtree is one word-motion unit for `w/b/e`. | Implemented for native read/navigation (05); word traversal follows semantic text across disclosed marks |
 | `gg` / `G` | Jump to start / end of the whole Description document | Implemented for native read/navigation (05) |
 | `Ctrl+D` / `Ctrl+U` | Move the cursor about one visible Task Detail Pane height down / up | Implemented for native read/navigation (05) |
-| `u` / `Ctrl+R` | Undo / redo an unsaved Description-draft change | Agreed |
-| `Space` | Open the Space formatting palette below the primary footer; temporarily replace the primary footer if an extra row would leave fewer than three Description rows.<br>Close on the second key, `Esc`, or Leader timeout; restore the primary footer. | Agreed design; practical evidence outstanding |
-| `Space+1/2/3` | Convert current block to H1/H2/H3 | Agreed design; practical evidence outstanding |
-| `Space+0` | Convert current block to a paragraph | Agreed design; practical evidence outstanding |
+| `u` / `Ctrl+R` | Undo / redo an unsaved Description-draft change | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `Space` | Open the Space formatting palette below the primary footer; temporarily replace the primary footer if an extra row would leave fewer than three Description rows.<br>Close on the second key, `Esc`, or Leader timeout; restore the primary footer. | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `Space+1/2/3` | Convert current block to H1/H2/H3 | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `Space+0` | Convert current block to a paragraph | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Space+u/n/x` | Toggle current block between unordered, numbered, or Checkbox list<br>and a paragraph | Agreed design; practical evidence outstanding |
 | `Space+c/q` | Apply Code-block formatting / toggle the applicable Block-quote layer. Repeated `Space+q` removes quotation, never deepens it. Separate quote-depth actions use the agreed blockwise Space-led structure palette.<br>No dedicated `Space+r` rule insertion binding. | Agreed design; practical evidence outstanding |
 | `Space+o` | Toggle Projects Pane; never a Description formatting command | Agreed |
@@ -186,9 +186,9 @@ HTML Descriptions currently expose read/navigation only: `gn`, `Enter` activates
 | Single-backtick Inline-Code editor syntax | Deliberately typed paired backticks create Native Code; escaped inner backticks are literal. Imported/pasted syntax stays literal; removal of Code formatting preserves text. | Agreed grammar; independent fixture evidence pending; not implemented |
 | Typed block-start `# `/`## `/`### `; `- `/`+ `/`* `/`1. ` | Create heading / list entry after the required space; escape the first marker to keep it literal | Agreed |
 | Typed dash-only line of at least three dashes | Create a horizontal rule | Agreed |
-| Paste | Insert literal text, never trigger structural conversion; prose line breaks create paragraphs | Agreed |
-| `Enter` | Split the current paragraph into two paragraphs; inside a Code block insert a literal source line; inside a Block quote create a sibling quoted paragraph, or leave the quote from an empty quoted paragraph | Agreed |
-| `Shift+Enter` | Insert a hard line break inside the paragraph | Agreed |
+| Paste | Insert literal text, never trigger structural conversion; prose line breaks create paragraphs | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `Enter` | Split the current paragraph into two paragraphs; inside a Code block insert a literal source line; inside a Block quote create a sibling quoted paragraph, or leave the quote from an empty quoted paragraph | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `Shift+Enter` | Insert a hard line break inside the paragraph | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Enter` at end of a list entry | Add an entry of the same list type | Agreed |
 | `Enter` on an empty list entry | Leave the list and create a paragraph | Agreed |
 | Code Insert Mode: `Tab` / `Ctrl+V`, then `Tab` | Insert Spaces to the next tabstop / explicitly insert a literal Tab. Paste preserves Code Tabs and line endings. Ctrl+Q additional alias candidate, Ctrl+B configurable; final terminal/dispatch checks pending. | Agreed; not implemented |
@@ -198,21 +198,21 @@ HTML Descriptions currently expose read/navigation only: `gn`, `Enter` activates
 
 | Binding | Action | Status |
 | --- | --- | --- |
-| `v` | Start characterwise Visual Mode | Agreed |
-| `V` (Shift+V) | Start logical-block Visual Mode; footer label `VISUAL BLOCKS`. Normal Visual motions extend the selection; Space opens the structure palette without replacing those motions. | Agreed |
-| `V` inside Code | Select source lines in `VISUAL CODE LINES`; clamp at Code boundary with hint, never silently expand to whole blocks. `Esc` cancels. | Agreed; not implemented |
-| Normal-Mode motions | Extend the active Visual selection | Agreed |
-| `o` | Swap the active end of the Visual selection | Agreed |
-| `Esc` | Cancel Visual Mode | Agreed |
-| `viw` / `vaw` | Select useful inner word / word with surrounding whitespace; delimiter-start selects nearest inner word, empty expression gives hint | Agreed |
+| `v` | Start characterwise Visual Mode | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `V` (Shift+V) | Start logical-block Visual Mode; footer label `VISUAL BLOCKS`. Normal Visual motions extend the selection; Space opens the structure palette without replacing those motions. | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `V` inside Code | Select source lines in `VISUAL CODE LINES`; clamp at Code boundary with hint, never silently expand to whole blocks. `Esc` cancels. | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| Normal-Mode motions | Extend the active Visual selection | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `o` | Swap the active end of the Visual selection | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `Esc` | Cancel Visual Mode | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `viw` / `vaw` | Select useful inner word / word with surrounding whitespace; delimiter-start selects nearest inner word, empty expression gives hint | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Ctrl+V` | Rectangular selection | Deferred |
-| Characterwise `v`: `Space+b/i/u/s` | Toggle bold/italic/underline/strikethrough uniformly: apply throughout if any selected Native text lacks the mark; otherwise remove throughout. Explicit Bold-off removes all selected b/strong layers, including double/triple strong; Italic/Underline/Strike-off likewise removes all selected layers of its own family; preserve other marks and selection until Esc. Ignore and preserve Opaque subtrees. | Agreed design; practical evidence outstanding |
+| Characterwise `v`: `Space+b/i/u/s` | Toggle bold/italic/underline/strikethrough uniformly: apply throughout if any selected Native text lacks the mark; otherwise remove throughout. Explicit Bold-off removes all selected b/strong layers, including double/triple strong; Italic/Underline/Strike-off likewise removes all selected layers of its own family; preserve other marks and selection until Esc. Ignore and preserve Opaque subtrees. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | Characterwise `v`: `Space+l` | Prompt for a URL and apply it to the selection; a blank URL removes the link | Agreed design; practical evidence outstanding |
-| Characterwise `v`: `Space+0` | Remove all inline formatting, including Links, while preserving text and blocks | Agreed design; practical evidence outstanding |
+| Characterwise `v`: `Space+0` | Remove all inline formatting, including Links, while preserving text and blocks | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | Blockwise `V`: `Space+q/w` | Remove / add one quote layer on selected blocks; wrap selected siblings in one shared container, remove locally, and reject incompatible reduction atomically. Both retained Quote fragments keep known shared cite/data-comment-id references without extra confirmation for repeating them. Actual metadata loss on removal still confirms; unique/unknown attributes require lossless allocation. | Agreed V1; independent split fixtures present, execution pending |
 | Blockwise `V`: `Space+k/l` | Decrease / increase list depth on selected entries, preserving subtrees, list kinds and Checkbox IDs/state. Normalize parent/child overlap; validate one sibling range atomically. If no unselected preceding sibling can receive an indent, reject the whole action. | Agreed V1; movement/numbering details in rich-text contract |
 | Blockwise `V`: `Space+x/c` | Remove up to one indent step from leading whitespace / prepend the Space step. Locally split an affected Tab when needed; preserve empty lines and all other Code contents. Step two/four Spaces, default four. | Agreed V1; config key and practical evidence pending |
-| `d` | Delete exactly the selected text; after `V`, delete complete selected logical blocks including inline Opaque content. Confirm the whole operation when Opaque content is included; Undo restores the whole deletion. Wrapped screen rows are not separate blocks. | Agreed |
+| `d` | Delete exactly the selected text; after `V`, delete complete selected logical blocks including inline Opaque content. Confirm the whole operation when Opaque content is included; Undo restores the whole deletion. Wrapped screen rows are not separate blocks. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 
 
 ## Footer hint priority
@@ -250,3 +250,7 @@ the useful error tail.
 - The Space formatting palette's secondary-footer design and compact-height replacement threshold are provisionally accepted; practical validation remains outstanding in [the rich-text contract](../.scratch/description-rendering/spec.md).
 - Editable delimiters count as ordinary Vim characters, including in `5l`. Protected quote prefixes, Code fences, and emphasis-layer separators are never cursor targets, copied text, or independently editable content.
 - Opaque subtrees require discernible atomic boundaries with configurable bracket style and highlighting color; final styling awaits prototype review. Wrapped continuation rows retain a non-editable arrow, distinct from hard-break markers.
+
+Native Draft (06): `y/p` uses a local safe-visible-text register; `:descriptionrecover` / `:descriptionclear` create confirmed unsaved recovery drafts for Blocked HTML. `:descriptionreload` explicitly reloads current persisted Task data and discards the complete Task draft. `:e!` still restores the opened/successfully saved Task baseline. List/Quote structure and syntax/URL actions retain their later-ticket status.
+
+Inline-format selections overlapping Code reject atomically; Code-line indent/outdent remains Ticket 08. Formatting across selected Opaque atoms preserves them and reports that they were skipped.

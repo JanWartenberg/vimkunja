@@ -66,10 +66,10 @@ The rules are accepted; these tickets make the remaining work executable. No new
 | [03 — Source-preserving Description document model](../../../.archive/2026-10-07/description-rendering/issues/03-implement-source-preserving-description-model.md) | Document/HTML preservation — completed 2026-10-07 | None |
 | [04 — Atomic Description saves and Checkbox identities](../../../.archive/2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md) | Completed 2026-10-07; transactional conflict check and UUID adoption, committed 2026-10-08 | — |
 | [05 — Native terminal projection and document navigation](../../../.archive/2026-10-08/description-rendering/issues/05-implement-native-description-projection-and-navigation.md) | Read/navigation and terminal layout | Completed and committed 2026-10-08 |
-| [06 — Native draft editing, Visual Mode and local history](06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery integration | None (04/05 completed) |
-| [07 — List, Checkbox and Quote structure editing](07-implement-list-and-quote-structure-editing.md) | L01–L12 / Q01–Q04 | 06 |
-| [08 — Code editing, Tabs and terminal input](08-implement-native-code-editing-and-terminal-input.md) | Exact Code input, exits, Tabs/retab | 06 |
-| [09 — Inline syntax, Inline-Code and Link editing](09-implement-inline-syntax-code-and-links.md) | Syntax, Inline-Code and Links | 06 |
+| [06 — Native draft editing, Visual Mode and local history](../../../.archive/2026-10-09/description-rendering/issues/06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery completed 2026-10-09; committed 2026-10-09 | — |
+| [07 — List, Checkbox and Quote structure editing](07-implement-list-and-quote-structure-editing.md) | L01–L12 / Q01–Q04 | None (06 completed) |
+| [08 — Code editing, Tabs and terminal input](08-implement-native-code-editing-and-terminal-input.md) | Exact Code input, exits, Tabs/retab | None (06 completed) |
+| [09 — Inline syntax, Inline-Code and Link editing](09-implement-inline-syntax-code-and-links.md) | Syntax, Inline-Code and Links | None (06 completed) |
 | [10 — Native Rich-text compatibility, terminal acceptance and documentation](10-verify-native-rich-text-compatibility-and-documentation.md) | VOA/terminal evidence, properties/fuzz, Help/tutorial | Integration completion: 03–09; preparation unblocked |
 
 Completed specification work is distinct from future Native test execution. The remaining deliverable checkboxes below remain open until their owning tickets provide evidence.
@@ -374,3 +374,8 @@ User authorizes starting 03 while main cleanup continues. `internal/description`
 ### 2026-10-08 — native projection/navigation (05)
 
 05 is implemented and archived on the isolated branch: safe structured rendering and document-anchored read/navigation now execute in module/TUI/SQLite tests. Nine focused projection fixtures and safety checks over all 83 synthetic sources cover the read seam. Native editing is deliberately disabled; 06 is unblocked and integrates draft/Visual/history/recovery through the 04/05 seams. Real VOA/terminal acceptance remains 10. Committed on 2026-10-08 on `feature/description-model` in the same worktree.
+
+
+### 2026-10-09 — native Draft/Visual implementation (06)
+
+06 is implemented, verified and archived in the same worktree, committed 2026-10-09. Structured editing, Visual formatting/selections, Opaque confirmations, local history, success-only identity adoption and Blocked recovery now have module/TUI/temporary-SQLite execution evidence. Five review rounds and final targeted rechecks leave no confirmed findings; full tests, affected race/vet, both builds and bounded draft fuzz pass. 07–09 are unblocked; 07 is next. Advanced structures/Code/syntax and real VOA/terminal acceptance remain in their owning tickets; no blanket completion of all 83 editor expectations is claimed.

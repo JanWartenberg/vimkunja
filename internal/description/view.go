@@ -26,6 +26,7 @@ const (
 	Protected
 	OpaqueStyle
 	Summary
+	SelectedStyle
 )
 
 type Span struct {
@@ -47,6 +48,7 @@ type Frame struct {
 	TooNarrow        bool
 	Hint             string
 	points           []point
+	paint            []point
 	horizontalLimits map[ID]int
 }
 type ViewOptions struct {
@@ -86,6 +88,7 @@ type View struct {
 	top, screenRow int
 	positioned     bool
 	manualScroll   bool
+	inserting      bool
 	goalColumn     int
 	goalSet        bool
 	goalSource     bool
@@ -120,6 +123,7 @@ func NewView(doc *Document, options ...ViewOptions) *View {
 	} else {
 		v.compile(doc.Snapshot(), "", 0, 0, false)
 	}
+	v.ensureEmptyTarget()
 	f := v.Layout(80, true)
 	if len(f.points) > 0 {
 		v.target = f.points[0].target
@@ -187,7 +191,7 @@ func (v *View) textGlyphs(text string, id ID, style Style, link string) []glyph 
 		hard := s == "\n" || s == "\r\n"
 		out = append(out, glyph{text: terminalSafeText(s), style: style, target: Target{Anchor: Anchor{id, start}}, nav: true, hard: hard, word: wordClass(s), link: link})
 	}
-	if len(out) == 0 || strings.HasSuffix(text, "\n") {
+	if v.inserting || len(out) == 0 || strings.HasSuffix(text, "\n") {
 		out = append(out, glyph{text: "", style: style, target: Target{Anchor: Anchor{id, len(text)}}, nav: true})
 	}
 	return out
@@ -235,12 +239,18 @@ func (v *View) inline(nodes []Node, style Style, disclose bool, link string, lay
 			atom := literalGlyphs(v.options.OpaqueOpen+n.Preview+v.options.OpaqueClose, style|OpaqueStyle|Protected)
 			for i := range atom {
 				atom[i].target = Target{Anchor: Anchor{n.ID, 0}}
-				if i == len(literalGlyphs(v.options.OpaqueOpen, 0)) {
+				if !v.inserting && i == len(literalGlyphs(v.options.OpaqueOpen, 0)) {
 					atom[i].nav = true
 					atom[i].word = 3
 				}
 			}
+			if v.inserting {
+				out = append(out, glyph{nav: true, target: Target{Anchor: Anchor{n.ID, 0}}})
+			}
 			out = append(out, atom...)
+			if v.inserting {
+				out = append(out, glyph{nav: true, target: Target{Anchor: Anchor{n.ID, 1}}})
+			}
 			continue
 		}
 		if n.Tag == "br" {
@@ -566,4 +576,11 @@ func contentNodes(nodes []Node) string {
 		}
 	}
 	return out.String()
+}
+
+func (v *View) ensureEmptyTarget() {
+	if len(v.blocks) == 0 && v.doc.class != Blocked {
+		v.blocks = []block{{friendly: []glyph{{nav: true, target: Target{}}}}}
+		v.target = Target{}
+	}
 }

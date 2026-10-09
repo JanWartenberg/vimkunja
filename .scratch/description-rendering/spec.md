@@ -230,3 +230,8 @@ The [corpus and traceability matrix](corpus.md) accompany [83 independent fixtur
 ### Implemented projection/navigation seam — 2026-10-08
 
 Ticket 05 adds document-owned `View`/`Frame` projection and navigation, integrated in Task Detail for HTML Descriptions. Safe styles/structural cues, Opaque tables/mentions/media, checklist summaries, disclosure, grapheme/document motions, resizing and block-local horizontal scrolling now execute in synthetic module/TUI/SQLite tests. All 83 sources receive projection safety checks; nine focused fixtures receive logical-content assertions. The native path remains read-only until ticket 06; Plain-Text, Title and Comment editing continue through their existing paths. Projection configuration lives in `ViewOptions` and the central TUI theme; no new user TOML setting is claimed. Real terminal/VOA acceptance and native editing remain outstanding.
+
+
+### Implemented Draft/Visual seam — 2026-10-09
+
+[Completed ticket 06](../../.archive/2026-10-09/description-rendering/issues/06-implement-description-draft-editor-and-visual-modes.md) activates structured Native editing, Visual formatting/selections, local history, confirmed Opaque operations, Blocked recovery and successful save-ID adoption. Synthetic module/TUI/SQLite tests, affected race/vet, full tests/builds and bounded draft fuzz pass; final independent review findings are fixed. Inline formatting selections overlapping Code reject atomically; source-line indentation is owned by 08. Advanced list/quote/Code/syntax actions remain 07–09 and real VOA/terminal acceptance remains 10. Implementation committed on the isolated branch on 2026-10-09.

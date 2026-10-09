@@ -1,0 +1,677 @@
+package description
+
+import (
+	"fmt"
+	"github.com/rivo/uniseg"
+	"slices"
+	"strings"
+	"unicode"
+)
+
+type extent struct {
+	start, end int
+	block      ID
+	node       Node
+}
+
+func (d *Draft) extents() (map[ID]extent, []ID) {
+	out := map[ID]extent{}
+	var blocks []ID
+	pos := 0
+	var visit func([]Node, ID)
+	visit = func(ns []Node, block ID) {
+		for _, n := range ns {
+			start := pos
+			current := block
+			if n.Kind == Element && (n.Tag == "p" || strings.HasPrefix(n.Tag, "h") && n.Tag != "html" || n.Tag == "pre" || n.Tag == "li") || n.Kind == Opaque && n.blockOpaque && block == 0 {
+				current = n.ID
+				blocks = append(blocks, n.ID)
+			}
+			if n.Kind == Text {
+				pos += len(n.Text)
+			} else if n.Kind == Opaque || n.Tag == "br" {
+				pos++
+			} else {
+				visit(n.Children, current)
+			}
+			out[n.ID] = extent{start, pos, current, n}
+			if current == n.ID {
+				pos++
+			}
+		}
+	}
+	visit(d.state.nodes, 0)
+	return out, blocks
+}
+func anchorPosition(a Anchor, ext map[ID]extent) int {
+	e := ext[a.Node]
+	if e.node.Kind == Text || e.node.Kind == Opaque || e.node.Tag == "br" {
+		return e.start + a.Offset
+	}
+	if a.Offset == 1 {
+		return e.end
+	}
+	return e.start
+}
+func (d *Draft) selectionRange() (int, int, map[ID]extent) {
+	ext, blocks := d.extents()
+	s := d.state.selection
+	if s == nil {
+		p := anchorPosition(d.state.cursor, ext)
+		return p, p, ext
+	}
+	lo, hi := anchorPosition(s.Start, ext), anchorPosition(s.End, ext)
+	if lo > hi {
+		lo, hi = hi, lo
+	}
+	if s.Blocks {
+		a, b := ext[s.Start.Node], ext[s.End.Node]
+		if a.block == b.block && !s.WholeBlock && findNode(d.state.nodes, a.block) != nil && findNode(d.state.nodes, a.block).Tag == "pre" {
+			// Code line selections stay within source text, including blank lines.
+			n := findNode(d.state.nodes, s.Start.Node)
+			if n != nil && n.Kind == Text {
+				lo = ext[n.ID].start + strings.LastIndex(n.Text[:lo-ext[n.ID].start], "\n") + 1
+				end := hi - ext[n.ID].start
+				if j := strings.Index(n.Text[end:], "\n"); j >= 0 {
+					hi = ext[n.ID].start + end + j + 1
+				} else {
+					hi = ext[n.ID].end
+				}
+				if lo == hi && lo > ext[n.ID].start && n.Text[len(n.Text)-1] == '\n' {
+					lo--
+				}
+				return lo, hi, ext
+			}
+		}
+		lo, hi = min(ext[a.block].start, ext[b.block].start), max(ext[a.block].end, ext[b.block].end)
+		_ = blocks
+	} else {
+		end := s.End
+		if anchorPosition(s.Start, ext) > anchorPosition(s.End, ext) {
+			end = s.Start
+		}
+		hi = anchorPosition(d.After(end), ext)
+	}
+	return lo, hi, ext
+}
+func (d *Draft) Selected(a Anchor) bool {
+	if d.state.selection == nil {
+		return false
+	}
+	lo, hi, ext := d.selectionRange()
+	p := anchorPosition(a, ext)
+	return p >= lo && p < hi
+}
+func (d *Draft) Copy() string {
+	lo, hi, ext := d.selectionRange()
+	if d.state.selection == nil {
+		loc, _ := d.live().ResolveAnchor(d.state.cursor)
+		e := ext[loc.Block]
+		lo, hi = e.start, e.end
+	}
+	var out strings.Builder
+	var visit func([]Node)
+	visit = func(ns []Node) {
+		for _, n := range ns {
+			e := ext[n.ID]
+			if e.end < lo || e.start > hi {
+				continue
+			}
+			if n.Kind == Text {
+				a, b := max(0, lo-e.start), min(len(n.Text), hi-e.start)
+				if a < b {
+					out.WriteString(n.Text[a:b])
+				}
+			} else if n.Kind == Opaque {
+				if e.start >= lo && e.end <= hi && n.Preview != "[Active content]" && n.Preview != "[Unsupported content]" && n.Preview != "[HTML comment]" {
+					out.WriteString(n.Preview)
+				}
+			} else if n.Tag == "br" {
+				if e.start >= lo && e.end <= hi {
+					out.WriteByte('\n')
+				}
+			} else {
+				visit(n.Children)
+				if e.block == n.ID && e.end < hi && out.Len() > 0 {
+					out.WriteByte('\n')
+				}
+			}
+		}
+	}
+	visit(d.state.nodes)
+	return out.String()
+}
+func markFamily(tag, family string) bool {
+	switch family {
+	case "strong":
+		return tag == "strong" || tag == "b"
+	case "em":
+		return tag == "em" || tag == "i"
+	case "u":
+		return tag == "u"
+	case "s":
+		return tag == "s" || tag == "strike"
+	}
+	return false
+}
+func (d *Draft) format(a Action) error {
+	if d.state.selection == nil || d.state.selection.Blocks {
+		return ErrStructure
+	}
+	if a.Kind == ToggleMark && a.Text != "strong" && a.Text != "em" && a.Text != "u" && a.Text != "s" {
+		return ErrStructure
+	}
+	lo, hi, ext := d.selectionRange()
+	for _, e := range ext {
+		if e.node.Tag == "pre" && e.start < hi && e.end > lo {
+			return fmt.Errorf("Inline formatting cannot include Code blocks")
+		}
+	}
+	all, found := true, false
+	var check func([]Node, bool)
+	check = func(ns []Node, marked bool) {
+		for _, n := range ns {
+			e := ext[n.ID]
+			next := marked || markFamily(n.Tag, a.Text)
+			if n.Kind == Text && e.start < hi && e.end > lo {
+				found = true
+				all = all && next
+			}
+			check(n.Children, next)
+		}
+	}
+	check(d.state.nodes, false)
+	if !found {
+		return nil
+	}
+	for _, e := range ext {
+		n := e.node
+		remove := a.Kind == ClearMarks && (isInlineMark(n.Tag) || n.Tag == "a") || a.Kind == ToggleMark && all && markFamily(n.Tag, a.Text)
+		if remove && e.start < hi && e.end > lo {
+			for _, attr := range n.Attributes {
+				if n.Tag != "a" || (attr.Name != "href" && attr.Name != "target" && attr.Name != "rel") {
+					return ErrStructure
+				}
+			}
+		}
+	}
+
+	startPos, endPos := anchorPosition(d.state.selection.Start, ext), anchorPosition(d.state.selection.End, ext)
+	var rewrite func([]Node) []Node
+	rewrite = func(ns []Node) []Node {
+		var out []Node
+		var inline []Node
+		flush := func() {
+			if len(inline) > 0 {
+				out = append(out, d.formatInline(inline, a, lo, hi, ext, all)...)
+				inline = nil
+			}
+		}
+		for _, n := range ns {
+			if n.Kind == Element && (isBlock(n.Tag) || n.Tag == "li") {
+				flush()
+				if n.Tag != "pre" {
+					n.Children = rewrite(n.Children)
+				}
+				out = append(out, n)
+			} else {
+				inline = append(inline, n)
+			}
+		}
+		flush()
+		return out
+	}
+	d.state.nodes = rewrite(d.state.nodes)
+	d.uniqueNativeIDs()
+	d.assign(d.state.nodes)
+	d.restoreSelection(startPos, endPos)
+	return nil
+}
+
+type inlineRun struct {
+	node   Node
+	layers []Node
+}
+
+func (d *Draft) formatInline(ns []Node, a Action, lo, hi int, ext map[ID]extent, all bool) []Node {
+	var runs []inlineRun
+	var walk func([]Node, []Node)
+	walk = func(ns []Node, layers []Node) {
+		for _, n := range ns {
+			e := ext[n.ID]
+			if n.Kind == Element && n.Tag != "br" && len(n.Children) > 0 {
+				walk(n.Children, append(slices.Clone(layers), n))
+				continue
+			}
+			if n.Kind != Text {
+				runs = append(runs, inlineRun{n, slices.Clone(layers)})
+				continue
+			}
+			start, end := max(0, min(len(n.Text), lo-e.start)), max(0, min(len(n.Text), hi-e.start))
+			cuts := []int{0, start, end, len(n.Text)}
+			for i := 0; i < 3; i++ {
+				left, right := cuts[i], cuts[i+1]
+				if left >= right {
+					continue
+				}
+				v := n
+				v.Text = n.Text[left:right]
+				if left > 0 {
+					v.ID = 0
+				}
+				path := slices.Clone(layers)
+				if e.start+left >= lo && e.start+right <= hi {
+					marked := false
+					for _, p := range path {
+						marked = marked || markFamily(p.Tag, a.Text)
+					}
+					if a.Kind == ClearMarks || all {
+						path = slices.DeleteFunc(path, func(p Node) bool {
+							return a.Kind == ClearMarks && (isInlineMark(p.Tag) || p.Tag == "a") || a.Kind == ToggleMark && all && markFamily(p.Tag, a.Text)
+						})
+					} else if !marked {
+						path = append(path, Node{Kind: Element, Tag: a.Text})
+					}
+				}
+				runs = append(runs, inlineRun{v, path})
+			}
+		}
+	}
+	walk(ns, nil)
+	// Adjacent leaves with a shared imported path reuse that wrapper. Splits
+	// receive fresh Native identities; wrappers around Opaque keep original IDs.
+	var out []Node
+	var appendRun func(*[]Node, inlineRun, int)
+	appendRun = func(dst *[]Node, r inlineRun, depth int) {
+		if depth == len(r.layers) {
+			*dst = append(*dst, r.node)
+			return
+		}
+		layer := r.layers[depth]
+		var wrapper *Node
+		if len(*dst) > 0 {
+			last := &(*dst)[len(*dst)-1]
+			if last.Kind == Element && last.ID == layer.ID && last.Tag == layer.Tag && slices.Equal(last.Attributes, layer.Attributes) {
+				wrapper = last
+			}
+		}
+		if wrapper == nil {
+			layer.Children = nil
+			*dst = append(*dst, layer)
+			wrapper = &(*dst)[len(*dst)-1]
+		}
+		appendRun(&wrapper.Children, r, depth+1)
+	}
+	for _, r := range runs {
+		appendRun(&out, r, 0)
+	}
+	return coalesceMarks(out)
+}
+func (d *Draft) uniqueNativeIDs() {
+	protected := map[ID]bool{}
+	var retain func([]Node, []ID)
+	retain = func(ns []Node, parents []ID) {
+		for _, n := range ns {
+			if n.Kind == Opaque {
+				for _, id := range parents {
+					protected[id] = true
+				}
+			}
+			retain(n.Children, append(slices.Clone(parents), n.ID))
+		}
+	}
+	retain(d.state.nodes, nil)
+	seen := map[ID]bool{}
+	var visit func([]Node)
+	visit = func(ns []Node) {
+		for i := range ns {
+			n := &ns[i]
+			if n.Kind != Opaque && n.ID != 0 {
+				if seen[n.ID] || protected[n.ID] && !containsOpaque(*n) {
+					n.ID = 0
+				} else {
+					seen[n.ID] = true
+				}
+			}
+			visit(n.Children)
+		}
+	}
+	visit(d.state.nodes)
+}
+func (d *Draft) anchorAt(pos int) Anchor {
+	ext, _ := d.extents()
+	best := Anchor{}
+	bestDistance := int(^uint(0) >> 1)
+	var visit func([]Node)
+	visit = func(ns []Node) {
+		for _, n := range ns {
+			e := ext[n.ID]
+			if n.Kind == Text {
+				if pos >= e.start && pos <= e.end {
+					best = Anchor{n.ID, pos - e.start}
+					bestDistance = 0
+				} else if dist := max(e.start-pos, pos-e.end); dist < bestDistance {
+					best = Anchor{n.ID, max(0, min(len(n.Text), pos-e.start))}
+					bestDistance = dist
+				}
+			} else if n.Kind == Opaque || n.Tag == "br" || len(n.Children) == 0 {
+				dist := max(e.start-pos, pos-e.end)
+				if dist < bestDistance {
+					best = Anchor{n.ID, 0}
+					bestDistance = dist
+				}
+			}
+			visit(n.Children)
+		}
+	}
+	visit(d.state.nodes)
+	return best
+}
+func (d *Draft) restoreSelection(start, end int) {
+	if d.state.selection != nil {
+		d.state.selection.Start = d.anchorAt(start)
+		d.state.selection.End = d.anchorAt(end)
+		d.state.cursor = d.state.selection.End
+	}
+}
+func (d *Draft) deleteSelection(a Action) error {
+	if d.state.selection == nil {
+		return ErrStructure
+	}
+	lo, hi, ext := d.selectionRange()
+	blocks := d.state.selection.Blocks
+	codeLines := false
+	if blocks && !d.state.selection.WholeBlock {
+		loc, _ := d.live().ResolveAnchor(d.state.cursor)
+		n := findNode(d.state.nodes, loc.Block)
+		codeLines = n != nil && n.Tag == "pre"
+	}
+	var remove func([]Node) []Node
+	remove = func(ns []Node) []Node {
+		var out []Node
+		for _, n := range ns {
+			e := ext[n.ID]
+			if e.start >= lo && e.end <= hi && (n.Kind != Element || blocks && !codeLines) {
+				continue
+			}
+			if n.Kind == Text && e.start < hi && e.end > lo {
+				start, end := max(0, lo-e.start), min(len(n.Text), hi-e.start)
+				n.Text = n.Text[:start] + n.Text[end:]
+			} else if n.Kind == Element {
+				n.Children = remove(n.Children)
+			}
+			out = append(out, n)
+		}
+		return out
+	}
+	d.state.nodes = remove(d.state.nodes)
+	d.state.selection = nil
+	d.state.cursor = d.anchorAt(lo)
+	if a.Kind == ReplaceSelection {
+		return d.edit(Action{Kind: Insert, Text: a.Text})
+	}
+	return nil
+}
+func (d *Draft) deleteBoundary(b *Node, kind ActionKind) error {
+	ext, _ := d.extents()
+	pos := anchorPosition(d.state.cursor, ext)
+	be := ext[b.ID]
+	// Crossing inline wrappers and hard breaks uses document positions, never
+	// disclosure glyphs. It cannot pull text across a quote/container boundary.
+	if kind == Backspace && pos > be.start || kind == Delete && pos < be.end {
+		target := pos
+		if kind == Backspace {
+			target--
+		}
+		for id, e := range ext {
+			n := e.node
+			if (n.Kind == Text || n.Kind == Opaque || n.Tag == "br") && e.start <= target && target < e.end {
+				offset := max(0, min(e.end-e.start, pos-e.start))
+				d.state.cursor = Anchor{id, offset}
+				return d.edit(Action{Kind: kind})
+			}
+		}
+		return ErrStructure
+	}
+	list, i := nodeList(&d.state.nodes, b.ID)
+	j := i + 1
+	if kind == Backspace {
+		j = i - 1
+	}
+	if j < 0 || j >= len(*list) {
+		return ErrStructure
+	}
+	other := (*list)[j]
+	if other.Tag != b.Tag || b.Kind != Element || (b.Tag != "p" && b.Tag != "h1" && b.Tag != "h2" && b.Tag != "h3") || len(other.Attributes) != 0 || len(b.Attributes) != 0 {
+		return ErrStructure
+	}
+	if kind == Backspace {
+		boundary := ext[other.ID].end
+		(*list)[j].Children = append((*list)[j].Children, b.Children...)
+		*list = slices.Delete(*list, i, i+1)
+		d.state.cursor = d.anchorAt(boundary)
+	} else {
+		boundary := be.end
+		b.Children = append(b.Children, other.Children...)
+		*list = slices.Delete(*list, j, j+1)
+		d.state.cursor = d.anchorAt(boundary)
+	}
+	return nil
+}
+
+// SelectWord selects semantic text independently of disclosed delimiters.
+func (d *Draft) SelectWord(around bool) error {
+	ext, _ := d.extents()
+	loc, err := d.live().ResolveAnchor(d.state.cursor)
+	if err != nil {
+		return err
+	}
+	block := ext[loc.Block]
+	if loc.Node.Kind != Text && loc.Node.Kind != Opaque {
+		n := findNode(d.state.nodes, loc.Node.ID)
+		if n != nil {
+			a := d.first(n.Children)
+			if a.Node != 0 {
+				d.state.cursor = a
+			}
+		}
+	}
+	pos := anchorPosition(d.state.cursor, ext)
+	var text strings.Builder
+	var collect func([]Node)
+	collect = func(ns []Node) {
+		for _, n := range ns {
+			e := ext[n.ID]
+			if e.end < block.start || e.start > block.end {
+				continue
+			}
+			if n.Kind == Text {
+				text.WriteString(n.Text)
+			} else if n.Kind == Opaque {
+				text.WriteByte(1)
+			} else if n.Tag == "br" {
+				text.WriteByte(' ')
+			} else {
+				collect(n.Children)
+			}
+		}
+	}
+	n := findNode(d.state.nodes, loc.Block)
+	if n == nil {
+		return ErrStructure
+	}
+	collect(n.Children)
+	value := text.String()
+	if value == "" {
+		return ErrStructure
+	}
+	off := max(0, min(len(value), pos-block.start))
+	if off == len(value) {
+		off = graphemeBefore(value, off)
+	}
+	start, end := off, graphemeAfter(value, off)
+	class := wordClass(value[start:end])
+	for start > 0 {
+		p := graphemeBefore(value, start)
+		if wordClass(value[p:start]) != class || value[p:start] == "\x01" {
+			break
+		}
+		start = p
+	}
+	for end < len(value) {
+		p := graphemeAfter(value, end)
+		if wordClass(value[end:p]) != class || value[end:p] == "\x01" {
+			break
+		}
+		end = p
+	}
+	if around {
+		originalEnd := end
+		for end < len(value) {
+			p := graphemeAfter(value, end)
+			if !strings.ContainsFunc(value[end:p], unicode.IsSpace) {
+				break
+			}
+			end = p
+		}
+		if end == originalEnd {
+			for start > 0 {
+				p := graphemeBefore(value, start)
+				if !strings.ContainsFunc(value[p:start], unicode.IsSpace) {
+					break
+				}
+				start = p
+			}
+		}
+	}
+	d.state.selection = &Selection{Start: d.anchorAt(block.start + start), End: d.anchorAt(block.start + graphemeBefore(value, end))}
+	d.state.cursor = d.state.selection.End
+	return nil
+}
+
+func (d *Draft) AllowSelectionCursor(a Anchor) bool {
+	s := d.state.selection
+	if s == nil || !s.Blocks || s.WholeBlock {
+		return true
+	}
+	doc := d.live()
+	start, _ := doc.ResolveAnchor(s.Start)
+	end, _ := doc.ResolveAnchor(a)
+	n := findNode(d.state.nodes, start.Block)
+	return n == nil || n.Tag != "pre" || start.Block == end.Block
+}
+func (d *Draft) CodeSelection() bool {
+	s := d.state.selection
+	if s == nil {
+		return false
+	}
+	loc, err := d.live().ResolveAnchor(s.Start)
+	if err != nil {
+		return false
+	}
+	n := findNode(d.state.nodes, loc.Block)
+	return n != nil && n.Tag == "pre"
+}
+
+// Highlight derives selection paint from document targets after layout.
+func (d *Draft) Highlight(f Frame) Frame {
+	if d.state.selection == nil {
+		return f
+	}
+	positions := map[[2]int]bool{}
+	lo, hi, ext := d.selectionRange()
+	for _, p := range f.paint {
+		at := anchorPosition(p.target.Anchor, ext)
+		if at >= lo && at < hi {
+			for col := p.col; col < p.col+max(1, p.cellWidth); col++ {
+				positions[[2]int{p.row, col}] = true
+			}
+		}
+	}
+	for row := range f.Rows {
+		var spans []Span
+		col := 0
+		for _, s := range f.Rows[row].Spans {
+			g := uniseg.NewGraphemes(s.Text)
+			for g.Next() {
+				text := g.Str()
+				style := s.Style
+				if positions[[2]int{row, col}] && (style&Protected == 0 || style&OpaqueStyle != 0) {
+					style |= SelectedStyle
+				}
+				spans = append(spans, Span{Text: text, Style: style})
+				col += uniseg.StringWidth(text)
+			}
+		}
+		f.Rows[row].Spans = spans
+	}
+	return f
+}
+func coalesceMarks(ns []Node) []Node {
+	var out []Node
+	for _, n := range ns {
+		n.Children = coalesceMarks(n.Children)
+		if len(out) > 0 {
+			last := &out[len(out)-1]
+			if isInlineMark(n.Tag) && n.Tag == last.Tag && len(n.Attributes) == 0 && len(last.Attributes) == 0 && !containsOpaque(n) && !containsOpaque(*last) {
+				last.Children = append(last.Children, n.Children...)
+				continue
+			}
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+func (d *Draft) ClampCodeSelection(target Anchor) Anchor {
+	ext, _ := d.extents()
+	towardEnd := anchorPosition(target, ext) > anchorPosition(d.state.cursor, ext)
+	s := d.state.selection
+	if s == nil {
+		return d.state.cursor
+	}
+	loc, err := d.live().ResolveAnchor(s.Start)
+	if err != nil {
+		return d.state.cursor
+	}
+	n := findNode(d.state.nodes, loc.Block)
+	if n == nil || n.Tag != "pre" {
+		return d.state.cursor
+	}
+	first := d.first(n.Children)
+	if !towardEnd {
+		return first
+	}
+	var last Anchor
+	var walk func([]Node)
+	walk = func(ns []Node) {
+		for _, n := range ns {
+			if n.Kind == Text {
+				last = Anchor{n.ID, graphemeBefore(n.Text, len(n.Text))}
+				if strings.HasSuffix(n.Text, "\n") {
+					last.Offset = len(n.Text)
+				}
+			}
+			walk(n.Children)
+		}
+	}
+	walk(n.Children)
+	if last.Node == 0 {
+		return first
+	}
+	return last
+}
+
+// SelectionContainsOpaque reports whole preserved atoms within the selection.
+func (d *Draft) SelectionContainsOpaque() bool {
+	if d.state.selection == nil {
+		return false
+	}
+	lo, hi, ext := d.selectionRange()
+	for _, e := range ext {
+		if e.node.Kind == Opaque && e.start < hi && e.end > lo {
+			return true
+		}
+	}
+	return false
+}

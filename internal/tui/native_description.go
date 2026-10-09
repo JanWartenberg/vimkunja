@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -11,6 +10,10 @@ import (
 )
 
 func (e *taskEditor) descriptionView() *description.View {
+	if e.nativeDraft != nil {
+		e.nativeDraft.InsertionView(e.nativeDescription, e.field == fieldDescription && e.mode == editorInsert)
+		return e.nativeDescription
+	}
 	if e.field == fieldDescription && e.mode == editorInsert {
 		return nil
 	}
@@ -20,12 +23,13 @@ func (e *taskEditor) descriptionView() *description.View {
 		return nil
 	}
 	if e.nativeDescription == nil || e.nativeDescription.SourceHTML() != source {
-		e.nativeDescription = description.NewView(description.Parse(source), description.ViewOptions{ASCII: tuiTheme.nativeASCII, Tabstop: 4, OpaqueOpen: tuiTheme.opaqueOpen, OpaqueClose: tuiTheme.opaqueClose})
+		e.nativeDraft = description.NewDraft(description.Parse(source))
+		e.nativeDescription = e.nativeDraft.View(description.ViewOptions{ASCII: tuiTheme.nativeASCII, Tabstop: 4, OpaqueOpen: tuiTheme.opaqueOpen, OpaqueClose: tuiTheme.opaqueClose})
 	}
 	return e.nativeDescription
 }
 func nativeSpanStyle(role description.Style) lipgloss.Style {
-	style := lipgloss.NewStyle().Bold(role&(description.Bold|description.Heading) != 0).Italic(role&description.Italic != 0).Underline(role&(description.Underline|description.Link) != 0).Strikethrough(role&description.Strike != 0)
+	style := lipgloss.NewStyle().Reverse(role&description.SelectedStyle != 0).Bold(role&(description.Bold|description.Heading) != 0).Italic(role&description.Italic != 0).Underline(role&(description.Underline|description.Link) != 0).Strikethrough(role&description.Strike != 0)
 	if role&description.Code != 0 {
 		style = style.Background(lipgloss.Color(tuiTheme.codeBackground))
 	}
@@ -87,6 +91,9 @@ func (e *taskEditor) nativeDescriptionLayout(width, height int) multilineTextLay
 	view := e.descriptionView()
 	focused := e.field == fieldDescription && e.descriptionActive
 	frame := view.Viewport(width, max(1, height), focused)
+	if e.nativeDraft != nil {
+		frame = e.nativeDraft.Highlight(frame)
+	}
 	if focused || e.descViewportScroll {
 		e.descScroll = frame.Top
 	}
@@ -118,7 +125,22 @@ func (m *model) nativeDescriptionKey(key string) bool {
 	if e.field != fieldDescription || e.descriptionView() == nil {
 		return false
 	}
+	if e.nativePending != nil {
+		if key == "y" || key == "enter" {
+			a := *e.nativePending
+			e.nativePending = nil
+			m.applyNative(a, true, e.nativePendingInsert)
+		} else if key == "n" || key == "esc" {
+			e.nativePending = nil
+			e.nativePendingInsert = false
+		}
+		return true
+	}
 	if key == "esc" {
+		if e.nativeDraft.Selection() != nil {
+			e.nativeDraft.CancelSelection()
+			return true
+		}
 		if e.nativePrefix != "" || e.nativeCount > 0 {
 			e.nativePrefix = ""
 			e.nativeCount = 0
@@ -145,6 +167,18 @@ func (m *model) nativeDescriptionKey(key string) bool {
 			key = prefix + key
 		} else if prefix == "z" && (key == "h" || key == "l") {
 			key = prefix + key
+		} else if prefix == "d" && key == "d" {
+			m.applyNative(description.Action{Kind: description.DeleteBlock}, false, false)
+			e.nativeCount = 0
+			return true
+		} else if prefix == "vi" || prefix == "va" {
+			if key == "w" {
+				if err := e.nativeDraft.SelectWord(prefix == "va"); err != nil {
+					m.recordError(err)
+				}
+				e.nativeDraft.UpdateView(e.nativeDescription)
+			}
+			return true
 		} else if prefix == "g" {
 			e.gArmed = true
 			return false
@@ -152,10 +186,8 @@ func (m *model) nativeDescriptionKey(key string) bool {
 			return true
 		}
 	}
-	if key == "i" || key == "a" || key == "A" || key == "I" || key == "o" || key == "O" || key == "x" || key == "X" || key == "d" || key == "D" || key == "c" || key == "C" || key == "s" || key == "r" || key == "R" || key == "v" || key == "V" || key == "u" || key == "ctrl+r" {
-		e.nativePrefix = ""
+	if m.nativeEditKey(key) {
 		e.nativeCount = 0
-		m.recordError(fmt.Errorf("Description is read-only; editing is not available yet."))
 		return true
 	}
 	if len(key) == 1 && key[0] >= '0' && key[0] <= '9' && (key != "0" || e.nativeCount > 0) {
@@ -182,6 +214,15 @@ func (m *model) nativeDescriptionKey(key string) bool {
 		key = "gg"
 	}
 	if e.nativeDescription.Move(key, max(1, e.nativeCount), width, height) {
+		next := e.nativeDescription.Cursor().Anchor
+		if !e.nativeDraft.AllowSelectionCursor(next) {
+			bounded := e.nativeDraft.ClampCodeSelection(next)
+			_ = e.nativeDraft.SetCursor(bounded)
+			_ = e.nativeDescription.SetAnchor(bounded)
+			m.toast = "Code selection boundary"
+		} else {
+			_ = e.nativeDraft.SetCursor(next)
+		}
 		e.descriptionActive = true
 		e.descriptionNavigated = true
 		e.descViewportScroll = false

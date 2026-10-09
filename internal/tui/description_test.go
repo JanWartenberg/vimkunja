@@ -119,13 +119,13 @@ func TestTaskDetailRendersHTMLDescriptionWithoutSourceTags(t *testing.T) {
 	}
 }
 
-func TestHTMLDescriptionRemainsReadOnlyDuringReaderPhase(t *testing.T) {
+func TestHTMLDescriptionInsertUsesStructuredDraft(t *testing.T) {
 	m := testModel()
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Coffee", Description: "<p>Fresh coffee beans</p>"})
 	m.editor.field = fieldDescription
 
 	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
-	if m.editor.mode != editorNormal || m.editor.draft.Description != "<p>Fresh coffee beans</p>" {
+	if m.editor.mode != editorInsert || m.editor.nativeDraft==nil || m.editor.draft.Description != "<p>Fresh coffee beans</p>" {
 		t.Fatalf("HTML Description entered raw edit mode: %#v", m.editor)
 	}
 }

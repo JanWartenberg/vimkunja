@@ -103,6 +103,7 @@ func (v *View) Layout(width int, focused bool) Frame {
 		}
 		firstRow := len(f.Rows)
 		firstPoint := len(f.points)
+		firstPaint := len(f.paint)
 		row := Row{}
 		col := 0
 		fresh := true
@@ -199,6 +200,9 @@ func (v *View) Layout(width int, focused bool) Frame {
 			if g.nav {
 				addPoint(g)
 			}
+			if g.target.Anchor.Node != 0 {
+				f.paint = append(f.paint, point{target: g.target, row: len(f.Rows), col: col, cellWidth: gw})
+			}
 			g.text = text
 			appendSpan(&row, g)
 			col += gw
@@ -247,6 +251,9 @@ func (v *View) Layout(width int, focused bool) Frame {
 				if b.table {
 					f.points[i].col = max(prefixWidth, min(f.points[i].col, width-1))
 				}
+			}
+			for i := firstPaint; i < len(f.paint); i++ {
+				f.paint[i].col -= offset
 			}
 			if b.code && overflow {
 				track := strings.Repeat("─", max(1, capacity))

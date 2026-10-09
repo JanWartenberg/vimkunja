@@ -10,7 +10,9 @@
 
 **Status:** ready-for-agent
 
-**Blocked by:** 06
+**Blocked by:** None
+
+**Dependency satisfied:** [06 — Draft/Visual/history](../../../.archive/2026-10-09/description-rendering/issues/06-implement-description-draft-editor-and-visual-modes.md), completed 2026-10-09; committed 2026-10-09.
 
 **Contract:** [spec.md](../spec.md), [decision/handoff ticket 02](02-specify-native-rich-text-description-rendering-and-editing.md), [corpus and traceability](../corpus.md), [83 synthetic fixtures](../corpus.json), [keybinding contract](../../../docs/keybindings.md).
 

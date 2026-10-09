@@ -41,17 +41,21 @@ const (
 )
 
 type taskEditor struct {
-	id                int64
-	taskIndex         int64
-	original          vimkunja.TaskDraft
-	draft             vimkunja.TaskDraft
-	field             editorField
-	mode              editorMode
-	cursor            int // rune offset in the active text field
-	nativeDescription *description.View
-	nativeFocused     bool
-	nativePrefix      string
-	nativeCount       int
+	id                  int64
+	taskIndex           int64
+	original            vimkunja.TaskDraft
+	draft               vimkunja.TaskDraft
+	field               editorField
+	mode                editorMode
+	cursor              int // rune offset in the active text field
+	nativeDescription   *description.View
+	nativeDraft         *description.Draft
+	nativePending       *description.Action
+	nativePendingInsert bool
+	nativeRegister      string
+	nativeFocused       bool
+	nativePrefix        string
+	nativeCount         int
 
 	projectFilter           string
 	fieldViewportStart      int
@@ -507,6 +511,9 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if e.field == fieldDescription && e.nativeDraft != nil {
+		return m.updateNativeInsert(k)
+	}
 	switch s {
 	case "ctrl+v":
 		return m, m.pasteClipboard(e)
@@ -573,6 +580,10 @@ func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) insertEditorText(text string) {
 	e := m.editor
+	if e.field == fieldDescription && e.nativeDraft != nil {
+		m.nativeInsertText(text)
+		return
+	}
 	if e.field == fieldDueDate {
 		for _, r := range text {
 			if r >= '0' && r <= '9' {
@@ -888,6 +899,13 @@ func (e *taskEditor) saveDraft() vimkunja.TaskDraft {
 // asynchronous edits made after dispatch. Save-only metadata stays out of drafts.
 func (e *taskEditor) adoptSavedTask(submitted vimkunja.TaskDraft, task vimkunja.Task) {
 	saved := cloneTaskDraft(submitted)
+	if e.nativeDraft != nil && submitted.DescriptionCandidate != nil {
+		if err := e.nativeDraft.AdoptSave(*submitted.DescriptionCandidate); err == nil {
+			e.draft.Description = e.nativeDraft.DraftHTML()
+			e.draft.DescriptionCandidate = nil
+			e.nativeDraft.UpdateView(e.nativeDescription)
+		}
+	}
 	if submitted.DescriptionCandidate != nil {
 		saved.Description = task.Description
 		if e.draft.Description == submitted.Description && e.draft.DescriptionCandidate != nil && *e.draft.DescriptionCandidate == *submitted.DescriptionCandidate {
@@ -938,6 +956,9 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 			m.cursorVisible = true
 			return cursorBlinkCmd()
 		}
+	}
+	if !m.prepareNativeSave() {
+		return nil
 	}
 	draft := e.saveDraft()
 	m.savingEditor = e

@@ -12,6 +12,8 @@ import (
 type SaveCandidate struct {
 	html, baseline string
 	valid          bool
+	nodes          *[]Node
+	recovered      bool
 }
 
 func (c SaveCandidate) HTML() string     { return c.html }
@@ -98,7 +100,7 @@ func (d *Document) PrepareSave(nodes []Node, intent Preservation, generate func(
 	if err != nil {
 		return SaveCandidate{}, err
 	}
-	return SaveCandidate{html: output, baseline: d.source, valid: true}, nil
+	return SaveCandidate{html: output, baseline: d.source, valid: true, nodes: &nodes}, nil
 }
 
 func attributeValue(attrs []Attribute, name string) string {

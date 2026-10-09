@@ -191,6 +191,10 @@ func newDefaultCommandRegistry() *CommandRegistry {
 		{"quitall", []string{"qa"}, quitAllCommand},
 		{"quitall!", []string{"qa!"}, forceQuitAllCommand},
 		{"edit!", []string{"e!"}, forceEditCommand},
+		{"selectblock", nil, selectDescriptionBlockCommand},
+		{"descriptionclear", nil, clearDescriptionCommand},
+		{"descriptionrecover", nil, recoverDescriptionCommand},
+		{"descriptionreload", nil, reloadDescriptionCommand},
 		{"new", nil, newTaskCommand},
 		{"write", []string{"w"}, writeCommand},
 		{"writequit", []string{"wq"}, writeQuitCommand},
@@ -258,6 +262,11 @@ func forceEditCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	e.draft = cloneTaskDraft(e.original)
+	e.nativeDraft = nil
+	e.nativeDescription = nil
+	e.nativePending = nil
+	e.nativePrefix = ""
+	e.nativeCount = 0
 	e.labels = append([]vimkunja.Label(nil), e.originalLabels...)
 	e.labelSelected = clamp(e.labelSelected, 0, max(0, len(e.labels)-1))
 	e.mode = editorNormal
