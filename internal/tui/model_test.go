@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 	apperrors "github.com/JanWartenberg/vimkunja/internal/errors"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"github.com/charmbracelet/x/ansi"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -2093,7 +2093,7 @@ func TestTaskDetailFormatsMetadataOutsideDueDateInsertMode(t *testing.T) {
 	m.now = func() time.Time { return time.Date(2026, time.August, 1, 12, 0, 0, 0, time.Local) }
 	m.openExistingEditor(vimkunja.Task{ID: 123, ProjectID: 1, Index: 42, Title: "Launch", Priority: 3, DueDate: "2026-08-02"})
 
-	view := ansi.Strip(renderTaskDetail(m, 80, 12))
+	view := ansi.Strip(renderTaskDetail(m, 80, 17))
 	for _, want := range []string{"Priority: High", "Due Date: tomorrow", "(DB-ID: 123, Task-Index: 42)"} {
 		if !strings.Contains(view, want) {
 			t.Fatalf("detail = %q, want %q", view, want)
@@ -2102,7 +2102,7 @@ func TestTaskDetailFormatsMetadataOutsideDueDateInsertMode(t *testing.T) {
 
 	m.editor.field = fieldDueDate
 	m.editor.mode = editorInsert
-	view = ansi.Strip(renderTaskDetail(m, 80, 12))
+	view = ansi.Strip(renderTaskDetail(m, 80, 17))
 	if !strings.Contains(view, "Due Date: 2026-08-02") {
 		t.Fatalf("due date editor = %q, want canonical input", view)
 	}
@@ -4991,9 +4991,9 @@ func TestCompactTaskDetailThresholdReservesDescriptionRows(t *testing.T) {
 	if !strings.Contains(short, "one") || !strings.Contains(short, "Comments (…)") {
 		t.Fatalf("short Task Detail = %q, want Description access and Comments", short)
 	}
-	regular := ansi.Strip(renderTaskDetail(m, 80, 12))
+	regular := ansi.Strip(renderTaskDetail(m, 80, 17))
 	if strings.Contains(regular, "More fields") || !strings.Contains(regular, "Priority:") || !strings.Contains(regular, "Comments (…)") {
-		t.Fatalf("twelve-row Task Detail = %q, want regular metadata and pinned Comments", regular)
+		t.Fatalf("seventeen-row Task Detail = %q, want regular metadata and pinned Comments", regular)
 	}
 }
 
@@ -6145,13 +6145,18 @@ func TestGNThenEnterActivatesDescriptionEditing(t *testing.T) {
 	}
 }
 
-func TestDescriptionCursorHidesWhenPinnedCommentsLeaveNoTextRow(t *testing.T) {
+func TestDescriptionCursorTargetsVisibleTextAtShortHeight(t *testing.T) {
 	m := testModel()
 	m.width, m.height = 80, 30 // Detail text height is 12 rows.
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "Text"})
 	m.editor.field = fieldDescription
-	if cursor := m.View().Cursor; cursor != nil {
-		t.Fatalf("hidden Description body retained cursor %#v", cursor)
+	view := m.View()
+	if view.Cursor == nil {
+		t.Fatal("visible Description has no native cursor")
+	}
+	row := strings.Split(ansi.Strip(view.Content), "\n")[view.Cursor.Position.Y]
+	if !strings.HasPrefix(string([]rune(row)[view.Cursor.Position.X:]), "Text") {
+		t.Fatalf("Description cursor targets %q, want Text", row)
 	}
 }
 

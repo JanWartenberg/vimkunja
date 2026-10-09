@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/x/ansi"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"github.com/charmbracelet/x/ansi"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -136,7 +136,7 @@ func TestReadOnlyDescriptionScrollbarUsesReservedWidth(t *testing.T) {
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Long", Description: strings.Repeat("1234567890", 9)})
 	m.editor.field = fieldDescription
 
-	view := ansi.Strip(renderTaskDetail(m, 20, 16))
+	view := ansi.Strip(renderTaskDetail(m, 20, 17))
 	if !strings.Contains(view, "┬") || !strings.Contains(view, "█") {
 		t.Fatalf("overflowing Description lacks scrollbar: %q", view)
 	}
@@ -164,15 +164,16 @@ func TestReadOnlyHTMLDescriptionScrolls(t *testing.T) {
 		fmt.Fprintf(&description, "<p>Line %d</p>", line)
 	}
 	m := testModel()
+	m.width, m.height = 84, 40 // Regular Detail with three Description rows.
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Long", Description: description.String()})
 	m.editor.field = fieldDescription
 
-	before := ansi.Strip(renderTaskDetail(m, 80, 16))
+	before := ansi.Strip(m.Render())
 	if strings.Contains(before, "Line 4") {
 		t.Fatalf("fixture does not overflow the Detail Pane: %q", before)
 	}
 	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
-	after := ansi.Strip(renderTaskDetail(m, 80, 16))
+	after := ansi.Strip(m.Render())
 	if m.editor.descScroll == 0 || !strings.Contains(after, "Line 2") {
 		t.Fatalf("read-only Description did not scroll: offset=%d detail=%q", m.editor.descScroll, after)
 	}

@@ -499,7 +499,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if m.editor.isPickerMode() {
 		return renderDetailPickerOverlay(m, textW, textH)
 	}
-	if textH < 12 {
+	if m.compactDetailAtHeight(textH) {
 		return renderCompactTaskDetail(m, textW, textH)
 	}
 	e := m.editor
@@ -507,14 +507,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if e.id == 0 {
 		header = "NEW TASK"
 	}
-	// At 12–13 rows preserve the regular metadata layout and the pinned
-	// Comments entry by sacrificing decorative blank rows and Description body
-	// rows first.
-	constrainedRegular := e.id != 0 && textH < 14
-	lines := []string{" " + renderHeading(header) + " "}
-	if !constrainedRegular {
-		lines = append(lines, "")
-	}
+	lines := []string{" " + renderHeading(header) + " ", ""}
 	projectName := "(none)"
 	for _, p := range m.projects {
 		if p.ID == e.draft.ProjectID {
@@ -614,9 +607,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	// A short Detail Pane gives its active picker the description rows; at
 	// normal heights retain the usual Description anchor above the picker.
 	if !e.isPickerMode() || textH >= len(lines)+10 {
-		if !constrainedRegular {
-			lines = append(lines, "")
-		}
+		lines = append(lines, "")
 		lines = append(lines, renderField(fieldDescription, "Description:", ""))
 	}
 	descriptionScrollable := false
@@ -1014,24 +1005,17 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 		}
 	}
 	pinnedCommentRows := compactPinnedCommentRows(textH, e.id != 0)
-	staticRows := len(fields)
-	if e.id != 0 {
-		staticRows-- // Comments is pinned outside the scrollable Detail document.
-	}
 	bodyRows := max(1, textH-2-pinnedCommentRows)
-	descriptionRows := compactDescriptionRows(textH-pinnedCommentRows, staticRows)
-	description := e.draft.Description
-	desc := wrapTaskDescriptionForEditor(e, description, max(1, textW-2))
-	if description == "" {
+	layout := m.compactTaskDescriptionLayout(textW, textH)
+	descriptionRows := layout.rows
+	desc := layout.lines
+	if e.draft.Description == "" {
 		desc = []descriptionLine{{text: placeholderText("  (no description)")}}
 	}
-	descriptionScrollable := len(desc) > descriptionRows
-	if descriptionScrollable {
-		desc = wrapTaskDescriptionForEditor(e, description, max(1, textW-4))
-	}
-	start := 0
-	if (e.descriptionActive || e.descViewportScroll) && len(desc) > descriptionRows {
-		start = clamp(e.descScroll, 0, len(desc)-descriptionRows)
+	descriptionScrollable := layout.scrollable
+	start := layout.start
+	if e.field == fieldDescription {
+		e.descScroll = start
 	}
 	for row := 0; row < descriptionRows; row++ {
 		if line := start + row; line < len(desc) {
@@ -1065,8 +1049,10 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 		}
 		lines = append(lines, renderField(fieldComments, "Comments ", commentCount))
 	}
-	if e.descriptionActive && descriptionScrollable && descriptionRow >= e.detailScroll && descriptionRow < e.detailScroll+bodyRows {
-		return renderVerticalScrollbar(lines, textW, textH, start, len(desc), 2+descriptionRow-e.detailScroll+1, descriptionRows, true)
+	descriptionViewportStart := 2 + descriptionRow - e.detailScroll + 1
+	visibleDescriptionRows := min(descriptionRows, max(0, textH-pinnedCommentRows-descriptionViewportStart))
+	if e.field == fieldDescription && (e.descriptionActive || e.descViewportScroll || descriptionHasHTML(e.draft.Description)) && descriptionScrollable && descriptionViewportStart >= 2 && visibleDescriptionRows > 0 {
+		return renderVerticalScrollbar(lines, textW, textH, start, len(desc), descriptionViewportStart, visibleDescriptionRows, detailFocused)
 	}
 	if outerLimit > 0 {
 		return renderVerticalScrollbar(lines, textW, textH, e.detailScroll, len(body), 2, bodyRows, detailFocused)
@@ -1083,25 +1069,13 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 		mode = "INSERT"
 	}
 	lines := []string{" " + renderHeading("DESCRIPTION · "+mode) + " ", ""}
-	available := max(1, textH-len(lines))
-	description := e.draft.Description
-	desc := wrapTaskDescriptionForEditor(e, description, textW)
-	if description == "" {
+	layout := m.compactTaskDescriptionLayout(textW, textH)
+	available := layout.rows
+	desc := layout.lines
+	if e.draft.Description == "" {
 		desc = []descriptionLine{{text: ""}}
 	}
-	if len(desc) > available {
-		desc = wrapTaskDescriptionForEditor(e, description, max(1, textW-2))
-	}
-	cursorRow := 0
-	for row, line := range desc {
-		if e.cursor >= line.start && e.cursor <= line.end {
-			cursorRow = row
-		}
-	}
-	start := clamp(e.descScroll, 0, max(0, len(desc)-available))
-	if !e.descViewportScroll {
-		start = descriptionViewportStart(desc, available, e.descScroll, cursorRow, e.mode == editorNormal && e.cursor == e.fieldRuneLen())
-	}
+	start := layout.start
 	e.descScroll = start
 	for row := 0; row < available; row++ {
 		if line := start + row; line < len(desc) {
@@ -1276,32 +1250,17 @@ func (m *model) readOnlyDescriptionScrollLimit() int {
 	if m.editor == nil {
 		return 0
 	}
+	w, _ := m.viewportSize()
+	var layout taskDetailDescriptionLayout
 	if m.compactDetail() {
-		w, _ := m.viewportSize()
-		descriptionRows := m.compactDescriptionRows()
-		lines := wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, w-4)
-		if len(lines) > descriptionRows {
-			lines = wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, max(1, w-6))
-		}
-		return max(0, len(lines)-descriptionRows)
+		layout = m.compactTaskDescriptionLayout(w-4, m.detailTextHeight())
+	} else {
+		layout = m.taskDetailDescriptionLayout(w-4, m.detailTextHeight())
 	}
-	w, h := m.viewportSize()
-	textW := w - 4
-	contentH := max(4, h-3)
-	topH := m.detailPaneTop()
-	textH := max(4, contentH-topH) - 2
-	precedingLines := 11
-	if m.editor.id == 0 {
-		precedingLines--
-	} else if textH >= 12 && !m.editor.isPickerMode() {
-		precedingLines++
+	if layout.rows == 0 {
+		return 0
 	}
-	available := max(1, textH-precedingLines)
-	lines := wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, textW)
-	if len(lines) > available {
-		lines = wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, max(1, textW-2))
-	}
-	return max(0, len(lines)-available)
+	return max(0, len(layout.lines)-layout.rows)
 }
 
 func (m *model) editorDescriptionText(line descriptionLine) string {

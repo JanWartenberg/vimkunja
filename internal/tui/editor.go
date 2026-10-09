@@ -978,7 +978,17 @@ func (m *model) detailFieldsFor(compact bool) []editorField {
 }
 
 func (m *model) compactDetail() bool {
-	return m.height >= 10 && m.detailTextHeight() < 14
+	return m.height >= 10 && m.compactDetailAtHeight(m.detailTextHeight())
+}
+
+func (m *model) compactDetailAtHeight(textH int) bool {
+	// The regular document needs three Description rows after its metadata
+	// and, for existing Tasks, the identifier and pinned Comments entry.
+	minimumRows := 13
+	if m.editor != nil && m.editor.id != 0 {
+		minimumRows = 17
+	}
+	return textH < minimumRows
 }
 
 func (m *model) detailTextHeight() int {
@@ -1025,8 +1035,14 @@ func (m *model) ensureDetailFieldVisible() {
 	if row < m.editor.detailScroll {
 		m.editor.detailScroll = row
 	}
-	if row >= m.editor.detailScroll+bodyRows {
-		m.editor.detailScroll = row - bodyRows + 1
+	lastRow := row
+	if m.editor.field == fieldDescription {
+		// Keep the body reachable even while metadata is expanded; selecting
+		// only its heading would leave an invisible inner scroll viewport.
+		lastRow += min(m.compactDescriptionRows(), max(0, bodyRows-1))
+	}
+	if lastRow >= m.editor.detailScroll+bodyRows {
+		m.editor.detailScroll = lastRow - bodyRows + 1
 	}
 	m.editor.detailScroll = clamp(m.editor.detailScroll, 0, m.detailScrollLimit())
 }

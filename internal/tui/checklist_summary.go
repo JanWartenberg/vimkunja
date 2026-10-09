@@ -120,6 +120,7 @@ func descriptionViewportStart(lines []descriptionLine, rows, scroll, cursorRow i
 // content. The next editing or navigation action resumes source-cursor tracking.
 func (m *model) scrollDescriptionViewport(delta int) {
 	e := m.editor
+	m.ensureDetailFieldVisible() // Outer paging may have hidden the Description body.
 	w, _ := m.viewportSize()
 	var lines []descriptionLine
 	var rows, start int
@@ -127,18 +128,8 @@ func (m *model) scrollDescriptionViewport(delta int) {
 		layout := m.taskDetailDescriptionLayout(w-4, m.detailTextHeight())
 		lines, rows, start = layout.lines, layout.rows, layout.start
 	} else {
-		width := w - 4
-		rows = m.compactDescriptionRows()
-		if e.descriptionActive && m.detailTextHeight() < 12 {
-			rows = max(1, m.detailTextHeight()-2)
-		} else {
-			width -= 2
-		}
-		lines = wrapTaskDescriptionForEditor(e, e.draft.Description, width)
-		if len(lines) > rows {
-			lines = wrapTaskDescriptionForEditor(e, e.draft.Description, max(1, width-2))
-		}
-		start = e.descScroll
+		layout := m.compactTaskDescriptionLayout(w-4, m.detailTextHeight())
+		lines, rows, start = layout.lines, layout.rows, layout.start
 	}
 	e.descScroll = clamp(start+delta, 0, max(0, len(lines)-rows))
 	e.descViewportScroll = true

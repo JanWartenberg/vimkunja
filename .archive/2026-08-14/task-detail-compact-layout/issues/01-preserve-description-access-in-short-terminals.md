@@ -23,3 +23,11 @@
 ## Further context
 
 The current Task Detail Pane can display only fixed fields on short terminals, leaving no visible Description rows. The scrollbar work makes the missing Description area more apparent but does not define the compact-layout behavior.
+
+## Regression correction — 2026-10-09
+
+The original 12-row threshold left existing Tasks with zero Description rows at 12 and 14 content rows. Compact rendering and navigation now share a capacity-based threshold: fewer than 17 content rows for existing Tasks, fewer than 13 for new Tasks, retaining at least three Description rows at the transition. This supersedes the threshold in the original acceptance criteria above.
+
+Selecting Description also reveals its body when More fields is expanded. Rendering, cursor placement, scroll limits and percentage feedback share the same wrapped Description geometry, including checklist summaries and the tiny focused workspace. HTML end-scroll reaches the actual last projected row. Unit regressions cover the affected heights, activation, expanded metadata and visible scroll movement; automated tests do not claim native Windows-terminal acceptance.
+
+Manual acceptance — 2026-10-09: Jan verified the corrected layout in Windows. Description is visible, and switching between Description and collapsed/expanded metadata feels right. This acceptance covers the short Task Detail regression, not all Windows-terminal behavior.

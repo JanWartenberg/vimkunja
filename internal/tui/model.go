@@ -1853,12 +1853,6 @@ func (m *model) editorCursor() *tea.Cursor {
 	if m.editor.mode == editorNormal && m.editor.field != fieldDescription && m.editor.field != fieldTitle {
 		return nil
 	}
-	// At the smallest regular Detail height, metadata and the pinned Comments
-	// entry consume every Description body row. Do not position a block cursor
-	// on the divider below an invisible Description.
-	if m.editor.mode == editorNormal && m.editor.field == fieldDescription && m.editor.id != 0 && m.detailTextHeight() == 12 {
-		return nil
-	}
 	if m.editor.mode == editorNormal && m.editor.field == fieldDescription && m.compactDetail() && !m.compactDescriptionCursorRendered() {
 		return nil
 	}
@@ -1972,23 +1966,9 @@ func (m *model) compactEditorCursorPosition(w, h, topH int) (int, int) {
 }
 
 func (m *model) compactDescriptionCursorPosition(w, h, topH, row int) (int, int) {
-	textW := w - 4
-	description := wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, textW)
-	descriptionRows := m.compactDescriptionRows()
-	if len(description) > descriptionRows {
-		description = wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, max(1, textW-2))
-	}
-	start := clamp(m.editor.descScroll, 0, max(0, len(description)-descriptionRows))
-	cursor := clamp(m.editor.cursor, 0, m.editor.fieldRuneLen())
-	lineIndex, column := 0, 0
-	for i, line := range description {
-		if cursor >= line.start && cursor <= line.end {
-			lineIndex, column = i, cursor-line.start
-			break
-		}
-	}
-	visibleLine := clamp(lineIndex-start, 0, descriptionRows-1)
-	return clamp(2+column, 0, w-1), clamp(topH+4+row-m.editor.detailScroll+visibleLine, 0, h-1)
+	layout := m.compactTaskDescriptionLayout(w-4, m.detailTextHeight())
+	visibleLine := clamp(layout.cursorRow-layout.start, 0, layout.rows-1)
+	return clamp(4+layout.cursorColumn, 0, w-1), clamp(topH+4+row-m.editor.detailScroll+visibleLine, 0, h-1)
 }
 
 func (m *model) compactDescriptionCursorRendered() bool {
@@ -1997,21 +1977,8 @@ func (m *model) compactDescriptionCursorRendered() bool {
 		return false
 	}
 	w, _ := m.viewportSize()
-	descriptionRows := m.compactDescriptionRows()
-	description := wrapTaskDescriptionForEditor(e, e.draft.Description, w-4)
-	if len(description) > descriptionRows {
-		description = wrapTaskDescriptionForEditor(e, e.draft.Description, max(1, w-6))
-	}
-	cursor := clamp(e.cursor, 0, e.fieldRuneLen())
-	lineIndex := 0
-	for index, line := range description {
-		if cursor >= line.start && cursor <= line.end {
-			lineIndex = index
-			break
-		}
-	}
-	start := clamp(e.descScroll, 0, max(0, len(description)-descriptionRows))
-	if e.descViewportScroll && (lineIndex < start || lineIndex >= start+descriptionRows) {
+	layout := m.compactTaskDescriptionLayout(w-4, m.detailTextHeight())
+	if layout.cursorRow < layout.start || layout.cursorRow >= layout.start+layout.rows {
 		return false
 	}
 	descriptionRow := 0
@@ -2025,7 +1992,7 @@ func (m *model) compactDescriptionCursorRendered() bool {
 		descriptionRow++
 	}
 	bodyRows := max(1, m.detailTextHeight()-2-compactPinnedCommentRows(m.detailTextHeight(), e.id != 0))
-	cursorRow := descriptionRow + 1 + lineIndex - start
+	cursorRow := descriptionRow + 1 + layout.cursorRow - layout.start
 	return cursorRow >= e.detailScroll && cursorRow < e.detailScroll+bodyRows
 }
 
@@ -2035,13 +2002,40 @@ type taskDetailDescriptionLayout struct {
 	scrollable           bool
 }
 
+// compactTaskDescriptionLayout is shared by rendering, scrolling and cursor
+// placement so wrapped text and synthetic checklist rows have one geometry.
+func (m *model) compactTaskDescriptionLayout(textW, textH int) taskDetailDescriptionLayout {
+	e := m.editor
+	staticRows := len(m.detailFieldsFor(true))
+	pinnedRows := compactPinnedCommentRows(textH, e.id != 0)
+	if e.id != 0 {
+		staticRows--
+	}
+	rows := compactDescriptionRows(textH-pinnedRows, staticRows)
+	descriptionRow := 2 + staticRows - e.detailScroll
+	width := max(1, textW-2) // Description indentation.
+	if e.descriptionActive && textH < 12 {
+		rows, width = max(1, textH-2), max(1, textW)
+		descriptionRow = 2
+	}
+	scrollable := len(wrapTaskDescriptionForEditor(e, e.draft.Description, width)) > rows
+	if scrollable {
+		width = max(1, width-2) // Scrollbar rail.
+	}
+	scroll := 0
+	if e.field == fieldDescription && (e.descriptionActive || e.descViewportScroll || descriptionHasHTML(e.draft.Description)) {
+		scroll = e.descScroll
+	}
+	layout := layoutTaskDescription(e.draft.Description, width, rows, scroll, e.cursor, e)
+	if e.field == fieldDescription && e.descriptionActive && !descriptionHasHTML(e.draft.Description) && !e.descViewportScroll {
+		layout.start = descriptionViewportStart(layout.lines, rows, scroll, layout.cursorRow, e.mode == editorNormal && e.cursor == e.fieldRuneLen())
+	}
+	return taskDetailDescriptionLayout{multilineTextLayout: layout, rows: rows, descriptionRow: descriptionRow, scrollable: scrollable}
+}
+
 func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescriptionLayout {
 	e := m.editor
-	constrainedRegular := e.id != 0 && textH < 14
-	descriptionRow := 1 // Detail header.
-	if !constrainedRegular {
-		descriptionRow++ // Header separator.
-	}
+	descriptionRow := 2 // Detail header and separator.
 	descriptionRow += 4 // Project, Title, Priority, Due Date.
 	descriptionRow += 2 // Labels and Workflow Status.
 	if e.id != 0 {
@@ -2050,9 +2044,7 @@ func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescript
 			descriptionRow++ // Database identifier.
 		}
 	}
-	if !constrainedRegular {
-		descriptionRow++ // Description separator.
-	}
+	descriptionRow++ // Description separator.
 	descriptionRow++ // Description label.
 	rows := availableDetailDescriptionRows(textH, descriptionRow, e.id != 0)
 	text := e.draft.Description
@@ -2306,19 +2298,18 @@ func (m *model) focusedScrollPosition() (int, int, bool) {
 			break
 		}
 		if m.compactDetail() {
-			if m.editor.field == fieldDescription && m.editor.descriptionActive {
-				limit := m.readOnlyDescriptionScrollLimit()
-				if !descriptionHasHTML(m.editor.draft.Description) {
-					w, _ := m.viewportSize()
-					rows := m.compactDescriptionRows()
-					lines := wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, w-4)
-					if len(lines) > rows {
-						lines = wrapTaskDescriptionForEditor(m.editor, m.editor.draft.Description, max(1, w-6))
-					}
-					limit = max(0, len(lines)-rows)
+			if m.editor.field == fieldDescription && (m.editor.descriptionActive || m.editor.descViewportScroll || descriptionHasHTML(m.editor.draft.Description)) {
+				layout := m.compactTaskDescriptionLayout(w-4, m.detailTextHeight())
+				limit := max(0, len(layout.lines)-layout.rows)
+				bodyEnd := m.detailTextHeight() - compactPinnedCommentRows(m.detailTextHeight(), m.editor.id != 0)
+				if m.editor.descriptionActive && m.detailTextHeight() < 12 {
+					bodyEnd = m.detailTextHeight()
 				}
-				if limit > 0 {
-					return clamp(m.editor.descScroll, 0, limit), limit, true
+				if limit > 0 && layout.descriptionRow < bodyEnd && layout.descriptionRow+layout.rows > 2 {
+					return layout.start, limit, true
+				}
+				if m.editor.descriptionActive && m.detailTextHeight() < 12 {
+					break // The focused Description replaces the outer document.
 				}
 			}
 			if limit := m.detailScrollLimit(); limit > 0 {
@@ -2332,7 +2323,7 @@ func (m *model) focusedScrollPosition() (int, int, bool) {
 		detailH := max(4, contentH-topH)
 		textH := detailH - 2
 		layout := m.taskDetailDescriptionLayout(w-4, textH)
-		if limit := len(layout.lines) - layout.rows; limit > 0 {
+		if limit := len(layout.lines) - layout.rows; layout.rows > 0 && limit > 0 {
 			return layout.start, limit, true
 		}
 	case paneHelp, paneInfo:
