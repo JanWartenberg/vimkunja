@@ -35,11 +35,21 @@ const (
 	ToggleQuote
 	WrapQuote
 	UnwrapQuote
+	CreateCode
+	EscapeCodeMarker
+	CodeBefore
+	CodeAfter
+	InsertTab
+	IndentCode
+	OutdentCode
+	Retab
+	RetabAll
 )
 
 type Action struct {
-	Kind ActionKind
-	Text string
+	Kind            ActionKind
+	Text            string
+	Tabstop, Indent int
 }
 
 var ErrConfirmation = errors.New("Preserved content would change; confirm this operation")
@@ -453,6 +463,9 @@ func (d *Draft) After(a Anchor) Anchor {
 }
 func (d *Draft) edit(a Action) error {
 	switch a.Kind {
+
+	case EscapeCodeMarker, CreateCode, CodeBefore, CodeAfter, InsertTab, IndentCode, OutdentCode, Retab, RetabAll:
+		return d.editCode(a)
 	case IndentList, OutdentList:
 		return d.moveList(a.Kind)
 	case ConvertList:
@@ -496,6 +509,9 @@ func (d *Draft) edit(a Action) error {
 	b := findNode(d.state.nodes, loc.Block)
 	if b == nil {
 		return ErrStructure
+	}
+	if b.Tag == "pre" && (a.Kind == Split || a.Kind == HardBreak || a.Kind == OpenAbove || a.Kind == OpenBelow || a.Kind == DeleteBlock || (a.Kind == Delete || a.Kind == Backspace) && n.Kind != Opaque) {
+		return d.editCodeSource(b, a)
 	}
 	if isList(*b) && len(b.Children) == 0 {
 		if a.Kind == Split {
@@ -610,9 +626,6 @@ func (d *Draft) edit(a Action) error {
 				}
 			}
 		}
-		if b.Tag == "pre" {
-			return d.edit(Action{Kind: Insert, Text: "\n"})
-		}
 		left, right, err := splitAt(b.Children, d.state.cursor)
 		if err != nil {
 			if n.ID == b.ID && len(b.Children) == 0 {
@@ -641,33 +654,6 @@ func (d *Draft) edit(a Action) error {
 		d.state.cursor = d.first([]Node{(*list)[i+1]})
 		return nil
 	case OpenBelow, OpenAbove:
-		if b.Tag == "pre" && n.Kind != Text {
-			target := b
-			if len(b.Children) > 0 && b.Children[0].Tag == "code" {
-				target = &b.Children[0]
-			}
-			if len(target.Children) != 0 {
-				return ErrStructure
-			}
-			target.Children = []Node{d.newNode(Node{Kind: Text})}
-			n = &target.Children[0]
-			d.state.cursor = Anchor{n.ID, 0}
-		}
-		if b.Tag == "pre" && n.Kind == Text {
-			start := strings.LastIndex(n.Text[:d.state.cursor.Offset], "\n") + 1
-			end := len(n.Text)
-			if j := strings.Index(n.Text[d.state.cursor.Offset:], "\n"); j >= 0 {
-				end = d.state.cursor.Offset + j
-			}
-			if a.Kind == OpenAbove {
-				d.state.cursor.Offset = start
-				err = d.edit(Action{Kind: Insert, Text: "\n"})
-				d.state.cursor.Offset = start
-				return err
-			}
-			d.state.cursor.Offset = end
-			return d.edit(Action{Kind: Insert, Text: "\n"})
-		}
 		list, i := nodeList(&d.state.nodes, b.ID)
 		if a.Kind == OpenBelow {
 			i++
@@ -692,19 +678,6 @@ func (d *Draft) edit(a Action) error {
 		}
 		return nil
 	case DeleteBlock:
-		if b.Tag == "pre" && n.Kind == Text && n.Text != "" {
-			start := strings.LastIndex(n.Text[:d.state.cursor.Offset], "\n") + 1
-			end := len(n.Text)
-			if start == end && start > 0 && n.Text[start-1] == '\n' {
-				start--
-			}
-			if j := strings.Index(n.Text[start:], "\n"); j >= 0 {
-				end = start + j + 1
-			}
-			n.Text = n.Text[:start] + n.Text[end:]
-			d.state.cursor.Offset = min(start, len(n.Text))
-			return nil
-		}
 		list, i := nodeList(&d.state.nodes, b.ID)
 		*list = slices.Delete(*list, i, i+1)
 		d.state.cursor = d.first(d.state.nodes)
@@ -894,19 +867,15 @@ func (d *Draft) LineBoundary(end bool) Anchor {
 	if b == nil {
 		return d.state.cursor
 	}
-	if b.Tag == "pre" && loc.Node.Kind == Text {
-		value := loc.Node.Text
-		off := d.state.cursor.Offset
-		start := strings.LastIndex(value[:off], "\n") + 1
-		stop := len(value)
-		if j := strings.Index(value[off:], "\n"); j >= 0 {
-			stop = off + j
-		}
+	if b.Tag == "pre" {
+		source := codeSource(b)
+		start, stop := codeLineBounds(source, d.codeOffset(b, d.state.cursor))
 		if end {
-			return Anchor{loc.Node.ID, stop}
+			return d.codeAnchor(b, stop, d.state.cursor.Node)
 		}
-		return Anchor{loc.Node.ID, start}
+		return d.codeAnchor(b, start, d.state.cursor.Node)
 	}
+
 	var leaves []Node
 	var collect func([]Node)
 	collect = func(ns []Node) {
@@ -932,4 +901,14 @@ func (d *Draft) LineBoundary(end bool) Anchor {
 		}
 	}
 	return Anchor{n.ID, off}
+}
+
+// InCode reports the cursor's logical block, including an empty Code wrapper.
+func (d *Draft) InCode() bool {
+	loc, err := d.live().ResolveAnchor(d.state.cursor)
+	if err != nil {
+		return false
+	}
+	b := findNode(d.state.nodes, loc.Block)
+	return b != nil && b.Tag == "pre" && b.Kind == Element
 }

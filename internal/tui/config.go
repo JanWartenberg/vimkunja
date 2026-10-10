@@ -33,13 +33,15 @@ type ConfigOverrides struct {
 func LoadUserConfig(overrides ConfigOverrides) (Config, []string, error) {
 	leader, ctrlW := DefaultLeaderTimeout, DefaultCtrlWTimeout
 	warnings := []string{}
+	code := Config{Tabstop: 4, IndentStep: 4, LiteralTabAlias: "ctrl+q"}
 
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		warnings = append(warnings, fmt.Sprintf("cannot determine user config directory: %v", err))
 	} else {
 		path := filepath.Join(configDir, "vimkunja", "config.toml")
-		fileLeader, fileCtrlW, fileWarnings := loadTOMLConfig(path)
+		fileLeader, fileCtrlW, fileCode, fileWarnings := loadTOMLConfig(path)
+		code = fileCode
 		warnings = append(warnings, fileWarnings...)
 		if fileLeader != nil {
 			leader = *fileLeader
@@ -64,21 +66,23 @@ func LoadUserConfig(overrides ConfigOverrides) (Config, []string, error) {
 		ctrlW = value
 	}
 
-	return Config{LeaderTimeout: leader, CtrlWTimeout: ctrlW, StartupWarnings: warnings}, warnings, nil
+	code.LeaderTimeout, code.CtrlWTimeout, code.StartupWarnings = leader, ctrlW, warnings
+	return code, warnings, nil
 }
 
-func loadTOMLConfig(path string) (*time.Duration, *time.Duration, []string) {
+func loadTOMLConfig(path string) (*time.Duration, *time.Duration, Config, []string) {
+	code := Config{Tabstop: 4, IndentStep: 4, LiteralTabAlias: "ctrl+q"}
 	contents, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil, nil
+		return nil, nil, code, nil
 	}
 	if err != nil {
-		return nil, nil, []string{fmt.Sprintf("cannot read config file %s: %v", path, err)}
+		return nil, nil, code, []string{fmt.Sprintf("cannot read config file %s: %v", path, err)}
 	}
 
 	var document map[string]interface{}
 	if _, err := toml.Decode(string(contents), &document); err != nil {
-		return nil, nil, []string{fmt.Sprintf("cannot parse config file %s: %v", path, err)}
+		return nil, nil, code, []string{fmt.Sprintf("cannot parse config file %s: %v", path, err)}
 	}
 
 	warnings := []string{}
@@ -123,12 +127,28 @@ func loadTOMLConfig(path string) (*time.Duration, *time.Duration, []string) {
 				if duration != nil {
 					ctrlW = duration
 				}
+			case "tabstop", "indent_step":
+				number, ok := value.(int64)
+				if !ok || number <= 0 || key == "indent_step" && number != 2 && number != 4 || int64(int(number)) != number {
+					warnings = append(warnings, fmt.Sprintf("config file %s: tui.%s must be a positive integer (indent_step: 2 or 4)", path, key))
+				} else if key == "tabstop" {
+					code.Tabstop = int(number)
+				} else {
+					code.IndentStep = int(number)
+				}
+			case "literal_tab_alias":
+				alias, ok := value.(string)
+				if !ok || alias != "" && alias != "ctrl+q" && alias != "ctrl+b" {
+					warnings = append(warnings, fmt.Sprintf("config file %s: tui.literal_tab_alias must be ctrl+q, ctrl+b or empty", path))
+				} else {
+					code.LiteralTabAlias = alias
+				}
 			default:
 				warnings = append(warnings, fmt.Sprintf("config file %s: unknown setting tui.%s ignored", path, key))
 			}
 		}
 	}
-	return leader, ctrlW, warnings
+	return leader, ctrlW, code, warnings
 }
 
 func configDuration(path, key string, value interface{}) (*time.Duration, []string) {

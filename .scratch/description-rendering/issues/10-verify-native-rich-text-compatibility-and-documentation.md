@@ -46,3 +46,7 @@ Use the accepted product rules, including the smallest reliable Opaque protectio
 ### 2026-10-05 — implementation preparation
 
 Created after the user's rule-card review and acceptance of the current product-rule set. Remaining uncertainty is implementation and evidence work, not a new product questionnaire. Dependencies order the safe rollout; synthetic examples never stand in for real terminal/VOA execution.
+
+### 2026-10-10 — Ticket 08 terminal evidence handoff
+
+Synthetic Code tests cover grouped Text, ü/Ü, ]Space/[Space, backtick chunks, Paste/clipboard CRLF and literal-Tab prefix dispatch. No real German-layout or Windows decoder capture has been performed. Record actual AltGr-8/9, dead-key three/four backticks, ü/Ü, Ctrl+V interception and Ctrl+Q/Ctrl+B events and interaction outcomes here before terminal acceptance. Ctrl+Q and Ctrl+B have no existing application binding conflicts in Code Insert; terminal flow-control/interception remains an environment check. `tui.literal_tab_alias` defaults to `ctrl+q`, accepts `ctrl+b` or empty; no OS detection.

@@ -67,18 +67,24 @@ func (d *Draft) selectionRange() (int, int, map[ID]extent) {
 	if s.Blocks {
 		a, b := ext[s.Start.Node], ext[s.End.Node]
 		if a.block == b.block && d.codeLineSelection() {
-			// Code line selections stay within source text, including blank lines.
-			n := findNode(d.state.nodes, s.Start.Node)
-			if n != nil && n.Kind == Text {
-				lo = ext[n.ID].start + strings.LastIndex(n.Text[:lo-ext[n.ID].start], "\n") + 1
-				end := hi - ext[n.ID].start
-				if j := strings.Index(n.Text[end:], "\n"); j >= 0 {
-					hi = ext[n.ID].start + end + j + 1
-				} else {
-					hi = ext[n.ID].end
+			n := findNode(d.state.nodes, s.codeBlock)
+			if n != nil {
+				source := codeSource(n)
+				base := ext[n.ID].start
+				start, stop := codeLineBounds(source, lo-base)
+				_, stop = codeLineBounds(source, hi-base)
+				lo = base + start
+				if strings.HasPrefix(source[stop:], "\r\n") {
+					stop += 2
+				} else if strings.HasPrefix(source[stop:], "\n") {
+					stop++
 				}
-				if lo == hi && lo > ext[n.ID].start && n.Text[len(n.Text)-1] == '\n' {
+				hi = base + stop
+				if lo == hi && lo > base && strings.HasSuffix(source, "\n") {
 					lo--
+					if lo > base && source[lo-base-1] == '\r' {
+						lo--
+					}
 				}
 				return lo, hi, ext
 			}
@@ -387,6 +393,18 @@ func (d *Draft) deleteSelection(a Action) error {
 	lo, hi, ext := d.selectionRange()
 	blocks := d.state.selection.Blocks
 	codeLines := d.codeLineSelection()
+	if codeLines {
+		b := findNode(d.state.nodes, d.state.selection.codeBlock)
+		if b == nil {
+			return ErrStructure
+		}
+		text := ""
+		if a.Kind == ReplaceSelection {
+			text = a.Text
+		}
+		d.state.selection = nil
+		return d.applyCodeEdits(b, []codeEdit{{lo - ext[b.ID].start, hi - ext[b.ID].start, text}})
+	}
 	var remove func([]Node) []Node
 	remove = func(ns []Node) []Node {
 		var out []Node

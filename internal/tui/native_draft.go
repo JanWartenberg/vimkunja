@@ -45,6 +45,10 @@ func (m *model) applyNative(a description.Action, confirmed, insert bool) {
 	}
 	e.descriptionActive = true
 	e.nativePendingInsert = false
+	if insert && (a.Kind == description.Split || a.Kind == description.OpenBelow || a.Kind == description.OpenAbove || a.Kind == description.CodeBefore || a.Kind == description.CodeAfter) {
+		e.nativeTrigger = e.nativeDraft.CodeMarkerParagraph(true)
+		e.nativeCodeEscape = false
+	}
 	if insert {
 		e.mode = editorInsert
 	}
@@ -78,6 +82,8 @@ func (m *model) nativeEditKey(key string) bool {
 		}
 
 		e.mode = editorInsert
+		e.nativeCodeEscape = false
+		e.nativeTrigger = d.CodeMarkerParagraph(true)
 		e.nativeDraft.InsertionView(e.nativeDescription, true)
 		e.descriptionActive = true
 		d.UpdateView(e.nativeDescription)
@@ -155,27 +161,67 @@ func (m *model) nativeEditKey(key string) bool {
 }
 func (m *model) updateNativeInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
-	switch key := k.String(); key {
+	key := k.String()
+	if e.nativeLiteralTab {
+		e.nativeLiteralTab = false
+		if key == "tab" {
+			m.nativeInsertText("\t")
+			return m, nil
+		}
+		if key != "esc" {
+			m.recordError(fmt.Errorf("Literal Tab prefix requires Tab; Esc cancels"))
+			return m, nil
+		}
+	}
+	if e.nativeDraft.InCode() && (key == "ctrl+v" || key == m.codeConfig.LiteralTabAlias && key != "") {
+		e.nativeLiteralTab = true
+		m.toast = "LITERAL TAB · Tab insert · Esc cancel"
+		return m, nil
+	}
+	switch key {
 	case "esc":
+		e.nativeCodeEscape = false
+		e.nativeTrigger = false
 		e.mode = editorNormal
 		e.nativeDraft.InsertionView(e.nativeDescription, false)
 		return m, nil
 	case "ctrl+v":
 		return m, m.pasteClipboard(e)
 	case "enter":
+		e.nativeCodeEscape = false
+		if e.nativeTrigger && e.nativeDraft.CodeMarkerParagraph(false) {
+			e.nativeTrigger = false
+			m.applyNative(description.Action{Kind: description.CreateCode, Text: "marker"}, false, true)
+			break
+		}
+		e.nativeTrigger = false
 		if e.nativeDraft.EmptyListFill() {
 			e.mode = editorNormal
 			e.nativeDraft.InsertionView(e.nativeDescription, false)
 			break
 		}
 		m.applyNative(description.Action{Kind: description.Split}, false, true)
+	case "tab":
+		e.nativeCodeEscape = false
+		e.nativeTrigger = false
+		if e.nativeDraft.InCode() {
+			m.applyNative(description.Action{Kind: description.InsertTab, Tabstop: m.codeConfig.Tabstop}, false, true)
+		} else {
+			m.nativeInsertText("\t")
+		}
 	case "shift+enter":
+		e.nativeCodeEscape = false
+		e.nativeTrigger = false
 		m.applyNative(description.Action{Kind: description.HardBreak}, false, true)
 	case "backspace":
+		e.nativeCodeEscape = false
 		m.applyNative(description.Action{Kind: description.Backspace}, false, true)
 	case "delete":
+		e.nativeCodeEscape = false
 		m.applyNative(description.Action{Kind: description.Delete}, false, true)
 	case "left", "right", "up", "down", "home", "end":
+		e.nativeCodeEscape = false
+		e.nativeTrigger = false
 		if key == "home" || key == "end" {
 			_ = e.nativeDraft.SetCursor(e.nativeDraft.LineBoundary(key == "end"))
 			e.nativeDraft.UpdateView(e.nativeDescription)
@@ -208,6 +254,19 @@ func (m *model) updateNativeInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 func (m *model) nativeInsertText(text string) {
+	e := m.editor
+	if e.nativeTrigger && e.nativeDraft.CodeMarkerParagraph(true) && strings.HasPrefix(text, "\\`") {
+		e.nativeTrigger = false
+		m.applyNative(description.Action{Kind: description.Insert, Text: text[1:]}, false, true)
+		return
+	}
+	escaped := e.nativeCodeEscape
+	e.nativeCodeEscape = e.nativeTrigger && e.nativeDraft.CodeMarkerParagraph(true) && text == "\\"
+	if escaped && strings.HasPrefix(text, "`") {
+		e.nativeTrigger = false
+		m.applyNative(description.Action{Kind: description.EscapeCodeMarker, Text: text}, false, true)
+		return
+	}
 	kind := description.Insert
 	if m.editor.nativeDraft.Selection() != nil {
 		kind = description.ReplaceSelection
@@ -237,6 +296,14 @@ func (m *model) prepareNativeSave() bool {
 }
 func (m *model) nativePaletteKey(key string) bool {
 	e := m.editor
+	if m.focus == paneDetail && e != nil && e.field == fieldDescription && e.mode == editorNormal && key == "c" && e.draft.Description == "" {
+		if e.nativeDraft == nil {
+			e.nativeDraft = description.NewDraft(description.Parse(""))
+			e.nativeDescription = e.nativeDraft.View(description.ViewOptions{ASCII: tuiTheme.nativeASCII, Tabstop: e.nativeTabstop, OpaqueOpen: tuiTheme.opaqueOpen, OpaqueClose: tuiTheme.opaqueClose})
+		}
+		m.applyNative(description.Action{Kind: description.CreateCode}, false, true)
+		return true
+	}
 	if m.focus != paneDetail || e == nil || e.field != fieldDescription || !e.descriptionActive || e.descriptionView() == nil {
 		return false
 	}
@@ -259,6 +326,14 @@ func (m *model) nativePaletteKey(key string) bool {
 		return true
 	}
 	if sel != nil && sel.Blocks {
+		if e.nativeDraft.CodeSelection() && (key == "x" || key == "c") {
+			kind := description.IndentCode
+			if key == "x" {
+				kind = description.OutdentCode
+			}
+			m.applyNative(description.Action{Kind: kind, Tabstop: m.codeConfig.Tabstop, Indent: m.codeConfig.IndentStep}, false, false)
+			return true
+		}
 		actions := map[string]description.ActionKind{"k": description.OutdentList, "l": description.IndentList, "q": description.UnwrapQuote, "w": description.WrapQuote}
 		if action, ok := actions[key]; ok {
 			m.applyNative(description.Action{Kind: action}, false, false)
@@ -266,6 +341,10 @@ func (m *model) nativePaletteKey(key string) bool {
 		}
 	}
 	if sel == nil {
+		if key == "c" {
+			m.applyNative(description.Action{Kind: description.CreateCode}, false, true)
+			return true
+		}
 		if key == "q" {
 			m.applyNative(description.Action{Kind: description.ToggleQuote}, false, false)
 			return true
@@ -293,9 +372,9 @@ func (m *model) nativePalette() string {
 		if !s.Blocks {
 			return "FORMAT  b bold · i italic · u underline · s strike · 0 clear · o projects"
 		}
-		return "STRUCTURE  q/w quote · k/l list · x/c code (08) · o projects"
+		return "STRUCTURE  q/w quote · k/l list · x/c code outdent/indent · o projects"
 	}
-	return "BLOCK  1/2/3 heading · 0 paragraph · u/n/x list · q quote · o projects"
+	return "BLOCK  1/2/3 heading · 0 paragraph · u/n/x list · q quote · c code · o projects"
 }
 func selectDescriptionBlockCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionView() != nil {
@@ -360,6 +439,12 @@ func (m *model) nativeModeHint() string {
 		}
 		return label + " · Space format · d delete · o swap · Esc cancel"
 	}
+	if e.mode == editorInsert && e.nativeDraft.InCode() {
+		return "INSERT CODE · Tab spaces · Ctrl+V Tab literal · Esc normal"
+	}
+	if e.nativeDraft.InCode() {
+		return "CODE · o/O source line · ü/Ü paragraph · ]Space/[Space · V lines"
+	}
 	if e.mode == editorInsert {
 		return "INSERT · Esc normal · Enter paragraph · Shift+Enter break"
 	}
@@ -391,4 +476,38 @@ func (m *model) nativePaletteSecondary() bool {
 }
 func (m *model) nativePaletteRow(w int) string {
 	return renderFooterHints(max(1, w), "", strings.Split(m.nativePalette(), " · "), true)
+}
+
+func (m *model) nativePasteText(text string) string {
+	e := m.editor
+	if m.focus == paneDetail && e != nil && e.field == fieldDescription && e.mode == editorInsert && e.nativeDraft != nil {
+		if e.nativeDraft.InCode() {
+			return text
+		}
+	}
+	return normalizePastedText(text)
+}
+
+func retabDescriptionCommand(m *model, args []string) (tea.Model, tea.Cmd) {
+	return m.retabDescription(args, false)
+}
+func retabAllDescriptionCommand(m *model, args []string) (tea.Model, tea.Cmd) {
+	return m.retabDescription(args, true)
+}
+func (m *model) retabDescription(args []string, all bool) (tea.Model, tea.Cmd) {
+	e := m.editor
+	if len(args) != 0 {
+		m.recordError(fmt.Errorf("Retab takes no arguments"))
+		return m, nil
+	}
+	if m.focus != paneDetail || e == nil || e.field != fieldDescription || e.descriptionView() == nil || e.nativePending != nil {
+		m.recordError(fmt.Errorf("Retab requires a Native Description without a pending action"))
+		return m, nil
+	}
+	kind := description.Retab
+	if all {
+		kind = description.RetabAll
+	}
+	m.applyNative(description.Action{Kind: kind, Tabstop: m.codeConfig.Tabstop}, false, false)
+	return m, nil
 }

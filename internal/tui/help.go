@@ -86,6 +86,7 @@ var helpLines = []string{
 	"  y/p, u/Ctrl+R         Safe visible local register / paste; local draft Undo/Redo",
 	"  y/Enter, n/Esc        Confirm / cancel preserved-content changes",
 	"  :descriptionrecover  Confirm recovery of safe text from Blocked HTML",
+	"  :retab / :retaball   Tabs to spaces: current Code/lines or all Native text",
 	"  :descriptionclear    Confirm empty draft replacing Blocked HTML",
 	"  :descriptionreload   Explicitly reload current Task; discard complete draft",
 	"  Normal Space u/n/x/q  Toggle unordered/numbered/Checkbox list or local quote",

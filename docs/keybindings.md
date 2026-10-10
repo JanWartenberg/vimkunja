@@ -159,10 +159,10 @@ HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navi
 | `x` on a Checkbox-list entry | Toggle only that entry's checked state | Agreed |
 | `dd` | Delete the current logical Description block, including Native text and inline Opaque content, even on inline-atom focus; confirm the whole deletion if Opaque content is included. Inside nonempty Code delete only the source line; final nonempty line deletion keeps empty Code. Another dd deletes that empty block. Inside a Block quote delete the current child block and remove the quote after its final child. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `o` / `O` | Insert an empty paragraph after / before the current logical block;<br>inside a Code block insert a Code line, or inside a Block quote a same-depth quoted paragraph, below / above the current line; then enter Insert Mode | Agreed rich-text behavior |
-| Code Normal Mode: `ü` / `Ü` | Create a normal paragraph after / before the entire current Code block, move there and enter Insert Mode; preserve Code contents | Agreed; not implemented |
-| Code Normal Mode: `]`, then `Space` / `[`, then `Space` | Create a normal paragraph after / before the entire current Code block and move there in Normal Mode; `i` starts typing | Agreed; not implemented |
+| Code Normal Mode: `ü` / `Ü` | Create a normal paragraph after / before the entire current Code block, move there and enter Insert Mode; preserve Code contents | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
+| Code Normal Mode: `]`, then `Space` / `[`, then `Space` | Create a normal paragraph after / before the entire current Code block and move there in Normal Mode; `i` starts typing | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `:selectblock` | Explicitly select the entire current logical block in `VISUAL BLOCKS`, including a standalone Code block | Implemented (06); synthetic tests, practical terminal acceptance pending |
-| `:retab` / `:retaball` | Convert all Tabs to the next tabstop in the current Code block/selected Code lines, or all editable Description text including prose; preserve Opaque content. One Undo step; no V1 numeric arguments or bang variant. | Agreed; not implemented |
+| `:retab` / `:retaball` | Convert all Tabs to the next tabstop in the current Code block/selected Code lines, or all editable Description text including prose; preserve Opaque content. One Undo step; no V1 numeric arguments or bang variant. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end<br>of the current logical line | Implemented on Native content (06); delimiter editing follows in 09 |
 | `0` / `^` / `_` / `$` | Move to start / first nonblank / end of the current logical line | Implemented for native read/navigation (05) |
 | `w` / `b` / `e` / `ge` | Move by words across inline-format and Link boundaries; stop at blocks.<br>Disclosed editable delimiters are ordinary characters; protected markers consume no motion counts.<br>Each complete Opaque subtree is one word-motion unit for `w/b/e`. | Implemented for native read/navigation (05); word traversal follows semantic text across disclosed marks |
@@ -174,7 +174,7 @@ HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navi
 | `Space+0` | Convert current block to a paragraph | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Space+u/n/x` | Toggle current block between unordered, numbered, or Checkbox list<br>and a paragraph | Implemented (07); synthetic tests, practical terminal acceptance pending |
 | `Space+q` | Toggle the applicable local Quote layer; no implicit expansion to unselected blocks | Implemented (07); synthetic tests, practical terminal acceptance pending |
-| `Space+c` | Create Code block | Agreed; not implemented (08) |
+| `Space+c` | Create Code block | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `Space+o` | Toggle Projects Pane; never a Description formatting command | Agreed |
 | `Space+l` inside an existing link | Prompt with its current URL; link text remains ordinary Description text | Agreed design; practical evidence outstanding |
 | `Space+y` inside a link | Copy its destination URL to the system clipboard without opening it | Agreed |
@@ -183,7 +183,7 @@ HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navi
 
 | Binding | Action | Status |
 | --- | --- | --- |
-| Exactly three or four directly typed backticks in an empty paragraph, then `Enter` | Confirm and consume the trigger, create a structured Code block with protected triple-backtick fences, and enter its first empty Code line. Before Enter it remains ordinary text; paste, escaped markers, five backticks or additional characters do not trigger conversion. | Agreed; not implemented |
+| Exactly three or four directly typed backticks in an empty paragraph, then `Enter` | Confirm and consume the trigger, create a structured Code block with protected triple-backtick fences, and enter its first empty Code line. Before Enter it remains ordinary text; paste, escaped markers, five backticks or additional characters do not trigger conversion. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | Single-backtick Inline-Code editor syntax | Deliberately typed paired backticks create Native Code; escaped inner backticks are literal. Imported/pasted syntax stays literal; removal of Code formatting preserves text. | Agreed grammar; independent fixture evidence pending; not implemented |
 | Typed block-start `# `/`## `/`### `; `- `/`+ `/`* `/`1. ` | Create heading / list entry after the required space; escape the first marker to keep it literal | Agreed |
 | Typed dash-only line of at least three dashes | Create a horizontal rule | Agreed |
@@ -192,7 +192,7 @@ HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navi
 | `Shift+Enter` | Insert a hard line break inside the paragraph | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Enter` at end of a list entry | Add an entry of the same list type | Agreed |
 | `Enter` on an empty list entry | Leave the list and create a paragraph | Agreed |
-| Code Insert Mode: `Tab` / `Ctrl+V`, then `Tab` | Insert Spaces to the next tabstop / explicitly insert a literal Tab. Paste preserves Code Tabs and line endings. Ctrl+Q additional alias candidate, Ctrl+B configurable; final terminal/dispatch checks pending. | Agreed; not implemented |
+| Code Insert Mode: `Tab` / `Ctrl+V`, then `Tab` | Insert Spaces to the next tabstop / explicitly insert a literal Tab. Paste preserves Code Tabs and line endings. Ctrl+Q alias by default; tui.literal_tab_alias selects ctrl+b or disables it. Dispatch tested; real terminal checks pending. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `i` on an imported empty list fill target | Enter a nonpersisted input target; actual text creates the first entry. `i` then `Esc` leaves source unchanged. | Agreed; not implemented |
 
 ## Description Visual Mode
@@ -212,7 +212,7 @@ HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navi
 | Characterwise `v`: `Space+0` | Remove all inline formatting, including Links, while preserving text and blocks | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | Blockwise `V`: `Space+q/w` | Remove / add one quote layer on selected blocks; wrap selected siblings in one shared container, remove locally, and reject incompatible reduction atomically. Both retained Quote fragments keep known shared cite/data-comment-id references without extra confirmation for repeating them. Actual metadata loss on removal still confirms; unique/unknown attributes require lossless allocation. | Implemented (07); synthetic tests, practical terminal acceptance pending |
 | Blockwise `V`: `Space+k/l` | Decrease / increase list depth on selected entries, preserving subtrees, list kinds and Checkbox IDs/state. Normalize parent/child overlap; validate one sibling range atomically. If no unselected preceding sibling can receive an indent, reject the whole action. | Implemented (07); synthetic tests, practical terminal acceptance pending |
-| Blockwise `V`: `Space+x/c` | Remove up to one indent step from leading whitespace / prepend the Space step. Locally split an affected Tab when needed; preserve empty lines and all other Code contents. Step two/four Spaces, default four. | Agreed V1; config key and practical evidence pending |
+| Blockwise `V`: `Space+x/c` | Remove up to one indent step from leading whitespace / prepend the Space step. Locally split an affected Tab when needed; preserve empty lines and all other Code contents. Step two/four Spaces, default four; tui.indent_step independent of tui.tabstop. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `d` | Delete exactly the selected text; after `V`, delete complete selected logical blocks including inline Opaque content. Confirm the whole operation when Opaque content is included; Undo restores the whole deletion. Wrapped screen rows are not separate blocks. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 
 
@@ -254,6 +254,6 @@ the useful error tail.
 
 Native Draft (06): `y/p` uses a local safe-visible-text register; `:descriptionrecover` / `:descriptionclear` create confirmed unsaved recovery drafts for Blocked HTML. `:descriptionreload` explicitly reloads current persisted Task data and discards the complete Task draft. `:e!` still restores the opened/successfully saved Task baseline. List/Quote structure is implemented in 07; syntax/URL actions remain 09.
 
-Inline-format selections overlapping Code reject atomically; Code-line indent/outdent remains Ticket 08. Formatting across selected Opaque atoms preserves them and reports that they were skipped.
+Inline-format selections overlapping Code reject atomically; Code-line indent/outdent is implemented (08). Formatting across selected Opaque atoms preserves them and reports that they were skipped.
 
 Normal `x` on a Description Checkbox toggles its checked state; Task Done is independent. `dd` and blockwise `V` deletion operate on complete entry subtrees, including children. Empty imported lists have nonpersisted fill targets: i/Esc and empty Enter create no entry; actual text fills an entry, deleting the final entry removes its container.

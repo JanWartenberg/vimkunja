@@ -192,6 +192,8 @@ func newDefaultCommandRegistry() *CommandRegistry {
 		{"quitall!", []string{"qa!"}, forceQuitAllCommand},
 		{"edit!", []string{"e!"}, forceEditCommand},
 		{"selectblock", nil, selectDescriptionBlockCommand},
+		{"retab", nil, retabDescriptionCommand},
+		{"retaball", nil, retabAllDescriptionCommand},
 		{"descriptionclear", nil, clearDescriptionCommand},
 		{"descriptionrecover", nil, recoverDescriptionCommand},
 		{"descriptionreload", nil, reloadDescriptionCommand},

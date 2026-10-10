@@ -56,6 +56,10 @@ type taskEditor struct {
 	nativeFocused       bool
 	nativePrefix        string
 	nativeCount         int
+	nativeTrigger       bool
+	nativeCodeEscape    bool
+	nativeLiteralTab    bool
+	nativeTabstop       int
 
 	projectFilter           string
 	fieldViewportStart      int
@@ -92,7 +96,7 @@ func (m *model) openNewEditor() tea.Cmd {
 	if draft.ProjectID == 0 {
 		field = fieldProject
 	}
-	m.editor = &taskEditor{draft: draft, original: draft, field: field, workflowStatusLoading: draft.ProjectID != 0}
+	m.editor = &taskEditor{draft: draft, original: draft, field: field, nativeTabstop: m.codeConfig.Tabstop, workflowStatusLoading: draft.ProjectID != 0}
 	m.showDetail = true
 	m.focus = paneDetail
 	if draft.ProjectID != 0 {
@@ -113,7 +117,7 @@ func (m *model) openExistingEditor(task vimkunja.Task) {
 		ID: task.ID, ProjectID: task.ProjectID, Title: task.Title,
 		Description: task.Description, Priority: task.Priority, DueDate: task.DueDate, Done: task.Done,
 	}
-	m.editor = &taskEditor{id: task.ID, taskIndex: task.Index, draft: draft, original: cloneTaskDraft(draft), field: fieldTitle, workflowStatusLoading: true, labelsLoading: true, commentsLoading: true}
+	m.editor = &taskEditor{id: task.ID, taskIndex: task.Index, draft: draft, original: cloneTaskDraft(draft), field: fieldTitle, nativeTabstop: m.codeConfig.Tabstop, workflowStatusLoading: true, labelsLoading: true, commentsLoading: true}
 	m.showDetail = true
 	m.focus = paneDetail
 }
@@ -581,6 +585,9 @@ func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) insertEditorText(text string) {
 	e := m.editor
 	if e.field == fieldDescription && e.nativeDraft != nil {
+		e.nativeTrigger = false
+		e.nativeCodeEscape = false
+		e.nativeLiteralTab = false
 		m.nativeInsertText(text)
 		return
 	}

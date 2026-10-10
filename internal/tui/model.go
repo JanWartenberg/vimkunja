@@ -39,7 +39,9 @@ type paneNeighbors struct {
 }
 
 type Config struct {
-	Store vimkunja.Store
+	Tabstop, IndentStep int
+	LiteralTabAlias     string
+	Store               vimkunja.Store
 
 	PerPage int
 
@@ -52,6 +54,7 @@ type Config struct {
 }
 
 type model struct {
+	codeConfig          Config
 	store               vimkunja.Store
 	perPage             int
 	disableCursorShapes bool
@@ -192,7 +195,18 @@ func NewModel(cfg Config) tea.Model {
 	if ctrlWTimeout <= 0 {
 		ctrlWTimeout = DefaultCtrlWTimeout
 	}
+	if cfg.Tabstop <= 0 && cfg.LiteralTabAlias == "" {
+		cfg.LiteralTabAlias = "ctrl+q"
+	}
+	if cfg.Tabstop <= 0 {
+		cfg.Tabstop = 4
+	}
+	if cfg.IndentStep != 2 && cfg.IndentStep != 4 {
+		cfg.IndentStep = 4
+	}
+	// A zero Config uses the default alias; TOML can explicitly disable it.
 	m := &model{
+		codeConfig:          cfg,
 		store:               cfg.Store,
 		perPage:             max(1, cfg.PerPage),
 		disableCursorShapes: cfg.DisableCursorShapes,
@@ -457,7 +471,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		k := key.String()
 		kLower := strings.ToLower(k)
+		if kLower == "ctrl+w" && m.editor != nil {
+			m.editor.nativeLiteralTab = false
+			m.editor.nativeTrigger = false
+			m.editor.nativeCodeEscape = false
+			m.editor.nativePrefix = ""
+		}
 
+		if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.mode == editorInsert && m.editor.nativeLiteralTab && kLower != "ctrl+c" && kLower != "ctrl+w" {
+			return m.updateNativeInsert(key)
+		}
 		if !m.searchOpen && kLower == "ctrl+o" && m.searchReturn != nil {
 			return m, m.restoreLastSearch()
 		}
@@ -520,6 +543,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// the sole exception: it commits the draft before changing Pane focus.
 		if m.inlineTitle != nil && !m.ctrlWArmed && kLower != "ctrl+w" {
 			return m.updateInlineTitleEdit(key)
+		}
+		if m.focus == paneDetail && m.editor != nil && m.editor.mode == editorNormal && (m.editor.nativePrefix == "[" || m.editor.nativePrefix == "]") {
+			m.nativeDescriptionKey(k)
+			return m, nil
 		}
 		if m.leaderArmed {
 			m.leaderArmed = false
@@ -930,7 +957,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.focus == paneDetail && m.editor != nil && (m.editor.mode == editorInsert || (m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) {
-			m.insertEditorText(text)
+			m.insertEditorText(m.nativePasteText(typed.Content))
 		}
 		return m, nil
 
@@ -948,7 +975,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.focus == paneDetail && m.editor == typed.editor && (m.editor.mode == editorInsert || (m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) {
-			m.insertEditorText(text)
+			m.insertEditorText(m.nativePasteText(typed.text))
 		}
 		return m, nil
 

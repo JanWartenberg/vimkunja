@@ -24,7 +24,7 @@ func (e *taskEditor) descriptionView() *description.View {
 	}
 	if e.nativeDescription == nil || e.nativeDescription.SourceHTML() != source {
 		e.nativeDraft = description.NewDraft(description.Parse(source))
-		e.nativeDescription = e.nativeDraft.View(description.ViewOptions{ASCII: tuiTheme.nativeASCII, Tabstop: 4, OpaqueOpen: tuiTheme.opaqueOpen, OpaqueClose: tuiTheme.opaqueClose})
+		e.nativeDescription = e.nativeDraft.View(description.ViewOptions{ASCII: tuiTheme.nativeASCII, Tabstop: e.nativeTabstop, OpaqueOpen: tuiTheme.opaqueOpen, OpaqueClose: tuiTheme.opaqueClose})
 	}
 	return e.nativeDescription
 }
@@ -149,6 +149,8 @@ func (m *model) nativeDescriptionKey(key string) bool {
 		return false
 	}
 	if key == "enter" {
+		e.nativePrefix = ""
+		e.nativeCount = 0
 		e.descriptionActive = true
 		e.moreFieldsExpanded = false
 		m.ensureDetailFieldVisible()
@@ -160,9 +162,33 @@ func (m *model) nativeDescriptionKey(key string) bool {
 		}
 	}
 
+	if (key == "ü" || key == "Ü") && e.nativeDraft.InCode() {
+		e.nativePrefix = ""
+		e.nativeCount = 0
+		kind := description.CodeAfter
+		if key == "Ü" {
+			kind = description.CodeBefore
+		}
+		m.applyNative(description.Action{Kind: kind}, false, true)
+		return true
+	}
+	if (key == "[" || key == "]") && e.nativeDraft.InCode() {
+		e.nativePrefix = key
+		return true
+	}
 	if e.nativePrefix != "" {
 		prefix := e.nativePrefix
 		e.nativePrefix = ""
+		if prefix == "[" || prefix == "]" {
+			if key == "space" || key == " " {
+				kind := description.CodeAfter
+				if prefix == "[" {
+					kind = description.CodeBefore
+				}
+				m.applyNative(description.Action{Kind: kind}, false, false)
+			}
+			return true
+		}
 		if prefix == "g" && (key == "g" || key == "j" || key == "k" || key == "e" || key == "E") {
 			key = prefix + key
 		} else if prefix == "z" && (key == "h" || key == "l") {

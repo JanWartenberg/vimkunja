@@ -85,3 +85,30 @@ func TestLoadUserConfigRejectsExplicitEmptyCLIValue(t *testing.T) {
 		t.Fatalf("error = %v, want invalid empty leader timeout error", err)
 	}
 }
+
+func TestLoadCodeSettingsAndIndependentFallbacks(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	path := filepath.Join(dir, "vimkunja", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		text        string
+		tab, indent int
+		alias       string
+		warnings    int
+	}{
+		{"[tui]\ntabstop=8\nindent_step=2\nliteral_tab_alias='ctrl+b'\n", 8, 2, "ctrl+b", 0},
+		{"[tui]\ntabstop=0\nindent_step=3\nliteral_tab_alias='ctrl+w'\n", 4, 4, "ctrl+q", 3},
+		{"[tui]\ntabstop=3\nindent_step=4\nliteral_tab_alias=''\n", 3, 4, "", 0},
+	} {
+		if err := os.WriteFile(path, []byte(tc.text), 0600); err != nil {
+			t.Fatal(err)
+		}
+		cfg, warnings, err := LoadUserConfig(ConfigOverrides{LeaderTimeout: "1s"})
+		if err != nil || cfg.Tabstop != tc.tab || cfg.IndentStep != tc.indent || cfg.LiteralTabAlias != tc.alias || len(warnings) != tc.warnings {
+			t.Fatalf("%+v %v %v", cfg, warnings, err)
+		}
+	}
+}

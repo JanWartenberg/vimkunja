@@ -68,7 +68,7 @@ The rules are accepted; these tickets make the remaining work executable. No new
 | [05 — Native terminal projection and document navigation](../../../.archive/2026-10-08/description-rendering/issues/05-implement-native-description-projection-and-navigation.md) | Read/navigation and terminal layout | Completed and committed 2026-10-08 |
 | [06 — Native draft editing, Visual Mode and local history](../../../.archive/2026-10-09/description-rendering/issues/06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery completed 2026-10-09; committed 2026-10-09 | — |
 | [07 — List, Checkbox and Quote structure editing](../../../.archive/2026-10-10/description-rendering/issues/07-implement-list-and-quote-structure-editing.md) | L01–L12 / Q01–Q04 completed 2026-10-10; committed 2026-10-10 | — |
-| [08 — Code editing, Tabs and terminal input](08-implement-native-code-editing-and-terminal-input.md) | Exact Code input, exits, Tabs/retab | None (06 completed) |
+| [08 — Code editing, Tabs and terminal input](../../../.archive/2026-10-10/description-rendering/issues/08-implement-native-code-editing-and-terminal-input.md) | Completed 2026-10-10; exact Code input/exits, Tabs/retab/config and synthetic terminal dispatch; committed 2026-10-10 | — |
 | [09 — Inline syntax, Inline-Code and Link editing](09-implement-inline-syntax-code-and-links.md) | Syntax, Inline-Code and Links | None (06 completed) |
 | [10 — Native Rich-text compatibility, terminal acceptance and documentation](10-verify-native-rich-text-compatibility-and-documentation.md) | VOA/terminal evidence, properties/fuzz, Help/tutorial | Integration completion: 03–09; preparation unblocked |
 
@@ -384,3 +384,7 @@ User authorizes starting 03 while main cleanup continues. `internal/description`
 ### 2026-10-10 — List/Checkbox/Quote structure implementation (07)
 
 07 is implemented, verified and archived in the same worktree, committed 2026-10-10. Five full independent review pairs and targeted final fix verification leave no confirmed findings. Dedicated structure/TUI/temporary-SQLite tests, ten independent corpus goldens, full tests, affected race/vet, both builds and bounded structure fuzz pass. Native list/quote operations preserve reading order, identities, checked state and meaningful metadata, or reject the specific unrepresentable operation atomically. Code-line origin survives endpoint swap. 08 is next; 08/09 and real VOA/terminal acceptance remain open in their owning tickets.
+
+### 2026-10-10 — Code editing and terminal dispatch (08)
+
+08 is implemented, verified after four independent bug/consistency review pairs and archived in the existing worktree; committed 2026-10-10. Exact Code whitespace/paste, Enter-confirmed typed marker creation, same-container exits, source-line editing/selection, Tab/literal-Tab, retab and settings now execute in Draft/TUI/config tests. All 38 focused non-null corpus Code edit goldens pass actual editor/prepared-save tests; full tests, affected race/vet, both builds and bounded source-preservation fuzz pass. Protected Code-child source gaps are handled without widening Opaque; ambiguous destructive line operations reject locally, whole-block removal remains confirmable. 09 is next. Real German/Windows/VOA acceptance remains 10.
