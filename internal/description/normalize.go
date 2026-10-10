@@ -68,6 +68,9 @@ func normalizeNodes(nodes []Node, code bool) []Node {
 				}
 			}
 			n.Children = normalizeNodes(n.Children, code || n.Tag == "pre")
+			if n.Tag == "a" && n.replacement && len(n.Children) == 0 {
+				continue
+			}
 			if !code && (n.Tag == "p" || n.Tag == "h1" || n.Tag == "h2" || n.Tag == "h3" || n.Tag == "li") {
 				normalizeFlow(n.Children)
 				n.Children = removeEmptyText(n.Children)

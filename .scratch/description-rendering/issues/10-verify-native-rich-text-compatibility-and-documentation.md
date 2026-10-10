@@ -10,7 +10,7 @@
 
 **Status:** ready-for-agent
 
-**Integration completion depends on:** 03–09. Capture/provenance and test preparation can start immediately.
+**Implementation dependencies satisfied:** 03–09 completed on `feature/description-model`; 09 is verified and committed 2026-10-10. Integrated acceptance, capture/provenance and tutorial work can proceed.
 
 **Contract:** [spec.md](../spec.md), [decision/handoff ticket 02](02-specify-native-rich-text-description-rendering-and-editing.md), [corpus and traceability](../corpus.md), [83 synthetic fixtures](../corpus.json), [keybinding contract](../../../docs/keybindings.md).
 
@@ -50,3 +50,7 @@ Created after the user's rule-card review and acceptance of the current product-
 ### 2026-10-10 — Ticket 08 terminal evidence handoff
 
 Synthetic Code tests cover grouped Text, ü/Ü, ]Space/[Space, backtick chunks, Paste/clipboard CRLF and literal-Tab prefix dispatch. No real German-layout or Windows decoder capture has been performed. Record actual AltGr-8/9, dead-key three/four backticks, ü/Ü, Ctrl+V interception and Ctrl+Q/Ctrl+B events and interaction outcomes here before terminal acceptance. Ctrl+Q and Ctrl+B have no existing application binding conflicts in Code Insert; terminal flow-control/interception remains an environment check. `tui.literal_tab_alias` defaults to `ctrl+q`, accepts `ctrl+b` or empty; no OS detection.
+
+### 2026-10-10 — Ticket 09 inline execution handoff
+
+Inline syntax, Inline-Code and Links are implemented with actual TUI dispatch/prepared-save execution for 40 goldens across eleven focused records, scoped Draft regressions and temporary-SQLite save adoption. Help, README and keybindings describe the implemented actions. Gather the remaining integrated per-rule evidence and tutorial here; all existing corpus records remain synthetic. Real clipboard-result handling is tested through an injected writer, not a host clipboard/environment acceptance claim.

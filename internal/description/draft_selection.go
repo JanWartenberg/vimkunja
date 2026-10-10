@@ -98,11 +98,15 @@ func (d *Draft) selectionRange() (int, int, map[ID]extent) {
 		lo, hi = min(ext[a.block].start, ext[b.block].start), max(ext[a.block].end, ext[b.block].end)
 		_ = blocks
 	} else {
-		end := s.End
-		if anchorPosition(s.Start, ext) > anchorPosition(s.End, ext) {
-			end = s.Start
+		end, syntax := s.End, s.endSyntax
+		if anchorPosition(s.Start, ext) > anchorPosition(s.End, ext) || s.Start == s.End && s.startSyntax == 0 && s.endSyntax > 0 {
+			end, syntax = s.Start, s.startSyntax
 		}
-		hi = anchorPosition(d.After(end), ext)
+		if syntax > 0 && ext[end.Node].node.Kind == Text {
+			hi = anchorPosition(end, ext)
+		} else {
+			hi = anchorPosition(d.After(end), ext)
+		}
 	}
 	return lo, hi, ext
 }
@@ -173,7 +177,35 @@ func (d *Draft) format(a Action) error {
 	if a.Kind == ToggleMark && a.Text != "strong" && a.Text != "em" && a.Text != "u" && a.Text != "s" {
 		return ErrStructure
 	}
+	d.materializeSelectedFallback()
 	lo, hi, ext := d.selectionRange()
+	// Formatting is a real content edit: selected empty labels acquire their
+	// visible fallback before marks are applied or removed.
+	for _, e := range ext {
+		if e.node.Tag != "a" || len(e.node.Children) != 0 || e.start < lo || e.start > hi || e.start == hi && d.state.selection.Start.Node != e.node.ID && d.state.selection.End.Node != e.node.ID {
+			continue
+		}
+		n := findNode(d.state.nodes, e.node.ID)
+		text := d.newNode(Node{Kind: Text, Text: attributeValue(n.Attributes, "href")})
+		n.Children = []Node{text}
+		remap := func(anchor *Anchor, syntax *int) {
+			if anchor.Node != n.ID {
+				return
+			}
+			offset := 0
+			if *syntax < 0 {
+				offset = min(len(text.Text), -*syntax-1)
+			} else if anchor.Offset == 1 {
+				offset = len(text.Text)
+			}
+			*anchor = Anchor{text.ID, offset}
+			*syntax = 0
+		}
+		remap(&d.state.cursor, &d.state.syntax)
+		remap(&d.state.selection.Start, &d.state.selection.startSyntax)
+		remap(&d.state.selection.End, &d.state.selection.endSyntax)
+	}
+	lo, hi, ext = d.selectionRange()
 	for _, e := range ext {
 		if e.node.Tag == "pre" && e.start < hi && e.end > lo {
 			return fmt.Errorf("Inline formatting cannot include Code blocks")
@@ -201,7 +233,7 @@ func (d *Draft) format(a Action) error {
 		remove := a.Kind == ClearMarks && (isInlineMark(n.Tag) || n.Tag == "a") || a.Kind == ToggleMark && all && markFamily(n.Tag, a.Text)
 		if remove && e.start < hi && e.end > lo {
 			for _, attr := range n.Attributes {
-				if n.Tag != "a" || (attr.Name != "href" && attr.Name != "target" && attr.Name != "rel") {
+				if n.Tag != "a" || attr.Name == "id" {
 					return ErrStructure
 				}
 			}
@@ -256,7 +288,25 @@ func (d *Draft) formatInline(ns []Node, a Action, lo, hi int, ext map[ID]extent,
 				continue
 			}
 			if n.Kind != Text {
-				runs = append(runs, inlineRun{n, slices.Clone(layers)})
+				if a.Kind == EditLink && n.Tag == "a" && len(n.Children) == 0 && e.start >= lo && e.end <= hi && (e.start < hi || d.state.selection.Start.Node == n.ID || d.state.selection.End.Node == n.ID) {
+					if a.Text == "" {
+						n = Node{Kind: Text, Text: attributeValue(n.Attributes, "href")}
+					} else {
+						setAttribute(&n, "href", a.Text)
+						setAttribute(&n, "target", "_blank")
+					}
+				}
+				path := slices.Clone(layers)
+				if n.Tag == "br" && e.start >= lo && e.end <= hi {
+					if a.Kind == EditLink {
+						path = linkLayers(path, a.Text)
+					} else if a.Kind == ClearMarks || all {
+						path = slices.DeleteFunc(path, func(p Node) bool {
+							return a.Kind == ClearMarks && (isInlineMark(p.Tag) || p.Tag == "a") || a.Kind == ToggleMark && all && markFamily(p.Tag, a.Text)
+						})
+					}
+				}
+				runs = append(runs, inlineRun{n, path})
 				continue
 			}
 			start, end := max(0, min(len(n.Text), lo-e.start)), max(0, min(len(n.Text), hi-e.start))
@@ -268,6 +318,7 @@ func (d *Draft) formatInline(ns []Node, a Action, lo, hi int, ext map[ID]extent,
 				}
 				v := n
 				v.Text = n.Text[left:right]
+				v.typed = slices.Clone(textOrigins(n)[left:right])
 				if left > 0 {
 					v.ID = 0
 				}
@@ -277,7 +328,17 @@ func (d *Draft) formatInline(ns []Node, a Action, lo, hi int, ext map[ID]extent,
 					for _, p := range path {
 						marked = marked || markFamily(p.Tag, a.Text)
 					}
-					if a.Kind == ClearMarks || all {
+					if a.Kind == ClearMarks {
+						for _, layer := range path {
+							if layer.Tag == "code" {
+								v.typed = make([]byte, len(v.Text))
+								break
+							}
+						}
+					}
+					if a.Kind == EditLink {
+						path = linkLayers(path, a.Text)
+					} else if a.Kind == ClearMarks || all {
 						path = slices.DeleteFunc(path, func(p Node) bool {
 							return a.Kind == ClearMarks && (isInlineMark(p.Tag) || p.Tag == "a") || a.Kind == ToggleMark && all && markFamily(p.Tag, a.Text)
 						})
@@ -383,6 +444,9 @@ func (d *Draft) restoreSelection(start, end int) {
 	if d.state.selection != nil {
 		d.state.selection.Start = d.anchorAt(start)
 		d.state.selection.End = d.anchorAt(end)
+		d.state.selection.startSyntax = 0
+		d.state.selection.endSyntax = 0
+		d.state.syntax = 0
 		d.state.cursor = d.state.selection.End
 	}
 }
@@ -390,7 +454,29 @@ func (d *Draft) deleteSelection(a Action) error {
 	if d.state.selection == nil {
 		return ErrStructure
 	}
+	if err := d.materializeSelectionSyntax(); err != nil {
+		return err
+	}
+	d.materializeSelectedFallback()
 	lo, hi, ext := d.selectionRange()
+	for _, t := range []Target{{Anchor: d.state.selection.Start, Syntax: d.state.selection.startSyntax}, {Anchor: d.state.selection.End, Syntax: d.state.selection.endSyntax}} {
+		if n := findNode(d.state.nodes, t.Anchor.Node); n != nil && n.Kind == Text && t.Syntax > 0 && t.Anchor.Offset < len(n.Text) {
+			flags := textOrigins(*n)
+			flags[t.Anchor.Offset] = 1
+			n.typed = flags
+		}
+	}
+	startAnchor := d.state.selection.Start
+	if anchorPosition(startAnchor, ext) > anchorPosition(d.state.selection.End, ext) {
+		startAnchor = d.state.selection.End
+	}
+	startNode := findNode(d.state.nodes, startAnchor.Node)
+	var startParent ID
+	if startNode != nil && startNode.Kind == Text {
+		if p := d.parent(startNode.ID); p != nil {
+			startParent = p.ID
+		}
+	}
 	blocks := d.state.selection.Blocks
 	codeLines := d.codeLineSelection()
 	if codeLines {
@@ -415,9 +501,13 @@ func (d *Draft) deleteSelection(a Action) error {
 			}
 			if n.Kind == Text && e.start < hi && e.end > lo {
 				start, end := max(0, lo-e.start), min(len(n.Text), hi-e.start)
+				n.typed = slices.Delete(textOrigins(n), start, end)
 				n.Text = n.Text[:start] + n.Text[end:]
 			} else if n.Kind == Element {
 				n.Children = remove(n.Children)
+				if a.Kind != ReplaceSelection && n.Tag == "a" && len(n.Children) == 0 && e.start >= lo && e.end <= hi {
+					continue
+				}
 			}
 			out = append(out, n)
 		}
@@ -426,8 +516,22 @@ func (d *Draft) deleteSelection(a Action) error {
 	d.state.nodes = remove(d.state.nodes)
 	d.state.selection = nil
 	d.state.cursor = d.anchorAt(lo)
+	d.state.syntax = 0
+	if a.Kind == DeleteSelection {
+		d.parseTypedAtCursor()
+	}
 	if a.Kind == ReplaceSelection {
-		return d.edit(Action{Kind: Insert, Text: a.Text})
+		if !blocks {
+			d.state.inside = true
+			if n := findNode(d.state.nodes, startAnchor.Node); n != nil && n.Kind == Text {
+				d.state.cursor = Anchor{n.ID, min(startAnchor.Offset, len(n.Text))}
+			} else if p := findNode(d.state.nodes, startParent); p != nil && (isInlineMark(p.Tag) || p.Tag == "a") && len(p.Children) == 0 {
+				n := d.newNode(Node{Kind: Text})
+				p.Children = []Node{n}
+				d.state.cursor = Anchor{n.ID, 0}
+			}
+		}
+		return d.edit(Action{Kind: Insert, Text: a.Text, inside: true})
 	}
 	return nil
 }
@@ -568,6 +672,7 @@ func (d *Draft) SelectWord(around bool) error {
 	}
 	d.state.selection = &Selection{Start: d.anchorAt(block.start + start), End: d.anchorAt(block.start + graphemeBefore(value, end))}
 	d.state.cursor = d.state.selection.End
+	d.state.syntax = 0
 	return nil
 }
 
@@ -587,9 +692,19 @@ func (d *Draft) Highlight(f Frame) Frame {
 	}
 	positions := map[[2]int]bool{}
 	lo, hi, ext := d.selectionRange()
-	for _, p := range f.paint {
+	visualLo, visualHi, visual := 0, 0, false
+	s := d.state.selection
+	if !s.Blocks && (s.startSyntax != 0 || s.endSyntax != 0) {
+		a, okA := findPoint(f.paint, Target{Anchor: s.Start, Syntax: s.startSyntax})
+		b, okB := findPoint(f.paint, Target{Anchor: s.End, Syntax: s.endSyntax})
+		if okA && okB {
+			visualLo, visualHi = min(a, b), max(a, b)
+			visual = true
+		}
+	}
+	for index, p := range f.paint {
 		at := anchorPosition(p.target.Anchor, ext)
-		if at >= lo && at < hi {
+		if visual && index >= visualLo && index <= visualHi || !visual && at >= lo && at < hi {
 			for col := p.col; col < p.col+max(1, p.cellWidth); col++ {
 				positions[[2]int{p.row, col}] = true
 			}

@@ -163,7 +163,7 @@ HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navi
 | Code Normal Mode: `]`, then `Space` / `[`, then `Space` | Create a normal paragraph after / before the entire current Code block and move there in Normal Mode; `i` starts typing | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `:selectblock` | Explicitly select the entire current logical block in `VISUAL BLOCKS`, including a standalone Code block | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `:retab` / `:retaball` | Convert all Tabs to the next tabstop in the current Code block/selected Code lines, or all editable Description text including prose; preserve Opaque content. One Undo step; no V1 numeric arguments or bang variant. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
-| `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end<br>of the current logical line | Implemented on Native content (06); delimiter editing follows in 09 |
+| `i` / `a` / `I` / `A` | Enter Insert Mode at, after, at start, or at end<br>of the current logical line | Implemented (06/09), including disclosed editable delimiters; synthetic tests, terminal acceptance pending |
 | `0` / `^` / `_` / `$` | Move to start / first nonblank / end of the current logical line | Implemented for native read/navigation (05) |
 | `w` / `b` / `e` / `ge` | Move by words across inline-format and Link boundaries; stop at blocks.<br>Disclosed editable delimiters are ordinary characters; protected markers consume no motion counts.<br>Each complete Opaque subtree is one word-motion unit for `w/b/e`. | Implemented for native read/navigation (05); word traversal follows semantic text across disclosed marks |
 | `gg` / `G` | Jump to start / end of the whole Description document | Implemented for native read/navigation (05) |
@@ -176,24 +176,24 @@ HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navi
 | `Space+q` | Toggle the applicable local Quote layer; no implicit expansion to unselected blocks | Implemented (07); synthetic tests, practical terminal acceptance pending |
 | `Space+c` | Create Code block | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `Space+o` | Toggle Projects Pane; never a Description formatting command | Agreed |
-| `Space+l` inside an existing link | Prompt with its current URL; link text remains ordinary Description text | Agreed design; practical evidence outstanding |
-| `Space+y` inside a link | Copy its destination URL to the system clipboard without opening it | Agreed |
+| `Space+l` inside an existing link | Prompt with its current URL; link text remains ordinary Description text | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
+| `Space+y` inside a link | Copy its destination URL to the system clipboard without opening it | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
 
 ## Description Insert Mode
 
 | Binding | Action | Status |
 | --- | --- | --- |
 | Exactly three or four directly typed backticks in an empty paragraph, then `Enter` | Confirm and consume the trigger, create a structured Code block with protected triple-backtick fences, and enter its first empty Code line. Before Enter it remains ordinary text; paste, escaped markers, five backticks or additional characters do not trigger conversion. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
-| Single-backtick Inline-Code editor syntax | Deliberately typed paired backticks create Native Code; escaped inner backticks are literal. Imported/pasted syntax stays literal; removal of Code formatting preserves text. | Agreed grammar; independent fixture evidence pending; not implemented |
-| Typed block-start `# `/`## `/`### `; `- `/`+ `/`* `/`1. ` | Create heading / list entry after the required space; escape the first marker to keep it literal | Agreed |
-| Typed dash-only line of at least three dashes | Create a horizontal rule | Agreed |
+| Single-backtick Inline-Code editor syntax | Deliberately typed paired backticks create Native Code; escaped inner backticks are literal. Imported/pasted syntax stays literal; removal of Code formatting preserves text. | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
+| Typed block-start `# `/`## `/`### `; `- `/`+ `/`* `/`1. ` | Create heading / list entry after the required space; escape the first marker to keep it literal | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
+| Typed dash-only line of at least three dashes | Create a horizontal rule | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
 | Paste | Insert literal text, never trigger structural conversion; prose line breaks create paragraphs | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Enter` | Split the current paragraph into two paragraphs; inside a Code block insert a literal source line; inside a Block quote create a sibling quoted paragraph, or leave the quote from an empty quoted paragraph | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Shift+Enter` | Insert a hard line break inside the paragraph | Implemented (06); synthetic tests, practical terminal acceptance pending |
-| `Enter` at end of a list entry | Add an entry of the same list type | Agreed |
-| `Enter` on an empty list entry | Leave the list and create a paragraph | Agreed |
+| `Enter` at end of a list entry | Add an entry of the same list type | Implemented (07); synthetic tests, practical terminal acceptance pending |
+| `Enter` on an empty list entry | Leave the list and create a paragraph | Implemented (07); synthetic tests, practical terminal acceptance pending |
 | Code Insert Mode: `Tab` / `Ctrl+V`, then `Tab` | Insert Spaces to the next tabstop / explicitly insert a literal Tab. Paste preserves Code Tabs and line endings. Ctrl+Q alias by default; tui.literal_tab_alias selects ctrl+b or disables it. Dispatch tested; real terminal checks pending. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
-| `i` on an imported empty list fill target | Enter a nonpersisted input target; actual text creates the first entry. `i` then `Esc` leaves source unchanged. | Agreed; not implemented |
+| `i` on an imported empty list fill target | Enter a nonpersisted input target; actual text creates the first entry. `i` then `Esc` leaves source unchanged. | Implemented (07); synthetic tests, practical terminal acceptance pending |
 
 ## Description Visual Mode
 
@@ -208,7 +208,7 @@ HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navi
 | `viw` / `vaw` | Select useful inner word / word with surrounding whitespace; delimiter-start selects nearest inner word, empty expression gives hint | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Ctrl+V` | Rectangular selection | Deferred |
 | Characterwise `v`: `Space+b/i/u/s` | Toggle bold/italic/underline/strikethrough uniformly: apply throughout if any selected Native text lacks the mark; otherwise remove throughout. Explicit Bold-off removes all selected b/strong layers, including double/triple strong; Italic/Underline/Strike-off likewise removes all selected layers of its own family; preserve other marks and selection until Esc. Ignore and preserve Opaque subtrees. | Implemented (06); synthetic tests, practical terminal acceptance pending |
-| Characterwise `v`: `Space+l` | Prompt for a URL and apply it to the selection; a blank URL removes the link | Agreed design; practical evidence outstanding |
+| Characterwise `v`: `Space+l` | Prompt for a URL and apply it to the selection; a blank URL removes the link | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
 | Characterwise `v`: `Space+0` | Remove all inline formatting, including Links, while preserving text and blocks | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | Blockwise `V`: `Space+q/w` | Remove / add one quote layer on selected blocks; wrap selected siblings in one shared container, remove locally, and reject incompatible reduction atomically. Both retained Quote fragments keep known shared cite/data-comment-id references without extra confirmation for repeating them. Actual metadata loss on removal still confirms; unique/unknown attributes require lossless allocation. | Implemented (07); synthetic tests, practical terminal acceptance pending |
 | Blockwise `V`: `Space+k/l` | Decrease / increase list depth on selected entries, preserving subtrees, list kinds and Checkbox IDs/state. Normalize parent/child overlap; validate one sibling range atomically. If no unselected preceding sibling can receive an indent, reject the whole action. | Implemented (07); synthetic tests, practical terminal acceptance pending |
@@ -252,8 +252,14 @@ the useful error tail.
 - Editable delimiters count as ordinary Vim characters, including in `5l`. Protected quote prefixes, Code fences, and emphasis-layer separators are never cursor targets, copied text, or independently editable content.
 - Opaque subtrees require discernible atomic boundaries with configurable bracket style and highlighting color; final styling awaits prototype review. Wrapped continuation rows retain a non-editable arrow, distinct from hard-break markers.
 
-Native Draft (06): `y/p` uses a local safe-visible-text register; `:descriptionrecover` / `:descriptionclear` create confirmed unsaved recovery drafts for Blocked HTML. `:descriptionreload` explicitly reloads current persisted Task data and discards the complete Task draft. `:e!` still restores the opened/successfully saved Task baseline. List/Quote structure is implemented in 07; syntax/URL actions remain 09.
+Native Draft (06): `y/p` uses a local safe-visible-text register; `:descriptionrecover` / `:descriptionclear` create confirmed unsaved recovery drafts for Blocked HTML. `:descriptionreload` explicitly reloads current persisted Task data and discards the complete Task draft. `:e!` still restores the opened/successfully saved Task baseline. List/Quote structure (07), Code (08) and inline syntax/URL actions (09) are implemented.
 
 Inline-format selections overlapping Code reject atomically; Code-line indent/outdent is implemented (08). Formatting across selected Opaque atoms preserves them and reports that they were skipped.
 
 Normal `x` on a Description Checkbox toggles its checked state; Task Done is independent. `dd` and blockwise `V` deletion operate on complete entry subtrees, including children. Empty imported lists have nonpersisted fill targets: i/Esc and empty Enter create no entry; actual text fills an entry, deleting the final entry removes its container.
+
+### Native Description inline syntax and Links (09)
+
+Direct typing interprets `**bold**`, `*italic*`, `***both***`, `__underline__`, `~~strike~~` and paired single-backtick Inline-Code. A backslash masks the next agreed syntax character; imported/Paste/local-register text stays literal. At block start, `# `, `## `, `### `, `- `, `+ `, `* ` and `1. ` require the following Space. Three or more typed dashes form a rule; x/Undo retain the local dash count, Save emits canonical `<hr>`.
+
+`Space+l` on a characterwise selection or existing Link opens a separate URL prompt: Enter applies, Esc cancels, empty URL unlinks. Newly entered destinations require an absolute `://` URL with http, https, ftp, git, obsidian, notion or message; invalid input stays in the prompt. Safe imported foreign schemes remain preserved and replaceable. `Space+y` copies a Link destination to the system clipboard and reports the actual result. Typing at Link edges or outside the visible Inline-Code backticks stays outside; text targets between those backticks edit Code content. Inside a Link, typing retains the wrapper. Empty imported Link labels show the current URL without materializing it until a text edit.

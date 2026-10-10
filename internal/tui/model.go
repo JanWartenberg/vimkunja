@@ -59,6 +59,7 @@ type model struct {
 	perPage             int
 	disableCursorShapes bool
 	now                 func() time.Time
+	clipboardWrite      func(string) error
 	clipboardRead       func() (string, error)
 
 	width            int
@@ -481,6 +482,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.mode == editorInsert && m.editor.nativeLiteralTab && kLower != "ctrl+c" && kLower != "ctrl+w" {
 			return m.updateNativeInsert(key)
 		}
+		if m.editor != nil && m.editor.nativeLink != nil && kLower != "ctrl+c" {
+			return m.updateNativeLink(key)
+		}
 		if !m.searchOpen && kLower == "ctrl+o" && m.searchReturn != nil {
 			return m, m.restoreLastSearch()
 		}
@@ -550,6 +554,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.leaderArmed {
 			m.leaderArmed = false
+			if k == "y" && m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionActive && m.editor.descriptionView() != nil {
+				return m, m.copyNativeLink()
+			}
 			if m.nativePaletteKey(k) {
 				return m, nil
 			}
@@ -946,7 +953,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searchViewport = clamp(m.searchViewport, 0, max(0, len(m.searchResults)-1))
 		return m, nil
 
+	case linkCopiedMsg:
+		if typed.err != nil {
+			m.recordError(fmt.Errorf("write system clipboard: %w", typed.err))
+		} else {
+			m.toast = "Link destination copied"
+		}
+		return m, nil
+
 	case tea.PasteMsg:
+		if m.editor != nil && m.editor.nativeLink != nil {
+			p := m.editor.nativeLink
+			p.input = insertTextAtCursor(p.input, &p.cursor, typed.Content)
+			return m, nil
+		}
 		if m.editor != nil && m.editor.nativePending != nil {
 			return m, nil
 		}
@@ -962,6 +982,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case clipboardPastedMsg:
+		if typed.link != nil {
+			if m.editor == typed.editor && m.editor != nil && m.editor.nativeLink == typed.link {
+				if typed.err != nil {
+					m.recordError(typed.err)
+				} else {
+					p := typed.link
+					p.input = insertTextAtCursor(p.input, &p.cursor, typed.text)
+				}
+			}
+			return m, nil
+		}
+		if m.editor != nil && m.editor.nativeLink != nil {
+			return m, nil
+		}
 		if m.editor != nil && m.editor.nativePending != nil {
 			return m, nil
 		}

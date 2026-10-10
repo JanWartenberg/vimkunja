@@ -34,14 +34,19 @@ type Attribute struct{ Name, Value string }
 // Text contains decoded characters. Opaque nodes expose only their safe Preview.
 // IDs remain stable within a Document; zero denotes a new Native node.
 type Node struct {
-	ID          ID
-	Kind        Kind
-	Tag         string
-	Text        string
-	Attributes  []Attribute
-	Children    []Node
-	Preview     string
-	blockOpaque bool
+	ID            ID
+	Kind          Kind
+	Tag           string
+	Text          string
+	Attributes    []Attribute
+	Children      []Node
+	Preview       string
+	blockOpaque   bool
+	typed         []byte // Draft-only origin flags: imported/pasted bytes are literal.
+	syntaxSource  string
+	sourceOrigins []byte
+	replacement   bool
+	dashes        int // Typed rule history; never persisted.
 }
 
 // Anchor addresses a decoded-text boundary, not a terminal coordinate. Offset
@@ -106,6 +111,8 @@ func cloneNodes(nodes []Node) []Node {
 	out := make([]Node, len(nodes))
 	for i, n := range nodes {
 		out[i] = n
+		out[i].typed = slices.Clone(n.typed)
+		out[i].sourceOrigins = slices.Clone(n.sourceOrigins)
 		out[i].Attributes = slices.Clone(n.Attributes)
 		out[i].Children = cloneNodes(n.Children)
 	}
@@ -208,6 +215,9 @@ func (d *Document) validateIdentities(nodes []Node, seen map[ID]bool) error {
 func (d *Document) writeNodes(out *strings.Builder, nodes []Node, parent []int, parents []ID, removed map[ID]bool, positions map[ID][]int, retained *[]atom, nativeIDs map[ID]bool) error {
 	for i, n := range nodes {
 		path := append(slices.Clone(parent), i)
+		if n.Tag == "a" && n.replacement && contentNodes(n.Children) == "" && !containsOpaque(n) {
+			continue
+		}
 		if n.Kind == Opaque {
 			index, ok := d.byID[n.ID]
 			if !ok || removed[n.ID] || n.Tag != "" || n.Text != "" || len(n.Children) != 0 || len(n.Attributes) != 0 {

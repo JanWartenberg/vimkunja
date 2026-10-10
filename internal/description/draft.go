@@ -44,11 +44,15 @@ const (
 	OutdentCode
 	Retab
 	RetabAll
+	EditLink
+	Type
 )
 
 type Action struct {
 	Kind            ActionKind
 	Text            string
+	inside          bool
+	skipEscape      bool
 	Tabstop, Indent int
 }
 
@@ -56,15 +60,18 @@ var ErrConfirmation = errors.New("Preserved content would change; confirm this o
 var ErrQuoteMetadataConfirmation = fmt.Errorf("Zitat-Metadaten würden gelöscht werden. Bitte Löschung bestätigen.: %w", ErrConfirmation)
 
 type Selection struct {
-	Start, End         Anchor
-	Blocks, WholeBlock bool
-	codeBlock          ID // Code-line origin remains stable when endpoints swap.
+	Start, End             Anchor
+	Blocks, WholeBlock     bool
+	startSyntax, endSyntax int
+	codeBlock              ID // Code-line origin remains stable when endpoints swap.
 }
 type draftState struct {
 	nodes     []Node
 	cursor    Anchor
 	selection *Selection
 	recovered bool
+	syntax    int
+	inside    bool
 }
 
 // Draft owns live identities and local history. Its preservation source remains
@@ -84,6 +91,9 @@ func NewDraft(doc *Document) *Draft {
 	d.assign(d.state.nodes)
 	d.savedNodes = cloneNodes(d.state.nodes)
 	d.state.cursor = d.first(d.state.nodes)
+	if n := findNode(d.state.nodes, d.state.cursor.Node); n != nil && n.Tag == "a" && len(n.Children) == 0 {
+		d.state.syntax = -1
+	}
 	return d
 }
 func (d *Draft) assign(ns []Node) {
@@ -151,8 +161,11 @@ func (d *Draft) SetCursor(a Anchor) error {
 		return err
 	}
 	d.state.cursor = a
+	d.state.syntax = 0
+	d.state.inside = false
 	if d.state.selection != nil {
 		d.state.selection.End = a
+		d.state.selection.endSyntax = 0
 	}
 	return nil
 }
@@ -164,7 +177,7 @@ func (d *Draft) Selection() *Selection {
 	return &s
 }
 func (d *Draft) Select(blocks, whole bool) {
-	d.state.selection = &Selection{Start: d.state.cursor, End: d.state.cursor, Blocks: blocks, WholeBlock: whole}
+	d.state.selection = &Selection{Start: d.state.cursor, End: d.state.cursor, Blocks: blocks, WholeBlock: whole, startSyntax: d.state.syntax, endSyntax: d.state.syntax}
 	if blocks && !whole {
 		loc, err := d.live().ResolveAnchor(d.state.cursor)
 		if n := findNode(d.state.nodes, loc.Block); err == nil && n != nil && n.Tag == "pre" {
@@ -176,6 +189,8 @@ func (d *Draft) CancelSelection() { d.state.selection = nil }
 func (d *Draft) SwapSelection() {
 	if s := d.state.selection; s != nil {
 		s.Start, s.End = s.End, s.Start
+		s.startSyntax, s.endSyntax = s.endSyntax, s.startSyntax
+		d.state.syntax = s.endSyntax
 		d.state.cursor = s.End
 	}
 }
@@ -287,6 +302,7 @@ func setAttribute(n *Node, name, value string) {
 func (d *Draft) View(options ...ViewOptions) *View {
 	v := NewView(d.live(), options...)
 	_ = v.SetAnchor(d.state.cursor)
+	v.target.Syntax = d.state.syntax
 	return v
 }
 func (d *Draft) Undo() bool {
@@ -314,6 +330,23 @@ func (d *Draft) Apply(a Action, confirmed bool) error {
 	before := copyState(d.state)
 	oldNext := d.next
 	err := d.edit(a)
+	if err == nil && (a.Kind == Delete || a.Kind == Backspace || a.Kind == DeleteSelection || a.Kind == ReplaceSelection) {
+		d.removeDeletedLinkLabels(before, a.Kind)
+	}
+	if err == nil {
+		var stale func([]Node)
+		stale = func(ns []Node) {
+			for i := range ns {
+				n := &ns[i]
+				if old := findNode(before.nodes, n.ID); n.syntaxSource != "" && old != nil && !reflect.DeepEqual(n.Children, old.Children) {
+					n.syntaxSource = ""
+					n.sourceOrigins = nil
+				}
+				stale(n.Children)
+			}
+		}
+		stale(d.state.nodes)
+	}
 	if err == nil && (a.Kind == DeleteBlock || a.Kind == DeleteSelection || a.Kind == ReplaceSelection) {
 		d.pruneDeletedContainers(before.nodes)
 	}
@@ -463,9 +496,33 @@ func (d *Draft) After(a Anchor) Anchor {
 }
 func (d *Draft) edit(a Action) error {
 	switch a.Kind {
+	case Split, HardBreak, OpenAbove, OpenBelow, DeleteBlock, Convert, ConvertList,
+		CreateCode, CodeBefore, CodeAfter, ClearDescription, RecoverText:
+		// Structural actions choose a semantic target, not a delimiter gap.
+		d.state.syntax = 0
+		d.state.inside = false
+	}
+
+	if a.Kind == Type && a.Text != "" {
+		d.continueClosingRun([]rune(a.Text)[0])
+	}
+	if d.state.syntax != 0 && (a.Kind == Insert || a.Kind == Type || a.Kind == Delete || a.Kind == Backspace) {
+		return d.editSyntax(a)
+	}
+	if (a.Kind == Backspace || a.Kind == Delete) && !d.InCode() {
+		if handled, err := d.editAdjacentSyntax(a); handled || err != nil {
+			return err
+		}
+	}
+	if a.Kind == Type {
+		return d.typeText(a.Text, a.inside || d.state.inside)
+	}
+	switch a.Kind {
 
 	case EscapeCodeMarker, CreateCode, CodeBefore, CodeAfter, InsertTab, IndentCode, OutdentCode, Retab, RetabAll:
 		return d.editCode(a)
+	case EditLink:
+		return d.editLink(a.Text)
 	case IndentList, OutdentList:
 		return d.moveList(a.Kind)
 	case ConvertList:
@@ -540,6 +597,7 @@ func (d *Draft) edit(a Action) error {
 	}
 	switch a.Kind {
 	case Insert:
+		a.inside = a.inside || d.state.inside
 		if strings.Contains(a.Text, "\n") && b.Tag != "pre" {
 			parts := strings.Split(a.Text, "\n")
 			for i, part := range parts {
@@ -555,6 +613,12 @@ func (d *Draft) edit(a Action) error {
 				}
 			}
 			return nil
+		}
+		if b.Tag != "pre" {
+			if handled, err := d.insertInlineEdge(a); handled || err != nil {
+				return err
+			}
+			n = findNode(d.state.nodes, d.state.cursor.Node)
 		}
 		if n.Kind == Opaque {
 			list, i := nodeList(&d.state.nodes, n.ID)
@@ -583,6 +647,8 @@ func (d *Draft) edit(a Action) error {
 		if n.Kind == Text {
 			s := n.Text
 			off := d.state.cursor.Offset
+			flags := textOrigins(*n)
+			n.typed = slices.Replace(flags, off, off, make([]byte, len(a.Text))...)
 			n.Text = s[:off] + a.Text + s[off:]
 			d.state.cursor.Offset += len(a.Text)
 			return nil
@@ -694,6 +760,7 @@ func (d *Draft) edit(a Action) error {
 				end = graphemeAfter(n.Text, off)
 			}
 			if start != end {
+				n.typed = slices.Delete(textOrigins(*n), start, end)
 				n.Text = n.Text[:start] + n.Text[end:]
 				d.state.cursor.Offset = start
 				return nil
@@ -723,6 +790,8 @@ func splitAt(ns []Node, a Anchor) ([]Node, []Node, error) {
 				l, r := n, n
 				l.Text = n.Text[:a.Offset]
 				r.Text = n.Text[a.Offset:]
+				l.typed = slices.Clone(textOrigins(n)[:a.Offset])
+				r.typed = slices.Clone(textOrigins(n)[a.Offset:])
 				r.ID = 0
 				if l.Text != "" {
 					left = append(left, l)
@@ -744,12 +813,16 @@ func splitAt(ns []Node, a Anchor) ([]Node, []Node, error) {
 			if len(l) > 0 {
 				v := n
 				v.Children = l
+				v.syntaxSource = ""
+				v.sourceOrigins = nil
 				left = append(left, v)
 			}
 			if len(r) > 0 {
 				v := n
 				v.ID = 0
 				v.Children = r
+				v.syntaxSource = ""
+				v.sourceOrigins = nil
 				for _, attr := range v.Attributes {
 					if attr.Name == "id" {
 						return nil, nil, ErrStructure
@@ -814,6 +887,7 @@ func (d *Draft) UpdateView(v *View) {
 	if err := v.SetAnchor(d.state.cursor); err != nil && d.state.cursor.Node != 0 {
 		v.target = Target{Anchor: d.state.cursor}
 	}
+	v.target.Syntax = d.state.syntax
 }
 func (d *Draft) newNode(n Node) Node { ns := []Node{n}; d.assign(ns); return ns[0] }
 func (d *Draft) pruneDeletedContainers(before []Node) {
@@ -841,6 +915,22 @@ func (d *Draft) pruneDeletedContainers(before []Node) {
 func (d *Draft) InsertionView(v *View, on bool) {
 	v.inserting = on
 	if !on {
+		d.finalizeReplacementLinks()
+		d.state.inside = false
+	}
+	if !on && d.state.syntax > 0 {
+		n := findNode(d.state.nodes, d.state.cursor.Node)
+		if n != nil {
+			marker := markDelimiter(n.Tag)
+			if n.Tag == "hr" {
+				marker = strings.Repeat("-", max(3, n.dashes))
+			}
+			if marker != "" {
+				d.state.syntax = min(d.state.syntax, len(marker))
+			}
+		}
+	}
+	if !on && d.state.syntax == 0 {
 		n := findNode(d.state.nodes, d.state.cursor.Node)
 		if n != nil && n.Kind == Text && d.state.cursor.Offset == len(n.Text) && n.Text != "" && !strings.HasSuffix(n.Text, "\n") {
 			d.state.cursor.Offset = graphemeBefore(n.Text, d.state.cursor.Offset)
@@ -880,7 +970,7 @@ func (d *Draft) LineBoundary(end bool) Anchor {
 	var collect func([]Node)
 	collect = func(ns []Node) {
 		for _, n := range ns {
-			if n.Kind == Text || n.Kind == Opaque || n.Tag == "br" {
+			if n.Kind == Text || n.Kind == Opaque || n.Tag == "br" || n.Tag == "a" && len(n.Children) == 0 {
 				leaves = append(leaves, n)
 			} else {
 				collect(n.Children)

@@ -48,6 +48,7 @@ type taskEditor struct {
 	field               editorField
 	mode                editorMode
 	cursor              int // rune offset in the active text field
+	nativeLink          *nativeLinkPrompt
 	nativeDescription   *description.View
 	nativeDraft         *description.Draft
 	nativePending       *description.Action
@@ -588,7 +589,11 @@ func (m *model) insertEditorText(text string) {
 		e.nativeTrigger = false
 		e.nativeCodeEscape = false
 		e.nativeLiteralTab = false
-		m.nativeInsertText(text)
+		kind := description.Insert
+		if e.nativeDraft.Selection() != nil {
+			kind = description.ReplaceSelection
+		}
+		m.applyNative(description.Action{Kind: kind, Text: text}, false, true)
 		return
 	}
 	if e.field == fieldDueDate {

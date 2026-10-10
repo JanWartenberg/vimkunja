@@ -247,7 +247,7 @@ func (m *model) nativeDescriptionKey(key string) bool {
 			_ = e.nativeDescription.SetAnchor(bounded)
 			m.toast = "Code selection boundary"
 		} else {
-			_ = e.nativeDraft.SetCursor(next)
+			_ = e.nativeDraft.SetTarget(e.nativeDescription.Cursor())
 		}
 		e.descriptionActive = true
 		e.descriptionNavigated = true

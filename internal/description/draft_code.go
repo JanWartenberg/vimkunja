@@ -462,6 +462,13 @@ func (d *Draft) CodeMarkerParagraph(emptyOnly bool) bool {
 		if n.Kind != Text {
 			return false
 		}
+		if !emptyOnly {
+			for _, f := range textOrigins(n) {
+				if f != 1 {
+					return false
+				}
+			}
+		}
 		text += n.Text
 	}
 	if emptyOnly {

@@ -203,7 +203,8 @@ func TestDraftPasteMergeAndRawUndo(t *testing.T) {
 }
 func TestDraftDeleteAcrossHardBreakAndFormatting(t *testing.T) {
 	d := NewDraft(Parse(`<p>A<br><strong>B</strong>C</p>`))
-	n := d.Snapshot()[0].Children[2].Children[0]
+	// The structural anchor is before the disclosed opening delimiter.
+	n := d.Snapshot()[0].Children[2]
 	d.SetCursor(Anchor{n.ID, 0})
 	if err := d.Apply(Action{Kind: Backspace}, false); err != nil {
 		t.Fatal(err)

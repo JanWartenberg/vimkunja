@@ -57,10 +57,6 @@ func (m *model) nativeEditKey(key string) bool {
 	e := m.editor
 	d := e.nativeDraft
 	sel := d.Selection()
-	if sel == nil && e.nativeDescription.Cursor().Syntax > 0 && (key == "i" || key == "a" || key == "x" || key == "delete" || key == "backspace") {
-		m.recordError(fmt.Errorf("Delimiter editing follows in Ticket 09; move to text or use Visual formatting"))
-		return true
-	}
 	if sel != nil && (key == "i" || key == "a") {
 		e.nativePrefix = "v" + key
 		return true
@@ -78,7 +74,7 @@ func (m *model) nativeEditKey(key string) bool {
 		if key == "I" || key == "A" {
 			_ = d.SetCursor(d.LineBoundary(key == "A"))
 		} else if key == "a" {
-			_ = d.SetCursor(d.After(d.Cursor()))
+			_ = d.SetTarget(d.AfterTarget())
 		}
 
 		e.mode = editorInsert
@@ -229,21 +225,8 @@ func (m *model) updateNativeInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		motion := map[string]string{"left": "h", "right": "l", "up": "k", "down": "j"}[key]
 		w, h := m.nativeDescriptionGeometry()
-		old := e.nativeDescription.Cursor()
 		e.nativeDescription.Move(motion, 1, w, h)
-		// Delimiter editing is ticket 09. In Insert, arrows traverse Native content
-		// boundaries without getting trapped on disclosed syntax positions.
-		for step := 0; step < 10000 && e.nativeDescription.Cursor().Syntax != 0; step++ {
-			previous := e.nativeDescription.Cursor()
-			if !e.nativeDescription.Move(motion, 1, w, h) || e.nativeDescription.Cursor() == previous {
-				break
-			}
-		}
-		if e.nativeDescription.Cursor().Syntax == 0 {
-			_ = e.nativeDraft.SetCursor(e.nativeDescription.Cursor().Anchor)
-		} else {
-			_ = e.nativeDescription.SetAnchor(old.Anchor)
-		}
+		_ = e.nativeDraft.SetTarget(e.nativeDescription.Cursor())
 		e.nativeDraft.UpdateView(e.nativeDescription)
 
 	default:
@@ -254,24 +237,8 @@ func (m *model) updateNativeInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 func (m *model) nativeInsertText(text string) {
-	e := m.editor
-	if e.nativeTrigger && e.nativeDraft.CodeMarkerParagraph(true) && strings.HasPrefix(text, "\\`") {
-		e.nativeTrigger = false
-		m.applyNative(description.Action{Kind: description.Insert, Text: text[1:]}, false, true)
-		return
-	}
-	escaped := e.nativeCodeEscape
-	e.nativeCodeEscape = e.nativeTrigger && e.nativeDraft.CodeMarkerParagraph(true) && text == "\\"
-	if escaped && strings.HasPrefix(text, "`") {
-		e.nativeTrigger = false
-		m.applyNative(description.Action{Kind: description.EscapeCodeMarker, Text: text}, false, true)
-		return
-	}
-	kind := description.Insert
-	if m.editor.nativeDraft.Selection() != nil {
-		kind = description.ReplaceSelection
-	}
-	m.applyNative(description.Action{Kind: kind, Text: text}, false, true)
+	m.applyNative(description.Action{Kind: description.Type, Text: text}, false, true)
+
 }
 func (m *model) prepareNativeSave() bool {
 	e := m.editor
@@ -314,6 +281,10 @@ func (m *model) nativePaletteKey(key string) bool {
 		return true
 	}
 	sel := e.nativeDraft.Selection()
+	if key == "l" && (sel == nil || !sel.Blocks) {
+		m.openNativeLink()
+		return true
+	}
 	if sel != nil && !sel.Blocks {
 		tags := map[string]string{"b": "strong", "i": "em", "u": "u", "s": "s"}
 		if tag := tags[key]; tag != "" {
@@ -370,11 +341,11 @@ func (m *model) nativePalette() string {
 	}
 	if s := e.nativeDraft.Selection(); s != nil {
 		if !s.Blocks {
-			return "FORMAT  b bold · i italic · u underline · s strike · 0 clear · o projects"
+			return "FORMAT  b bold · i italic · u underline · s strike · 0 clear · l link · o projects"
 		}
 		return "STRUCTURE  q/w quote · k/l list · x/c code outdent/indent · o projects"
 	}
-	return "BLOCK  1/2/3 heading · 0 paragraph · u/n/x list · q quote · c code · o projects"
+	return "BLOCK  1/2/3 heading · 0 paragraph · u/n/x list · q quote · c code · l link · y copy URL · o projects"
 }
 func selectDescriptionBlockCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionView() != nil {
@@ -428,6 +399,9 @@ func (m *model) nativeModeHint() string {
 	e := m.editor
 	if e.nativePending != nil {
 		return "CONFIRM  y/Enter · n/Esc cancel"
+	}
+	if hint := m.nativeLinkHint(); hint != "" {
+		return hint
 	}
 	if s := e.nativeDraft.Selection(); s != nil {
 		label := "VISUAL"

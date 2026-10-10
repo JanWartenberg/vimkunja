@@ -207,6 +207,9 @@ func (v *View) delimiter(text string, id ID, end bool) []glyph {
 		out[i].target = Target{Anchor: Anchor{id, offset}, Syntax: i + 1}
 		out[i].word = -1
 	}
+	if v.inserting {
+		out = append(out, glyph{nav: true, target: Target{Anchor: Anchor{id, offset}, Syntax: len(out) + 1}})
+	}
 	return out
 }
 func (v *View) inline(nodes []Node, style Style, disclose bool, link string, layers map[string]int) []glyph {
@@ -220,6 +223,9 @@ func (v *View) inline(nodes []Node, style Style, disclose bool, link string, lay
 					needs := strings.ContainsAny(g.text, `\*_~`+"`"+`#-+.[]`)
 					if style&InlineCode != 0 {
 						needs = g.text == "`" || g.text == "\\"
+					}
+					if off := g.target.Anchor.Offset; off < len(n.typed) && n.typed[off] != 0 {
+						needs = false
 					}
 					if needs {
 						escape := g
@@ -295,7 +301,7 @@ func (v *View) inline(nodes []Node, style Style, disclose bool, link string, lay
 		if n.Tag == "a" && len(children) == 0 {
 			children = v.textGlyphs(link, n.ID, nextStyle, link)
 			for i := range children {
-				children[i].target = Target{Anchor: Anchor{n.ID, 0}, Syntax: -i - 1}
+				children[i].target = Target{Anchor: Anchor{n.ID, 0}, Syntax: -children[i].target.Anchor.Offset - 1}
 			}
 		}
 		out = append(out, children...)
@@ -536,7 +542,7 @@ func (v *View) compile(nodes []Node, prefix string, depth int, unit ID, insideCh
 			if v.options.ASCII {
 				rule = "---"
 			}
-			v.blocks = append(v.blocks, block{id: n.ID, unit: u, prefix: prefix, friendly: []glyph{{text: rule, style: Protected, target: Target{Anchor: Anchor{n.ID, 0}}, nav: true, word: 3}}, disclosed: v.delimiter("---", n.ID, false), content: ""})
+			v.blocks = append(v.blocks, block{id: n.ID, unit: u, prefix: prefix, friendly: []glyph{{text: rule, style: Protected, target: Target{Anchor: Anchor{n.ID, 0}}, nav: true, word: 3}}, disclosed: v.delimiter(strings.Repeat("-", max(3, n.dashes)), n.ID, false), content: ""})
 		default:
 			v.add(n, prefix, unit, false)
 		}

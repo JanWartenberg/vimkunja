@@ -69,7 +69,7 @@ The rules are accepted; these tickets make the remaining work executable. No new
 | [06 — Native draft editing, Visual Mode and local history](../../../.archive/2026-10-09/description-rendering/issues/06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery completed 2026-10-09; committed 2026-10-09 | — |
 | [07 — List, Checkbox and Quote structure editing](../../../.archive/2026-10-10/description-rendering/issues/07-implement-list-and-quote-structure-editing.md) | L01–L12 / Q01–Q04 completed 2026-10-10; committed 2026-10-10 | — |
 | [08 — Code editing, Tabs and terminal input](../../../.archive/2026-10-10/description-rendering/issues/08-implement-native-code-editing-and-terminal-input.md) | Completed 2026-10-10; exact Code input/exits, Tabs/retab/config and synthetic terminal dispatch; committed 2026-10-10 | — |
-| [09 — Inline syntax, Inline-Code and Link editing](09-implement-inline-syntax-code-and-links.md) | Syntax, Inline-Code and Links | None (06 completed) |
+| [09 — Inline syntax, Inline-Code and Link editing](../../../.archive/2026-10-10/description-rendering/issues/09-implement-inline-syntax-code-and-links.md) | Completed 2026-10-10; five review rounds and targeted final fixes verified, committed 2026-10-10 | — |
 | [10 — Native Rich-text compatibility, terminal acceptance and documentation](10-verify-native-rich-text-compatibility-and-documentation.md) | VOA/terminal evidence, properties/fuzz, Help/tutorial | Integration completion: 03–09; preparation unblocked |
 
 Completed specification work is distinct from future Native test execution. The remaining deliverable checkboxes below remain open until their owning tickets provide evidence.
@@ -388,3 +388,7 @@ User authorizes starting 03 while main cleanup continues. `internal/description`
 ### 2026-10-10 — Code editing and terminal dispatch (08)
 
 08 is implemented, verified after four independent bug/consistency review pairs and archived in the existing worktree; committed 2026-10-10. Exact Code whitespace/paste, Enter-confirmed typed marker creation, same-container exits, source-line editing/selection, Tab/literal-Tab, retab and settings now execute in Draft/TUI/config tests. All 38 focused non-null corpus Code edit goldens pass actual editor/prepared-save tests; full tests, affected race/vet, both builds and bounded source-preservation fuzz pass. Protected Code-child source gaps are handled without widening Opaque; ambiguous destructive line operations reject locally, whole-block removal remains confirmable. 09 is next. Real German/Windows/VOA acceptance remains 10.
+
+### 2026-10-10 — Ticket 09 execution handoff
+
+Inline syntax, Native Inline-Code and separate Link URL editing are implemented in the same isolated worktree. Forty independent edit HTML goldens across eleven focused corpus records now run through actual TUI dispatch/prepared-save, with additional origin/escape/history, URL, clipboard and temporary-SQLite adoption tests. Product rules remain unchanged. Ticket 10 owns integrated coverage reporting, tutorial and real VOA/German-layout/Windows acceptance; synthetic results do not certify those environments.

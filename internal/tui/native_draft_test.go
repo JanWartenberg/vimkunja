@@ -298,7 +298,8 @@ func TestNativeClearBlockedSaveAndInsertAcrossDelimiters(t *testing.T) {
 	}
 	m = nativeEditingModel(`<p>A<strong>B</strong>C</p>`)
 	m = nativeKeys(m, "i")
-	for i := 0; i < 2; i++ {
+	// Insert arrows now visit both disclosed bold delimiters and their boundary.
+	for i := 0; i < 5; i++ {
 		m = pressKey(m, tea.Key{Code: tea.KeyRight})
 	}
 	m = nativeKeys(m, "!")
