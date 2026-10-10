@@ -23,7 +23,7 @@ func (d *Draft) extents() (map[ID]extent, []ID) {
 		for _, n := range ns {
 			start := pos
 			current := block
-			if n.Kind == Element && (n.Tag == "p" || strings.HasPrefix(n.Tag, "h") && n.Tag != "html" || n.Tag == "pre" || n.Tag == "li") || n.Kind == Opaque && n.blockOpaque && block == 0 {
+			if n.Kind == Element && (n.Tag == "p" || strings.HasPrefix(n.Tag, "h") && n.Tag != "html" || n.Tag == "pre" || n.Tag == "li" || (n.Tag == "blockquote" || n.Tag == "ul" || n.Tag == "ol") && len(n.Children) == 0) || n.Kind == Opaque && n.blockOpaque && block == 0 {
 				current = n.ID
 				blocks = append(blocks, n.ID)
 			}
@@ -66,7 +66,7 @@ func (d *Draft) selectionRange() (int, int, map[ID]extent) {
 	}
 	if s.Blocks {
 		a, b := ext[s.Start.Node], ext[s.End.Node]
-		if a.block == b.block && !s.WholeBlock && findNode(d.state.nodes, a.block) != nil && findNode(d.state.nodes, a.block).Tag == "pre" {
+		if a.block == b.block && d.codeLineSelection() {
 			// Code line selections stay within source text, including blank lines.
 			n := findNode(d.state.nodes, s.Start.Node)
 			if n != nil && n.Kind == Text {
@@ -82,6 +82,12 @@ func (d *Draft) selectionRange() (int, int, map[ID]extent) {
 				}
 				return lo, hi, ext
 			}
+		}
+		if li := d.selectedEntry(a.block); li != nil && ext[a.block].node.Tag != "pre" {
+			a.block = li.ID
+		}
+		if li := d.selectedEntry(b.block); li != nil && ext[b.block].node.Tag != "pre" {
+			b.block = li.ID
 		}
 		lo, hi = min(ext[a.block].start, ext[b.block].start), max(ext[a.block].end, ext[b.block].end)
 		_ = blocks
@@ -380,12 +386,7 @@ func (d *Draft) deleteSelection(a Action) error {
 	}
 	lo, hi, ext := d.selectionRange()
 	blocks := d.state.selection.Blocks
-	codeLines := false
-	if blocks && !d.state.selection.WholeBlock {
-		loc, _ := d.live().ResolveAnchor(d.state.cursor)
-		n := findNode(d.state.nodes, loc.Block)
-		codeLines = n != nil && n.Tag == "pre"
-	}
+	codeLines := d.codeLineSelection()
 	var remove func([]Node) []Node
 	remove = func(ns []Node) []Node {
 		var out []Node
@@ -432,6 +433,9 @@ func (d *Draft) deleteBoundary(b *Node, kind ActionKind) error {
 			}
 		}
 		return ErrStructure
+	}
+	if handled, err := d.mergeEntryBoundary(b, kind); handled {
+		return err
 	}
 	list, i := nodeList(&d.state.nodes, b.ID)
 	j := i + 1
@@ -550,28 +554,13 @@ func (d *Draft) SelectWord(around bool) error {
 }
 
 func (d *Draft) AllowSelectionCursor(a Anchor) bool {
-	s := d.state.selection
-	if s == nil || !s.Blocks || s.WholeBlock {
+	if !d.codeLineSelection() {
 		return true
 	}
-	doc := d.live()
-	start, _ := doc.ResolveAnchor(s.Start)
-	end, _ := doc.ResolveAnchor(a)
-	n := findNode(d.state.nodes, start.Block)
-	return n == nil || n.Tag != "pre" || start.Block == end.Block
+	end, err := d.live().ResolveAnchor(a)
+	return err == nil && end.Block == d.state.selection.codeBlock
 }
-func (d *Draft) CodeSelection() bool {
-	s := d.state.selection
-	if s == nil {
-		return false
-	}
-	loc, err := d.live().ResolveAnchor(s.Start)
-	if err != nil {
-		return false
-	}
-	n := findNode(d.state.nodes, loc.Block)
-	return n != nil && n.Tag == "pre"
-}
+func (d *Draft) CodeSelection() bool { return d.codeLineSelection() }
 
 // Highlight derives selection paint from document targets after layout.
 func (d *Draft) Highlight(f Frame) Frame {
@@ -630,11 +619,7 @@ func (d *Draft) ClampCodeSelection(target Anchor) Anchor {
 	if s == nil {
 		return d.state.cursor
 	}
-	loc, err := d.live().ResolveAnchor(s.Start)
-	if err != nil {
-		return d.state.cursor
-	}
-	n := findNode(d.state.nodes, loc.Block)
+	n := findNode(d.state.nodes, s.codeBlock)
 	if n == nil || n.Tag != "pre" {
 		return d.state.cursor
 	}

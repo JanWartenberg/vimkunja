@@ -117,6 +117,10 @@ func (m *model) nativeEditKey(key string) bool {
 		}
 		return true
 	case "x", "delete", "backspace":
+		if key == "x" && sel == nil && d.OnCheckbox() {
+			m.applyNative(description.Action{Kind: description.ToggleCheckbox}, false, false)
+			return true
+		}
 		kind := description.Delete
 		if key == "backspace" {
 			kind = description.Backspace
@@ -159,6 +163,11 @@ func (m *model) updateNativeInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+v":
 		return m, m.pasteClipboard(e)
 	case "enter":
+		if e.nativeDraft.EmptyListFill() {
+			e.mode = editorNormal
+			e.nativeDraft.InsertionView(e.nativeDescription, false)
+			break
+		}
 		m.applyNative(description.Action{Kind: description.Split}, false, true)
 	case "shift+enter":
 		m.applyNative(description.Action{Kind: description.HardBreak}, false, true)
@@ -249,7 +258,23 @@ func (m *model) nativePaletteKey(key string) bool {
 		}
 		return true
 	}
+	if sel != nil && sel.Blocks {
+		actions := map[string]description.ActionKind{"k": description.OutdentList, "l": description.IndentList, "q": description.UnwrapQuote, "w": description.WrapQuote}
+		if action, ok := actions[key]; ok {
+			m.applyNative(description.Action{Kind: action}, false, false)
+			return true
+		}
+	}
 	if sel == nil {
+		if key == "q" {
+			m.applyNative(description.Action{Kind: description.ToggleQuote}, false, false)
+			return true
+		}
+		lists := map[string]string{"u": "ul", "n": "ol", "x": "task"}
+		if kind := lists[key]; kind != "" {
+			m.applyNative(description.Action{Kind: description.ConvertList, Text: kind}, false, false)
+			return true
+		}
 		tags := map[string]string{"1": "h1", "2": "h2", "3": "h3", "0": "p"}
 		if tag := tags[key]; tag != "" {
 			m.applyNative(description.Action{Kind: description.Convert, Text: tag}, false, false)
@@ -268,9 +293,9 @@ func (m *model) nativePalette() string {
 		if !s.Blocks {
 			return "FORMAT  b bold · i italic · u underline · s strike · 0 clear · o projects"
 		}
-		return "STRUCTURE  q/w quote · k/l list · x/c code (later) · o projects"
+		return "STRUCTURE  q/w quote · k/l list · x/c code (08) · o projects"
 	}
-	return "BLOCK  1/2/3 heading · 0 paragraph · o projects"
+	return "BLOCK  1/2/3 heading · 0 paragraph · u/n/x list · q quote · o projects"
 }
 func selectDescriptionBlockCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionView() != nil {

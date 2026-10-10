@@ -124,3 +124,80 @@ func FuzzDraftActionsAreAtomic(f *testing.F) {
 		}
 	})
 }
+
+func TestDraftStructureCorpusEdits(t *testing.T) {
+	data, err := os.ReadFile("../../.scratch/description-rendering/corpus.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var corpus struct {
+		Fixtures []struct {
+			ID     string `json:"id"`
+			Source string `json:"source_html"`
+			Edits  []struct {
+				HTML *string `json:"expected_html"`
+			} `json:"edits"`
+		} `json:"fixtures"`
+	}
+	if err := json.Unmarshal(data, &corpus); err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, f := range corpus.Fixtures {
+		d := NewDraft(Parse(f.Source))
+		var a Action
+		index := 0
+		reject := false
+		switch f.ID {
+		case "list-indent-existing-children", "list-kind-preservation":
+			cursorText(t, d, "B", 0)
+			d.Select(true, false)
+			a.Kind = IndentList
+		case "list-outdent-reading-order":
+			cursorText(t, d, "B", 0)
+			d.Select(true, false)
+			a.Kind = OutdentList
+		case "list-selection-atomicity":
+			cursorText(t, d, "A", 0)
+			d.Select(true, false)
+			cursorText(t, d, "B", 0)
+			a.Kind = IndentList
+			reject = true
+		case "ordered-middle-exit":
+			n := d.Snapshot()[0].Children[2]
+			_ = d.SetCursor(Anchor{n.ID, 0})
+			a.Kind = Split
+		case "empty-imported-ul", "empty-imported-ol":
+			a = Action{Kind: Insert, Text: "Hello"}
+			index = 2
+		case "quote-shared-source-split":
+			cursorText(t, d, "B", 0)
+			a.Kind = ToggleQuote
+		case "quote-unique-attribute-split":
+			cursorText(t, d, "B", 0)
+			a.Kind = ToggleQuote
+			reject = true
+		case "quote-shared-wrap-atomic":
+			cursorText(t, d, "A", 0)
+			d.Select(true, false)
+			cursorText(t, d, "B", 0)
+			a.Kind = WrapQuote
+		default:
+			continue
+		}
+		t.Run(f.ID, func(t *testing.T) {
+			err := d.Apply(a, false)
+			if reject && err == nil || !reject && err != nil {
+				t.Fatalf("operation: %v", err)
+			}
+			if f.Edits[index].HTML == nil {
+				t.Fatal("missing independent golden")
+			}
+			expectDraftHTML(t, d, *f.Edits[index].HTML)
+		})
+		count++
+	}
+	if count != 10 {
+		t.Fatalf("expected10 executed structurefixtures, got%d", count)
+	}
+}

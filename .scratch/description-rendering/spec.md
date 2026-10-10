@@ -235,3 +235,8 @@ Ticket 05 adds document-owned `View`/`Frame` projection and navigation, integrat
 ### Implemented Draft/Visual seam — 2026-10-09
 
 [Completed ticket 06](../../.archive/2026-10-09/description-rendering/issues/06-implement-description-draft-editor-and-visual-modes.md) activates structured Native editing, Visual formatting/selections, local history, confirmed Opaque operations, Blocked recovery and successful save-ID adoption. Synthetic module/TUI/SQLite tests, affected race/vet, full tests/builds and bounded draft fuzz pass; final independent review findings are fixed. Inline formatting selections overlapping Code reject atomically; source-line indentation is owned by 08. Advanced list/quote/Code/syntax actions remain 07–09 and real VOA/terminal acceptance remains 10. Implementation committed on the isolated branch on 2026-10-09.
+
+
+### Implemented List/Checkbox/Quote seam — 2026-10-10
+
+[Completed ticket 07](../../.archive/2026-10-10/description-rendering/issues/07-implement-list-and-quote-structure-editing.md) implements L01–L12/Q01–Q04 through Native Draft actions and the agreed Space palettes, with Checkbox state/progress independent of Task Done. Tests cover explicit structure/metadata/numbering, common-parent selection atomicity, child placement on Beta, success-only UUID adoption, quote source references and metadata-loss confirmation. Code-line selections remain distinct from entry subtree selections even after endpoint swap. Five full review rounds plus targeted final fix rechecks leave no confirmed findings; automated checks pass. Changes committed on the isolated branch on 2026-10-10. Code/syntax actions remain 08/09; real VOA/terminal acceptance remains 10.

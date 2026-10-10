@@ -260,3 +260,10 @@ Additional tests cover style roles, graphemes, mark disclosure, hard/soft breaks
 ### 2026-10-09 — Ticket 06 verification completed
 
 Draft/Visual implementation is archived, committed 2026-10-09, after five review rounds and targeted final fix rechecks with no remaining confirmed findings. Full tests, affected race/vet, both builds and bounded draft fuzz (50,298 executions in the final run) pass. Regression tests additionally cover selected-Opaque skip feedback, quote-source metadata confirmation on empty Enter exit, visible Normal deletion cursors and atomic rejection of inline formatting across Code. Earlier corpus expectations remain independently authored and synthetic; this does not certify every future 07–09 edit or real VOA/terminal behavior.
+
+
+### 2026-10-10 — Ticket 07 structure execution
+
+`TestDraftStructureCorpusEdits` executes ten independent HTML expectations for list-indent-existing-children, list-outdent-reading-order, list-selection-atomicity, list-kind-preservation, ordered-middle-exit, empty-imported-ul, empty-imported-ol, quote-shared-source-split, quote-unique-attribute-split and quote-shared-wrap-atomic. checkbox-middle-split and empty-imported-checkbox have structural state/identity tests; random IDs are checked through actual candidate adoption and repeated temporary-SQLite saves instead of literal HTML goldens. Dedicated Draft/TUI regressions cover all L01–L12/Q01–Q04 paths, parent-child overlap, invalid mixed selections, implicit reversed continuation, safe mixed-kind outdent, Opaque/history, nested scope, empty Native metadata and selection-origin stability. No goldens were generated from the serializer.
+
+Five full review rounds and final targeted independent rechecks leave no confirmed findings. Full tests, affected race/vet, both builds and bounded structure fuzz (36,734 final executions) pass. Ticket 07 is archived, committed 2026-10-10. This remains synthetic/module/TUI/temporary-SQLite execution evidence; real VOA captures, Windows/dead-key behavior and human terminal acceptance remain Ticket 10.

@@ -395,6 +395,10 @@ func (v *View) compile(nodes []Node, prefix string, depth int, unit ID, insideCh
 				v.compile(n.Children, prefix+q, depth, u, insideCheckbox)
 			}
 		case "ul", "ol":
+			if len(n.Children) == 0 {
+				v.add(n, prefix, n.ID, false)
+				continue
+			}
 			ordinal := 1
 			reversed := false
 			for _, a := range n.Attributes {

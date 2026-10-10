@@ -28,6 +28,13 @@ const (
 	ReplaceSelection
 	ClearDescription
 	RecoverText
+	IndentList
+	OutdentList
+	ConvertList
+	ToggleCheckbox
+	ToggleQuote
+	WrapQuote
+	UnwrapQuote
 )
 
 type Action struct {
@@ -41,6 +48,7 @@ var ErrQuoteMetadataConfirmation = fmt.Errorf("Zitat-Metadaten würden gelöscht
 type Selection struct {
 	Start, End         Anchor
 	Blocks, WholeBlock bool
+	codeBlock          ID // Code-line origin remains stable when endpoints swap.
 }
 type draftState struct {
 	nodes     []Node
@@ -147,6 +155,12 @@ func (d *Draft) Selection() *Selection {
 }
 func (d *Draft) Select(blocks, whole bool) {
 	d.state.selection = &Selection{Start: d.state.cursor, End: d.state.cursor, Blocks: blocks, WholeBlock: whole}
+	if blocks && !whole {
+		loc, err := d.live().ResolveAnchor(d.state.cursor)
+		if n := findNode(d.state.nodes, loc.Block); err == nil && n != nil && n.Tag == "pre" {
+			d.state.selection.codeBlock = n.ID
+		}
+	}
 }
 func (d *Draft) CancelSelection() { d.state.selection = nil }
 func (d *Draft) SwapSelection() {
@@ -302,7 +316,7 @@ func (d *Draft) Apply(a Action, confirmed bool) error {
 	}
 	if err == nil && !confirmed && d.needsConfirmation(before, a) {
 		err = ErrConfirmation
-		if a.Kind == Split && d.quoteMetadataRemoved(before.nodes) {
+		if (a.Kind == Split || a.Kind == ToggleQuote || a.Kind == UnwrapQuote) && d.quoteMetadataRemoved(before.nodes) {
 			err = ErrQuoteMetadataConfirmation
 		}
 	}
@@ -310,6 +324,9 @@ func (d *Draft) Apply(a Action, confirmed bool) error {
 		d.state = before
 		d.next = oldNext
 		return err
+	}
+	if reflect.DeepEqual(before, d.state) {
+		return nil
 	}
 	d.undo = append(d.undo, before)
 	d.redo = nil
@@ -340,7 +357,7 @@ func (d *Draft) needsConfirmation(before draftState, a Action) bool {
 			return true
 		}
 	}
-	if a.Kind == Split && d.quoteMetadataRemoved(before.nodes) {
+	if (a.Kind == Split || a.Kind == ToggleQuote || a.Kind == UnwrapQuote) && d.quoteMetadataRemoved(before.nodes) {
 		return true
 	}
 	if a.Kind == Convert {
@@ -435,6 +452,16 @@ func (d *Draft) After(a Anchor) Anchor {
 	return a
 }
 func (d *Draft) edit(a Action) error {
+	switch a.Kind {
+	case IndentList, OutdentList:
+		return d.moveList(a.Kind)
+	case ConvertList:
+		return d.convertList(a.Text)
+	case ToggleCheckbox:
+		return d.toggleCheckbox()
+	case ToggleQuote, WrapQuote, UnwrapQuote:
+		return d.editQuote(a.Kind)
+	}
 	if a.Kind == ClearDescription || a.Kind == RecoverText {
 		d.state.nodes = nil
 		d.state.recovered = true
@@ -469,6 +496,31 @@ func (d *Draft) edit(a Action) error {
 	b := findNode(d.state.nodes, loc.Block)
 	if b == nil {
 		return ErrStructure
+	}
+	if isList(*b) && len(b.Children) == 0 {
+		if a.Kind == Split {
+			return nil
+		}
+		if a.Kind == Insert && a.Text != "" {
+			entry := d.newNode(newEntry(*b))
+			b.Children = []Node{entry}
+			d.state.cursor = d.first(b.Children)
+			return d.edit(a)
+		}
+	}
+	if li := d.selectedEntryAtCursor(); li != nil {
+		switch a.Kind {
+		case Split:
+			return d.splitEntry(li)
+		case OpenAbove, OpenBelow:
+			return d.openEntry(li, a.Kind)
+		case DeleteBlock:
+			list, i := nodeList(&d.state.nodes, li.ID)
+			*list = slices.Delete(*list, i, i+1)
+			d.state.cursor = d.first(d.state.nodes)
+			d.state.selection = nil
+			return nil
+		}
 	}
 	switch a.Kind {
 	case Insert:
@@ -545,7 +597,7 @@ func (d *Draft) edit(a Action) error {
 				q := findNode(d.state.nodes, id)
 				if q != nil && q.Tag == "blockquote" && list == &q.Children {
 					outer, j := nodeList(&d.state.nodes, q.ID)
-					p := d.newNode(Node{Kind: Element, Tag: "p"})
+					p := *b
 					*list = slices.Delete(*list, i, i+1)
 					if len(q.Children) == 0 {
 						*outer = slices.Delete(*outer, j, j+1)
