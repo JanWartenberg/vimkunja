@@ -133,6 +133,7 @@ func (m *model) nativeDescriptionKey(key string) bool {
 		} else if key == "n" || key == "esc" {
 			e.nativePending = nil
 			e.nativePendingInsert = false
+			e.nativeDraft.EndUndoGroup()
 		}
 		return true
 	}
@@ -196,6 +197,26 @@ func (m *model) nativeDescriptionKey(key string) bool {
 		} else if prefix == "d" && key == "d" {
 			m.applyNative(description.Action{Kind: description.DeleteBlock}, false, false)
 			e.nativeCount = 0
+			return true
+		} else if (prefix == "c" || prefix == "d") && (key == "i" || key == "a") {
+			e.nativePrefix = prefix + key
+			return true
+		} else if prefix == "ci" || prefix == "ca" || prefix == "di" || prefix == "da" {
+			if key == "w" {
+				if prefix[0] == 'c' {
+					e.nativeDraft.BeginUndoGroup()
+				}
+				if err := e.nativeDraft.SelectWord(prefix[1] == 'a'); err != nil {
+					e.nativeDraft.EndUndoGroup()
+					m.recordError(err)
+					return true
+				}
+				kind := description.DeleteSelection
+				if prefix[0] == 'c' {
+					kind = description.ReplaceSelection
+				}
+				m.applyNative(description.Action{Kind: kind}, false, prefix[0] == 'c')
+			}
 			return true
 		} else if prefix == "vi" || prefix == "va" {
 			if key == "w" {

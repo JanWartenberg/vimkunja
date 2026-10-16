@@ -123,6 +123,9 @@ func (d *Draft) Copy() string {
 	if d.state.selection == nil {
 		loc, _ := d.live().ResolveAnchor(d.state.cursor)
 		e := ext[loc.Block]
+		if loc.Node.Kind == Opaque {
+			e = ext[loc.Node.ID]
+		}
 		lo, hi = e.start, e.end
 	}
 	var out strings.Builder
@@ -495,8 +498,20 @@ func (d *Draft) deleteSelection(a Action) error {
 	remove = func(ns []Node) []Node {
 		var out []Node
 		for _, n := range ns {
+			// Checkbox controls have zero text extent and belong to their entry,
+			// not to a partial selection starting at its first content character.
+			if n.Kind == Element && checkboxControlTag(n.Tag) {
+				out = append(out, n)
+				continue
+			}
 			e := ext[n.ID]
 			if e.start >= lo && e.end <= hi && (n.Kind != Element || blocks && !codeLines) {
+				if a.Kind == ReplaceSelection && !blocks && n.Kind == Text && n.ID == startAnchor.Node {
+					// Keep the insertion context when c consumes a whole leaf.
+					// Falling back to its neighbor would inherit unrelated marks.
+					n.Text, n.typed = "", nil
+					out = append(out, n)
+				}
 				continue
 			}
 			if n.Kind == Text && e.start < hi && e.end > lo {
@@ -588,11 +603,18 @@ func (d *Draft) deleteBoundary(b *Node, kind ActionKind) error {
 // SelectWord selects semantic text independently of disclosed delimiters.
 func (d *Draft) SelectWord(around bool) error {
 	ext, _ := d.extents()
-	loc, err := d.live().ResolveAnchor(d.state.cursor)
+	live := d.live()
+	loc, err := live.ResolveAnchor(d.state.cursor)
 	if err != nil {
 		return err
 	}
 	block := ext[loc.Block]
+	if block.node.Kind == Opaque {
+		a := Anchor{Node: block.node.ID}
+		d.state.selection = &Selection{Start: a, End: a}
+		d.state.cursor, d.state.syntax = a, 0
+		return nil
+	}
 	if loc.Node.Kind != Text && loc.Node.Kind != Opaque {
 		n := findNode(d.state.nodes, loc.Node.ID)
 		if n != nil {
@@ -603,20 +625,22 @@ func (d *Draft) SelectWord(around bool) error {
 		}
 	}
 	pos := anchorPosition(d.state.cursor, ext)
-	var text strings.Builder
+	// A list entry may contain child blocks and then resume its own text.
+	// Keep each contiguous run separate so a word cannot absorb descendants
+	// or jump across their document positions.
+	var runs [][]extent
 	var collect func([]Node)
 	collect = func(ns []Node) {
 		for _, n := range ns {
 			e := ext[n.ID]
-			if e.end < block.start || e.start > block.end {
-				continue
-			}
-			if n.Kind == Text {
-				text.WriteString(n.Text)
-			} else if n.Kind == Opaque {
-				text.WriteByte(1)
-			} else if n.Tag == "br" {
-				text.WriteByte(' ')
+			if n.Kind == Text || n.Kind == Opaque || n.Tag == "br" {
+				if live.locations[n.ID].Block != loc.Block || e.start == e.end {
+					continue
+				}
+				if len(runs) == 0 || runs[len(runs)-1][len(runs[len(runs)-1])-1].end != e.start {
+					runs = append(runs, nil)
+				}
+				runs[len(runs)-1] = append(runs[len(runs)-1], e)
 			} else {
 				collect(n.Children)
 			}
@@ -627,24 +651,44 @@ func (d *Draft) SelectWord(around bool) error {
 		return ErrStructure
 	}
 	collect(n.Children)
+	var text strings.Builder
+	base := 0
+	for _, run := range runs {
+		if pos < run[0].start || pos > run[len(run)-1].end {
+			continue
+		}
+		base = run[0].start
+		for _, e := range run {
+			switch {
+			case e.node.Kind == Text:
+				text.WriteString(e.node.Text)
+			case e.node.Kind == Opaque:
+				text.WriteByte(1)
+			case e.node.Tag == "br":
+				text.WriteByte(' ')
+			}
+		}
+		break
+	}
 	value := text.String()
 	if value == "" {
 		return ErrStructure
 	}
-	off := max(0, min(len(value), pos-block.start))
+	off := max(0, min(len(value), pos-base))
 	if off == len(value) {
 		off = graphemeBefore(value, off)
 	}
 	start, end := off, graphemeAfter(value, off)
 	class := wordClass(value[start:end])
-	for start > 0 {
+	atom := value[start:end] == "\x01"
+	for !atom && start > 0 {
 		p := graphemeBefore(value, start)
 		if wordClass(value[p:start]) != class || value[p:start] == "\x01" {
 			break
 		}
 		start = p
 	}
-	for end < len(value) {
+	for !atom && end < len(value) {
 		p := graphemeAfter(value, end)
 		if wordClass(value[end:p]) != class || value[end:p] == "\x01" {
 			break
@@ -670,7 +714,17 @@ func (d *Draft) SelectWord(around bool) error {
 			}
 		}
 	}
-	d.state.selection = &Selection{Start: d.anchorAt(block.start + start), End: d.anchorAt(block.start + graphemeBefore(value, end))}
+	// A text endpoint can share a position with the following atom. Word
+	// selection addresses the character itself, not the insertion boundary.
+	characterAnchor := func(pos int) Anchor {
+		for id, e := range ext {
+			if (e.node.Kind == Text || e.node.Kind == Opaque || e.node.Tag == "br") && e.start <= pos && pos < e.end {
+				return Anchor{Node: id, Offset: pos - e.start}
+			}
+		}
+		return d.anchorAt(pos)
+	}
+	d.state.selection = &Selection{Start: characterAnchor(base + start), End: characterAnchor(base + graphemeBefore(value, end))}
 	d.state.cursor = d.state.selection.End
 	d.state.syntax = 0
 	return nil

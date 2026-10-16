@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -87,6 +88,24 @@ func (r *CommandRegistry) Execute(m *model, input string) (tea.Model, tea.Cmd, e
 
 	updated, cmd := command.handler(m, fields[1:])
 	return updated, cmd, nil
+}
+
+// CommandInputMatches reports whether the current Ex prompt resolves to the
+// requested command and arguments. Guided lessons use it after real completion.
+func (m *model) CommandInputMatches(input string) bool {
+	if !m.commandMode {
+		return false
+	}
+	if m.commandInput == input {
+		return true
+	}
+	actual, expected := strings.Fields(m.commandInput), strings.Fields(input)
+	if len(actual) == 0 || len(expected) == 0 || !slices.Equal(actual[1:], expected[1:]) {
+		return false
+	}
+	a, _ := m.commands.resolve(actual[0])
+	b, _ := m.commands.resolve(expected[0])
+	return a != nil && a == b
 }
 
 // dispatchModalGlobalCommand handles application-wide commands before modal

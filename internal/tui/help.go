@@ -77,6 +77,7 @@ var helpLines = []string{
 	"  i/a/I/A, o/O          Insert text / open paragraph or Code line",
 	"",
 	"NATIVE DESCRIPTION EDITING",
+	"  ciw/caw, diw/daw     Change / delete inner or around word; Esc cancels prefix",
 	"  Enter / Shift+Enter   Split paragraph / insert hard break; Code Enter is newline",
 	"  dd / x               Delete block/Code line / toggle Checkbox or delete grapheme",
 	"  v/V, viw/vaw         Select text / blocks / semantic word; o swaps end, Esc cancels",

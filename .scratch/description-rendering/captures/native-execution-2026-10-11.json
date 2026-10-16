@@ -1,0 +1,1214 @@
+{
+  "kind": "automated-execution-ledger",
+  "date": "2026-10-11",
+  "command": "go test -json ./... ./.scratch/description-rendering/verification",
+  "synthetic_fixture_count": 83,
+  "corpus_edit_case_count": 235,
+  "indexed_native_edit_count": 203,
+  "limitations": "Indexed cases prove exact HTML goldens via Native TUI/Draft execution; empty plain Description uses the public Draft seam. Non-indexed cases all have null HTML expectations and are assertion-based: see the focused tests list, which is supplementary contract evidence, not an invented PASS per corpus action. Injected clipboard/event failures do not prove host clipboard or physical Windows keys. Projection booleans record the named corpus projection suite only.",
+  "fixtures": [
+    {
+      "fixture": "basic-blocks",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "inline-marks",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "inline-boundaries",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "uniform-toggle",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "editor-delimiters",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 6
+    },
+    {
+      "fixture": "typed-versus-pasted-markers",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 6
+    },
+    {
+      "fixture": "hard-breaks",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "entities-and-whitespace",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "serialization-normalization",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "root-inline-fragment",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "empty-description",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "empty-structures",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 3
+    },
+    {
+      "fixture": "nested-lists",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "list-editing",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "checkbox-lists",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        0
+      ],
+      "edit_count": 1
+    },
+    {
+      "fixture": "checkbox-duplicate-ids",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        0,
+        1,
+        2
+      ],
+      "edit_count": 3
+    },
+    {
+      "fixture": "code-and-quotes",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "links",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "edit_count": 9
+    },
+    {
+      "fixture": "link-import-edges",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "opaque-node",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "opaque-edit-neighbors",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        4,
+        5
+      ],
+      "edit_count": 6
+    },
+    {
+      "fixture": "opaque-nesting",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "attribute-preservation",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "opaque-parent-conversion",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        2,
+        3
+      ],
+      "edit_count": 4
+    },
+    {
+      "fixture": "table-mixed-content",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "table-irregular",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "unknown-node",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "malformed-html",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        2
+      ],
+      "edit_count": 3
+    },
+    {
+      "fixture": "duplicate-native-attributes",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        2
+      ],
+      "edit_count": 3
+    },
+    {
+      "fixture": "document-wrappers",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "unsafe-html",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        2
+      ],
+      "edit_count": 3
+    },
+    {
+      "fixture": "unsafe-attributes-and-urls",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        2
+      ],
+      "edit_count": 3
+    },
+    {
+      "fixture": "layout-and-palette",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "native-selection-and-history",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 5
+    },
+    {
+      "fixture": "paragraph-creation-and-split",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 7
+    },
+    {
+      "fixture": "standalone-code-editing",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 8
+    },
+    {
+      "fixture": "ordered-list-editing",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 3
+    },
+    {
+      "fixture": "image-fallbacks",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "opaque-inline-q",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "unsafe-isolated-and-opaque",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        2
+      ],
+      "edit_count": 3
+    },
+    {
+      "fixture": "unsafe-url-only",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        2
+      ],
+      "edit_count": 3
+    },
+    {
+      "fixture": "external-save-conflict",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        0
+      ],
+      "edit_count": 1
+    },
+    {
+      "fixture": "code-trigger-events",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 10
+    },
+    {
+      "fixture": "code-exit-boundaries",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 6
+    },
+    {
+      "fixture": "code-exit-nested",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "code-exit-list-entry",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "code-tabs-retab",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 6
+    },
+    {
+      "fixture": "retaball-native-scope",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "code-indent-outdent",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "code-line-selection",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "edit_count": 4
+    },
+    {
+      "fixture": "exact-code-import",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "native-inline-code",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 3
+    },
+    {
+      "fixture": "inline-code-typed-literal",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 5
+    },
+    {
+      "fixture": "literal-import-edit",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "syntax-escape-parity",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        1,
+        2,
+        3
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        0
+      ],
+      "edit_count": 4
+    },
+    {
+      "fixture": "graphemes-and-delimiter-selection",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        3
+      ],
+      "edit_count": 4
+    },
+    {
+      "fixture": "typed-rule-dash-history",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 3
+    },
+    {
+      "fixture": "empty-imported-ul",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 4
+    },
+    {
+      "fixture": "empty-imported-ol",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 4
+    },
+    {
+      "fixture": "empty-imported-checkbox",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        3
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        2
+      ],
+      "edit_count": 4
+    },
+    {
+      "fixture": "valid-optional-end-tags",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "root-block-grouping",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "empty-table",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "image-empty-alt",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "unknown-inner-block-boundaries",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        1
+      ],
+      "edit_count": 2
+    },
+    {
+      "fixture": "embedded-media-neighbors",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "empty-link-label-edit",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 5
+    },
+    {
+      "fixture": "cross-paragraph-links",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "quote-shared-source-split",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 3
+    },
+    {
+      "fixture": "quote-unique-attribute-split",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 3
+    },
+    {
+      "fixture": "quote-shared-wrap-atomic",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "list-indent-existing-children",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "list-outdent-reading-order",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "list-selection-atomicity",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 4
+    },
+    {
+      "fixture": "list-kind-preservation",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 2
+    },
+    {
+      "fixture": "ordered-middle-exit",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "checkbox-middle-split",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        1
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        0
+      ],
+      "edit_count": 2
+    },
+    {
+      "fixture": "checkbox-id-reservation-atomicity",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        0,
+        1,
+        2
+      ],
+      "edit_count": 3
+    },
+    {
+      "fixture": "opaque-identical-atom-identity",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        3
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [
+        2
+      ],
+      "edit_count": 4
+    },
+    {
+      "fixture": "triple-strong-off",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 1
+    },
+    {
+      "fixture": "all-mark-families-off",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 3
+    },
+    {
+      "fixture": "mention-label",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 7
+    },
+    {
+      "fixture": "mention-id-fallback",
+      "import_serialization_pass": true,
+      "projection_pass": true,
+      "indexed_native_edit_cases": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "assertion_cases_without_dedicated_indexed_driver": [],
+      "edit_count": 7
+    }
+  ],
+  "focused_assertion_tests_passed": [
+    "FuzzCodeRetabSourcePreservation",
+    "TestActivatingDescriptionCollapsesExpandedCompactFields",
+    "TestActiveCompactDescriptionPagesItsInnerViewport",
+    "TestCapturedCheckboxProjectionAndStructuralEditing",
+    "TestCapturedCheckboxRealUIEditing",
+    "TestCheckboxMiddleSplitKeepsChildrenOnBeta",
+    "TestCheckboxParagraphVisualDeleteIncludesChildren",
+    "TestCheckboxRenderRecognitionStaysLocal",
+    "TestCheckboxSaveCorpusCandidates",
+    "TestChecklistMalformedMarkupFallback",
+    "TestClosingEditorRemovesNativeCursor",
+    "TestCodeCRLFOpenAndDeleteEmptyFinalLine",
+    "TestCodeCreationAndNestedExit",
+    "TestCodeLineDeletionCannotConfirmThroughOpaque",
+    "TestCodeLineSelectionCannotMoveEnclosingEntry",
+    "TestCodeLineSelectionOriginSurvivesEndpointSwap",
+    "TestCodeNormalizationInsideContainers",
+    "TestCodeOpaqueGapsKeepNativeOffsetsAndProtection",
+    "TestCodeOperationsAcrossPreservedWrappers",
+    "TestCodeTabRetabAndPartialOutdent",
+    "TestCombinedSaveAdoptsCommittedCandidateAndKeepsLateDescription",
+    "TestCommentComposerPastesSystemClipboardLikeDescription",
+    "TestCommentsDoNotProtectEntireNativeLists",
+    "TestCommittedDescriptionAdoptedEvenWhenHistoryReadFails",
+    "TestCompactTaskDetailThresholdReservesDescriptionRows",
+    "TestConcurrentDescriptionSavesCannotBothOverwriteOpenedBaseline",
+    "TestCorpusOpaqueCandidateFailuresPreserveOrigin",
+    "TestDescriptionBaselinePreservesUntouchedHTML",
+    "TestDescriptionCommitFailureRollsBackAndReleasesConnection",
+    "TestDescriptionCursorHidesWhenPinnedCommentsLeaveNoTextRow",
+    "TestDescriptionCursorStaysWithDescriptionLinesAfterEmptyLines",
+    "TestDescriptionCursorStaysWithWrappedInsertionLine",
+    "TestDescriptionCursorTracksNewDoneFieldAfterSavingNewTask",
+    "TestDescriptionInsertAcceptsTerminalPaste",
+    "TestDescriptionInsertNormalizesBrowserPasteLineEndings",
+    "TestDescriptionInsertPreservesGroupedBackticksAndGermanCharacters",
+    "TestDescriptionNormalModeDeletesCharactersAndLines",
+    "TestDescriptionNormalModeOpensLinesAndAppends",
+    "TestDescriptionSaveKeepsSelectedTask",
+    "TestDescriptionSaveRejectsExternalChangeAfterPreparation",
+    "TestDescriptionTerminalTextCollapsesConsecutiveEmptyParagraphs",
+    "TestDescriptionTerminalTextDoesNotExposeUnreadableMarkup",
+    "TestDescriptionTerminalTextNormalizesHTMLWhitespace",
+    "TestDescriptionTerminalTextPreservesPlainTextLineBreaks",
+    "TestDescriptionTerminalTextRemovesTerminalControls",
+    "TestDescriptionTerminalTextRendersCheckboxListsReadOnly",
+    "TestDescriptionTerminalTextRendersHTMLParagraphs",
+    "TestDescriptionTerminalTextRendersHeadingsAndBreaks",
+    "TestDescriptionTerminalTextRendersImagesAndOtherMediaSafely",
+    "TestDescriptionTerminalTextRendersLinksWithoutRepeatingURLs",
+    "TestDescriptionTerminalTextRendersNestedLists",
+    "TestDescriptionTerminalTextRendersTableRows",
+    "TestDescriptionTerminalTextRendersUnknownElementsOrExplainsEmptyOnes",
+    "TestDescriptionTerminalTextToleratesMalformedHTML",
+    "TestDetailSaveLateLabelLoadPreservesUnsavedDescription",
+    "TestDisabledDescriptionCursorRetainsRenderedFallback",
+    "TestDraftBreaksGraphemesAndCodeLineSelection",
+    "TestDraftCopyFocusedOpaqueIncludesOnlyItsSafeProjection",
+    "TestDraftCrossParagraphSelectionEndingInEmptyLink",
+    "TestDraftDeletingLastLinkLabelDoesNotResurrectURL",
+    "TestDraftEmptyLinkFallback",
+    "TestDraftEmptyLinkUnlinkLeavesLiveCursor",
+    "TestDraftEmptyLinkVisualContentDelete",
+    "TestDraftEmptyLinkVisualUnlinkRemapsFallbackTargets",
+    "TestDraftFormattingRejectsCodeSelectionAtomically",
+    "TestDraftFormattingSkipsMultipleOpaqueAtoms",
+    "TestDraftInlineCodeStructuralEdgesRemainOutside",
+    "TestDraftInlineCodeUnformatKeepsSourceLiteral",
+    "TestDraftLinkSelectionAndEdges",
+    "TestDraftLinkURLAndUnlinkPreserveLabelMarks",
+    "TestDraftLinkURLPolicyAndAtomicRejection",
+    "TestDraftLinkUniqueMetadataRejectsPartialSplit",
+    "TestDraftOpaqueNeighborsAndEmptyCodeActions",
+    "TestDraftPartialLinkClearDoesNotDuplicateUniqueMetadata",
+    "TestDraftPartialNestedMarksSkipOpaqueAndSemanticWord",
+    "TestDraftSelectionMarksAndOpaqueConfirmation",
+    "TestDraftTrailingBlankCodeDeleteAndOpaquePaint",
+    "TestDraftVisualTrailingBlankCodeLineDelete",
+    "TestDraftWholeOpaqueExtentPaint",
+    "TestEditorSaveCarriesOpenedDescriptionBaseline",
+    "TestEditorViewOmitsNativeCursorWhenDisabled",
+    "TestGNThenEnterActivatesDescriptionEditing",
+    "TestGNThenITypesIntoPlainTextDescription",
+    "TestGeneratedNativeRoundTrips",
+    "TestGlobalSearchModalKeepsItsBottomBorderWithManyDescriptionResults",
+    "TestGlobalSearchOmitsNativeEditorCursor",
+    "TestGlobalSearchUsesPinkCursorAndYellowDescriptionHighlight",
+    "TestHTMLDescriptionEditingStartsNativeInsert",
+    "TestHTMLDescriptionInsertUsesStructuredDraft",
+    "TestHiddenDescriptionInExpandedCompactDetailHasNoCursor",
+    "TestHomeEndAliasesNavigateProjectsTasksAndDescription",
+    "TestIntegrityAuditCompletionTimestampPreservation",
+    "TestIntegrityAuditDueTimePreservation",
+    "TestLabelsFieldOmitsTheNativeTextCursor",
+    "TestLabelsOverlayOmitsTheNativeTextCursor",
+    "TestLateNativeCandidateCanSaveAfterOwnCommit",
+    "TestListConversionAndCheckboxToggle",
+    "TestLoadCodeSettingsAndIndependentFallbacks",
+    "TestMarkupTutorialRunsRealUIAndSavesDisposableData",
+    "TestNativeAdjacentSyntaxDeletionDoesNotJoinParagraphs",
+    "TestNativeCheckboxSplitSaveKeepsParentAndChildIdentity",
+    "TestNativeClearBlockedSaveAndInsertAcrossDelimiters",
+    "TestNativeCodeAcceptedCorpus",
+    "TestNativeCodeBracketEnterCancellation",
+    "TestNativeCodeEscapedMarkerStaysLiteral",
+    "TestNativeCodeLastLineDDAndCRLFEvents",
+    "TestNativeCodeLiteralPrefixCtrlO",
+    "TestNativeCodeOpenBelowInsertion",
+    "TestNativeCodePasteKeepsExactSource",
+    "TestNativeCodeRegressionBracketCancellation",
+    "TestNativeCodeRegressionCRLFAppend",
+    "TestNativeCodeRegressionCommentPasteIsolation",
+    "TestNativeCodeRegressionEmptyCreation",
+    "TestNativeCodeRegressionLiteralPrefixFocusCancellation",
+    "TestNativeCodeSelectionIndentRetabAndUndo",
+    "TestNativeCodeTabPrefixesAndConfiguredAlias",
+    "TestNativeCodeTriggerRejectsPasteImportAndExtraText",
+    "TestNativeCodeTypedTriggersAndExits",
+    "TestNativeCompatibilityCorpusEdits",
+    "TestNativeCompatibilityLayoutEvidence",
+    "TestNativeCompatibilityStructureCorpusEdits",
+    "TestNativeCountedCodeVisualClampsAndOpaqueEscCursor",
+    "TestNativeDescriptionCountedGGAndGKeepCodeLine",
+    "TestNativeDescriptionCursorUsesTextPositionWithoutRenderedDuplicate",
+    "TestNativeDescriptionDetailShowsCodeAndNavigatesWithoutEditing",
+    "TestNativeDescriptionKeepsFieldShortcuts",
+    "TestNativeDescriptionProtectsEmptyAndMalformedSources",
+    "TestNativeDescriptionResizeMotionsDoNotPersist",
+    "TestNativeDescriptionSaveCommitAndRollback",
+    "TestNativeDraftEventSplitUndoAndDiscard",
+    "TestNativeEmptyDraftHasNonpersistedCursor",
+    "TestNativeEmptyLinkFirstAppendMaterializesCurrentFallback",
+    "TestNativeEmptyLinkUnlinkThenType",
+    "TestNativeEmptyListAttemptDoesNotPersistEntry",
+    "TestNativeFormatEmptyLinkFallback",
+    "TestNativeFormattedLineInsertionAndPaletteActualRows",
+    "TestNativeFormattingReportsOnlySelectedOpaque",
+    "TestNativeHardReloadKeepsLateDraft",
+    "TestNativeInlineAcceptedCorpus",
+    "TestNativeInlineSyntaxAndLinkSaveAdoption",
+    "TestNativeLinkClipboardReportsActualResult",
+    "TestNativeLinkContextDoesNotHideConfirmation",
+    "TestNativeLinkPromptRejectsAndReplacesURL",
+    "TestNativeLinkReplacementRetainsSpanContext",
+    "TestNativeNormalDeleteKeepsVisibleCursor",
+    "TestNativeOpaqueInsertionBoundariesHaveVisibleCursor",
+    "TestNativePaletteGeometryTimeoutAndInsertSpace",
+    "TestNativePendingConfirmationFreezesPaste",
+    "TestNativePersistedRestoreInvalidatesDocumentAndCountDoesNotLeak",
+    "TestNativeRecoveryFromTitleAndInsertionEndCursor",
+    "TestNativeRepeatedSaveKeepsCheckboxIdentity",
+    "TestNativeSaveConflictKeepsSelectionAndHistory",
+    "TestNativeStructureAfterTypedDelimiterClearsSyntaxCursor",
+    "TestNativeStructureKeysAndChecklistProgress",
+    "TestNativeTitleCursorAccountsForFocusedFieldPrefix",
+    "TestNativeTitleNormalModeShowsBlockCursor",
+    "TestNativeTypedRuleIncrementalHistory",
+    "TestNativeTypedSyntaxAndPasteEvents",
+    "TestNativeVisualPaletteRetainsSelectionAndConfirmsOpaque",
+    "TestNestedLinksProtectOnlyTheirOuterLink",
+    "TestOpaqueIdentityAndIntent",
+    "TestOpaqueListProjectionSeparatesEntries",
+    "TestOpaqueSafePreview",
+    "TestPreservationChecksParentIdentity",
+    "TestQuerySearchGroupsTypedMatchesAndNeverReturnsDescriptionHTML",
+    "TestQuoteCodeLinesRequireExplicitBlockSelection",
+    "TestReadOnlyDescriptionScrollbarUsesReservedWidth",
+    "TestReadOnlyHTMLDescriptionScrolls",
+    "TestRetainedSubtreeSelectionEndingInCodeCanMoveAgain",
+    "TestSaveCandidateRejectsInvalidPreservationBeforeGenerating",
+    "TestSaveCandidateReservesAllDraftAndOpaqueIDs",
+    "TestSaveRejectsUnrepresentableNativeMeaning",
+    "TestSemanticComparisonCoversNativeMeaning",
+    "TestStructuralOpaqueMoveConfirmsAndUndoRestores",
+    "TestSwappedRetainedSubtreeWithCodeTailCanMoveAgain",
+    "TestTaskDetailActivatesDescriptionSeparatelyFromFieldNavigation",
+    "TestTaskDetailRendersHTMLDescriptionWithoutSourceTags",
+    "TestTaskDetailShowsCommentsEntryAndGNFocusesDescription",
+    "TestTinyActiveDescriptionUsesWholeDetailPaneAndFollowsCursor",
+    "TestTinyDescriptionInsertShowsCursorOnEmptyLine",
+    "TestTokenizerRawBytesAndDecodedCode",
+    "TestUpdateTaskFailureRollsBackDescriptionAndRetainsDraft",
+    "TestUpdateTaskPreservesDescriptionBytesAndDone",
+    "TestViewCheckboxSummaryInsideOrdinaryAndOpaqueLists",
+    "TestViewCodeResizeRevealsAnchoredCursor",
+    "TestViewCodeStickyColumnAcrossHorizontalReveal",
+    "TestViewCountedDocumentStartUsesCodeSourceLine",
+    "TestViewHardBreakAfterOpaqueFrameRemainsVisible",
+    "TestViewHorizontalClampAndWrappedOpaqueChecklist",
+    "TestViewInlineOpaqueMultilineExtent",
+    "TestViewNavigationPreservesGraphemesAndWholeCodeUnits",
+    "TestViewOpaqueChecklistKeepsNonEntrySiblings",
+    "TestViewOpaqueEntryNumberingAndNativeCheckboxState",
+    "TestViewOpaqueExtentTableAndHorizontalRestoration",
+    "TestViewRendersNativeBlocksWithoutChangingSource",
+    "TestViewWideCodeCursorGraphemeIsFullyVisible"
+  ],
+  "packages_passed": [
+    "github.com/JanWartenberg/vimkunja/.scratch/description-rendering/verification",
+    "github.com/JanWartenberg/vimkunja/internal/description",
+    "github.com/JanWartenberg/vimkunja/internal/errors",
+    "github.com/JanWartenberg/vimkunja/internal/tui",
+    "github.com/JanWartenberg/vimkunja/internal/tutorial",
+    "github.com/JanWartenberg/vimkunja/internal/vimkunja"
+  ]
+}

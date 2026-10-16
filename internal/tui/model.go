@@ -2629,6 +2629,8 @@ func (m *model) renderStatusBar(w int) string {
 		status = renderFooterMessage(contentWidth, info, "Error: ", m.lastErr)
 	case m.lastWarning != "":
 		status = renderFooterMessage(contentWidth, info, "Warning: ", m.lastWarning)
+	case m.editor != nil && m.editor.nativePending != nil:
+		status = m.renderNativeConfirmation(contentWidth, info)
 	case m.toast != "":
 		status = renderFooterMessage(contentWidth, info, "", m.toast)
 	case m.quitHint:

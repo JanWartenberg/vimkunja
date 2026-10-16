@@ -1,0 +1,117 @@
+{
+  "kind": "captured-upstream-editor-component",
+  "captured_at": "2026-10-11",
+  "upstream_commit": "82ee780161c6ed250cdb1fc4d2952b72464cb724",
+  "frontend_version": "2.3.0",
+  "tiptap_version": "3.27.1",
+  "method": "Unmodified TipTap.vue and its actual imported extensions from upstream git archive, mounted via Vue in an isolated host (Pinia/i18n). Browser executes commands.setContent(input_html,{emitUpdate:false}) then getHTML(). This is actual component serialization, not a capture from a running authenticated Vikunja Task screen; no backend used. Standalone build tooling/tsconfig differ; all @tiptap packages pinned to 3.27.1. Bundle transferred to the collaborative browser because localhost is inaccessible from its host.",
+  "captures": [
+    {
+      "html": "<ul data-type=\"taskList\"><li data-checked=\"true\" data-task-id=\"nativeA1\" data-type=\"taskItem\"><label><input type=\"checkbox\" checked=\"checked\"><span></span></label><div><p>Alpha</p><ul data-type=\"taskList\"><li data-checked=\"false\" data-task-id=\"nativeB2\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Child</p></div></li></ul></div></li></ul><p></p>",
+      "id": "checkboxes",
+      "input_html": "<ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"true\" data-task-id=\"nativeA1\"><p>Alpha</p><ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"false\" data-task-id=\"nativeB2\"><p>Child</p></li></ul></li></ul>"
+    },
+    {
+      "html": "<p><a target=\"_blank\" rel=\"noopener noreferrer nofollow\" href=\"https://example.test/x\" title=\"Read\">Read <strong>more</strong></a></p>",
+      "id": "links",
+      "input_html": "<p><a href=\"https://example.test/x\" title=\"Read\">Read <strong>more</strong></a></p>"
+    },
+    {
+      "html": "<blockquote data-comment-id=\"42\"><p>A</p><p>B</p><p>C</p></blockquote><p></p>",
+      "id": "quotes",
+      "input_html": "<blockquote data-comment-id=\"42\"><p>A</p><p>B</p><p>C</p></blockquote>"
+    },
+    {
+      "html": "<pre><code class=\"language-python\">\nprint(1)\n\tpass\n</code></pre><p></p>",
+      "id": "code",
+      "input_html": "<pre><code class=\"language-python\">\nprint(1)\r\n\tpass\n</code></pre>"
+    },
+    {
+      "html": "<p>Hello <mention-user data-id=\"jan\" data-label=\"Jan\" data-mention-suggestion-char=\"@\"></mention-user>!</p>",
+      "id": "mentions",
+      "input_html": "<p>Hello <mention-user class=\"mention\" data-id=\"jan\" data-label=\"Jan\"></mention-user>!</p>"
+    },
+    {
+      "html": "<ul><li><p>A</p><ol start=\"7\"><li><p>B</p></li></ol></li></ul><p></p>",
+      "id": "nested-lists",
+      "input_html": "<ul><li><p>A</p><ol start=\"7\"><li><p>B</p></li></ol></li></ul>"
+    },
+    {
+      "html": "<p><strong>Bold</strong> <em>Italic</em> <u>Under</u> <s>Strike</s> <code>npm test</code></p>",
+      "id": "inline",
+      "input_html": "<p><strong>Bold</strong> <em>Italic</em> <u>Under</u> <s>Strike</s> <code>npm test</code></p>"
+    }
+  ],
+  "extensions": [
+    "link",
+    "paragraph",
+    "link",
+    "listItemBranchingDeleteKeymap",
+    "taskItemBranchingDeleteKeymap",
+    "mention",
+    "editable",
+    "clipboardTextSerializer",
+    "commands",
+    "focusEvents",
+    "keymap",
+    "tabindex",
+    "drop",
+    "paste",
+    "delete",
+    "textDirection",
+    "starterKit",
+    "bold",
+    "bulletList",
+    "code",
+    "doc",
+    "dropCursor",
+    "gapCursor",
+    "heading",
+    "undoRedo",
+    "horizontalRule",
+    "italic",
+    "listItem",
+    "listKeymap",
+    "orderedList",
+    "strike",
+    "text",
+    "underline",
+    "trailingNode",
+    "blockquote",
+    "codeBlock",
+    "hardBreak",
+    "placeholder",
+    "typography",
+    "underline",
+    "table",
+    "tableRow",
+    "tableHeader",
+    "tableCell",
+    "image",
+    "taskList",
+    "taskItem",
+    "slash-menu-commands",
+    "emojiAutocomplete",
+    "pasteHandler"
+  ],
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) T3Code(Alpha)/0.0.45 Chrome/152.0.7977.130 Electron/44.4.2 Safari/537.36",
+  "source_sha256": {
+    "frontend/src/components/input/editor/TipTap.vue": "d4b4b013e570c8ff3feebb76564b09a5fe79614d3ef9806fb81b5ec4f1a58ca0"
+  },
+  "host_runtime_versions": {
+    "vue": "3.5.39",
+    "pinia": "3.0.4",
+    "vue-i18n": "11.4.6",
+    "@tiptap/core": "3.27.1",
+    "@tiptap/vue-3": "3.27.1",
+    "@tiptap/extension-list": "3.27.1",
+    "vite": "7.3.1",
+    "@vitejs/plugin-vue": "6.0.4",
+    "sass": "1.97.3"
+  },
+  "roundtrip_after_native_edit": {
+    "equal": true,
+    "native_prepared_html": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-task-id=\"nativeA1\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Delta</p><ul data-type=\"taskList\"><li data-checked=\"false\" data-task-id=\"nativeB2\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Child</p></div></li></ul></div></li></ul><p></p>",
+    "upstream_getHTML": "<ul data-type=\"taskList\"><li data-checked=\"false\" data-task-id=\"nativeA1\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Delta</p><ul data-type=\"taskList\"><li data-checked=\"false\" data-task-id=\"nativeB2\" data-type=\"taskItem\"><label><input type=\"checkbox\"><span></span></label><div><p>Child</p></div></li></ul></div></li></ul><p></p>"
+  }
+}

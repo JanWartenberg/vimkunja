@@ -8,7 +8,7 @@
 
 **Priority:** Medium
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Implementation dependencies satisfied:** 03–09 completed on `feature/description-model`; 09 is verified and committed 2026-10-10. Integrated acceptance, capture/provenance and tutorial work can proceed.
 
@@ -39,7 +39,7 @@ Run affected tests during implementation; before a commit run `go test ./...` an
 
 ## Boundaries
 
-Use the accepted product rules, including the smallest reliable Opaque protection and explicit metadata-loss exceptions. Preserve Vikunja HTML persistence and the existing SQLite schema. Do not change `internal/db/vikunja.db`, dependencies or generic Task Attachments. This ticket preparation does not start production implementation. Keep Title, plain-text editing and Comment composer behavior intact outside the explicitly affected Description paths.
+Use the accepted product rules, including the smallest reliable Opaque protection and explicit metadata-loss exceptions. Preserve Vikunja HTML persistence and the existing SQLite schema. Do not change `internal/db/vikunja.db`, dependencies or generic Task Attachments. This ticket integrates and verifies 03–09, including capture-derived compatibility fixes. Keep Title, plain-text editing and Comment composer behavior intact outside the explicitly affected Description paths.
 
 ## Comments
 
@@ -54,3 +54,85 @@ Synthetic Code tests cover grouped Text, ü/Ü, ]Space/[Space, backtick chunks, 
 ### 2026-10-10 — Ticket 09 inline execution handoff
 
 Inline syntax, Inline-Code and Links are implemented with actual TUI dispatch/prepared-save execution for 40 goldens across eleven focused records, scoped Draft regressions and temporary-SQLite save adoption. Help, README and keybindings describe the implemented actions. Gather the remaining integrated per-rule evidence and tutorial here; all existing corpus records remain synthetic. Real clipboard-result handling is tested through an injected writer, not a host clipboard/environment acceptance claim.
+
+### 2026-10-11 — automated integration and documentation started
+
+Authorized to complete all work possible without questions in `/workspace/vimkunja-richtext-03`. Reuse Document/Draft, Store and actual TUI event test seams. No commit requested. Real Windows/German events and any unavailable VOA runtime evidence remain explicitly outstanding.
+
+### 2026-10-11 — autonomous implementation and evidence
+
+Implemented on the existing worktree/branch; **not committed**. Ticket remains **in-progress** pending the real environment/manual acceptance below. No product question is outstanding.
+
+- `vimkunja-tutorial --markup` is a separate 23-step workshop using the actual UI and disposable SQLite data. `--markup --practice` removes lesson key restrictions for arbitrary keyboard/Paste acceptance on the same disposable fixtures. Both Ctrl+Q and `--literal-tab-alias ctrl+b` journeys run through UI events, save/discard, Opaque confirmation/history and blocked-source recover/clear. Saved HTML, unchanged Task Done and discarded recovery are asserted. General tutorial fixtures stay unchanged.
+- All 83 synthetic import/serialization/projection records pass; 203 indexed Native edits execute **every non-null HTML golden**. The remaining 32 null-HTML action records use assertion contracts; the [ledger](../captures/native-execution-2026-10-11.json) explicitly lists their indices separately from the passing focused regressions. No claim of 235 individual action-driver executions. UUID candidate/reservation/failure, external conflict, combined-save rollback, clipboard success/failure, Code-line selection, palette geometry, semantic oracle and Opaque identity/parent/order tests are included in the full run. All mixed corpus documents additionally reject injected lost atom identity without mutating their origin or allocating UUIDs.
+- Seven [actual upstream component captures](../captures/upstream-editor-2026-10-11.json), commit `82ee780161c6ed250cdb1fc4d2952b72464cb724`, frontend 2.3.0, Tiptap 3.27.1, with original inputs/version/hash/provenance. Unmodified actual TipTap.vue mounted in an isolated browser host; **not authenticated Task/backend evidence**. Native-edited Checkbox HTML was reimported and returned byte-identically.
+- Capture-derived Checkbox scaffolding now remains Native where understood: text/nesting editable, controls skipped in navigation, checked state synchronized, split/move/conversion/Undo/save tested. Unsafe/unknown control attributes are protected locally, with the safe adjacent body still editable. Synthetic goldens unchanged.
+- Fixed replacement inheriting neighboring marks, focused Mention copying its entire paragraph, and extra paragraph wrappers when splitting an inline plain-list entry. Permanent regressions added.
+- [Actual TUI model layouts](../captures/tui-model-layouts-2026-10-11.json) and [Linux PTY smoke](../captures/linux-pty-smoke-2026-10-11.json) plus [unrestricted practice/four-backtick creation](../captures/linux-pty-practice-2026-10-11.json) distinguish synthetic size events/injected keys from physical terminal claims. README documents workshop, syntax-vs-Paste, Code exits/Tabs and recover/conflict flows. Existing Help/keybindings already describe implemented actions and were checked for consistency.
+- Full tests including the artifact verification package, affected race tests, vet, both builds and the two 5-second fuzz targets passed. The bounded parser/edit fuzz steps are configured in Linux CI. Commands/reproduction and traceability are in [corpus.md](../corpus.md#integration-evidence--2026-10-11). No local user DB, schema or Go dependency changed.
+
+**Manual/environment acceptance still required:**
+
+1. In your German-layout Windows terminal, from this worktree run `go run -buildvcs=false ./cmd/vimkunja-tutorial --markup`. Complete the workshop. If Ctrl+Q is intercepted, use `go run -buildvcs=false ./cmd/vimkunja-tutorial --markup --literal-tab-alias ctrl+b`. Literal Tab should insert a source Tab, retab should use the next tabstop, and ü should leave Code without modifying its source.
+2. Repeat with a tall/wide and a narrow/short terminal. The focused target must remain visible or show the too-narrow notice; widening must restore the draft/target. Check palette visibility, quote/list nesting, Code/Table horizontal scroll and readability. Automated reflow tests and model renders are supplementary, not a physical PASS.
+3. Start the unrestricted disposable practice UI with `go run -buildvcs=false ./cmd/vimkunja-tutorial --markup --practice`. Enter, G, Enter opens the last Task; gn, Enter activates Description. Use gg, o to create a new empty paragraph. Directly type three and four backticks in separate runs; before Enter they remain literal, Enter creates one Code block. Record the actual dead-key behavior, AltGr-8/9 for `[Space`/`]Space`, ü/Ü, Ctrl+V and the selected alias. Do not substitute injected KeyPress/Paste messages for physical evidence.
+4. In this unrestricted practice mode, check actual clipboard Paste in Code with multiline/tabbed text, plus direct typing of the same syntax markers: pasted markers must remain literal, typed agreed markers may create structure. Host clipboard behavior is still unverified here.
+5. For a live Vikunja Task, if available, review a Description saved by Vimkunja in the web app, including Checkbox IDs/state, Code, Quote source and Mention. The component serialization capture proves that component boundary; authenticated Task/backend integration and your visual acceptance are still separate.
+
+Only these environment/user observations justify the corresponding compatibility claims. No new design decisions are requested.
+
+### 2026-10-15 — first manual acceptance blocker: ciw
+
+User reported that AT-01 failed immediately: on Alpha beta, `ciw` did not change a word; `i` entered Insert and the `w` was inserted as text. Reproduced through the full `--markup --practice` entry path and disposable Store, not a pre-opened editor fixture. The Native handler had no change-word operator prefix; previous tests exercised Visual selection followed by c and missed the documented acceptance path.
+
+Implemented Native `ciw`/`caw` and `diw`/`daw` using semantic word selection. A change-word plus the following Insert session is one Undo/Redo group until Esc. Cancellation, invalid prefixes, successive groups, grouped errors, formatting and protected Mentions are covered. Selecting a focused Opaque atom also exposed an insertion-boundary ambiguity and adjacent punctuation absorption; both are fixed without bypassing confirmation. Normal editable text no longer gets the generic read-only reader hint. Help and keybindings updated.
+
+`TestMarkupPracticeChangeInnerWordFromFreshTask` executes fresh app startup → Enter/G/Enter/gn/Enter/gg → ciw → individually typed Hallo → Esc → u → Ctrl+R → :w, checking complete persisted HTML and unchanged Task Done. Focused UI tests check neighboring marks/Opaque bytes and cancellation. [Actual Linux PTY replay](../captures/linux-pty-ciw-2026-10-15.json) confirmed change/Undo/Redo/save/reopen in the built real program with injected keys. Full tests including artifact verification, affected race tests, vet and both builds pass. No physical Windows acceptance is claimed. Existing checklist actions remain unchanged; a running process needs restarting to load the fix. No commit requested.
+
+### 2026-10-15 — broad review after first acceptance blocker
+
+Reviewed the complete Rich-text branch from `8de9ba7` (before 03) through current HEAD plus all working changes. Two independent reviewers checked Spec and Standards; the main review replayed all 16 acceptance topics through fresh real application startup, injected keys/Paste and disposable SQLite. No commit requested.
+
+**Spec — two confirmed findings, fixed:**
+
+- P1: word selection in a parent list entry concatenated child-entry text. `ciw`/`diw` could therefore delete child text. SelectWord now uses contiguous leaf runs owned by the current logical block, including parent text resumed after a nested list. Tests cover both word objects, each entry, deletion and Undo.
+- P2: word selection on standalone Opaque Tables/media returned an error. It now selects the whole atom; confirmation, exact-byte Undo and Redo are tested.
+
+**Standards — one production finding and one test gap, fixed:**
+
+- P2: partial block deletion within a Native Checkbox could delete its zero-width presentation controls and leave an unsavable draft. Controls now stay with their owning entry during partial deletion; whole-entry deletion still removes them. Model and actual-key UI tests cover save, adoption, Undo and unchanged Task Done.
+- AT-15's unchanged-database assertion alone could pass even if draft discard/clear failed. It now checks each visible Blocked/empty-draft transition as well. The guided workshop must issue the real Quit message, not just consume all lesson keys.
+
+**Instructions — corrected:** recovery already enters Insert. The acceptance Card's extra i was removed; the workshop now explicitly leaves Insert with Esc before :e!. All other acceptance sequences passed unchanged. The checklist remains `/workspace/tmp/acceptance-description-2026-10-12.html`.
+
+`internal/tutorial/practice_acceptance_test.go` plus the AT-01 fresh-entry regression cover all 16 Card topics, with independent stored-HTML expectations and real save/reopen/discard. Link clipboard outcomes remain in injected-writer tests; physical Windows/AltGr/dead keys and host clipboard are still environment acceptance, not a claimed PASS. A shared test runner handles async commands/leader timers and actual Quit.
+
+Final independent re-review found no further confirmed issues. Full tests including artifact verification, affected race tests, vet and both builds passed; bounded parser/edit fuzz passed. Ticket remains in-progress for the already recorded real environment/manual checks.
+
+### 2026-10-16 — flat tutorial start menu
+
+Implemented the requested single menu with four modes and Quit, without nested selection: Learn the basics, Practice the basics, Learn markup, Practice markup. `j/k` and arrow keys select; Enter starts the highlighted mode; q/Esc/Ctrl+C cancel. The general guided mode is selected initially. Database creation happens only after mode selection; Quit creates no database.
+
+Direct starts: `--guided`, `--practice`, `--markup`, `--markup --practice`. General practice now uses the ordinary demo fixtures with unrestricted real UI input. Timeout flags and `--literal-tab-alias` alone retain the menu; selected markup modes retain their workshop settings. Conflicting guidance flags, invalid aliases and unexpected positional arguments are rejected. README, CLI help and STATUS describe the menu.
+
+Validation: menu/CLI behavior tests were introduced failing before implementation; full `go test -buildvcs=false ./...`, both entrypoint builds and targeted vet pass. Ten Linux PTY journeys exercise menu Quit, all four menu selections, all four direct starts, and configuration-only flags followed by markup selection. They verify no database at the menu, correct SQLite fixtures, guidance presence/absence, normal exit and temporary-file cleanup. Practice sessions exit using unrestricted `:qa`; guided sessions exit with Ctrl+C. Two independent read-only reviews (bugs/risks and consistency/validation) found no actionable issues. Physical Windows terminal acceptance remains outstanding. No commit requested; existing Rich-text acceptance work remains open.
+
+### 2026-10-16 — guided Link input and instruction contrast
+
+The Link lesson now accepts arbitrary URL typing, editing and Paste instead of requiring the example character by character. Enter advances only after the real URL prompt closes; invalid URLs remain editable for retry. Empty input unlinks and Esc can cancel. The suggested URL is illustrative. All tutorial action instructions are bright white and bold to distinguish them from explanatory notes.
+
+Regression tests run both complete workshop alias journeys with a different URL and exercise invalid input, Backspace correction, pasted replacement, confirmation and exact saved HTML through the real UI. Affected tutorial, TUI and command tests pass. No commit requested.
+
+The confirmation footer now states the actual consequence instead of “Preserved content would change”: one or more protected objects will be DELETED, a structural change retains the objects, Clear deletes the entire Description, and Recover replaces HTML with readable text. Consequences are derived from the proposed edit before rollback; no hidden HTML/attributes are shown. Existing quote-metadata loss confirmation remains specific. Real UI tests cover deletion/replacement, cancellation, structure retention and both blocked recovery actions.
+
+### 2026-10-16 — tutorial command completion and recovery preview
+
+Guided Ex-command sequences forward Tab to the real application. The lesson skips the completed command characters only when the real prompt resolves to the expected command (including aliases); ambiguous completion retains the current position. Recovery teaches `:descriptionrec`, Tab, Enter, y; fully typed commands still work. Both complete workshop alias journeys now exercise completion, with focused ambiguity/alias regressions.
+
+Recovery confirmation shows a bounded readable-text preview (Broken in the workshop), explicitly says HTML/formatting/objects are replaced on save, and warns when no useful text would yield an empty Description. Hidden script content is not included. Cancellation retains the original source. No commit requested.
+
+### 2026-10-16 — complete pending-change verification
+
+Reviewed all tracked and untracked pending changes against HEAD f7c6eb7 using implement-and-verify. Two independent read-only reviewers per round checked bugs/risks and consistency/validation. Round 1 found one medium issue: generic footer tail truncation hid the consequence (notably EMPTY) at narrow widths. Fixed with a consequence-first compact confirmation summary; full preview is used when it fits. Pending warnings remain visible after unrelated keys. A real-View regression failed before the fix and passes at 80 and 54 columns. Both fresh round-2 reviewers reported no remaining confirmed actionable findings.
+
+Validation passed: `go test -buildvcs=false ./... ./.scratch/description-rendering/verification`, race-enabled Description/TUI/Tutorial/Store tests, `go vet ./...`, both entrypoint builds with `-buildvcs=false`, and `git diff --check`. Bounded parser/edit fuzz passed (5 seconds each, 2 workers); no dependency or local user database changes. Physical Windows/German-keyboard, actual host clipboard and live Task/backend acceptance remain the previously recorded gaps. Ticket stays in-progress; all work remains uncommitted.

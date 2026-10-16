@@ -11,8 +11,8 @@ import (
 	"golang.org/x/net/html"
 )
 
-// These tests check specification artifacts and existing dependencies, not an
-// unimplemented Native document model or editor.
+// These tests check specification artifacts and dependency assumptions.
+// Native document/editor execution has separate package suites.
 func TestCorpusArtifactConsistency(t *testing.T) {
 	data, err := os.ReadFile("../corpus.json")
 	if err != nil {

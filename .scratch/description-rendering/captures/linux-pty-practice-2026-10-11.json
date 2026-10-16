@@ -1,0 +1,8 @@
+{
+  "kind": "real-linux-pty-unrestricted-practice-smoke",
+  "date": "2026-10-11",
+  "command": "TERM=xterm-256color /tmp/vimkunja-markup-workshop --markup --practice --literal-tab-alias ctrl+b",
+  "keys": "Enter G Enter gn Enter gg o four-backticks Enter print(2) Esc Ctrl+C",
+  "output": "\u001b[15;20r\u001b[15;1H\u001b[3T\u001b[1;24r\u001b[12;18H\u001b[1;4mINSERT\u001b[m\n\n\u001b[3GA\r\n│ │ ```\u001b[71X\u001b[79G │\r\n│ │ \u001b[4mprint(2)\u001b[24;7m \u001b[m\u001b[65X\u001b[79G │\u001b[m\r\n│ │ ```\u001b[71X\u001b[79G │\r\u001b[23;14HINSERT CODE · Tab spaces · Ctrl+V Tab literal · Esc normal\u001b[12;18H\u001b[1;4mNORMAL\u001b[m\u001b[16;12H\u001b[4;7m)\u001b[m \u001b[m\u001b[7BCODE · o/O source line · ü/Ü paragraph · ]Space/[Space · V lines",
+  "limitations": "Actual binary and PTY; injected keys, no physical layout/Windows/host clipboard evidence."
+}

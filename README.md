@@ -52,7 +52,33 @@ Vor dem Arbeiten mit echten Daten ein Backup erstellen. Weitere Views und native
 go run ./cmd/vimkunja-tutorial
 ```
 
-The separate tutorial executable runs the real Vimkunja UI and guides through every currently implemented feature group in English. Every run creates a freshly seeded SQLite database in the operating system's temporary directory. The tutorial accepts no database path, never opens `internal/db/vikunja.db` or another user database, and deletes its disposable database on exit.
+The separate tutorial executable opens one flat start menu with four modes and Quit. Use `j/k` or the arrow keys to select, `Enter` to start, and `q` to quit. The first option is selected by default:
+
+| Menu option | What it does | Direct-start flags |
+| --- | --- | --- |
+| Learn the basics | Guided navigation, Tasks and Views; only requested keys are accepted | `--guided` |
+| Practice the basics | Explore demo Tasks freely, without guidance or key restrictions | `--practice` |
+| Learn markup | Guided rich-text Description workshop | `--markup` |
+| Practice markup | Explore rich-text examples freely, without guidance or key restrictions | `--markup --practice` |
+| Quit | Exit without creating a database | — |
+
+Mode flags skip the menu. Timeout flags and `--literal-tab-alias` alone keep the menu and apply to the selected mode. `--guided` and `--practice` cannot be combined.
+
+All four modes run the real Vimkunja UI in English. Starting a mode creates a freshly seeded SQLite database in the operating system's temporary directory; leaving the menu does not. The tutorial accepts no database path, never opens `internal/db/vikunja.db` or another user database, and deletes its disposable database on normal exit.
+
+### Rich-text workshop
+
+```bash
+go run ./cmd/vimkunja-tutorial --markup
+```
+
+This separate lesson uses the real Description editor and a disposable database. It covers Native navigation, Visual formatting, Links, typed syntax, Code creation and exits, literal Tabs, retab, Opaque confirmation, Undo/Redo, save/discard and blocked-source recovery. Start the general guided tutorial directly with `--guided`, or select it in the start menu. The workshop sets tabstop/indent to 4 and defaults to the literal-Tab alias Ctrl+Q. Use `--markup --literal-tab-alias ctrl+b` if the terminal intercepts Ctrl+Q; the lesson then teaches Ctrl+B.
+
+For unrestricted testing in the same disposable fixtures, use `go run ./cmd/vimkunja-tutorial --markup --practice`. Open the last Task with Enter, G, Enter, then use gn, Enter to activate Description. This mode accepts arbitrary keys and Paste; guided lessons accept Tab completion in Ex commands and otherwise advance on their requested keys, with free URL typing/editing and Paste in the Link lesson. Confirm any valid URL with Enter; the suggested URL is only an example.
+
+Code creation enters Insert mode. Inside Code, `o`/`O` add source lines; `ü`/`Ü` or `]Space`/`[Space` create paragraphs outside Code. Three or four directly typed backticks in an otherwise empty paragraph create Code only after Enter. Pasted markers remain literal. If your terminal intercepts Ctrl+V or Ctrl+Q, configure `literal_tab_alias = "ctrl+b"` for normal use; the workshop also accepts `--literal-tab-alias ctrl+b`.
+
+Existing unsupported HTML and Mentions stay protected locally: Native neighboring text remains editable. Deleting an Opaque atom requires confirmation. Blocked descriptions require explicit `:descriptionrecover` or `:descriptionclear`; both change a draft until `:w`. `:e!` discards edits, and external save conflicts require an explicit `:descriptionreload` before continuing; they are never silently merged.
 
 ### Local TUI configuration
 

@@ -136,7 +136,9 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 ## Description Normal Mode
 
 
-HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navigation; `i/a/I/A` enters Insert. Ordinary editing, Visual Mode, local history and the Space palette are implemented. Advanced structure, Code/Tab/retab and syntax/URL actions remain in 07–09. Plain-text editing retains the existing behavior.
+HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navigation; `i/a/I/A` enters Insert. Ordinary editing, Visual Mode, local history and the Space palette are implemented. Advanced structure, Code/Tab/retab and syntax/URL actions are implemented in 07–09; practical terminal acceptance remains outstanding. Plain-text editing retains the existing behavior.
+
+Native Normal Mode also supports `ciw`/`caw` and `diw`/`daw`. Change selects the semantic word, deletes it and enters Insert; Esc cancels an unfinished prefix. A completed word change (replacement plus typing until Esc) is one local Undo/Redo step. Opaque word replacements require confirmation and retain adjacent punctuation.
 
 | Binding | Action | Status |
 | --- | --- | --- |

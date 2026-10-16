@@ -97,7 +97,7 @@ func TestDraftAcceptedCorpusEdits(t *testing.T) {
 }
 
 func FuzzDraftActionsAreAtomic(f *testing.F) {
-	for _, source := range []string{`<p>AlphaBeta</p>`, `<p>A<img alt='map'>B</p>`, `<p><strong>deep</strong></p>`, `<p>broken<strong>`} {
+	for _, source := range []string{`<p>AlphaBeta</p>`, `<p>A<img alt='map'>B</p>`, `<p><strong>deep</strong></p>`, `<p>broken<strong>`, `<ul data-type="taskList"><li data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>A</p></div></li></ul>`} {
 		f.Add(source, []byte{0, 1, 2, 3, 4, 5})
 	}
 	f.Fuzz(func(t *testing.T, source string, actions []byte) {

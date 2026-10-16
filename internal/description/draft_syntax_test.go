@@ -1,6 +1,9 @@
 package description
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestDraftDeliberateSyntaxVersusLiteralInsert(t *testing.T) {
 	for _, tc := range []struct{ input, want string }{
@@ -270,6 +273,27 @@ func TestDraftAdjacentMarkDeletionKeepsParagraphs(t *testing.T) {
 		}
 		if got, _ := d.HTML(); got != `<p>before</p><p><strong>bold</strong></p><p>after</p>` {
 			t.Fatal(got)
+		}
+	}
+}
+
+func TestDraftReplacementKeepsPlainStyleBesideMark(t *testing.T) {
+	for _, source := range []string{`<p><strong>A</strong>!</p>`, `<p>!<strong>A</strong></p>`} {
+		d := NewDraft(Parse(source))
+		var id ID
+		for _, n := range d.Snapshot()[0].Children {
+			if n.Kind == Text && n.Text == "!" {
+				id = n.ID
+			}
+		}
+		d.SetCursor(Anchor{id, 0})
+		d.Select(false, false)
+		if err := d.Apply(Action{Kind: ReplaceSelection, Text: "?"}, false); err != nil {
+			t.Fatal(err)
+		}
+		want := strings.Replace(source, "!", "?", 1)
+		if got, err := d.HTML(); err != nil || got != want {
+			t.Fatalf("%q %v", got, err)
 		}
 	}
 }

@@ -266,7 +266,7 @@ func (d *Document) writeNodes(out *strings.Builder, nodes []Node, parent []int, 
 		if err := d.writeNodes(out, n.Children, path, append(slices.Clone(parents), n.ID), removed, positions, retained, nativeIDs); err != nil {
 			return err
 		}
-		if n.Tag != "hr" && n.Tag != "br" {
+		if !voidTags[n.Tag] {
 			out.WriteString("</")
 			out.WriteString(n.Tag)
 			out.WriteByte('>')

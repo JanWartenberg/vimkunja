@@ -1,0 +1,28 @@
+{
+  "kind": "real-linux-pty-ciw-regression",
+  "date": "2026-10-15",
+  "command": "go run -buildvcs=false ./cmd/vimkunja-tutorial --markup --practice --literal-tab-alias ctrl+b",
+  "entry": [
+    "Enter",
+    "G",
+    "Enter",
+    "g",
+    "n",
+    "Enter",
+    "g",
+    "g"
+  ],
+  "checks": [
+    "ciw + Hallo + Esc shows Hallo beta",
+    "u restores Alpha beta in one step",
+    "Ctrl+R restores Hallo beta in one step",
+    ":w then :q and Enter reopens saved Hallo beta"
+  ],
+  "incremental_ansi": {
+    "changed": "\u001b[12;18HINSERT\u001b[14;3HHallo \u001b[23;14HINSERT \u00b7 Esc normal \u00b7 Enter paragraph \u00b7 Shift+Enter break\u001b[12;18HNORMAL\u001b[23;14H:h help                                                  ",
+    "undo": "\u001b[14;3HAlpha ",
+    "redo": "\u001b[6DHallo ",
+    "reopened": "\u001b[14;3HHallo "
+  },
+  "limitations": "Real program and PTY with injected keys. Not physical Windows/German keyboard acceptance. Tutorial uses disposable SQLite only."
+}

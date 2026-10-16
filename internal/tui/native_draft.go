@@ -26,11 +26,12 @@ func (m *model) applyNative(a description.Action, confirmed, insert bool) {
 		if errors.Is(err, description.ErrConfirmation) {
 			e.nativePending = &a
 			e.nativePendingInsert = insert
-			m.toast = "Preserved content would change: y confirm · n/Esc cancel"
+			m.toast = sanitizeTerminalText(e.nativeDraft.ConfirmationMessage()) + " · y confirm · n/Esc cancel"
 			if err == description.ErrQuoteMetadataConfirmation {
 				m.toast = "Zitat-Metadaten würden gelöscht werden. Bitte Löschung bestätigen. · y / n/Esc"
 			}
 		} else {
+			e.nativeDraft.EndUndoGroup()
 			m.recordError(err)
 		}
 		return
@@ -115,7 +116,7 @@ func (m *model) nativeEditKey(key string) bool {
 		if sel != nil {
 			m.applyNative(description.Action{Kind: description.ReplaceSelection}, false, true)
 		} else {
-			m.recordError(fmt.Errorf("Select content before replacing it"))
+			e.nativePrefix = "c"
 		}
 		return true
 	case "x", "delete", "backspace":
@@ -176,6 +177,7 @@ func (m *model) updateNativeInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	switch key {
 	case "esc":
+		e.nativeDraft.EndUndoGroup()
 		e.nativeCodeEscape = false
 		e.nativeTrigger = false
 		e.mode = editorNormal
@@ -425,7 +427,11 @@ func (m *model) nativeModeHint() string {
 	if e.nativeDraft.Classification() == description.Blocked {
 		return "Malformed HTML · :descriptionrecover · :descriptionclear · :e! discard"
 	}
-	return strings.TrimSpace(e.nativeDescription.Hint()) + " · i edit · v/V select · Space format · u undo · :w save"
+	hint := strings.TrimSpace(e.nativeDescription.Hint())
+	if hint == "Description is read-only; preserved" {
+		hint = "NORMAL"
+	}
+	return hint + " · i edit · ciw change word · v/V select · Space format · u undo · :w save"
 }
 
 func boolInt(v bool) int {
@@ -484,4 +490,22 @@ func (m *model) retabDescription(args []string, all bool) (tea.Model, tea.Cmd) {
 	}
 	m.applyNative(description.Action{Kind: kind, Tabstop: m.codeConfig.Tabstop}, false, false)
 	return m, nil
+}
+
+// Keep the consequence visible before offering a destructive confirmation.
+func (m *model) renderNativeConfirmation(width int, info string) string {
+	message := sanitizeTerminalText(m.editor.nativeDraft.ConfirmationMessage()) + " · y confirm · n/Esc cancel"
+	if footerFits(width, info, []string{message}) {
+		return composeFooter(info, []string{message})
+	}
+	if footerFits(width, "", []string{message}) {
+		return message
+	}
+	summary := sanitizeTerminalText(m.editor.nativeDraft.ConfirmationSummary())
+	controls := " · y yes · n/Esc no"
+	if footerFits(width, "", []string{summary + controls}) {
+		return summary + controls
+	}
+	// Very narrow terminals retain the consequence first; input is still cancellable.
+	return truncatePlain(summary+controls, width)
 }

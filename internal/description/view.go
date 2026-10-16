@@ -503,7 +503,7 @@ func (v *View) compile(nodes []Node, prefix string, depth int, unit ID, insideCh
 					}
 				}
 				first := true
-				for _, child := range li.Children {
+				for _, child := range checkboxContent(li) {
 					if child.Kind != Opaque && !isBlock(child.Tag) {
 						inline = append(inline, child)
 						continue
@@ -531,6 +531,8 @@ func (v *View) compile(nodes []Node, prefix string, depth int, unit ID, insideCh
 			if len(n.Children) == 0 {
 				v.add(n, prefix, unit, false)
 			}
+		case "div":
+			v.compile(n.Children, prefix, depth, unit, insideCheckbox)
 		case "pre":
 			v.add(n, prefix, unit, true)
 		case "hr":

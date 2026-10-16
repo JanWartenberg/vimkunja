@@ -187,6 +187,7 @@ func Parse(source string) *Document {
 		return d
 	}
 	for _, n := range root.children {
+		recognizeCheckboxRender(n)
 		protectUnsupportedStructure(n, "")
 	}
 	var converted func(*sourceNode) Node

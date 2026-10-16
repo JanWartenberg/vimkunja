@@ -29,6 +29,10 @@ Vikunja stores rich-text Task Descriptions as HTML. Vimkunja must provide a keyb
 - **Opaque subtree:** The outermost safely parsed Description structure that Vimkunja cannot edit internally. It is one atomic unit whose original HTML is preserved during unrelated edits.
 - **Blocked Description:** A Description whose source boundaries cannot be preserved reliably enough to isolate the problem, so editing/saving the whole Description stays disabled until explicit recovery. A reliably bounded problem is protected locally as Opaque, or only its unsafe operation is rejected; unknown or active content alone does not imply whole-Description blocking.
 
+## Captured Checkbox compatibility — 2026-10-11
+
+The actual upstream editor component serializes task items with a checkbox control (`label` containing `input` and an empty `span`) followed by a content `div`. These known wrappers are Native implementation scaffolding: text and nested lists remain editable, the control is not a separate terminal editing target, and `input.checked` follows `li.data-checked`. Ordinary saves retain the wrappers; explicit list splits/conversions may emit the equally understood direct paragraph/list representation. Only the concrete safe shape is recognized. Unknown/unsafe control attributes stay Opaque locally; an attribute-free known content wrapper remains Native even when the adjacent control is protected. Generic HTML forms/divs are not made Native by this exception.
+
 ## Agreed principles
 
 1. Source HTML remains the persistence format. Vimkunja does not store an alternative format or change Vikunja's schema.

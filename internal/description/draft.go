@@ -74,16 +74,24 @@ type draftState struct {
 	inside    bool
 }
 
+type undoGroup struct {
+	before   draftState
+	recorded bool
+}
+
 // Draft owns live identities and local history. Its preservation source remains
 // immutable even after a save; the persistence baseline advances independently.
 type Draft struct {
-	origin         *Document
-	state          draftState
-	undo, redo     []draftState
-	next           ID
-	baseline       string
-	savedNodes     []Node
-	savedRecovered bool
+	confirmation      string
+	confirmationBrief string
+	group             *undoGroup
+	origin            *Document
+	state             draftState
+	undo, redo        []draftState
+	next              ID
+	baseline          string
+	savedNodes        []Node
+	savedRecovered    bool
 }
 
 func NewDraft(doc *Document) *Draft {
@@ -196,6 +204,9 @@ func (d *Draft) SwapSelection() {
 }
 func (d *Draft) first(ns []Node) Anchor {
 	for _, n := range ns {
+		if n.Kind == Element && checkboxControlTag(n.Tag) {
+			continue
+		}
 		if n.Kind == Text || n.Kind == Opaque || n.Tag == "br" {
 			return Anchor{n.ID, 0}
 		}
@@ -305,7 +316,20 @@ func (d *Draft) View(options ...ViewOptions) *View {
 	v.target.Syntax = d.state.syntax
 	return v
 }
+
+// BeginUndoGroup joins a change operator and its following Insert session.
+// Call before selecting/deleting, so Undo also restores the original cursor.
+func (d *Draft) BeginUndoGroup() {
+	if d.group == nil {
+		d.group = &undoGroup{before: copyState(d.state)}
+	}
+}
+
+// EndUndoGroup makes subsequent actions independently undoable.
+func (d *Draft) EndUndoGroup() { d.group = nil }
+
 func (d *Draft) Undo() bool {
+	d.EndUndoGroup()
 	if len(d.undo) == 0 {
 		return false
 	}
@@ -315,6 +339,7 @@ func (d *Draft) Undo() bool {
 	return true
 }
 func (d *Draft) Redo() bool {
+	d.EndUndoGroup()
 	if len(d.redo) == 0 {
 		return false
 	}
@@ -324,6 +349,7 @@ func (d *Draft) Redo() bool {
 	return true
 }
 func (d *Draft) Apply(a Action, confirmed bool) error {
+	d.confirmation, d.confirmationBrief = "", ""
 	if d.Classification() == Blocked && a.Kind != ClearDescription && a.Kind != RecoverText {
 		return ErrBlocked
 	}
@@ -359,8 +385,11 @@ func (d *Draft) Apply(a Action, confirmed bool) error {
 	}
 	if err == nil && !confirmed && d.needsConfirmation(before, a) {
 		err = ErrConfirmation
+		d.confirmation = d.confirmationEffect(before, a)
 		if (a.Kind == Split || a.Kind == ToggleQuote || a.Kind == UnwrapQuote) && d.quoteMetadataRemoved(before.nodes) {
 			err = ErrQuoteMetadataConfirmation
+			d.confirmationBrief = "DELETED: quote metadata"
+			d.confirmation = "Quote metadata will be DELETED"
 		}
 	}
 	if err != nil {
@@ -371,10 +400,81 @@ func (d *Draft) Apply(a Action, confirmed bool) error {
 	if reflect.DeepEqual(before, d.state) {
 		return nil
 	}
-	d.undo = append(d.undo, before)
+	if d.group == nil {
+		d.undo = append(d.undo, before)
+	} else if !d.group.recorded {
+		d.undo = append(d.undo, d.group.before)
+		d.group.recorded = true
+	}
 	d.redo = nil
 	return nil
 }
+
+// ConfirmationMessage describes the actual effect of the last unconfirmed edit.
+// It contains no source HTML or hidden attributes.
+func (d *Draft) ConfirmationMessage() string { return d.confirmation }
+
+// ConfirmationSummary retains the consequence when the full preview cannot fit.
+func (d *Draft) ConfirmationSummary() string { return d.confirmationBrief }
+
+func (d *Draft) confirmationEffect(before draftState, a Action) string {
+	switch a.Kind {
+	case ClearDescription:
+		d.confirmationBrief = "DELETED: entire Description"
+		return "Entire Description will be DELETED (draft only until save)"
+	case RecoverText:
+		d.confirmationBrief = "REPLACED: HTML → plain text"
+		text := strings.Join(strings.Fields(d.origin.RecoveryText()), " ")
+		if text == "" {
+			d.confirmationBrief = "EMPTY: replaces original HTML"
+			return "No readable text: recovery creates EMPTY Description; HTML replaced on save"
+		}
+		preview := ""
+		g := uniseg.NewGraphemes(text)
+		for count := 0; g.Next(); count++ {
+			if count == 24 {
+				preview += "…"
+				break
+			}
+			preview += g.Str()
+		}
+		return fmt.Sprintf("Recover %q; HTML/formatting/objects REPLACED on save", preview)
+	}
+	removed := 0
+	current := map[ID]bool{}
+	var collect func([]Node)
+	collect = func(ns []Node) {
+		for _, n := range ns {
+			current[n.ID] = true
+			collect(n.Children)
+		}
+	}
+	collect(d.state.nodes)
+	var visit func([]Node)
+	visit = func(ns []Node) {
+		for _, n := range ns {
+			if n.Kind == Opaque {
+				if !current[n.ID] {
+					removed++
+				}
+				continue
+			}
+			visit(n.Children)
+		}
+	}
+	visit(before.nodes)
+	if removed == 1 {
+		d.confirmationBrief = "DELETED: protected object"
+		return "Protected object will be DELETED"
+	}
+	if removed > 1 {
+		d.confirmationBrief = fmt.Sprintf("DELETED: %d protected objects", removed)
+		return fmt.Sprintf("%d protected objects will be DELETED", removed)
+	}
+	d.confirmationBrief = "CHANGED: structure; objects kept"
+	return "Structure around protected objects will change; objects retained"
+}
+
 func (d *Draft) needsConfirmation(before draftState, a Action) bool {
 	if a.Kind == ToggleMark || a.Kind == ClearMarks {
 		return false

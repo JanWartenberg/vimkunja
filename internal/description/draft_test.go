@@ -469,3 +469,41 @@ func TestDraftFormattingRejectsCodeSelectionAtomically(t *testing.T) {
 		t.Fatal("rejected formatting added history")
 	}
 }
+
+func TestDraftCopyFocusedOpaqueIncludesOnlyItsSafeProjection(t *testing.T) {
+	d := NewDraft(Parse(`<p>Hello <mention-user data-id='jan' data-label='Jan' data-secret='hidden'></mention-user>!</p>`))
+	n := d.Snapshot()[0].Children[1]
+	d.SetCursor(Anchor{n.ID, 0})
+	if got := d.Copy(); got != "@Jan" {
+		t.Fatalf("copied %q", got)
+	}
+}
+
+func TestDraftUndoGroupKeepsFailedAndFollowingActionsSeparate(t *testing.T) {
+	d := NewDraft(Parse(`<p>Alpha</p>`))
+	d.BeginUndoGroup()
+	if err := d.Apply(Action{Kind: Insert, Text: "X"}, false); err != nil {
+		t.Fatal(err)
+	}
+	before := d.DraftHTML()
+	if err := d.Apply(Action{Kind: Convert, Text: "invalid"}, false); err == nil || d.DraftHTML() != before {
+		t.Fatal("rejected grouped action mutated draft")
+	}
+	if err := d.Apply(Action{Kind: Insert, Text: "Y"}, false); err != nil {
+		t.Fatal(err)
+	}
+	d.EndUndoGroup()
+	grouped := d.DraftHTML()
+	if err := d.Apply(Action{Kind: Insert, Text: "Z"}, false); err != nil {
+		t.Fatal(err)
+	}
+	if !d.Undo() || d.DraftHTML() != grouped {
+		t.Fatal("following action merged into group")
+	}
+	if !d.Undo() || d.DraftHTML() != `<p>Alpha</p>` {
+		t.Fatal("group Undo did not restore source")
+	}
+	if !d.Redo() || d.DraftHTML() != grouped {
+		t.Fatal("group Redo failed")
+	}
+}

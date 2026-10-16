@@ -1,6 +1,6 @@
 # Rich-text compatibility corpus — decision-synchronized examples
 
-**Stand 2026-10-10:** 83 synthetic, independently authored records. Model/semantic round trips, atomic save candidates/Store persistence, Native read/navigation and the focused Draft/List/Quote/Code/inline editing suites execute in tests (03–09). Practical terminal acceptance and real VOA captures remain outstanding. Expected fixture HTML is unchanged. The dated execution sections below identify actual coverage without claiming every editing assertion has run.
+**Stand 2026-10-11:** 83 unveränderte synthetische Fixtures; alle Import-/Serialisierungs- und Projektionsfälle bestehen. 203 indizierte Native Edit-Fälle führen sämtliche nicht-null HTML-Goldens aus. Die übrigen 32 Fälle haben assertion-basierte Erwartungen: ergänzende fokussierte Tests bestehen, ohne damit jeden Corpus-Aktionsdatensatz als eigenen ausgeführten Driver zu deklarieren. Hinzu kommen sieben echte upstream Editor-Komponenten-Captures, ein überprüfter Vimkunja→Editor-Roundtrip, tatsächliche TUI-Modell-Layouts und ein Linux-PTY-Smoke. Physische deutsche Tastatur/Windows-Terminal und die manuelle Gesamtabnahme bleiben offen. Details stehen im [Ausführungsledger](captures/native-execution-2026-10-11.json) und [Ticket 10](issues/10-verify-native-rich-text-compatibility-and-documentation.md).
 
 **Contract:** [spec.md](spec.md). **Ticket:** [02](issues/02-specify-native-rich-text-description-rendering-and-editing.md). **Examples:** [corpus.json](corpus.json). **Checks:** [verification/boundaries_test.go](verification/boundaries_test.go).
 
@@ -283,3 +283,60 @@ Dedicated Draft/TUI tests additionally cover all agreed escapes, editable delimi
 These are synthetic editor/module/persistence results. Versioned VOA captures, real German/Windows events, practical layout acceptance and complete per-rule integration reporting remain Ticket 10.
 
 Five independent review pairs and targeted final fix verification leave no confirmed findings. Full tests including artifact checks, affected race/vet, both builds and bounded inline grouping fuzz pass. [Completed ticket 09](../../.archive/2026-10-10/description-rendering/issues/09-implement-inline-syntax-code-and-links.md) records exact commands and limitations; committed 2026-10-10 after user authorization.
+
+## Integration evidence — 2026-10-11
+
+- [Per-fixture execution ledger](captures/native-execution-2026-10-11.json): all 83 imports/serializations and projections, 203 indexed edit executions, remaining assertion-record indices and names of passing focused regressions. This distinguishes exact fixture drivers from related contract tests.
+- [Seven actual editor-component captures](captures/upstream-editor-2026-10-11.json): upstream commit, component SHA-256, runtime versions, original input and actual `getHTML()`. Includes edited Checkbox HTML prepared through the public Draft API and reimported into the component; its output was byte-identical. These are separate from synthetic corpus records and are not an authenticated Task/backend capture.
+- [Actual model layouts](captures/tui-model-layouts-2026-10-11.json): model rendering at 120×40, 54×12 and 20×6 and return to 120×40; synthetic size events retain the draft and document anchor. This complements existing cursor, palette, Code/Table scroll, wrap and protected-atom assertions; it is not physical terminal evidence.
+- [Linux PTY smoke](captures/linux-pty-smoke-2026-10-11.json): built workshop binary opened the real Native editor and applied Visual Bold. Injected PTY keys, partial incremental ANSI output and clean exit are recorded explicitly. The [practice smoke](captures/linux-pty-practice-2026-10-11.json) also confirms unrestricted input and four-backtick/Enter creation in the built binary.
+- Actual Checkbox wrappers required a narrow compatibility adapter. Known controls are hidden from document navigation, body text/nested lists remain Native, checked state is synchronized, and ordinary saves retain wrappers. Structural operations may emit direct paragraphs/lists. Unsafe/unknown control attributes remain locally Opaque; safe body text beside them stays editable. No synthetic expected HTML was regenerated.
+- Regression fixes retain plain formatting when replacing a whole text leaf beside a mark, copy a focused Mention's safe projection without its whole paragraph, and retain the direct-inline representation when splitting a plain list entry at its end.
+
+### Reproduce the component capture
+
+The small isolated host is in `captures/host/`; it imports unmodified upstream sources, not Vimkunja runtime dependencies. Use a disposable Linux directory and the recorded upstream checkout/commit. Node 24+ is needed. No backend or user DB is opened. The host pins direct dependencies and all Tiptap overrides; the capture JSON records resolved runtime versions. It does not claim a full upstream pnpm environment.
+
+```bash
+mkdir -p /tmp/vimkunja-voa-recapture && cp .scratch/description-rendering/captures/host/* /tmp/vimkunja-voa-recapture/
+```
+
+```bash
+git -C /workspace/go-vikunja archive 82ee780161c6ed250cdb1fc4d2952b72464cb724 frontend/src frontend/tsconfig.json | tar -x -C /tmp/vimkunja-voa-recapture
+```
+
+```bash
+cp /tmp/vimkunja-voa-recapture/frontend-tsconfig.json /tmp/vimkunja-voa-recapture/frontend/tsconfig.json && cd /tmp/vimkunja-voa-recapture && npm install --ignore-scripts && npm run dev
+```
+
+In the browser, for each recorded `input_html`, run `const e = window.captureEditor(); e.commands.setContent(input, {emitUpdate: false}); e.getHTML()`. In this session the browser host could not reach the container's HTTP listener; the same built component bundle was transferred into the collaborative browser and mounted there. The capture method records that limitation.
+
+### Automated commands
+
+```bash
+go test ./... ./.scratch/description-rendering/verification
+```
+
+```bash
+go test -race ./internal/description ./internal/tui ./internal/tutorial ./internal/vimkunja
+```
+
+```bash
+go test ./internal/description -run '^$' -fuzz '^FuzzParseAndSerialize$' -fuzztime=5s -parallel=2
+```
+
+```bash
+go test ./internal/description -run '^$' -fuzz '^FuzzDraftActionsAreAtomic$' -fuzztime=5s -parallel=2
+```
+
+```bash
+go vet ./... && go build -buildvcs=false ./cmd/vimkunja ./cmd/vimkunja-tutorial
+```
+
+The two bounded fuzz runs are also configured in normal Linux CI. `-buildvcs=false` is needed in this shared worktree because of VCS ownership; no production dependency or database schema changed.
+
+## Fresh-start acceptance re-review — 2026-10-15
+
+All 16 human checklist topics now have actual fresh-app key/Paste journeys in `internal/tutorial/practice_acceptance_test.go` and the AT-01 test in `markup_test.go`. These check independent saved HTML, unchanged Task Done, reopen/discard and actual recovery state transitions. The workshop test also requires a real Quit message. This does not turn injected events or the Link clipboard writer tests into physical Windows/host clipboard evidence.
+
+Independent Spec/Standards reviews found and fixed child-entry text leaking into parent word selection, unsupported standalone Opaque word selection and partial Checkbox deletion losing render controls. Their focused model/UI regressions include save/adoption/Undo and whole-entry deletion. Recovery Card/workshop instructions were corrected. Exact original corpus expectations remain unchanged; detailed findings and final verification are recorded in Ticket 10.

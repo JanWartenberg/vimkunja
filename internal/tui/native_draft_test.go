@@ -2,7 +2,10 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"fmt"
+	"github.com/JanWartenberg/vimkunja/internal/description"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"github.com/charmbracelet/x/ansi"
 	"strings"
 	"testing"
 )
@@ -393,5 +396,177 @@ func TestNativeFormattingReportsOnlySelectedOpaque(t *testing.T) {
 	m = nativeKeys(nativeEditingModel(`<p>A<img alt='map'>B</p>`), "v", "space", "b")
 	if strings.Contains(m.toast, "skipped") {
 		t.Fatal("unselected Opaque reported skipped")
+	}
+}
+
+func TestNativeWordOperators(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		keys   []string
+		want   string
+		insert bool
+	}{
+		{"ciw", []string{"c", "i", "w"}, `<p> beta</p>`, true},
+		{"caw", []string{"c", "a", "w"}, `<p>beta</p>`, true},
+		{"diw", []string{"d", "i", "w"}, `<p> beta</p>`, false},
+		{"daw", []string{"d", "a", "w"}, `<p>beta</p>`, false},
+		{"cancel c", []string{"c", "esc"}, `<p>Alpha beta</p>`, false},
+		{"cancel ci", []string{"c", "i", "esc"}, `<p>Alpha beta</p>`, false},
+		{"invalid object", []string{"c", "i", "q"}, `<p>Alpha beta</p>`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := nativeKeys(nativeEditingModel(`<p>Alpha beta</p>`), tc.keys...)
+			if m.editor.draft.Description != tc.want || (m.editor.mode == editorInsert) != tc.insert {
+				t.Fatalf("got %s mode %v error %s", m.editor.draft.Description, m.editor.mode, m.lastErr)
+			}
+		})
+	}
+}
+
+func TestNativeChangeWordUndoRedoPreservesMarksAndOpaque(t *testing.T) {
+	const source = `<p><strong>Alpha</strong> beta <mention-user data-id="jan" data-label="Jan"></mention-user></p>`
+	m := nativeKeys(nativeEditingModel(source), "c", "i", "w", "H", "a", "l", "l", "o", "esc")
+	const changed = `<p><strong>Hallo</strong> beta <mention-user data-id="jan" data-label="Jan"></mention-user></p>`
+	if m.editor.draft.Description != changed {
+		t.Fatalf("change: %s, %s", m.editor.draft.Description, m.lastErr)
+	}
+	m = nativeKeys(m, "u")
+	if m.editor.draft.Description != source || m.editor.nativeDraft.Selection() != nil {
+		t.Fatalf("undo: %s", m.editor.draft.Description)
+	}
+	m = nativeKeys(m, "ctrl+r")
+	if m.editor.draft.Description != changed {
+		t.Fatalf("redo: %s", m.editor.draft.Description)
+	}
+	if m.editor.nativeDraft.Classification() != description.Mixed {
+		t.Fatal("Opaque atom lost")
+	}
+}
+
+func TestNativeChangeWordGroupsEndOnEscape(t *testing.T) {
+	m := nativeKeys(nativeEditingModel(`<p>Alpha beta</p>`), "c", "i", "w", "O", "n", "e", "esc", "w", "c", "i", "w", "T", "w", "o", "esc")
+	for _, want := range []string{`<p>One beta</p>`, `<p>Alpha beta</p>`} {
+		nativeKeys(m, "u")
+		if m.editor.draft.Description != want {
+			t.Fatalf("undo got %s want %s", m.editor.draft.Description, want)
+		}
+	}
+	for _, want := range []string{`<p>One beta</p>`, `<p>One Two</p>`} {
+		nativeKeys(m, "ctrl+r")
+		if m.editor.draft.Description != want {
+			t.Fatalf("redo got %s want %s", m.editor.draft.Description, want)
+		}
+	}
+}
+
+func TestNativeEditableTextHint(t *testing.T) {
+	m := nativeEditingModel(`<p>Alpha beta</p>`)
+	m.editor.descriptionView()
+	if strings.Contains(m.nativeModeHint(), "read-only") {
+		t.Fatal(m.nativeModeHint())
+	}
+}
+
+func TestNativeChangeWordOpaqueConfirmation(t *testing.T) {
+	const source = `<p>Hi <mention-user data-id="jan" data-label="Jan"></mention-user>!</p>`
+	for _, confirm := range []bool{false, true} {
+		t.Run(fmt.Sprint(confirm), func(t *testing.T) {
+			m := nativeEditingModel(source)
+			m.editor.descriptionView()
+			n := m.editor.nativeDraft.Snapshot()[0].Children[1]
+			m.editor.nativeDraft.SetCursor(description.Anchor{Node: n.ID})
+			m.editor.nativeDraft.UpdateView(m.editor.nativeDescription)
+			nativeKeys(m, "c", "i", "w")
+			if m.editor.nativePending == nil || m.editor.draft.Description != source {
+				t.Fatal("Opaque replacement skipped confirmation")
+			}
+			if !confirm {
+				nativeKeys(m, "n", "esc")
+				if m.editor.draft.Description != source || m.editor.mode != editorNormal || m.editor.nativePending != nil {
+					t.Fatal("cancel changed source or mode")
+				}
+				return
+			}
+			nativeKeys(m, "y", "J", "o", "e", "esc")
+			if m.editor.draft.Description != `<p>Hi Joe!</p>` {
+				t.Fatal(m.editor.draft.Description)
+			}
+			nativeKeys(m, "u")
+			if m.editor.draft.Description != source {
+				t.Fatal("Undo lost Opaque bytes")
+			}
+		})
+	}
+}
+
+func TestNativeConfirmationExplainsActualEffect(t *testing.T) {
+	const source = `<p><mention-user data-id="jan" data-label="Jan"></mention-user></p>`
+	for _, keys := range [][]string{{"x"}, {"c", "i", "w"}} {
+		m := nativeEditingModel(source)
+		m.editor.descriptionView()
+		nativeKeys(m, keys...)
+		if m.editor.nativePending == nil || !strings.Contains(m.toast, "object will be DELETED") {
+			t.Fatalf("deletion consequence missing: %s", m.toast)
+		}
+		nativeKeys(m, "n")
+		if m.editor.draft.Description != source {
+			t.Fatal("cancel changed original")
+		}
+	}
+	m := nativeEditingModel(`<p>Read <img alt='map' src='secret'> now</p>`)
+	nativeKeys(m, "space", "2")
+	if !strings.Contains(m.toast, "objects retained") || strings.Contains(m.toast, "DELETED") || strings.Contains(m.toast, "secret") {
+		t.Fatalf("incorrect structural consequence: %s", m.toast)
+	}
+	for _, tc := range []struct {
+		kind description.ActionKind
+		want string
+	}{
+		{description.ClearDescription, "Entire Description will be DELETED"},
+		{description.RecoverText, `Recover "Broken"; HTML/formatting/objects REPLACED on save`},
+	} {
+		m = nativeEditingModel(`<p>Broken<strong>`)
+		m.editor.descriptionView()
+		m.applyNative(description.Action{Kind: tc.kind}, false, false)
+		if !strings.Contains(m.toast, tc.want) {
+			t.Fatalf("missing recovery consequence: %s", m.toast)
+		}
+	}
+}
+
+func TestNativeRecoveryConfirmationEmptyPreviewAndCancel(t *testing.T) {
+	m := nativeEditingModel(`<script>hidden-secret</script><p`)
+	m.editor.descriptionView()
+	m.applyNative(description.Action{Kind: description.RecoverText}, false, true)
+	if m.editor.nativePending == nil || !strings.Contains(m.toast, "EMPTY Description") || strings.Contains(m.toast, "hidden-secret") {
+		t.Fatalf("misleading empty recovery preview: %s", m.toast)
+	}
+	nativeKeys(m, "n")
+	if m.editor.draft.Description != `<script>hidden-secret</script><p` {
+		t.Fatal("cancel changed source")
+	}
+}
+
+func TestNativeConfirmationConsequencesSurviveNarrowView(t *testing.T) {
+	for _, width := range []int{80, 54} {
+		for _, tc := range []struct {
+			source string
+			kind   description.ActionKind
+			want   string
+		}{
+			{`<p><mention-user data-id="jan" data-label="Jan"></mention-user></p>`, description.Delete, "DELETED"},
+			{`<p>Broken<strong>`, description.RecoverText, "REPLACED"},
+			{`<script>hidden</script><p`, description.RecoverText, "EMPTY"},
+		} {
+			m := nativeEditingModel(tc.source)
+			m.Update(tea.WindowSizeMsg{Width: width, Height: 40})
+			m.editor.descriptionView()
+			m.applyNative(description.Action{Kind: tc.kind}, false, false)
+			nativeKeys(m, "?") // Unrelated keys must not erase a pending warning.
+			screen := ansi.Strip(m.View().Content)
+			if !strings.Contains(screen, tc.want) || !strings.Contains(screen, "n/Esc") {
+				t.Fatalf("width %d missing consequence %s or cancel: %s", width, tc.want, screen)
+			}
+		}
 	}
 }

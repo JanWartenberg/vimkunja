@@ -209,7 +209,7 @@ func TestReliablyBoundedProblemsStayLocal(t *testing.T) {
 }
 
 func FuzzParseAndSerialize(f *testing.F) {
-	for _, seed := range []string{"", "<p>A</p>", "<p><strong>open", "<ul><li>A<li>B</ul>", "<pre><code>\nA\r\n\tB\n</code></pre>", "<p><img alt='A'><img alt='A'></p>", "<p onclick='x'>A</p>"} {
+	for _, seed := range []string{"", "<p>A</p>", "<p><strong>open", "<ul><li>A<li>B</ul>", "<pre><code>\nA\r\n\tB\n</code></pre>", "<p><img alt='A'><img alt='A'></p>", "<p onclick='x'>A</p>", `<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><label><input type="checkbox" checked="checked"><span></span></label><div><p>A</p></div></li></ul>`} {
 		f.Add(seed)
 	}
 	f.Fuzz(func(t *testing.T, source string) {

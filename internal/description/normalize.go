@@ -68,6 +68,7 @@ func normalizeNodes(nodes []Node, code bool) []Node {
 				}
 			}
 			n.Children = normalizeNodes(n.Children, code || n.Tag == "pre")
+			syncCheckboxControl(&n)
 			if n.Tag == "a" && n.replacement && len(n.Children) == 0 {
 				continue
 			}
@@ -223,7 +224,7 @@ func validateAtDepth(nodes []Node, parent string, linked bool, depth int) error 
 			}
 			continue
 		}
-		if n.Kind != Element || !nativeTags[n.Tag] || unsafeAttributes(n.Attributes) || n.Text != "" {
+		if n.Kind != Element || (!nativeTags[n.Tag] && !validCheckboxRender(n, parent)) || unsafeAttributes(n.Attributes) || n.Text != "" {
 			return fmt.Errorf("%w: unsupported element/attributes", ErrStructure)
 		}
 		if (parent == "ul" || parent == "ol") && n.Tag != "li" || n.Tag == "li" && parent != "ul" && parent != "ol" {

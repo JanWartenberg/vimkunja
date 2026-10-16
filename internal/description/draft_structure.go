@@ -59,7 +59,7 @@ func (d *Draft) listRange() (*Node, int, int, error) {
 			if n.Tag == "li" {
 				start := ext[n.ID].start
 				end := start
-				for _, c := range n.Children {
+				for _, c := range checkboxContent(n) {
 					if isList(c) {
 						break
 					}
@@ -135,6 +135,9 @@ func appendEntries(receiver *Node, source Node, entries []Node) error {
 	if len(entries) == 0 {
 		return nil
 	}
+	if len(receiver.Children) >= 2 && receiver.Children[0].Kind == Element && receiver.Children[0].Tag == "label" && receiver.Children[1].Kind == Element && receiver.Children[1].Tag == "div" {
+		return appendEntries(&receiver.Children[1], source, entries)
+	}
 	// Match the final child list only, preserving the relative order of all
 	// existing children and of lists of other kinds.
 	if len(receiver.Children) > 0 {
@@ -169,6 +172,9 @@ func (d *Draft) moveList(kind ActionKind) error {
 		source.Children = slices.Delete(source.Children, lo, hi)
 	} else {
 		owner := d.parent(source.ID)
+		if owner != nil && owner.Kind == Element && owner.Tag == "div" {
+			owner = d.parent(owner.ID)
+		}
 		if owner == nil || owner.Tag != "li" {
 			return fmt.Errorf("Cannot outdent a root entry; convert its list instead")
 		}
@@ -176,7 +182,8 @@ func (d *Draft) moveList(kind ActionKind) error {
 		if dest == nil || !isList(*dest) {
 			return ErrStructure
 		}
-		if owner.Children[len(owner.Children)-1].ID != source.ID {
+		content := checkboxContent(*owner)
+		if len(content) == 0 || content[len(content)-1].ID != source.ID {
 			return fmt.Errorf("Outdent cannot reorder trailing parent content")
 		}
 		if listKind(*dest) != listKind(*source) {
@@ -271,14 +278,17 @@ func (d *Draft) splitEntry(li *Node) error {
 			return fmt.Errorf("Cannot allocate entry metadata losslessly")
 		}
 	}
-	left, right, err := splitAt(li.Children, d.state.cursor)
+	left, right, err := splitAt(checkboxContent(*li), d.state.cursor)
 	if err != nil {
 		return err
 	}
 	container := d.parent(li.ID)
 	beta := newEntry(*container)
 	beta.Children = right
-	if len(right) == 0 || isList(right[0]) {
+	blockContent := attributeValue(li.Attributes, "data-type") == "taskItem" || slices.ContainsFunc(checkboxContent(*li), func(n Node) bool {
+		return n.Kind == Element && !isList(n) && isBlock(n.Tag)
+	})
+	if len(right) == 0 && blockContent || len(right) > 0 && isList(right[0]) {
 		beta.Children = append([]Node{{Kind: Element, Tag: "p"}}, right...)
 	}
 	li.Children = left
@@ -338,7 +348,7 @@ func (d *Draft) exitEntry(li *Node) error {
 		a.Children = before
 		out = append(out, a)
 	}
-	flow := flowChildren(li.Children)
+	flow := flowChildren(checkboxContent(*li))
 	d.assign(flow)
 	out = append(out, flow...)
 	position := d.first(flow)
@@ -386,9 +396,10 @@ func (d *Draft) convertList(kind string) error {
 		}
 		var replacement []Node
 		if listKind(*container) == kind {
-			replacement = flowChildren(li.Children)
+			replacement = flowChildren(checkboxContent(*li))
 		} else {
 			item := *li
+			item.Children = checkboxContent(*li)
 			item.Attributes = nil
 			if kind == "task" {
 				item.Attributes = []Attribute{{"data-type", "taskItem"}, {"data-checked", "false"}}

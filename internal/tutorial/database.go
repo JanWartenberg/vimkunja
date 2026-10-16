@@ -26,7 +26,12 @@ type DemoDatabase struct {
 
 // NewDemoDatabase creates and seeds a fresh database in the operating
 // system's temporary directory. Every tutorial run starts from the same data.
-func NewDemoDatabase() (*DemoDatabase, error) {
+func NewDemoDatabase() (*DemoDatabase, error) { return newDemoDatabase(false) }
+
+// NewMarkupDemoDatabase adds Rich-text fixtures only to the separate workshop.
+func NewMarkupDemoDatabase() (*DemoDatabase, error) { return newDemoDatabase(true) }
+
+func newDemoDatabase(markup bool) (*DemoDatabase, error) {
 	file, err := os.CreateTemp("", "vimkunja-tutorial-*.db")
 	if err != nil {
 		return nil, fmt.Errorf("create tutorial database: %w", err)
@@ -52,6 +57,14 @@ func NewDemoDatabase() (*DemoDatabase, error) {
 	if err := seedTutorialDatabase(bootstrap); err != nil {
 		_ = bootstrap.Close()
 		return removeOnError(err)
+	}
+	if markup {
+		for id, description := range map[int]string{107: `<p>Broken<strong>`, 108: `<p>Alpha beta</p><pre><code>original()</code></pre><p><mention-user data-id="jan" data-label="Jan"></mention-user></p>`} {
+			if _, err := bootstrap.Exec(`UPDATE tasks SET description = ? WHERE id = ?`, description, id); err != nil {
+				_ = bootstrap.Close()
+				return removeOnError(fmt.Errorf("seed markup workshop: %w", err))
+			}
+		}
 	}
 	if err := bootstrap.Close(); err != nil {
 		return removeOnError(fmt.Errorf("close seeded tutorial database: %w", err))

@@ -1,0 +1,2 @@
+import {createApp,h,ref} from 'vue';import {createI18n} from 'vue-i18n';import {createPinia} from 'pinia';import TipTap from '/frontend/src/components/input/editor/TipTap.vue';
+const value=ref('<p>Capture ready</p>');const app=createApp({setup(){return()=>h(TipTap,{modelValue:value.value,'onUpdate:modelValue':v=>value.value=v,enableMentions:true,mentionProjectId:1,isEditEnabled:true})}});app.use(createPinia());app.use(createI18n({legacy:false,locale:'en',messages:{en:{}}}));app.mount('#app');window.captureEditor=()=>document.querySelector('.tiptap.ProseMirror')?.editor;

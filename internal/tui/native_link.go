@@ -17,6 +17,12 @@ type nativeLinkPrompt struct {
 }
 type linkCopiedMsg struct{ err error }
 
+// DescriptionLinkPromptOpen reports whether URL editing still needs confirmation.
+// The guided tutorial uses this to wait for successful application, including retries.
+func (m *model) DescriptionLinkPromptOpen() bool {
+	return m.editor != nil && m.editor.nativeLink != nil
+}
+
 func (m *model) openNativeLink() {
 	e := m.editor
 	info, ok := e.nativeDraft.LinkAtCursor()

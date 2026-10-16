@@ -13,8 +13,10 @@ import (
 const tutorialPanelHeight = 6
 
 type expectedKey struct {
-	value string
-	label string
+	value     string
+	label     string
+	freeInput bool
+	command   string
 }
 
 type tutorialStep struct {
@@ -26,7 +28,7 @@ type tutorialStep struct {
 }
 
 // Model wraps the real Vimkunja model. Matching keys are sent to Vimkunja;
-// unexpected keys are ignored so the lesson remains in a deterministic state.
+// unexpected keys are ignored outside explicitly free input prompts.
 type Model struct {
 	app tea.Model
 
@@ -73,6 +75,26 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	step := m.steps[m.step]
 	want := step.keys[m.key]
+	if got == "tab" && want.command != "" {
+		m.feedback = ""
+		_, cmd := m.updateApp(msg)
+		prompt, ok := m.app.(interface{ CommandInputMatches(string) bool })
+		if ok && prompt.CommandInputMatches(want.command) {
+			for step.keys[m.key].value != "enter" {
+				m.key++
+			}
+		}
+		return m, cmd
+	}
+	if want.freeInput {
+		m.feedback = ""
+		_, cmd := m.updateApp(msg)
+		prompt, ok := m.app.(interface{ DescriptionLinkPromptOpen() bool })
+		if ok && !prompt.DescriptionLinkPromptOpen() && (got == "enter" || got == "esc") {
+			m.key++
+		}
+		return m, cmd
+	}
 	if got != want.value {
 		m.feedback = fmt.Sprintf("Expected %s; %s was ignored.", want.label, displayTutorialKey(got))
 		return m, nil
@@ -123,7 +145,7 @@ func (m *Model) renderTutorialPanel() string {
 		instruction = step.instruction
 		note = step.note
 		progress = fmt.Sprintf("Next: %s", step.keys[m.key].label)
-		if len(step.keys) > 1 {
+		if len(step.keys) > 1 && !step.keys[m.key].freeInput {
 			progress += fmt.Sprintf("  ·  key %d/%d", m.key+1, len(step.keys))
 		}
 	}
@@ -134,7 +156,7 @@ func (m *Model) renderTutorialPanel() string {
 	innerWidth := maxTutorial(1, width-4)
 	lines := []string{
 		truncateTutorial(title, innerWidth),
-		truncateTutorial(instruction, innerWidth),
+		lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Bold(true).Render(truncateTutorial(instruction, innerWidth)),
 		truncateTutorial(note, innerWidth),
 		truncateTutorial(progress, innerWidth),
 	}
@@ -251,7 +273,11 @@ func textKeys(value string) []expectedKey {
 func commandKeys(command string) []expectedKey {
 	out := []expectedKey{key(":", ":")}
 	out = append(out, textKeys(command)...)
-	return append(out, key("enter", "Enter"))
+	out = append(out, key("enter", "Enter"))
+	for i := 1; i < len(out); i++ {
+		out[i].command = command
+	}
+	return out
 }
 
 func normalizeTutorialKey(value string) string {
