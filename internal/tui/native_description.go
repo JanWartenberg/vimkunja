@@ -33,6 +33,9 @@ func nativeSpanStyle(role description.Style) lipgloss.Style {
 	if role&description.Code != 0 {
 		style = style.Background(lipgloss.Color(tuiTheme.codeBackground))
 	}
+	if role&description.TabStyle != 0 {
+		style = style.Foreground(lipgloss.Color(tuiTheme.muted))
+	}
 	if role&description.InlineCode != 0 {
 		style = style.Underline(true)
 	}

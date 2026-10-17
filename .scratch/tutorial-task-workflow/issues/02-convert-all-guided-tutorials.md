@@ -54,3 +54,7 @@ Jan reports that the Rich-text tutorial otherwise fits and accepts the overall j
 The checkpoint also includes productive v/V formatting and paragraph-wide Checkbox conversion, the framed persistent Space palette with an active/expired cue, and Ex Tab completion to the longest shared prefix while retaining candidates. The separate Fuzz audit and its fixes/tests/corpus are excluded.
 
 Pre-commit review used `review-changes`, inspecting staged feature changes and unstaged audit changes separately. No additional actionable findings beyond the two explicitly retained subtasks. The exact staged source was exported with checkout-index into an isolated directory: full `go test ./... ./.scratch/description-rendering/verification`, race tests for Description/TUI/Tutorial/Store, `go vet ./...`, both entrypoint builds and staged whitespace checks all passed without any Fuzz-audit fixes, tests or corpus. Documentation records the acceptance and open subtasks; no code changed after these checks.
+
+### Modal progress follow-up
+
+Jan requests the current chapter while the tutorial modal covers the task strip. Introductory and F1 help modals now display current / total at the top right, including after skipping chapters; long titles yield space to the counter. Actual runner coverage checks both course totals at 54x24. Rich-text Steps 11 and 13 are manually accepted, including Retab and the visible muted Tab cue tracked in ticket 11. Jan authorizes committing this follow-up separately from the subsequent shared insertion-cursor work.

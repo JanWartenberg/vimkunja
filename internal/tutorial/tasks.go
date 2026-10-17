@@ -3,6 +3,7 @@ package tutorial
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -275,7 +276,14 @@ func (m *TaskModel) renderContext() string {
 		action = "Enter / Esc: back · F12 skip · Ctrl+C exit"
 	}
 	width := max(1, min(60, m.width-6))
-	content := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#67E8F9")).Render(title) + "\n\n" + ansi.Wrap(body, width, "") + "\n\n" + ansi.Wrap(action, width, "")
+	progress := fmt.Sprintf("%d / %d", m.lesson+1, len(m.lessons))
+	titleWidth := width - ansi.StringWidth(progress) - 1
+	header := ansi.Truncate(progress, width, "")
+	if titleWidth > 0 {
+		label := ansi.Truncate(title, titleWidth, "…")
+		header = label + strings.Repeat(" ", width-ansi.StringWidth(label)-ansi.StringWidth(progress)) + progress
+	}
+	content := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#67E8F9")).Render(header) + "\n\n" + ansi.Wrap(body, width, "") + "\n\n" + ansi.Wrap(action, width, "")
 	modal := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#67E8F9")).Padding(1, 2).Render(content)
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, modal)
 }

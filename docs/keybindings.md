@@ -194,7 +194,7 @@ Native Normal Mode also supports `ciw`/`caw` and `diw`/`daw`. Change selects the
 | `Shift+Enter` | Insert a hard line break inside the paragraph | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Enter` at end of a list entry | Add an entry of the same list type | Implemented (07); synthetic tests, practical terminal acceptance pending |
 | `Enter` on an empty list entry | Leave the list and create a paragraph | Implemented (07); synthetic tests, practical terminal acceptance pending |
-| Code Insert Mode: `Tab` / `Ctrl+V`, then `Tab` | Insert Spaces to the next tabstop / explicitly insert a literal Tab. Paste preserves Code Tabs and line endings. Ctrl+Q alias by default; tui.literal_tab_alias selects ctrl+b or disables it. Dispatch tested; real terminal checks pending. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
+| Code Insert Mode: `Tab` / `Ctrl+V`, then `Tab` | Insert Spaces to the next tabstop / explicitly insert a literal Tab. Real Code Tabs display as muted `>`/`~` cells up to that stop; spaces stay blank. Paste preserves Code Tabs and line endings. Ctrl+Q alias by default; tui.literal_tab_alias selects ctrl+b or disables it. Dispatch tested; real terminal checks pending. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `i` on an imported empty list fill target | Enter a nonpersisted input target; actual text creates the first entry. `i` then `Esc` leaves source unchanged. | Implemented (07); synthetic tests, practical terminal acceptance pending |
 
 ## Description Visual Mode

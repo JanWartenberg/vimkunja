@@ -27,6 +27,7 @@ const (
 	OpaqueStyle
 	Summary
 	SelectedStyle
+	TabStyle
 )
 
 type Span struct {

@@ -245,3 +245,45 @@ func TestF12DiscardsAnUnfinishedDraft(t *testing.T) {
 		t.Fatalf("skipped task's database retained: %v", err)
 	}
 }
+
+func TestTaskModalShowsCurrentStepInContextAndHelp(t *testing.T) {
+	for _, markup := range []bool{false, true} {
+		m, err := NewCourseModel(tui.Config{}, markup)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := m.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+		s := &practiceSession{t: t, app: m}
+		s.run(m.Init())
+		s.message(tea.WindowSizeMsg{Width: 54, Height: 24})
+		for range 2 {
+			s.message(tea.KeyPressMsg(tea.Key{Code: tea.KeyF12}))
+		}
+		want := "3 / 26"
+		if markup {
+			want = "3 / 22"
+		}
+		for _, modal := range []string{"context", "help"} {
+			if modal == "help" {
+				s.keys("enter", "f1")
+			}
+			found := false
+			for _, line := range strings.Split(s.screen(), "\n") {
+				if strings.Contains(line, m.lessons[m.lesson].topic) {
+					found = true
+					if !strings.Contains(line, want) {
+						t.Fatalf("%s header lacks progress: %q", modal, line)
+					}
+					break
+				}
+			}
+			if !found {
+				t.Fatal("modal title missing")
+			}
+		}
+	}
+}

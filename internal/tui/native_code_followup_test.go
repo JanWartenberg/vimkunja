@@ -271,3 +271,33 @@ func TestNativePairedBacktickTriggerRejectsLiteralAndWrongBoundaries(t *testing.
 		})
 	}
 }
+
+func TestNativeCodeTabMarkerIsMutedWithVisibleCursor(t *testing.T) {
+	source := "<pre><code>print(1)\n\t</code></pre>"
+	m := nativeKeys(nativeEditingModel(source), "j")
+	found := false
+	for _, line := range strings.Split(m.Render(), "\n") {
+		if strings.Contains(ansi.Strip(line), ">~~~") {
+			found = true
+			if !strings.Contains(line, "38;5;245") {
+				t.Fatalf("Tab marker is not muted: %q", line)
+			}
+			if !inverseCell.MatchString(line) {
+				t.Fatal("Tab marker hid cursor")
+			}
+		}
+	}
+	if !found {
+		t.Fatal("Tab marker missing")
+	}
+	if m.editor.draft.Description != source {
+		t.Fatal("Tab marker changed source")
+	}
+	m = nativeKeys(m, ":", "r", "e", "t", "a", "b", "enter")
+	if m.lastErr != "" || m.editor.draft.Description != "<pre><code>print(1)\n    </code></pre>" {
+		t.Fatalf("retab failed: %q (%s)", m.editor.draft.Description, m.lastErr)
+	}
+	if strings.Contains(ansi.Strip(m.Render()), ">~~~") {
+		t.Fatal("Tab marker stayed after retab")
+	}
+}
