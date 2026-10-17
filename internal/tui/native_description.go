@@ -69,7 +69,9 @@ func renderNativeDescriptionFrame(e *taskEditor, f description.Frame, width int)
 				w := ansi.StringWidth(g)
 				cellStyle := style
 				if e.nativeFocused && e.descriptionActive && i == f.CursorY && column == f.CursorX {
-					cellStyle = cellStyle.Reverse(true)
+					// Keep the cursor visible on decorated whitespace: the terminal
+					// styler handles underline/strike spaces separately from reverse.
+					cellStyle = cellStyle.Underline(false).Strikethrough(false).Reverse(true)
 					cursorPainted = true
 				}
 				text.WriteString(cellStyle.Render(g))

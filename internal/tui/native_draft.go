@@ -433,6 +433,9 @@ func (m *model) nativeModeHint() string {
 		return "CODE · o/O source line · ü/Ü paragraph · ]Space/[Space · V lines"
 	}
 	if e.mode == editorInsert {
+		if e.nativeTrigger && e.nativeDraft.CodeMarkerParagraph(false) {
+			return "INSERT · Enter create Code · Esc normal"
+		}
 		return "INSERT · Esc normal · Enter paragraph · Shift+Enter break"
 	}
 	if e.nativeDraft.Classification() == description.Blocked {
