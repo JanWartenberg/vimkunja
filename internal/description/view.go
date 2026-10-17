@@ -282,8 +282,10 @@ func (v *View) inline(nodes []Node, style Style, disclose bool, link string, lay
 			nextStyle |= Strike
 			marker = "~~"
 		case "code":
-			nextStyle |= InlineCode
-			marker = "`"
+			if style&Code == 0 {
+				nextStyle |= InlineCode
+				marker = "`"
+			}
 		case "a":
 			nextStyle |= Link | Underline
 			link = terminalSafeText(attributeValue(n.Attributes, "href"))

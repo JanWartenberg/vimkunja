@@ -76,7 +76,7 @@ func (d *Draft) editCode(a Action) error {
 			text += child.Text
 		}
 		if a.Text == "marker" {
-			if text != "```" && text != "````" {
+			if text != "```" && text != "````" && !d.CodeMarkerPairAtCursor() {
 				return ErrStructure
 			}
 			text = ""
@@ -459,32 +459,47 @@ func codeLineBounds(text string, offset int) (int, int) {
 
 // CodeMarkerParagraph is deliberately narrow: no imported formatting is consumed.
 func (d *Draft) CodeMarkerParagraph(emptyOnly bool) bool {
+	text, _, ok := d.codeMarkerParagraph(emptyOnly)
+	return ok && (emptyOnly && text == "" || !emptyOnly && (text == "```" || text == "````"))
+}
+
+// CodeMarkerPairAtCursor recognizes Enter between two deliberately typed fences.
+// Six markers alone, another split position, and imported/Paste text stay literal.
+func (d *Draft) CodeMarkerPairAtCursor() bool {
+	if d.state.selection != nil {
+		return false
+	}
+	text, offset, ok := d.codeMarkerParagraph(false)
+	return ok && text == "``````" && offset == 3
+}
+
+func (d *Draft) codeMarkerParagraph(emptyOnly bool) (string, int, bool) {
 	loc, err := d.live().ResolveAnchor(d.state.cursor)
 	if err != nil {
-		return false
+		return "", 0, false
 	}
 	b := findNode(d.state.nodes, loc.Block)
 	if b == nil || b.Kind != Element || b.Tag != "p" {
-		return false
+		return "", 0, false
 	}
-	text := ""
+	text, offset := "", -1
 	for _, n := range b.Children {
 		if n.Kind != Text {
-			return false
+			return "", 0, false
+		}
+		if n.ID == d.state.cursor.Node {
+			offset = len(text) + d.state.cursor.Offset
 		}
 		if !emptyOnly {
 			for _, f := range textOrigins(n) {
 				if f != 1 {
-					return false
+					return "", 0, false
 				}
 			}
 		}
 		text += n.Text
 	}
-	if emptyOnly {
-		return text == ""
-	}
-	return text == "```" || text == "````"
+	return text, offset, true
 }
 
 func (d *Draft) remapCodeAnchors(id ID, mapOffset func(int) int) {

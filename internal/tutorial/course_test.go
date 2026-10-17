@@ -198,7 +198,14 @@ func TestAllMarkupTasksThroughRealApplication(t *testing.T) {
 				func(s *practiceSession) { s.keys("space", "x") },
 				func(s *practiceSession) { s.keys("space", "q") },
 				func(s *practiceSession) { s.keys("space", "q") },
-				func(s *practiceSession) { s.keys("space", "c", "esc") },
+				func(s *practiceSession) {
+					s.keys("i")
+					s.text("``````")
+					for range 3 {
+						s.message(tea.KeyPressMsg(tea.Key{Code: tea.KeyLeft}))
+					}
+					s.keys("enter", "esc")
+				},
 				func(s *practiceSession) { s.keys("i"); s.text("print(1)"); s.keys("enter", alias, "tab", "esc") },
 				func(s *practiceSession) { s.command("retab") },
 				func(s *practiceSession) { s.keys("ü"); s.text("After code"); s.keys("esc") },

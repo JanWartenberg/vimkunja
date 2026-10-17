@@ -188,7 +188,7 @@ func (m *model) updateNativeInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.pasteClipboard(e)
 	case "enter":
 		e.nativeCodeEscape = false
-		if e.nativeTrigger && e.nativeDraft.CodeMarkerParagraph(false) {
+		if e.nativeTrigger && e.nativeDraft.CodeMarkerParagraph(false) || e.nativeDraft.CodeMarkerPairAtCursor() {
 			e.nativeTrigger = false
 			m.applyNative(description.Action{Kind: description.CreateCode, Text: "marker"}, false, true)
 			break
@@ -433,7 +433,7 @@ func (m *model) nativeModeHint() string {
 		return "CODE · o/O source line · ü/Ü paragraph · ]Space/[Space · V lines"
 	}
 	if e.mode == editorInsert {
-		if e.nativeTrigger && e.nativeDraft.CodeMarkerParagraph(false) {
+		if e.nativeTrigger && e.nativeDraft.CodeMarkerParagraph(false) || e.nativeDraft.CodeMarkerPairAtCursor() {
 			return "INSERT · Enter create Code · Esc normal"
 		}
 		return "INSERT · Esc normal · Enter paragraph · Shift+Enter break"

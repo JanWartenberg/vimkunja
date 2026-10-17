@@ -116,6 +116,8 @@ func TestNativeBacktickCreationShowsEnterConfirmation(t *testing.T) {
 func TestNativeBacktickCreationFromTerminalSequences(t *testing.T) {
 	for _, tc := range []struct{ name, input string }{
 		{"legacy", "i```\r"},
+		{"paired fences", "i``````\x1b[D\x1b[D\x1b[D\r"},
+		{"grouped paired fences", "i\x1b[96;1;96:96:96u\x1b[96;1;96:96:96u\x1b[D\x1b[D\x1b[D\r"},
 		{"grouped text", "i\x1b[96;1;96:96u\x1b[96;1;96:96u\r"},
 		{"shifted text", "i" + strings.Repeat("\x1b[96;2;96u", 3) + "\r"},
 		{"press and release", "i" + strings.Repeat("\x1b[96;1:1u\x1b[96;1:3u", 3) + "\r"},
@@ -169,5 +171,103 @@ func TestNativeBacktickConfirmationExcludesLiteralMarkers(t *testing.T) {
 		if strings.Contains(m.editor.draft.Description, "<pre>") {
 			t.Fatalf("%s markers unexpectedly became Code", kind)
 		}
+	}
+}
+
+func TestNativeCodeBlockHasBackgroundWithoutInlineUnderline(t *testing.T) {
+	for _, tc := range []struct {
+		name, source string
+		underlined   bool
+	}{
+		{"Code block", "<pre><code>print(1)\n\t</code></pre>", false},
+		{"Inline Code", "<p><code>print(1)</code></p>", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := nativeEditingModel(tc.source)
+			underline := regexp.MustCompile(`\x1b\[(?:[0-9]+;)*4(?:;[0-9]+)*m`)
+			found := false
+			for _, line := range strings.Split(m.Render(), "\n") {
+				if strings.Contains(ansi.Strip(line), "print(1)") {
+					found = true
+					if underline.MatchString(line) != tc.underlined {
+						t.Fatalf("unexpected underline: %q", line)
+					}
+					if !tc.underlined && !strings.Contains(line, "48;5;236") {
+						t.Fatalf("Code background missing: %q", line)
+					}
+				}
+			}
+			if !found {
+				t.Fatal("source text missing")
+			}
+			if m.editor.draft.Description != tc.source {
+				t.Fatal("render changed source")
+			}
+		})
+	}
+}
+
+func TestNativeEnterBetweenTypedBacktickFencesCreatesCode(t *testing.T) {
+	m := nativeKeys(nativeEditingModel("<p></p>"), "i", "``````")
+	if m.editor.draft.Description != "<p>``````</p>" {
+		t.Fatal("six markers must remain text before Enter")
+	}
+	m = nativeKeys(m, "left", "left", "left")
+	if !strings.Contains(ansi.Strip(m.renderStatusBar(100)), "Enter create Code") {
+		t.Fatal("missing Code creation cue at the fence boundary")
+	}
+	m = nativeKeys(m, "enter")
+	if m.editor.draft.Description != "<pre><code></code></pre>" || m.editor.mode != editorInsert {
+		t.Fatalf("did not create empty Code: %s (%s)", m.editor.draft.Description, m.lastErr)
+	}
+	m = nativeKeys(m, "esc", "u")
+	if m.editor.draft.Description != "<p>``````</p>" {
+		t.Fatal("one Undo must restore both marker groups")
+	}
+	m = nativeKeys(m, "ctrl+r", "i", "x")
+	if m.editor.draft.Description != "<pre><code>x</code></pre>" {
+		t.Fatalf("restored Code cursor is not editable: %s", m.editor.draft.Description)
+	}
+}
+
+func TestNativePairedBacktickTriggerRejectsLiteralAndWrongBoundaries(t *testing.T) {
+	for _, kind := range []string{"paste", "import", "escaped", "mixed", "before", "after", "end", "eight"} {
+		t.Run(kind, func(t *testing.T) {
+			m := nativeKeys(nativeEditingModel("<p></p>"), "i")
+			moves := 3
+			switch kind {
+			case "paste":
+				m.Update(tea.PasteMsg{Content: "``````"})
+			case "import":
+				m = nativeKeys(nativeEditingModel("<p>``````</p>"), "A")
+			case "escaped":
+				m = nativeKeys(m, "\\", "``````")
+			case "mixed":
+				m = nativeKeys(m, "```")
+				m.Update(tea.PasteMsg{Content: "```"})
+			case "before":
+				m = nativeKeys(m, "``````")
+				moves = 4
+			case "after":
+				m = nativeKeys(m, "``````")
+				moves = 2
+			case "end":
+				m = nativeKeys(m, "``````")
+				moves = 0
+			case "eight":
+				m = nativeKeys(m, "````````")
+				moves = 4
+			}
+			for range moves {
+				m = nativeKeys(m, "left")
+			}
+			if strings.Contains(ansi.Strip(m.renderStatusBar(100)), "Enter create Code") {
+				t.Fatal("literal markers offered Code conversion")
+			}
+			m = nativeKeys(m, "enter")
+			if m.lastErr != "" || strings.Contains(m.editor.draft.Description, "<pre>") {
+				t.Fatalf("literal split failed: %s (%s)", m.editor.draft.Description, m.lastErr)
+			}
+		})
 	}
 }
