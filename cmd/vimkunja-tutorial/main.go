@@ -42,6 +42,24 @@ func main() {
 		}
 	}
 
+	if !opts.mode.Practice {
+		if opts.mode.Markup {
+			config.Tabstop, config.IndentStep, config.LiteralTabAlias = 4, 4, opts.literalTabAlias
+		}
+		lesson, err := tutorial.NewCourseModel(config, opts.mode.Markup)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Task tutorial error:", err)
+			os.Exit(1)
+		}
+		_, runErr := tea.NewProgram(lesson).Run()
+		cleanupErr := lesson.Close()
+		if err := errors.Join(runErr, cleanupErr); err != nil {
+			fmt.Fprintln(os.Stderr, "Task tutorial error:", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	newDatabase := tutorial.NewDemoDatabase
 	if opts.mode.Markup {
 		newDatabase = tutorial.NewMarkupDemoDatabase
@@ -59,15 +77,7 @@ func main() {
 		config.Tabstop, config.IndentStep, config.LiteralTabAlias = 4, 4, opts.literalTabAlias
 	}
 	app := tui.NewModel(config)
-	var lesson tea.Model = app
-	if !opts.mode.Practice {
-		if opts.mode.Markup {
-			lesson = tutorial.NewMarkupModel(app, config.LiteralTabAlias)
-		} else {
-			lesson = tutorial.NewModel(app)
-		}
-	}
-	program := tea.NewProgram(lesson)
+	program := tea.NewProgram(app)
 	_, runErr := program.Run()
 	cleanupErr := database.Close()
 	if runErr != nil {

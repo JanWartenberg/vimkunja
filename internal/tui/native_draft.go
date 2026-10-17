@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"errors"
 	"fmt"
 	"github.com/JanWartenberg/vimkunja/internal/description"
@@ -287,17 +288,24 @@ func (m *model) nativePaletteKey(key string) bool {
 		m.openNativeLink()
 		return true
 	}
-	if sel != nil && !sel.Blocks {
+	if sel != nil {
 		tags := map[string]string{"b": "strong", "i": "em", "u": "u", "s": "s"}
 		if tag := tags[key]; tag != "" {
 			m.applyNative(description.Action{Kind: description.ToggleMark, Text: tag}, false, false)
-		} else if key == "0" {
-			m.applyNative(description.Action{Kind: description.ClearMarks}, false, false)
-		} else {
-			m.recordError(fmt.Errorf("Description action is not available yet"))
+			return true
 		}
-		return true
+		if key == "0" {
+			m.applyNative(description.Action{Kind: description.ClearMarks}, false, false)
+			return true
+		}
+		// Code-line x retains its source-outdent meaning; prose selections convert
+		// every touched paragraph, whether selected characterwise or with V.
+		if key == "x" && !e.nativeDraft.CodeSelection() {
+			m.applyNative(description.Action{Kind: description.ConvertList, Text: "task"}, false, false)
+			return true
+		}
 	}
+
 	if sel != nil && sel.Blocks {
 		if e.nativeDraft.CodeSelection() && (key == "x" || key == "c") {
 			kind := description.IndentCode
@@ -333,19 +341,22 @@ func (m *model) nativePaletteKey(key string) bool {
 			return true
 		}
 	}
-	m.recordError(fmt.Errorf("Description structure action belongs to a later ticket"))
+	m.recordError(fmt.Errorf("Action is not available for this selection"))
 	return true
 }
 func (m *model) nativePalette() string {
 	e := m.editor
-	if !m.leaderArmed || m.focus != paneDetail || e == nil || e.field != fieldDescription || !e.descriptionActive || e.descriptionView() == nil {
+	if (!m.leaderArmed && !m.nativePaletteVisible) || m.focus != paneDetail || e == nil || e.field != fieldDescription || !e.descriptionActive || e.descriptionView() == nil {
 		return ""
 	}
 	if s := e.nativeDraft.Selection(); s != nil {
 		if !s.Blocks {
-			return "FORMAT  b bold · i italic · u underline · s strike · 0 clear · l link · o projects"
+			return "FORMAT  b bold · i italic · u underline · s strike · 0 clear · x checkbox · l link · o projects"
 		}
-		return "STRUCTURE  q/w quote · k/l list · x/c code outdent/indent · o projects"
+		if e.nativeDraft.CodeSelection() {
+			return "CODE LINES  x outdent · c indent · o projects"
+		}
+		return "FORMAT  b bold · i italic · u underline · s strike · x checkbox · 0 clear · q/w quote · k/l list · o projects"
 	}
 	return "BLOCK  1/2/3 heading · 0 paragraph · u/n/x list · q quote · c code · l link · y copy URL · o projects"
 }
@@ -434,28 +445,50 @@ func (m *model) nativeModeHint() string {
 	return hint + " · i edit · ciw change word · v/V select · Space format · u undo · :w save"
 }
 
-func boolInt(v bool) int {
-	if v {
-		return 1
+// Display lifetime is independent of the short leader-key input window.
+func (m *model) nativePaletteCue() string {
+	if m.leaderArmed {
+		return "SPACE ACTIVE"
 	}
-	return 0
+	return "Space again"
 }
-func (m *model) nativePaletteSecondary() bool {
+func (m *model) nativePaletteSecondary() bool { return m.nativePaletteExtraRows() > 0 }
+func (m *model) nativePaletteExtraRows() int {
 	if m.nativePalette() == "" {
-		return false
+		return 0
 	}
 	candidate := *m
 	candidate.leaderArmed = false
+	candidate.nativePaletteVisible = false
 	width, height := candidate.viewportSize()
+	extra := len(strings.Split(m.nativePaletteRow(max(1, width-4)), "\n"))
 	candidate.viewportReceived = true
 	candidate.width = width
-	candidate.height = max(1, height-1)
+	candidate.height = max(1, height-extra)
 	_, rows := candidate.nativeDescriptionGeometry()
-	return rows >= 3
-
+	if rows < 3 {
+		return 0
+	}
+	return extra
 }
 func (m *model) nativePaletteRow(w int) string {
-	return renderFooterHints(max(1, w), "", strings.Split(m.nativePalette(), " · "), true)
+	parts := append([]string{m.nativePaletteCue()}, strings.Split(m.nativePalette(), " · ")...)
+	var rows []string
+	row := ""
+	for _, part := range parts {
+		if row != "" && lipgloss.Width(row+" · "+part) > w {
+			rows = append(rows, row)
+			row = ""
+		}
+		if row != "" {
+			row += " · "
+		}
+		row += part
+	}
+	if row != "" {
+		rows = append(rows, row)
+	}
+	return lipgloss.NewStyle().Bold(true).Render(strings.Join(rows, "\n"))
 }
 
 func (m *model) nativePasteText(text string) string {

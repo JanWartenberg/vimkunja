@@ -136,3 +136,10 @@ Recovery confirmation shows a bounded readable-text preview (Broken in the works
 Reviewed all tracked and untracked pending changes against HEAD f7c6eb7 using implement-and-verify. Two independent read-only reviewers per round checked bugs/risks and consistency/validation. Round 1 found one medium issue: generic footer tail truncation hid the consequence (notably EMPTY) at narrow widths. Fixed with a consequence-first compact confirmation summary; full preview is used when it fits. Pending warnings remain visible after unrelated keys. A real-View regression failed before the fix and passes at 80 and 54 columns. Both fresh round-2 reviewers reported no remaining confirmed actionable findings.
 
 Validation passed: `go test -buildvcs=false ./... ./.scratch/description-rendering/verification`, race-enabled Description/TUI/Tutorial/Store tests, `go vet ./...`, both entrypoint builds with `-buildvcs=false`, and `git diff --check`. Bounded parser/edit fuzz passed (5 seconds each, 2 workers); no dependency or local user database changes. Physical Windows/German-keyboard, actual host clipboard and live Task/backend acceptance remain the previously recorded gaps. Ticket stays in-progress; all work remains uncommitted.
+
+
+### 2026-10-16 — user tutorial feedback and branch checkpoint
+
+Jan reports completing the Rich-text tutorial successfully. This records that tutorial journey only; the separately listed Windows/clipboard/live-Vikunja observations are not implicitly accepted. Jan identifies the keystroke restrictions and unclear task expectations as a general tutorial problem and agrees to trial free input, outcome recognition, reset and explicit continuation.
+
+The previously verified Rich-text/workshop state is committed as `10ff5d2` on `feature/description-model`. The task-based text-input pilot is separate work on `feature/tutorial-task-workflow`; see [task-based tutorial work](../../tutorial-task-workflow/issues/02-convert-all-guided-tutorials.md). Both existing curricula remain available for comparison. Ticket 10 remains open for the recorded environment/compatibility checks.

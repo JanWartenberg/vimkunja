@@ -384,7 +384,10 @@ func (d *Draft) exitEntry(li *Node) error {
 }
 
 func (d *Draft) convertList(kind string) error {
-	if kind != "ul" && kind != "ol" && kind != "task" || d.state.selection != nil {
+	if d.state.selection != nil {
+		return d.convertSelectedParagraphs(kind)
+	}
+	if kind != "ul" && kind != "ol" && kind != "task" {
 		return ErrStructure
 	}
 	if li := d.selectedEntryAtCursor(); li != nil {
@@ -426,6 +429,76 @@ func (d *Draft) convertList(kind string) error {
 	*parts = slices.Replace(*parts, i, i+1, d.newNode(list))
 	return nil
 }
+
+// Conversion expands characterwise selections to touched logical paragraphs.
+// The outer Apply owns rollback, preservation confirmation and one Undo entry.
+func (d *Draft) convertSelectedParagraphs(kind string) error {
+	if kind != "ul" && kind != "ol" && kind != "task" {
+		return ErrStructure
+	}
+	if d.codeLineSelection() {
+		return fmt.Errorf("Code lines cannot become Checkboxes; select prose paragraphs")
+	}
+	lo, hi, ext := d.selectionRange()
+	var targets []ID
+	seen := map[ID]bool{}
+	for _, block := range d.View().blocks {
+		e := projectionExtent(block, ext)
+		if !(e.start < hi && e.end > lo || e.start == e.end && e.start >= lo && e.start <= hi) {
+			continue
+		}
+		id := block.id
+		if entry := d.selectedEntry(id); entry != nil {
+			id = entry.ID
+		}
+		if !seen[id] {
+			targets = append(targets, id)
+			seen[id] = true
+		}
+	}
+	if len(targets) == 0 {
+		return ErrStructure
+	}
+	selection, cursor := d.state.selection, d.state.cursor
+	d.state.selection = nil
+	defer func() { d.state.selection = selection; d.state.cursor = cursor }()
+	for _, id := range targets {
+		node := findNode(d.state.nodes, id)
+		if node == nil {
+			return ErrStructure
+		}
+		if node.Tag == "li" {
+			if parent := d.parent(id); parent != nil && listKind(*parent) == kind {
+				continue
+			}
+		}
+		d.state.cursor = d.first([]Node{*node})
+		if err := d.convertList(kind); err != nil {
+			return err
+		}
+	}
+	// Merge only freshly allocated neighboring containers, leaving imported
+	// container metadata and protected-object ancestry intact.
+	var merge func([]Node) []Node
+	merge = func(nodes []Node) []Node {
+		var result []Node
+		for _, n := range nodes {
+			n.Children = merge(n.Children)
+			if len(result) > 0 && isList(n) && findNode(d.origin.nodes, n.ID) == nil {
+				previous := &result[len(result)-1]
+				if isList(*previous) && findNode(d.origin.nodes, previous.ID) == nil && previous.Tag == n.Tag && slices.Equal(previous.Attributes, n.Attributes) {
+					previous.Children = append(previous.Children, n.Children...)
+					continue
+				}
+			}
+			result = append(result, n)
+		}
+		return result
+	}
+	d.state.nodes = merge(d.state.nodes)
+	return nil
+}
+
 func listForKind(kind string) Node {
 	list := Node{Kind: Element, Tag: kind}
 	if kind == "task" {

@@ -103,8 +103,11 @@ func TestNativePaletteGeometryTimeoutAndInsertSpace(t *testing.T) {
 		}
 		m.Render()
 		m.Update(leaderTimeoutMsg{})
-		if m.leaderArmed || m.nativePalette() != "" {
+		if m.leaderArmed || m.nativePalette() == "" {
 			t.Fatal("timeout failed")
+		}
+		if !strings.Contains(ansi.Strip(m.renderStatusBar(100)), "Space again") {
+			t.Fatal("missing expired leader cue")
 		}
 	}
 	m := nativeEditingModel(`<p>Alpha</p>`)
@@ -117,6 +120,38 @@ func TestNativePaletteGeometryTimeoutAndInsertSpace(t *testing.T) {
 		t.Fatal("Space o did not toggle projects")
 	}
 }
+func TestNativePaletteStaysInsideFooterAfterTimeout(t *testing.T) {
+	for _, width := range []int{54, 100, 160} {
+		m := nativeEditingModel(`<p>Alpha</p>`)
+		m.width, m.height = width, 50
+		m = nativeKeys(m, "space")
+		active := ansi.Strip(m.renderStatusBar(width))
+		if !strings.Contains(active, "SPACE ACTIVE") {
+			t.Fatalf("missing active cue: %s", active)
+		}
+		m.Update(leaderTimeoutMsg{})
+		footer := ansi.Strip(m.renderStatusBar(width))
+		for _, hint := range []string{"Space again", "BLOCK", "1/2/3 heading", "o projects"} {
+			if !strings.Contains(footer, hint) {
+				t.Fatalf("width %d missing %q: %s", width, hint, footer)
+			}
+		}
+		for _, line := range strings.Split(footer, "\n") {
+			if strings.Contains(line, "BLOCK") && (!strings.HasPrefix(line, "│") || !strings.HasSuffix(line, "│")) {
+				t.Fatalf("unframed palette: %s", line)
+			}
+		}
+		m = nativeKeys(m, "x")
+		if strings.Contains(m.editor.draft.Description, "taskList") || m.nativePalette() != "" {
+			t.Fatal("expired shortcut executed or palette stayed open")
+		}
+		m = nativeKeys(m, "space", "x")
+		if !strings.Contains(m.editor.draft.Description, "taskList") {
+			t.Fatal("rearmed shortcut did not execute")
+		}
+	}
+}
+
 func TestNativeSaveConflictKeepsSelectionAndHistory(t *testing.T) {
 	m, db := auditEditorModel(t)
 	const source = `<ul data-type="taskList"><li data-type="taskItem" data-checked="false">A</li></ul>`

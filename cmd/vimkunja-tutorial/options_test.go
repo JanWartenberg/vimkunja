@@ -15,6 +15,10 @@ func TestTutorialModeFlags(t *testing.T) {
 		menu      bool
 		wantError bool
 	}{
+		{name: "tasks compatibility alias", args: []string{"--tasks"}, mode: tutorial.Mode{Tasks: true}},
+		{name: "task practice conflict", args: []string{"--tasks", "--practice"}, wantError: true},
+		{name: "task markup conflict", args: []string{"--tasks", "--markup"}, wantError: true},
+		{name: "task guided conflict", args: []string{"--tasks", "--guided"}, wantError: true},
 		{name: "no flags opens menu", menu: true},
 		{name: "timeouts alone keep menu", args: []string{"--leader-timeout", "1s", "--ctrl-w-timeout", "2s"}, menu: true},
 		{name: "tab alias alone keeps menu", args: []string{"--literal-tab-alias", "ctrl+b"}, menu: true},

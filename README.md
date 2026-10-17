@@ -46,25 +46,29 @@ Noch ist keine konkrete Vikunja-Release-Version durch einen vollständigen Integ
 
 Vor dem Arbeiten mit echten Daten ein Backup erstellen. Weitere Views und native Richtext-Bearbeitung sind geplant; der aktuelle Funktionsstand steht in [STATUS.md](STATUS.md).
 
-### Interactive keystroke tutorial
+### Interactive task tutorial
 
 ```bash
 go run ./cmd/vimkunja-tutorial
 ```
 
-The separate tutorial executable opens one flat start menu with four modes and Quit. Use `j/k` or the arrow keys to select, `Enter` to start, and `q` to quit. The first option is selected by default:
+The separate executable opens one flat menu with four modes and Quit. Use `j/k` or arrows to select, `Enter` to start, and `q` to leave. Learn the basics is selected by default.
 
 | Menu option | What it does | Direct-start flags |
 | --- | --- | --- |
-| Learn the basics | Guided navigation, Tasks and Views; only requested keys are accepted | `--guided` |
-| Practice the basics | Explore demo Tasks freely, without guidance or key restrictions | `--practice` |
-| Learn markup | Guided rich-text Description workshop | `--markup` |
-| Practice markup | Explore rich-text examples freely, without guidance or key restrictions | `--markup --practice` |
+| Learn the basics | Result-based tasks for navigation, editing, Tasks and Views | `--guided` |
+| Practice the basics | Explore demo Tasks freely without lessons | `--practice` |
+| Learn markup | Result-based tasks in the real rich-text Description editor | `--markup` |
+| Practice markup | Explore rich-text examples freely without lessons | `--markup --practice` |
 | Quit | Exit without creating a database | — |
+
+Both Learn modes accept free application input: navigate, correct mistakes, Paste, undo or use alternative commands. A short context modal introduces each task; Enter or Esc dismisses it. The task strip shows only the concrete target and controls, with a colored left marker and no filled background. F1 opens optional help. The tutorial checks actual application results, never a prescribed key sequence. Return to Normal mode after editing; success remains visible while you explore further.
+
+F5 restores the **current task's complete starting state**, including saved edits, deleted demo data and local history. F8 starts the next task only after success; the final F8 shows completion. **F12 skips the current task**, including from context/help modals or during editing; seven presses from startup land on task 8. Skipped tasks are reported separately at the end and do not count as passed. Each task has independent disposable data, so experiments do not affect later tasks. At completion F5 repeats the last task; Ctrl+C exits at any time. `--tasks` remains an alias for the general Learn mode and cannot be combined with other mode flags.
 
 Mode flags skip the menu. Timeout flags and `--literal-tab-alias` alone keep the menu and apply to the selected mode. `--guided` and `--practice` cannot be combined.
 
-All four modes run the real Vimkunja UI in English. Starting a mode creates a freshly seeded SQLite database in the operating system's temporary directory; leaving the menu does not. The tutorial accepts no database path, never opens `internal/db/vikunja.db` or another user database, and deletes its disposable database on normal exit.
+All modes run the real Vimkunja UI in English. Starting a mode creates a freshly seeded SQLite database in the operating system's temporary directory; leaving the menu does not. The tutorial accepts no database path, never opens `internal/db/vikunja.db` or another user database, and deletes its disposable database on normal exit.
 
 ### Rich-text workshop
 
@@ -72,9 +76,9 @@ All four modes run the real Vimkunja UI in English. Starting a mode creates a fr
 go run ./cmd/vimkunja-tutorial --markup
 ```
 
-This separate lesson uses the real Description editor and a disposable database. It covers Native navigation, Visual formatting, Links, typed syntax, Code creation and exits, literal Tabs, retab, Opaque confirmation, Undo/Redo, save/discard and blocked-source recovery. Start the general guided tutorial directly with `--guided`, or select it in the start menu. The workshop sets tabstop/indent to 4 and defaults to the literal-Tab alias Ctrl+Q. Use `--markup --literal-tab-alias ctrl+b` if the terminal intercepts Ctrl+Q; the lesson then teaches Ctrl+B.
+This course uses the real Description editor and independent disposable task fixtures. It covers Native navigation, Visual formatting, Links, typed syntax, Code creation and exits, literal Tabs, retab, Opaque confirmation, Undo/Redo, save/discard and blocked-source recovery. Start the general guided tutorial directly with `--guided`, or select it in the start menu. The workshop sets tabstop/indent to 4 and defaults to the literal-Tab alias Ctrl+Q. Use `--markup --literal-tab-alias ctrl+b` if the terminal intercepts Ctrl+Q; the lesson then teaches Ctrl+B.
 
-For unrestricted testing in the same disposable fixtures, use `go run ./cmd/vimkunja-tutorial --markup --practice`. Open the last Task with Enter, G, Enter, then use gn, Enter to activate Description. This mode accepts arbitrary keys and Paste; guided lessons accept Tab completion in Ex commands and otherwise advance on their requested keys, with free URL typing/editing and Paste in the Link lesson. Confirm any valid URL with Enter; the suggested URL is only an example.
+For unrestricted testing in the same disposable fixtures, use `go run ./cmd/vimkunja-tutorial --markup --practice`. Open the last Task with Enter, G, Enter, then use gn, Enter to activate Description. This mode accepts arbitrary keys and Paste without task guidance. Both guided courses also accept free input and real Ex-command completion; they recognize results instead of tracking command characters. In the Link task, any valid URL is accepted; Enter applies it, empty input unlinks, and Esc cancels. Invalid URLs stay editable and neither cancel nor unlink satisfies the task to create a Link.
 
 Code creation enters Insert mode. Inside Code, `o`/`O` add source lines; `ü`/`Ü` or `]Space`/`[Space` create paragraphs outside Code. Three or four directly typed backticks in an otherwise empty paragraph create Code only after Enter. Pasted markers remain literal. If your terminal intercepts Ctrl+V or Ctrl+Q, configure `literal_tab_alias = "ctrl+b"` for normal use; the workshop also accepts `--literal-tab-alias ctrl+b`.
 
@@ -137,7 +141,7 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 
 Im Detail-pane können Project, Title, Priority, Due Date, Labels, Description und der Workflow-Status bearbeitet werden. `gc` öffnet den Comments-Workspace; `gca` startet dort einen neuen Comment. Im Comment-Thread starten `a`, `i` und `o` einen neuen Comment; ein statischer Blockcursor markiert den ausgewählten Comment. `Space+l` öffnet den Label-Picker; `:labels` verwaltet globale Labels. Der Status verwendet die konfigurierten Buckets der eindeutigen Kanban View des Projects.
 
-HTML-Descriptions werden strukturiert angezeigt und als Native Draft bearbeitet. `gn`, dann `Enter` aktiviert die Navigation: `j/k` zwischen logischen Blöcken (in Code zwischen Quellzeilen, in Zitaten zwischen Kindblöcken), `gj/gk` zwischen sichtbaren Zeilen, `{`/`}` oder `ö/ä` zwischen ganzen Absatz-Einheiten. `h/l`, `0/^/_/$`, `w/b/e/ge`, Counts und `gg/G` bewegen den Dokumentcursor; `Ctrl+D/U` bewegt ihn ungefähr eine sichtbare Pane-Höhe. `zh/zl` scrollt Code und Tabellen horizontal, `Ctrl+E/Y` nur den Viewport. `Esc` verlässt die aktive Navigation. Der aktive Block zeigt Formatierungszeichen; Code zeigt geschützte Backtick-Ränder. Lesen und Resize ändern das gespeicherte HTML nicht. `i/a/I/A` startet Insert, `Enter` teilt Absätze, `Shift+Enter` setzt einen Hard Break. `o/O` erzeugt einen Absatz, innerhalb von Code eine Quellzeile. `dd` löscht logische Blöcke bzw. Codezeilen. `v/V`, `viw/vaw` und `o` wählen Text/Blöcke bzw. tauschen das aktive Ende; `Esc` beendet die Auswahl. Im Characterwise Visual Mode formatiert `Space+b/i/u/s`, `Space+0` entfernt Inline-Formatierung einschließlich Links. Die Auswahl bleibt bis Esc bestehen. Normal `Space+1/2/3/0` wandelt Absatz/Heading um. Die Palette nutzt den Leader-Timeout; `Space+o` bleibt global. `u/Ctrl+R` gilt hier für den lokalen Description-Draft. Opaque-Löschung, Ersatz und Änderungen am Native Parent benötigen eine Bestätigung (`y/Enter`, `n/Esc`); Undo erhält die ursprünglichen Bytes. `y/p` kopiert sichere sichtbare Inhalte in den lokalen Description-Register und fügt Native Text ein.
+HTML-Descriptions werden strukturiert angezeigt und als Native Draft bearbeitet. `gn`, dann `Enter` aktiviert die Navigation: `j/k` zwischen logischen Blöcken (in Code zwischen Quellzeilen, in Zitaten zwischen Kindblöcken), `gj/gk` zwischen sichtbaren Zeilen, `{`/`}` oder `ö/ä` zwischen ganzen Absatz-Einheiten. `h/l`, `0/^/_/$`, `w/b/e/ge`, Counts und `gg/G` bewegen den Dokumentcursor; `Ctrl+D/U` bewegt ihn ungefähr eine sichtbare Pane-Höhe. `zh/zl` scrollt Code und Tabellen horizontal, `Ctrl+E/Y` nur den Viewport. `Esc` verlässt die aktive Navigation. Der aktive Block zeigt Formatierungszeichen; Code zeigt geschützte Backtick-Ränder. Lesen und Resize ändern das gespeicherte HTML nicht. `i/a/I/A` startet Insert, `Enter` teilt Absätze, `Shift+Enter` setzt einen Hard Break. `o/O` erzeugt einen Absatz, innerhalb von Code eine Quellzeile. `dd` löscht logische Blöcke bzw. Codezeilen. `v/V`, `viw/vaw` und `o` wählen Text/Blöcke bzw. tauschen das aktive Ende; `Esc` beendet die Auswahl. In beiden Visual-Modi (`v` und `V`) formatiert `Space+b/i/u/s`, `Space+0` entfernt Inline-Formatierung einschließlich Links. `Space+x` wandelt jeden von der Auswahl berührten logischen Absatz/Listeneintrag in eine Checkbox um; bestehende Checkboxen behalten Zustand und Identität. Die Auswahl bleibt bis Esc bestehen. Normal `Space+1/2/3/0` wandelt Absatz/Heading um. Die Palette steht innerhalb des Footer-Rahmens und bleibt nach dem Leader-Timeout bis zur nächsten Taste lesbar: `SPACE ACTIVE` erlaubt direkte Kürzel, `Space again` verlangt erneut Space. Schmale Fenster umbrechen die Kürzel; bei sehr wenig Höhe ersetzt eine kompakte Palette die normale Footer-Zeile. `Space+o` bleibt global. `u/Ctrl+R` gilt hier für den lokalen Description-Draft. Opaque-Löschung, Ersatz und Änderungen am Native Parent benötigen eine Bestätigung (`y/Enter`, `n/Esc`); Undo erhält die ursprünglichen Bytes. `y/p` kopiert sichere sichtbare Inhalte in den lokalen Description-Register und fügt Native Text ein.
 
 Native Inline-Syntax entsteht nur durch bewusstes Tippen: `**fett**`, `*kursiv*`, `***beides***`, `__unterstrichen__`, `~~durchgestrichen~~` und einzelne gepaarte Backticks für Inline-Code. Paste bleibt wörtlicher Text; Backslash schützt das nächste Syntaxzeichen. `Space+l` bearbeitet die URL eines Links oder verlinkt ausgewählten Text, eine leere URL entfernt den Link. `Space+y` kopiert das Ziel in die System-Clipboard. Einfügen am Link-Rand oder außerhalb der sichtbaren Inline-Code-Backticks bleibt außerhalb; zwischen den Backticks wird der Code bearbeitet.
 

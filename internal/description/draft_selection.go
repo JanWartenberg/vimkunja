@@ -174,8 +174,11 @@ func markFamily(tag, family string) bool {
 	return false
 }
 func (d *Draft) format(a Action) error {
-	if d.state.selection == nil || d.state.selection.Blocks {
+	if d.state.selection == nil {
 		return ErrStructure
+	}
+	if d.codeLineSelection() {
+		return fmt.Errorf("Code source cannot carry inline formatting")
 	}
 	if a.Kind == ToggleMark && a.Text != "strong" && a.Text != "em" && a.Text != "u" && a.Text != "s" {
 		return ErrStructure

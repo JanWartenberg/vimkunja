@@ -171,7 +171,7 @@ Native Normal Mode also supports `ciw`/`caw` and `diw`/`daw`. Change selects the
 | `gg` / `G` | Jump to start / end of the whole Description document | Implemented for native read/navigation (05) |
 | `Ctrl+D` / `Ctrl+U` | Move the cursor about one visible Task Detail Pane height down / up | Implemented for native read/navigation (05) |
 | `u` / `Ctrl+R` | Undo / redo an unsaved Description-draft change | Implemented (06); synthetic tests, practical terminal acceptance pending |
-| `Space` | Open the Space formatting palette below the primary footer; temporarily replace the primary footer if an extra row would leave fewer than three Description rows.<br>Close on the second key, `Esc`, or Leader timeout; restore the primary footer. | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| `Space` | Open the formatting palette inside the footer frame; wrap complete shortcuts across rows. If this leaves fewer than three Description rows, use the primary footer instead.<br>`SPACE ACTIVE` means the next shortcut is armed. After Leader timeout, `Space again` keeps the hints readable until the next key; press Space to rearm. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Space+1/2/3` | Convert current block to H1/H2/H3 | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Space+0` | Convert current block to a paragraph | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Space+u/n/x` | Toggle current block between unordered, numbered, or Checkbox list<br>and a paragraph | Implemented (07); synthetic tests, practical terminal acceptance pending |
@@ -209,12 +209,13 @@ Native Normal Mode also supports `ciw`/`caw` and `diw`/`daw`. Change selects the
 | `Esc` | Cancel Visual Mode | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `viw` / `vaw` | Select useful inner word / word with surrounding whitespace; delimiter-start selects nearest inner word, empty expression gives hint | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `Ctrl+V` | Rectangular selection | Deferred |
-| Characterwise `v`: `Space+b/i/u/s` | Toggle bold/italic/underline/strikethrough uniformly: apply throughout if any selected Native text lacks the mark; otherwise remove throughout. Explicit Bold-off removes all selected b/strong layers, including double/triple strong; Italic/Underline/Strike-off likewise removes all selected layers of its own family; preserve other marks and selection until Esc. Ignore and preserve Opaque subtrees. | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| Visual `v` or `V`: `Space+b/i/u/s` | Toggle bold/italic/underline/strikethrough uniformly: apply throughout if any selected Native text lacks the mark; otherwise remove throughout. Explicit Bold-off removes all selected b/strong layers, including double/triple strong; Italic/Underline/Strike-off likewise removes all selected layers of its own family; preserve other marks and selection until Esc. Ignore and preserve Opaque subtrees. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | Characterwise `v`: `Space+l` | Prompt for a URL and apply it to the selection; a blank URL removes the link | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
-| Characterwise `v`: `Space+0` | Remove all inline formatting, including Links, while preserving text and blocks | Implemented (06); synthetic tests, practical terminal acceptance pending |
+| Visual `v` or `V`: `Space+0` | Remove all inline formatting, including Links, while preserving text and blocks | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | Blockwise `V`: `Space+q/w` | Remove / add one quote layer on selected blocks; wrap selected siblings in one shared container, remove locally, and reject incompatible reduction atomically. Both retained Quote fragments keep known shared cite/data-comment-id references without extra confirmation for repeating them. Actual metadata loss on removal still confirms; unique/unknown attributes require lossless allocation. | Implemented (07); synthetic tests, practical terminal acceptance pending |
 | Blockwise `V`: `Space+k/l` | Decrease / increase list depth on selected entries, preserving subtrees, list kinds and Checkbox IDs/state. Normalize parent/child overlap; validate one sibling range atomically. If no unselected preceding sibling can receive an indent, reject the whole action. | Implemented (07); synthetic tests, practical terminal acceptance pending |
-| Blockwise `V`: `Space+x/c` | Remove up to one indent step from leading whitespace / prepend the Space step. Locally split an affected Tab when needed; preserve empty lines and all other Code contents. Step two/four Spaces, default four; tui.indent_step independent of tui.tabstop. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
+| Visual `v` or `V`: `Space+x` outside Code | Convert every touched logical paragraph/list entry into a Checkbox; partial character selections include the entire touched paragraph. Existing Checkboxes retain state and identity. One Undo restores the whole conversion. Wrapped screen rows do not create separate Checkboxes. | Implemented; focused model/TUI/save tests |
+| Blockwise `V` inside Code: `Space+x/c` | Remove up to one indent step from leading whitespace / prepend the Space step. Locally split an affected Tab when needed; preserve empty lines and all other Code contents. Step two/four Spaces, default four; tui.indent_step independent of tui.tabstop. | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `d` | Delete exactly the selected text; after `V`, delete complete selected logical blocks including inline Opaque content. Confirm the whole operation when Opaque content is included; Undo restores the whole deletion. Wrapped screen rows are not separate blocks. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 
 
@@ -240,6 +241,12 @@ label and three actionable segments fit; otherwise hints win.
 | Help / Info | close Pane | — | Pane switching where available |
 | Leader, Views, Sort, Filter | shown choice actions | — | cancel where available |
 
+In the Ex-command prompt, `Tab` completes a unique command or the longest shared
+prefix of multiple candidates and displays those candidates. For example,
+`:desc` becomes `:description` with `descriptionclear`, `descriptionrecover`
+and `descriptionreload` still listed. Repeated `Tab` retains the list until
+further typing narrows the matches.
+
 Command and Search input retain their prompt and cursor-side input tail, with
 an ellipsis for omitted leading input. Completion feedback yields before input
 is clipped. An active error owns the footer budget and shows only `Error:` plus
@@ -250,7 +257,7 @@ the useful error tail.
 - A **Pane** is focusable; a **View** is a Task representation inside the Tasks Pane. See [`../CONTEXT.md`](../CONTEXT.md).
 - A Checkbox list is embedded rich text in a Description; it is distinct from the Task Done state.
 - Preserve documented Vim Visual-Mode motions and operators. The rejected direct `b`, `i`, `u`, `s`, and `l` proposal and sources are recorded in [the binding review](../.scratch/description-rendering/research-vim-visual-bindings.md).
-- The Space formatting palette's secondary-footer design and compact-height replacement threshold are provisionally accepted; practical validation remains outstanding in [the rich-text contract](../.scratch/description-rendering/spec.md).
+- The Space formatting palette's framed, persistent hints and compact-height replacement threshold are implemented; practical validation remains outstanding in [the rich-text contract](../.scratch/description-rendering/spec.md).
 - Editable delimiters count as ordinary Vim characters, including in `5l`. Protected quote prefixes, Code fences, and emphasis-layer separators are never cursor targets, copied text, or independently editable content.
 - Opaque subtrees require discernible atomic boundaries with configurable bracket style and highlighting color; final styling awaits prototype review. Wrapped continuation rows retain a non-editable arrow, distinct from hard-break markers.
 

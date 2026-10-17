@@ -154,14 +154,31 @@ func (m *model) dispatchModalGlobalCommand(key tea.KeyMsg) (tea.Model, tea.Cmd, 
 	}
 }
 
-// Complete returns the canonical command for a unique prefix or all canonical
-// candidates for an ambiguous prefix. An exact spelling does not take precedence.
+// Complete returns the canonical command for a unique prefix. Ambiguous matches
+// return their shared prefix and all candidates. Exact spellings do not take precedence.
 func (r *CommandRegistry) Complete(prefix string) (string, []string) {
 	command, candidates := r.resolvePrefix(prefix)
 	if command != nil {
 		return command.canonical, nil
 	}
-	return "", candidates
+	if len(candidates) == 0 {
+		return "", nil
+	}
+	common := []rune(candidates[0])
+	for _, candidate := range candidates[1:] {
+		other := []rune(candidate)
+		i := 0
+		for i < len(common) && i < len(other) && common[i] == other[i] {
+			i++
+		}
+		common = common[:i]
+	}
+	// Aliases can match commands whose canonical names do not share the input.
+	completion := string(common)
+	if !strings.HasPrefix(completion, normalizeCommandName(prefix)) {
+		completion = ""
+	}
+	return completion, candidates
 }
 
 func (r *CommandRegistry) resolve(name string) (*registeredCommand, []string) {

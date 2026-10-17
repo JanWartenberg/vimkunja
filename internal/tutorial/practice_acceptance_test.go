@@ -51,6 +51,9 @@ func (s *practiceSession) run(cmd tea.Cmd) {
 		return
 	}
 	msg := cmd()
+	if tagged, ok := msg.(taskAppMsg); ok && tagged.message != nil && reflect.TypeOf(tagged.message).Name() == "cursorBlinkMsg" {
+		return
+	}
 	if msg != nil && reflect.TypeOf(msg).Name() == "cursorBlinkMsg" {
 		return
 	}

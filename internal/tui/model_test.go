@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 	apperrors "github.com/JanWartenberg/vimkunja/internal/errors"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"github.com/charmbracelet/x/ansi"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -3755,6 +3755,21 @@ func TestCommandPromptHistoryKeepsOneHundredMostRecentEntries(t *testing.T) {
 	}
 }
 
+func TestCommandPromptCompletesSharedDescriptionPrefix(t *testing.T) {
+	m := testModel()
+	m.openCommandPrompt()
+	m.commandInput = "desc"
+	for range 2 {
+		m = pressKey(m, tea.Key{Code: tea.KeyTab})
+		if m.commandInput != "description" || m.commandCursor != len("description") {
+			t.Fatalf("input=%q cursor=%d", m.commandInput, m.commandCursor)
+		}
+		if m.commandCompletionFeedback != "matches: descriptionclear, descriptionrecover, descriptionreload" {
+			t.Fatal(m.commandCompletionFeedback)
+		}
+	}
+}
+
 func TestCommandPromptCompletionUsesRegistryAndFooterFeedback(t *testing.T) {
 	m := testModel()
 	m.openCommandPrompt()
@@ -3767,7 +3782,7 @@ func TestCommandPromptCompletionUsesRegistryAndFooterFeedback(t *testing.T) {
 	m.commandInput = "w"
 	m = pressKey(m, tea.Key{Code: tea.KeyTab})
 	const matches = "matches: write, writequit, writequitall"
-	if m.commandInput != "w" || m.commandCompletionFeedback != matches {
+	if m.commandInput != "write" || m.commandCompletionFeedback != matches {
 		t.Fatalf("ambiguous completion = input:%q feedback:%q", m.commandInput, m.commandCompletionFeedback)
 	}
 	if footer := ansi.Strip(m.renderStatusBar(120)); !strings.Contains(footer, matches) {
@@ -6172,7 +6187,7 @@ func TestHTMLDescriptionEditingStartsNativeInsert(t *testing.T) {
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "<p>HTML</p>"})
 	m.editor.field = fieldDescription
 	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
-	if m.editor.mode != editorInsert || m.editor.nativeDraft==nil || m.lastErr!="" {
+	if m.editor.mode != editorInsert || m.editor.nativeDraft == nil || m.lastErr != "" {
 		t.Fatalf("HTML Description edit = mode:%v error:%q, want Native Insert", m.editor.mode, m.lastErr)
 	}
 }

@@ -70,6 +70,7 @@ type model struct {
 	ctrlWArmed               bool
 	ctrlWTimeout             time.Duration
 	leaderArmed              bool
+	nativePaletteVisible     bool
 	viewSwitchArmed          bool
 	deleteArmed              bool
 	deleteConfirm            bool
@@ -183,8 +184,10 @@ type model struct {
 	initialProjectID int64
 	initialViewID    int64
 
-	undoHistory []*undoEntry
-	redoHistory []*undoEntry
+	createdTaskIDs    []int64
+	lastDeletedTaskID int64
+	undoHistory       []*undoEntry
+	redoHistory       []*undoEntry
 }
 
 func NewModel(cfg Config) tea.Model {
@@ -463,6 +466,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// The palette stays readable after timeout until the next key.
+		m.nativePaletteVisible = false
 		// A footer error is transient feedback. The full error remains available
 		// in the session log for the future :errors pane.
 		m.lastErr = ""
@@ -585,6 +590,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.leaderEligible() && isSpaceKey(key) {
 			m.leaderArmed = true
+			m.nativePaletteVisible = m.nativePalette() != ""
 			return m, tea.Tick(m.leaderTimeout, func(time.Time) tea.Msg { return leaderTimeoutMsg{} })
 		}
 
@@ -1078,6 +1084,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		if typed.draft.ID == 0 {
+			m.createdTaskIDs = append(m.createdTaskIDs, typed.task.ID)
+		}
 		if typed.historyErr != nil {
 			m.redoHistory = nil
 			m.recordError(fmt.Errorf("Task saved; undo history unavailable: %w", typed.historyErr))
@@ -1146,6 +1155,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		m.lastDeletedTaskID = typed.taskID
 		if m.editor != nil && m.editor.id == typed.taskID {
 			m.closeTaskDetail()
 		}
@@ -1376,7 +1386,7 @@ func (m *model) completeCommandInput() {
 	completion, candidates := m.commands.Complete(m.commandInput)
 	if completion != "" {
 		m.commandInput = completion
-		return
+		m.commandCursor = len([]rune(completion))
 	}
 	if len(candidates) > 0 {
 		m.commandCompletionFeedback = "matches: " + strings.Join(candidates, ", ")
@@ -2203,7 +2213,7 @@ func (m *model) tasksPaneTextX() int {
 
 func (m *model) viewportSize() (int, int) {
 	if m.viewportReceived {
-		return max(1, m.width), max(1, m.height-boolInt(m.nativePaletteSecondary()))
+		return max(1, m.width), max(1, m.height-m.nativePaletteExtraRows())
 	}
 	w, h := m.width, m.height
 	if w < 40 {
@@ -2212,7 +2222,7 @@ func (m *model) viewportSize() (int, int) {
 	if h < 10 {
 		h = 24
 	}
-	return w, max(1, h-boolInt(m.nativePaletteSecondary()))
+	return w, max(1, h-m.nativePaletteExtraRows())
 }
 
 func (m *model) detailPaneTop() int {
@@ -2336,9 +2346,6 @@ func (m *model) Render() string {
 		content = m.renderCommentDeleteConfirmationModal(content, w)
 	}
 	status := m.renderStatusBar(w)
-	if m.nativePaletteSecondary() {
-		return lipgloss.JoinVertical(lipgloss.Top, content, status, m.nativePaletteRow(w))
-	}
 	return lipgloss.JoinVertical(lipgloss.Top, content, status)
 }
 
@@ -2581,10 +2588,10 @@ func (m *model) renderStatusBar(w int) string {
 			hint += "  •  " + m.commandCompletionFeedback
 		}
 	}
-	if m.leaderArmed && !m.nativePaletteSecondary() {
+	if (m.leaderArmed || m.nativePaletteVisible) && !m.nativePaletteSecondary() {
 		hint = "[LEADER] a Overview/return  •  o toggle projects pane  •  v views"
 		if palette := m.nativePalette(); palette != "" && !m.nativePaletteSecondary() {
-			hint = palette
+			hint = strings.Join(append([]string{m.nativePaletteCue()}, strings.Split(palette, " · ")...), footerSeparator)
 		}
 	}
 	if m.viewSwitchArmed {
@@ -2681,6 +2688,9 @@ func (m *model) renderStatusBar(w int) string {
 			percent := int(math.Round(100 * float64(scrollTop) / float64(maxScroll)))
 			status += strings.Repeat(" ", free-lipgloss.Width(fmt.Sprintf("%d%%", percent))) + fmt.Sprintf("%d%%", percent)
 		}
+	}
+	if m.nativePaletteSecondary() {
+		status += "\n" + m.nativePaletteRow(contentWidth)
 	}
 	return statusStyle.Render(status)
 }

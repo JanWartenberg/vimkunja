@@ -583,3 +583,64 @@ func TestCodeLineSelectionOriginSurvivesEndpointSwap(t *testing.T) {
 		t.Fatal("Code lines expanded to whole block")
 	}
 }
+
+func TestSelectedCheckboxConversionPreservesExistingIdentityAndCheckedState(t *testing.T) {
+	const source = `<p>Before</p><ul data-type="taskList"><li data-type="taskItem" data-checked="true" data-task-id="keep"><p>Existing</p></li></ul><p>After</p>`
+	d := NewDraft(Parse(source))
+	cursorText(t, d, "After", 1)
+	d.Select(false, false)
+	cursorText(t, d, "Before", 1)
+	if err := d.Apply(Action{Kind: ConvertList, Text: "task"}, false); err != nil {
+		t.Fatal(err)
+	}
+	want := `<ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>Before</p></li></ul><ul data-type="taskList"><li data-type="taskItem" data-checked="true" data-task-id="keep"><p>Existing</p></li></ul><ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>After</p></li></ul>`
+	expectDraftHTML(t, d, want)
+	if err := d.Apply(Action{Kind: ConvertList, Text: "task"}, false); err != nil {
+		t.Fatal(err)
+	}
+	expectDraftHTML(t, d, want)
+	if !d.Undo() {
+		t.Fatal("conversion missing from history")
+	}
+	expectDraftHTML(t, d, source)
+}
+
+func TestSelectedCheckboxConversionAcrossQuoteKeepsOrderAndOneUndo(t *testing.T) {
+	const source = `<blockquote><p>Alpha</p><p>Beta</p></blockquote><p>Gamma</p><p>Keep</p>`
+	d := NewDraft(Parse(source))
+	cursorText(t, d, "Gamma", 1)
+	d.Select(false, false)
+	cursorText(t, d, "Alpha", 2)
+	if err := d.Apply(Action{Kind: ConvertList, Text: "task"}, false); err != nil {
+		t.Fatal(err)
+	}
+	expectDraftHTML(t, d, `<blockquote><ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>Alpha</p></li><li data-type="taskItem" data-checked="false"><p>Beta</p></li></ul></blockquote><ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>Gamma</p></li></ul><p>Keep</p>`)
+	d.Undo()
+	expectDraftHTML(t, d, source)
+}
+
+func TestSelectedCheckboxConversionProtectsOpaqueAndRejectsCodeAtomically(t *testing.T) {
+	const opaque = `<p>Alpha<mention-user data-id="jan" data-label="Jan"></mention-user></p><p>Beta</p>`
+	d := NewDraft(Parse(opaque))
+	d.Select(true, false)
+	cursorText(t, d, "Beta", 0)
+	if err := d.Apply(Action{Kind: ConvertList, Text: "task"}, false); err != ErrConfirmation {
+		t.Fatalf("missing preservation confirmation: %v", err)
+	}
+	expectDraftHTML(t, d, opaque)
+	if err := d.Apply(Action{Kind: ConvertList, Text: "task"}, true); err != nil {
+		t.Fatal(err)
+	}
+	html, err := d.HTML()
+	if err != nil || !strings.Contains(html, `<mention-user data-id="jan" data-label="Jan"></mention-user>`) {
+		t.Fatalf("opaque changed: %s %v", html, err)
+	}
+	const code = `<p>Alpha</p><pre><code>original()</code></pre>`
+	d = NewDraft(Parse(code))
+	d.Select(false, false)
+	cursorText(t, d, "original()", 2)
+	if err := d.Apply(Action{Kind: ConvertList, Text: "task"}, false); err == nil {
+		t.Fatal("Code silently converted")
+	}
+	expectDraftHTML(t, d, code)
+}

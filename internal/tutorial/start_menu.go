@@ -8,10 +8,11 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// Mode selects the fixtures and whether lesson key restrictions apply.
+// Mode selects the fixtures and whether task guidance is shown.
 type Mode struct {
 	Markup   bool
 	Practice bool
+	Tasks    bool
 }
 
 var startOptions = []struct {
@@ -19,9 +20,9 @@ var startOptions = []struct {
 	description string
 	mode        Mode
 }{
-	{"Learn the basics", "Guided navigation, Tasks and Views; follow the requested keys.", Mode{}},
+	{"Learn the basics", "Tasks and Views; free input, F5 reset, F8 continue.", Mode{}},
 	{"Practice the basics", "Explore freely with demo Tasks; no guidance or key restrictions.", Mode{Practice: true}},
-	{"Learn markup", "Guided rich-text Description editing; follow the requested keys.", Mode{Markup: true}},
+	{"Learn markup", "Rich-text tasks; free input, F5 reset, F8 continue.", Mode{Markup: true}},
 	{"Practice markup", "Explore rich-text examples freely; no guidance or key restrictions.", Mode{Markup: true, Practice: true}},
 	{title: "Quit", description: "Leave without starting a tutorial."},
 }

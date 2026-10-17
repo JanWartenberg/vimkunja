@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**Stand:** 2026-10-16 | **Branch:** feature/description-model | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
+**Stand:** 2026-10-17 | **Branch:** feature/tutorial-task-workflow | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
 
 ## Aktueller Stand
 
@@ -13,6 +13,10 @@ MVP, **Meilenstein 1** und **Meilenstein 2** sind abgeschlossen: tägliche Aufga
 - List-, Overview- und Kanban-Views mit Vim-Navigation, Pane-Fokus, Ex-Commands, Help, Fehlerlog und Leader-Key; Kanban-Karten- und Task-Detail-Auswahl bleiben synchron
 - Separates englisches Tutorial mit flachem Startmenü: Bedienung oder Markup jeweils geführt oder frei üben, plus Quit; temporäre SQLite-Datenbank erst nach Moduswahl
 - `go test ./...` grün
+
+- [Aufgabenbasierte Tutorials](.scratch/tutorial-task-workflow/issues/02-convert-all-guided-tutorials.md) – allgemeiner Lernweg und Richtext-Workshop auf `feature/tutorial-task-workflow`: 26 allgemeine und 22 Richtext-Aufgaben mit freier Bedienung, Ergebnisprüfung, F5 für den aktuellen Startzustand und F8 nach Erfolg sowie F12 zum Überspringen; kompakte Anzeige und bestätigbare Kontext-/Hilfemodals. Richtext-Ausgangsstand auf `feature/description-model` bei `10ff5d2` gesichert.
+
+- [Richtext-Auswahl formatieren und Checkboxen erzeugen](.scratch/description-rendering/issues/11-format-visual-selections-and-convert-touched-paragraphs.md) – produktive TUI unterstützt Textformatierung mit `v`/`V`, Checkbox-Konvertierung aller berührten Absätze, lesbare Space-Palette im Footer und gemeinsame Tab-Präfixe. Richtext-Tutorial insgesamt manuell akzeptiert; Code-Cursor auf Whitespace und Backtick-Erzeugung am echten Terminal als offene Subtasks dokumentiert.
 
 ## Aktuelle Tickets
 
