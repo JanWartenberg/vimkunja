@@ -199,7 +199,7 @@ func TestViewCaptionAndVisualPageDistance(t *testing.T) {
 }
 
 func FuzzViewProjectionPreservesSource(f *testing.F) {
-	for _, source := range []string{"<p>é👩‍💻<br>Next</p>", "<pre><code>\twide\n\n</code></pre>", "<table><tr><td>A</td><td>B</td></tr></table>", "<custom><p>A</p><p>B</p></custom>", "<script>hidden</script>", "<p><strong>bold</strong></p>"} {
+	for _, source := range []string{"<p>é👩‍💻<br>Next</p>", "<pre><code>\twide\n\n</code></pre>", "<table><tr><td>A</td><td>B</td></tr></table>", "<custom><p>A</p><p>B</p></custom>", "<script>hidden</script>", "<p><strong>bold</strong></p>", "<p>\x1b[31m\x00\r\u0085</p>", "<custom>\x1b]52;c;payload\a</custom>", "<p><a href=\"https://example.org/\x1b[31m\u0085\">Link</a></p>"} {
 		f.Add(source, uint8(12))
 	}
 	f.Fuzz(func(t *testing.T, source string, size uint8) {
@@ -213,9 +213,20 @@ func FuzzViewProjectionPreservesSource(f *testing.F) {
 			v.Move(motion, 3, width, 5)
 		}
 		frame := v.Viewport(width, 5, true)
+		checkSafe := func(text string) {
+			for _, r := range text {
+				if r < 32 && r != '\n' && r != '\t' || r >= 127 && r <= 159 {
+					t.Fatalf("unsafe terminal control %U", r)
+				}
+			}
+		}
+		checkSafe(frame.Hint)
 		for _, row := range frame.Rows {
 			if rowWidth(row) > width {
 				t.Fatal("row exceeds width")
+			}
+			for _, span := range row.Spans {
+				checkSafe(span.Text)
 			}
 		}
 		if v.SourceHTML() != source {

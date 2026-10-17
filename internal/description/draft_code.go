@@ -119,6 +119,9 @@ func (d *Draft) editCodeSource(b *Node, a Action) error {
 	} else if a.Kind != Retab {
 		start, end = codeLineBounds(source, off)
 	}
+	if start < 0 || end < start || end > len(source) {
+		return ErrStructure
+	}
 	switch a.Kind {
 	case InsertTab:
 		if d.state.selection != nil {
@@ -296,6 +299,13 @@ func (d *Draft) codeAnchor(b *Node, pos int, prefer ID) Anchor {
 func (d *Draft) applyCodeEdits(b *Node, edits []codeEdit) error {
 	if len(edits) == 0 {
 		return nil
+	}
+	// A stale or cross-block Code selection must not become a source edit.
+	sourceLength := len(codeSource(b))
+	for _, e := range edits {
+		if e.start < 0 || e.end < e.start || e.end > sourceLength {
+			return ErrStructure
+		}
 	}
 	cursor := d.state.cursor
 	cursorPos := d.codeOffset(b, cursor)

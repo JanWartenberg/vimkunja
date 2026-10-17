@@ -189,13 +189,25 @@ func normalizeFlow(nodes []Node) {
 		if !afterBR && (!started || lastSpace) {
 			mid = strings.TrimPrefix(mid, " ")
 		}
-		if i == len(flow)-1 && !beforeBR {
-			mid = strings.TrimSuffix(mid, " ")
-		}
 		n.Text = s[:lo] + mid + s[hi:]
 		if n.Text != "" {
 			started = true
 			lastSpace = htmlSpace(n.Text[len(n.Text)-1])
+		}
+	}
+	// Empty trailing leaves can disappear during normalization. Trim back
+	// through them so a second normalization cannot expose another end space.
+	for i := len(flow) - 1; i >= 0 && flow[i].Kind == Text; i-- {
+		n := flow[i]
+		lo := 0
+		if i > 0 && flow[i-1].Tag == "br" {
+			for lo < len(n.Text) && htmlSpace(n.Text[lo]) {
+				lo++
+			}
+		}
+		n.Text = n.Text[:lo] + strings.TrimSuffix(n.Text[lo:], " ")
+		if n.Text != "" {
+			break
 		}
 	}
 }

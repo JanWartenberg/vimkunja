@@ -46,6 +46,14 @@ func (d *Draft) typeText(text string, inside bool) error {
 		return d.edit(Action{Kind: Insert, Text: text})
 	}
 	for _, r := range text {
+		// A typed newline outside Code creates a block, not a text byte whose
+		// origin can be marked at the resulting cursor's offset.
+		if r == '\n' && !d.InCode() {
+			if err := d.edit(Action{Kind: Split}); err != nil {
+				return err
+			}
+			continue
+		}
 		d.continueClosingRun(r)
 		n := findNode(d.state.nodes, d.state.cursor.Node)
 		escaped := false
@@ -251,9 +259,10 @@ func (d *Draft) parseTypedAtCursor() {
 	before := n.Text[:d.state.cursor.Offset]
 	removed := 0
 	for _, t := range consumed {
-		if t.end <= len(before) {
-			removed += t.end - t.start
-		}
+		// A closing run can extend past the cursor into existing active
+		// markers. Count its consumed prefix too, keeping the cursor attached
+		// to the insertion rather than advancing into following Unicode text.
+		removed += max(0, min(t.end, len(before))-t.start)
 	}
 	list, i := nodeList(&d.state.nodes, n.ID)
 	ext, _ := d.extents()

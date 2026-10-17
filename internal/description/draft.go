@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 // Actions describe document operations, never edits to serialized HTML.
@@ -350,6 +351,9 @@ func (d *Draft) Redo() bool {
 }
 func (d *Draft) Apply(a Action, confirmed bool) error {
 	d.confirmation, d.confirmationBrief = "", ""
+	if !utf8.ValidString(a.Text) {
+		return fmt.Errorf("%w: invalid UTF-8 text", ErrStructure)
+	}
 	if d.Classification() == Blocked && a.Kind != ClearDescription && a.Kind != RecoverText {
 		return ErrBlocked
 	}

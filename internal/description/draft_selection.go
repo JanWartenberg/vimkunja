@@ -293,6 +293,12 @@ func (d *Draft) formatInline(ns []Node, a Action, lo, hi int, ext map[ID]extent,
 				walk(n.Children, append(slices.Clone(layers), n))
 				continue
 			}
+			// Empty text still owns an editor anchor. Dropping it can turn its
+			// container into a new empty block and shift later selection extents.
+			if n.Kind == Text && n.Text == "" {
+				runs = append(runs, inlineRun{n, slices.Clone(layers)})
+				continue
+			}
 			if n.Kind != Text {
 				if a.Kind == EditLink && n.Tag == "a" && len(n.Children) == 0 && e.start >= lo && e.end <= hi && (e.start < hi || d.state.selection.Start.Node == n.ID || d.state.selection.End.Node == n.ID) {
 					if a.Text == "" {

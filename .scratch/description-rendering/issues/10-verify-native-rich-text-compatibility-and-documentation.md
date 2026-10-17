@@ -143,3 +143,12 @@ Validation passed: `go test -buildvcs=false ./... ./.scratch/description-renderi
 Jan reports completing the Rich-text tutorial successfully. This records that tutorial journey only; the separately listed Windows/clipboard/live-Vikunja observations are not implicitly accepted. Jan identifies the keystroke restrictions and unclear task expectations as a general tutorial problem and agrees to trial free input, outcome recognition, reset and explicit continuation.
 
 The previously verified Rich-text/workshop state is committed as `10ff5d2` on `feature/description-model`. The task-based text-input pilot is separate work on `feature/tutorial-task-workflow`; see [task-based tutorial work](../../tutorial-task-workflow/issues/02-convert-all-guided-tutorials.md). Both existing curricula remain available for comparison. Ticket 10 remains open for the recorded environment/compatibility checks.
+
+
+### 2026-10-17 — extended fuzz audit and reviewed fixes
+
+Completed the separately authorized [Rich-text fuzz audit](../fuzz-audit-2026-10-17/report.md): six confirmed defect groups fixed with focused regressions. The fixes cover trailing-space normalization, typed LF handling, Code edit bounds, invalid UTF-8 input, cursor mapping across typed delimiters, and empty editor-anchor preservation during formatting. Two new fuzz targets cover structured Unicode/history editing and save-candidate identity/preservation; minimized discoveries are retained as normal regression inputs.
+
+Independent reviews and follow-up fixes are complete. Final structured five-minute campaign passed 380,240 executions; passing campaigns across successive source revisions recorded 16,559,825 executions. Full tests including artifact verification, affected race tests, vet and both entrypoint builds passed. Before the requested commit, the reviewed audit source was unchanged; full tests, vet and builds were rerun against the current branch.
+
+Jan subsequently authorized committing the reviewed fixes, tests and report. This entry is delivered with that commit. No product decisions remain from the audit. Ticket 10 stays in-progress for its existing environment/compatibility observations; automated/modelled input tests do not imply physical Windows/clipboard or authenticated Live-Vikunja acceptance. The local HTML walkthrough and raw execution logs are review artifacts and are not part of this commit.

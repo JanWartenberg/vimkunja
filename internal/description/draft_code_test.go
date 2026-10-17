@@ -1,6 +1,7 @@
 package description
 
 import (
+	"fmt"
 	"html"
 	"strings"
 	"testing"
@@ -130,6 +131,54 @@ func TestCodeOperationsAcrossPreservedWrappers(t *testing.T) {
 	}
 	if got, _ := d.HTML(); got != "<pre><code>A\n</code><code>B   C</code></pre>" {
 		t.Fatal(got)
+	}
+}
+
+func TestCodeSelectionOutsideSourceRejectsReplacement(t *testing.T) {
+	d := NewDraft(Parse("<p></p><pre><code>A\nB</code></pre>"))
+	nodes := d.Snapshot()
+	text := nodes[1].Children[0].Children[0]
+	if err := d.SetCursor(Anchor{text.ID, 0}); err != nil {
+		t.Fatal(err)
+	}
+	d.Select(true, false)
+	if err := d.SetCursor(Anchor{nodes[0].ID, 1}); err != nil {
+		t.Fatal(err)
+	}
+	before, cursor, selection := d.DraftHTML(), d.Cursor(), d.Selection()
+	if err := d.Apply(Action{Kind: ReplaceSelection, Text: "中"}, false); err != ErrStructure {
+		t.Fatalf("out-of-Code selection replacement: %v", err)
+	}
+	if d.DraftHTML() != before || d.Cursor() != cursor || *d.Selection() != *selection {
+		t.Fatal("rejected Code replacement changed draft/cursor/selection")
+	}
+	if _, err := d.live().ResolveAnchor(d.Cursor()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCodeSelectionOutsideSourceRejectsLineActions(t *testing.T) {
+	for _, kind := range []ActionKind{Retab, IndentCode, OutdentCode, DeleteBlock, Split, HardBreak, OpenAbove, OpenBelow, Delete, Backspace} {
+		t.Run(fmt.Sprint(kind), func(t *testing.T) {
+			d := NewDraft(Parse("<p></p><pre><code>A\nB</code></pre>"))
+			nodes := d.Snapshot()
+			text := nodes[1].Children[0].Children[0]
+			if err := d.SetCursor(Anchor{text.ID, 0}); err != nil {
+				t.Fatal(err)
+			}
+			d.Select(true, false)
+			if err := d.SetCursor(Anchor{nodes[0].ID, 1}); err != nil {
+				t.Fatal(err)
+			}
+			d.SwapSelection()
+			before, cursor, selection := d.DraftHTML(), d.Cursor(), d.Selection()
+			if err := d.Apply(Action{Kind: kind}, false); err != ErrStructure {
+				t.Fatalf("out-of-Code line action: %v", err)
+			}
+			if d.DraftHTML() != before || d.Cursor() != cursor || *d.Selection() != *selection || len(d.undo) != 0 || len(d.redo) != 0 {
+				t.Fatal("rejected Code line action changed draft/cursor/selection/history")
+			}
+		})
 	}
 }
 
