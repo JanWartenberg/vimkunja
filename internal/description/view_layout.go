@@ -154,7 +154,8 @@ func (v *View) Layout(width int, focused bool) Frame {
 		begin(false)
 		for gi, g := range gs {
 			if g.hard {
-				if g.nav && (!b.code || fresh) {
+				// Insert needs the boundary before a Code newline for append.
+				if g.nav && (!b.code || fresh || v.inserting) {
 					addPoint(g)
 					if !horizontal && fresh && (g.style&OpaqueStyle != 0 || !focused || bi != active) {
 						appendSpan(&row, glyph{text: " ", style: 0})

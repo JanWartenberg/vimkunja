@@ -479,31 +479,20 @@ func (m *model) renderCommentComposer(width, height int) []string {
 		label += " · NORMAL"
 	}
 	divider := strings.Repeat("─", max(1, width))
-	text := composer.text
-	if composer.mode == editorInsert {
-		cursor := composer.cursor
-		text = insertTextAtCursor(text, &cursor, "_")
-	}
-	lines := wrapDescription(text, max(1, width))
-	if composer.mode == editorNormal {
-		for index, line := range lines {
-			if composer.cursor >= line.start && composer.cursor <= line.end {
-				lines[index].text = normalCursorText(line.text, composer.cursor-line.start)
-				break
+	visibleRows := max(1, height-2)
+	layout := layoutMultilineText(composer.text, max(1, width), visibleRows, 0, composer.cursor)
+	start := clamp(layout.cursorRow-visibleRows+1, 0, max(0, len(layout.lines)-visibleRows))
+	rows := []string{divider, label}
+	for i := start; i < min(len(layout.lines), start+visibleRows); i++ {
+		line := layout.lines[i]
+		if i == layout.cursorRow && !m.comments.commandMode {
+			if composer.mode == editorInsert {
+				line.text = insertCursorText(line.text, composer.cursor-line.start)
+			} else {
+				line.text = normalCursorText(line.text, composer.cursor-line.start)
 			}
 		}
-	}
-	rows := []string{divider, label}
-	if len(lines) == 0 {
-		rows = append(rows, "_")
-	} else {
-		for _, line := range lines {
-			rows = append(rows, line.text)
-		}
-	}
-	if len(rows) > height {
-		contentRows := max(1, height-2)
-		rows = append(rows[:2], rows[len(rows)-contentRows:]...)
+		rows = append(rows, line.text)
 	}
 	return rows
 }

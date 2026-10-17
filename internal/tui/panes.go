@@ -88,16 +88,20 @@ func (m *model) editorFieldViewport(field editorField, value string, width int) 
 	if start > 0 {
 		value = "…" + value
 	}
-	// Bubble Tea owns the sole native cursor. Render a textual fallback only
-	// when native cursor shapes are explicitly disabled.
+	visibleCursor := cursor - start + boolToInt(start > 0)
+	if m.editor.mode == editorInsert {
+		if m.editorInputFocused() {
+			return insertCursorText(value, visibleCursor)
+		}
+		return value
+	}
 	if m.nativeEditorCursorActive() {
 		return value
 	}
-	visibleCursor := cursor - start + boolToInt(start > 0)
 	if m.editor.mode == editorNormal {
 		return normalCursorText(value, visibleCursor)
 	}
-	return cursorMarkedText(value, visibleCursor)
+	return insertCursorText(value, visibleCursor)
 }
 
 func boolToInt(value bool) int {
@@ -311,6 +315,10 @@ func renderTasks(m *model, textW, textH int) string {
 		}
 
 		titleContent, titleTruncated := truncateTitle(titleText, layout.titleWidth)
+		if inlineEditing {
+			titleContent = fitInputCursor(insertCursorText(titleText, m.inlineTitle.cursor), layout.titleWidth)
+			titleTruncated = false
+		}
 		title := rend(titleContent)
 		ellipsisWidth := 0
 		if titleTruncated {
@@ -325,17 +333,6 @@ func renderTasks(m *model, textW, textH int) string {
 		}
 		if layout.showProject && project != "" {
 			segments = append(segments, project)
-		}
-		if inlineEditing {
-			cursor := clamp(m.inlineTitle.cursor, 0, len([]rune(titleText)))
-			cursorWidth := min(lipgloss.Width(string([]rune(titleText)[:cursor])), layout.titleWidth)
-			prefixWidth := lipgloss.Width(strings.Join(segments, " "))
-			if len(segments) > 0 {
-				prefixWidth++
-			}
-			m.inlineCursorX = m.tasksPaneTextX() + prefixWidth + cursorWidth
-			m.inlineCursorY = 2 + i // pane border, header, then visible Task row
-			m.inlineCursorVisible = true
 		}
 		segments = append(segments, title)
 		if layout.showDue {
@@ -491,7 +488,7 @@ func renderInfoPane(pane *infoPane, textW, textH int, focused bool) string {
 
 func renderTaskDetail(m *model, textW, textH int) string {
 	if m.editor != nil {
-		m.editor.nativeFocused = m.focus == paneDetail && m.editor.field == fieldDescription && m.comments == nil && m.labelUI == nil && !m.commandMode
+		m.editor.nativeFocused = m.editorInputFocused() && m.editor.field == fieldDescription
 	}
 	if m.editor == nil {
 		if m.kanbanActive && !m.inOverview() {
@@ -1093,7 +1090,11 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 	if e.mode == editorInsert {
 		mode = "INSERT"
 	}
-	lines := []string{" " + renderHeading("DESCRIPTION · "+mode) + " ", ""}
+	lines := []string{" " + renderHeading("DESCRIPTION · "+mode) + " "}
+	if textH > 2 {
+		lines = append(lines, "")
+	}
+	headerRows := len(lines)
 	available := max(1, textH-len(lines))
 	description := e.draft.Description
 	desc := wrapTaskDescriptionForEditor(e, description, textW)
@@ -1118,7 +1119,7 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 			}
 		}
 		if len(desc) > available {
-			return renderVerticalScrollbar(lines, textW, textH, layout.start, len(desc), 2, available, true)
+			return renderVerticalScrollbar(lines, textW, textH, layout.start, len(desc), headerRows, available, true)
 		}
 		return fitBlock(lines, textW, textH)
 	}
@@ -1141,7 +1142,7 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 		}
 	}
 	if len(desc) > available {
-		return renderVerticalScrollbar(lines, textW, textH, start, len(desc), 2, available, true)
+		return renderVerticalScrollbar(lines, textW, textH, start, len(desc), headerRows, available, true)
 	}
 	return fitBlock(lines, textW, textH)
 }
@@ -1224,8 +1225,8 @@ func renderDueDatePickerChoices(m *model) []string {
 		selected := e.dueDatePickerSelected == index+1
 		row := "  " + label
 		input := e.dueDatePickerInputs[index]
-		if selected && m.cursorVisible && !m.nativeEditorCursorActive() {
-			input = cursorMarkedText(input, e.cursor)
+		if selected && !m.nativeEditorCursorActive() {
+			input = insertCursorText(input, e.cursor)
 		}
 		if input == "" {
 			input = placeholderText("n")
@@ -1243,13 +1244,18 @@ func placeholderText(value string) string {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true).Render(value)
 }
 
-// editorText marks the character at the insertion point instead of inserting a
-// printable cursor glyph, so the text never shifts while the cursor blinks.
+// editorText provides the common insertion caret without changing text width.
 func (m *model) editorText(field editorField, value string) string {
-	if m.editor == nil || (m.editor.mode != editorInsert && !(m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) || m.editor.field != field || !m.cursorVisible || m.nativeEditorCursorActive() {
+	if m.editor == nil || m.editor.field != field || !m.editorInputFocused() {
 		return value
 	}
-	return cursorMarkedText(value, m.editor.cursor)
+	if m.editor.mode == editorInsert {
+		return insertCursorText(value, m.editor.cursor)
+	}
+	if m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0 && !m.nativeEditorCursorActive() {
+		return insertCursorText(value, m.editor.cursor)
+	}
+	return value
 }
 
 type descriptionLine struct {
@@ -1341,6 +1347,12 @@ func (m *model) editorDescriptionText(line descriptionLine) string {
 	if m.editor.cursor < line.start || m.editor.cursor > line.end {
 		return line.text
 	}
+	if m.editor.mode == editorInsert {
+		if m.editorInputFocused() {
+			return insertCursorText(line.text, m.editor.cursor-line.start)
+		}
+		return line.text
+	}
 	if m.nativeEditorCursorActive() {
 		return line.text
 	}
@@ -1349,7 +1361,7 @@ func (m *model) editorDescriptionText(line descriptionLine) string {
 		return normalCursorText(line.text, cursor)
 	}
 	if m.editor.mode == editorInsert {
-		return cursorMarkedText(line.text, cursor)
+		return insertCursorText(line.text, cursor)
 	}
 	return line.text
 }
@@ -1369,13 +1381,6 @@ func normalCursorText(value string, cursor int) string {
 	}
 	block := style.Render(string(r[index]))
 	return string(r[:index]) + block + string(r[index+1:])
-}
-
-func cursorMarkedText(value string, cursor int) string {
-	r := []rune(value)
-	cursor = clamp(cursor, 0, len(r))
-	marker := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render("│")
-	return string(r[:cursor]) + marker + string(r[cursor:])
 }
 
 func priorityName(priority int64) string {

@@ -241,6 +241,8 @@ label and three actionable segments fit; otherwise hints win.
 | Help / Info | close Pane | — | Pane switching where available |
 | Leader, Views, Sort, Filter | shown choice actions | — | cancel where available |
 
+All text insertion uses the same blinking terminal bar cursor, including Title/inline Title, plain/Native Description and Code, Comment composer, Ex/Search/URL/Label prompts and relative-date inputs. Normal Mode retains a block cursor; the masked date uses a block for digit replacement. Explicitly disabled cursor shapes use the same vertical textual fallback across inputs. Wrapping/clipping must keep the insertion point visible and must not add cursor characters to source text.
+
 In the Ex-command prompt, `Tab` completes a unique command or the longest shared
 prefix of multiple candidates and displays those candidates. For example,
 `:desc` becomes `:description` with `descriptionclear`, `descriptionrecover`

@@ -62,3 +62,25 @@ Jan confirms tutorial Step 11 (Code creation) is fixed. Step 13 confirms the uni
 The separate tutorial context/help modals now show the current step and total at the top right (for example 3 / 22), with a truncated title when needed. A real runner regression covers both courses, introductory and F1 help modals, at 54x24. Jan authorizes a separate commit of this accepted follow-up, excluding the subsequent shared insertion-cursor changes.
 
 Validation: Description/TUI/Tutorial package suites pass, including both complete courses; focused Tab navigation/Copy/Retab/rendering regressions and their race checks pass. Affected-package vet and both entrypoint builds pass. Regression expectations were red before implementation for hidden Tabs and missing modal progress. Before this separate commit, the exact staged snapshot was exported without the shared-cursor work; full `go test ./... ./.scratch/description-rendering/verification` and both entrypoint builds pass independently. No source/schema/dependency changes outside the described display behavior; unrelated tmp/ untouched.
+
+## Consistent insertion cursors across all fields
+
+Jan reports Title using a thin terminal cursor, Native Description/Code painting a block, and Comments inserting an underscore. All insertion surfaces now use the same internal input_cursor module: field renderers supply source text and a rune offset (Native frame rendering supplies the source target); a zero-width layout anchor survives wrapping/clipping/overlays and is removed before terminal output. The resolved position uses one blinking terminal-bar policy. New fields use the same rendering seam, documented in AGENTS.md; there is no per-field cursor-shape registry. Normal-mode and explicit masked-date digit replacement retain their block cursors. Shape-disabled inputs share a vertical textual fallback.
+
+Title/inline Title, plain/Native Description, Code, Comment composer, Ex and contextual commands, Search, Link URL, Label and relative-date inputs use the shared rule. The prior Inline-Title coordinate tracking is removed. The Comment composer uses the existing multiline layout, with cursor-following for wrapped/empty/earlier lines. A tiny Description workspace omits its blank header row when necessary to leave space for the editable row. Input windows preserve the caret while clipping long prompt values; no underscore/fake Block is inserted into ordinary Insert text.
+
+Regression tests exercise real View/Update behavior across these inputs, Unicode cell placement, prompt clipping, long URL/Label values, Normal transitions, shape-disabled fallback and Comment scrolling. Earlier tests that expected no prompt terminal cursor or a printed Insert glyph now assert the shared native cursor instead. Source text, saves and typing modes are unchanged. No commit requested.
+
+Shared cursor validation: full `go test -buildvcs=false ./... ./.scratch/description-rendering/verification`, TUI/Tutorial race checks, `go vet ./...`, both entrypoint builds and formatting/whitespace checks pass. The input consistency matrix initially failed for Native/Code/Comments/Ex/Search/Label/contextual-command inputs and now passes. Unicode/clipping, URL and Label prompts, Comment wrap/empty-line/scroll, Normal transitions, disabled-shape fallback, tiny Description and masked/relative date cursor regressions pass. The complete basics/markup courses pass with the shared cursor path. Physical terminal appearance remains for Jan to observe after restarting the app. No commit.
+
+
+### Insert cursor follow-up — Shift+A before Code newline
+
+Jan reports the bar disappears after Shift+A at the end of print(1), while the final Tab line retains it. A real Update/View regression reproduces a nil terminal cursor. Code layout omitted navigation points for nonempty line-ending newlines even in insertion mode; it now includes that insertion boundary while retaining Normal-mode motion targets. Tests cover appending and subsequent typing before a newline, at the final Tab/text line, on an empty first line, with Unicode and in a paragraph. Description/TUI/Tutorial suites, the focused cursor race checks, affected-package vet and both entrypoint builds pass. Temporary debug instrumentation removed. No commit requested.
+
+Adjacent finding retained for separate work: appending and typing into an imported completely empty `<pre><code></code></pre>` fails with `invalid Native Description structure`; its cursor itself is present. This is separate from the missing line-end cursor.
+
+
+### User acceptance and cursor commit
+
+Jan confirms the Shift+A line-end cursor now works and authorizes committing the shared insertion-cursor implementation with that fix. Steps 11 and 13 remain accepted; repeating the entire tutorial is not required. The imported completely empty Code typing defect above remains open and belongs to implementation follow-up, not a user acceptance task. Physical clipboard/Windows input edge cases and live Vikunja round-trip remain under ticket 10.

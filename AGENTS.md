@@ -20,6 +20,7 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 - **Vim-Navigation:** `hjkl`, `gg/G`, `Ctrl+D/U`, `Ctrl+W` (Panes)
 - **Commands:** `:q`, `:qa`, `:h` (analog Vim)
 - **Leader-Key:** `Space` + Action
+- **Einheitliche Eingabecursor:** Jede neue Texteingabe nutzt `insertCursorText` aus `internal/tui/input_cursor.go`; keine eigenen Block-/Unterstrich-Cursor oder feldspezifischen Cursor-Shapes für Insert. Die gemeinsame Render-Auflösung positioniert den blinkenden Terminal-Barcursor nach dem Layout. Normal-/explizite Überschreibcursor bleiben getrennt.
 
 ---
 

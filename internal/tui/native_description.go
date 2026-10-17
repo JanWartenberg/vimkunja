@@ -74,7 +74,11 @@ func renderNativeDescriptionFrame(e *taskEditor, f description.Frame, width int)
 				if e.nativeFocused && e.descriptionActive && i == f.CursorY && column == f.CursorX {
 					// Keep the cursor visible on decorated whitespace: the terminal
 					// styler handles underline/strike spaces separately from reverse.
-					cellStyle = cellStyle.Underline(false).Strikethrough(false).Reverse(true)
+					if e.mode == editorInsert {
+						text.WriteString(insertCursorAnchor)
+					} else {
+						cellStyle = cellStyle.Underline(false).Strikethrough(false).Reverse(true)
+					}
 					cursorPainted = true
 				}
 				text.WriteString(cellStyle.Render(g))
@@ -82,8 +86,12 @@ func renderNativeDescriptionFrame(e *taskEditor, f description.Frame, width int)
 			}
 		}
 		if e.nativeFocused && e.descriptionActive && i == f.CursorY && f.CursorX == column && !cursorPainted && column < width {
-			text.WriteString(lipgloss.NewStyle().Reverse(true).Render(" "))
-			column++
+			if e.mode == editorInsert {
+				text.WriteString(insertCursorAnchor)
+			} else {
+				text.WriteString(lipgloss.NewStyle().Reverse(true).Render(" "))
+				column++
+			}
 		}
 		if code && column < width {
 			text.WriteString(nativeSpanStyle(description.Code).Render(strings.Repeat(" ", width-column)))

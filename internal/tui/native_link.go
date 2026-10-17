@@ -74,7 +74,7 @@ func (m *model) copyNativeLink() tea.Cmd {
 func (m *model) nativeLinkHint() string {
 	e := m.editor
 	if p := e.nativeLink; p != nil {
-		return "LINK URL  " + cursorMarkedText(sanitizeTerminalText(p.input), p.cursor) + " · Enter apply · empty unlink · Esc cancel"
+		return "LINK URL  " + insertCursorText(sanitizeTerminalText(p.input), p.cursor) + " · Enter apply · empty unlink · Esc cancel"
 	}
 	info, ok := e.nativeDraft.LinkAtCursor()
 	if !ok {

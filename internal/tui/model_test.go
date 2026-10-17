@@ -820,7 +820,7 @@ func TestNarrowFooterPreservesInputAndErrorTails(t *testing.T) {
 	m.commandInput = "a-very-long-command"
 	m.commandCursor = len([]rune(m.commandInput))
 	footer := ansi.Strip(m.renderStatusBar(25))
-	if !strings.Contains(footer, ":…mmand│") {
+	if !strings.Contains(footer, ":…ommand") {
 		t.Fatalf("command footer = %q, want input tail", footer)
 	}
 
@@ -5079,9 +5079,9 @@ func TestTinyDescriptionInsertShowsCursorOnEmptyLine(t *testing.T) {
 	m.editor.cursor = len([]rune(m.editor.draft.Description))
 	m.cursorVisible = true
 
-	view := ansi.Strip(renderTaskDetail(m, 80, 8))
-	if !strings.Contains(view, "│") {
-		t.Fatalf("tiny empty Description line lacks insert cursor: %q", view)
+	view := m.View()
+	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBar {
+		t.Fatalf("tiny empty Description lacks terminal bar: %#v\n%s", view.Cursor, view.Content)
 	}
 }
 
@@ -5277,8 +5277,13 @@ func TestGlobalSearchOmitsNativeEditorCursor(t *testing.T) {
 	m.openNewEditor()
 	m.searchOpen = true
 
-	if view := m.View(); view.Cursor != nil {
-		t.Fatalf("Global Search cursor = %#v, want none", view.Cursor)
+	view := m.View()
+	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBar {
+		t.Fatalf("Global Search input cursor = %#v", view.Cursor)
+	}
+	row := strings.Split(ansi.Strip(view.Content), "\n")[view.Cursor.Position.Y]
+	if !strings.Contains(row, "Search:") {
+		t.Fatalf("Search retained editor cursor: %q", row)
 	}
 }
 
@@ -5566,7 +5571,7 @@ func TestDisabledDescriptionCursorRetainsRenderedFallback(t *testing.T) {
 	m.editor.mode = editorInsert
 	m.cursorVisible = true
 
-	if detail := ansi.Strip(renderTaskDetail(m, 80, 20)); !strings.Contains(detail, "he│llo") {
+	if detail := ansi.Strip(m.View().Content); !strings.Contains(detail, "he│llo") {
 		t.Fatalf("disabled cursor shapes lost vertical rendered fallback: %q", detail)
 	}
 }

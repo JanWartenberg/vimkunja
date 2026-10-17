@@ -8,9 +8,13 @@
 
 **Priority:** Low
 
-**Status:** needs-triage
+**Status:** implemented
 
-- [ ] Add screen-level regression coverage for wrapped and consecutive-empty Comment lines before changing the composer.
-- [ ] Replace the Comment composer's independent wrapping and viewport slicing with `layoutMultilineText`.
-- [ ] Keep Comment modal sizing, chrome, modes, save/discard behavior, and `_` cursor fallback outside the shared layout.
-- [ ] Do not introduce a generic editor framework, public interface, cache, or new package.
+- [x] Add screen-level regression coverage for wrapped and consecutive-empty Comment lines before changing the composer.
+- [x] Replace the Comment composer's independent wrapping and viewport slicing with `layoutMultilineText`.
+- [x] Keep Comment modal sizing, chrome, modes, save/discard behavior, outside the shared layout; insertion cursor policy belongs to the common input-cursor module.
+- [x] Do not introduce a generic editor framework, public interface, cache, or new package.
+
+## Implementation — shared insertion cursors
+
+Jan explicitly requests identical Insert cursor behavior in all text fields, superseding the earlier local underscore fallback. Comment composition now uses layoutMultilineText for wrapping and source cursor rows, keeps the edited row visible instead of always showing the tail, and uses the common insertion anchor/terminal bar. Modal chrome and save/discard/mode behavior are retained. Screen regressions cover wrapping, consecutive empty lines, editing earlier lines, Unicode, narrow view, terminal bar/fallback and returning to Normal. No generic editor framework or new package was introduced.

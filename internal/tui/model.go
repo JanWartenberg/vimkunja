@@ -152,21 +152,18 @@ type model struct {
 	kanbanEmptyDetailOrigin     bool
 
 	// Tasks pane
-	tasks               []vimkunja.Task
-	projectTasks        []vimkunja.Task
-	taskFilter          overviewFilter
-	taskSelected        int
-	taskLoading         bool
-	inlineTitle         *inlineTitleEdit
-	inlineCursorX       int
-	inlineCursorY       int
-	inlineCursorVisible bool
-	taskScope           taskScope
-	overviewTasks       []vimkunja.Task
-	overviewLabel       vimkunja.Label
-	overviewFilter      overviewFilter
-	overviewSort        overviewSort
-	overviewPrompt      overviewPrompt
+	tasks          []vimkunja.Task
+	projectTasks   []vimkunja.Task
+	taskFilter     overviewFilter
+	taskSelected   int
+	taskLoading    bool
+	inlineTitle    *inlineTitleEdit
+	taskScope      taskScope
+	overviewTasks  []vimkunja.Task
+	overviewLabel  vimkunja.Label
+	overviewFilter overviewFilter
+	overviewSort   overviewSort
+	overviewPrompt overviewPrompt
 
 	// Detail and auxiliary panes
 	showDetail bool
@@ -180,6 +177,7 @@ type model struct {
 	editor                    *taskEditor
 	savingEditor              *taskEditor
 	cursorVisible             bool
+	renderedInputCursor       *tea.Cursor
 
 	initialProjectID int64
 	initialViewID    int64
@@ -1924,8 +1922,6 @@ func (m *model) View() tea.View {
 	return v
 }
 
-// editorCursor delegates cursor-shape support to Bubble Tea. Its renderer
-// restores the terminal default when a previously visible cursor becomes nil.
 func removeComment(comments []vimkunja.TaskComment, id int64) []vimkunja.TaskComment {
 	for index, comment := range comments {
 		if comment.ID == id {
@@ -1945,18 +1941,21 @@ func (m *model) nativeEditorCursorActive() bool {
 		return false
 	}
 	// The tiny focused Description workspace has a different row geometry from
-	// the compact Detail document, so it renders its own cursor marker.
+	// the compact Detail document; its insertion caret follows rendered content.
 	return !(m.editor.descriptionActive && m.detailTextHeight() < 12)
 }
 
+// Insertion positions come from the shared rendered anchor. Legacy coordinates
+// are retained only for Normal-mode and masked overwrite cursors.
 func (m *model) editorCursor() *tea.Cursor {
-	if m.searchOpen || m.comments != nil {
+	if m.renderedInputCursor != nil {
+		return m.renderedInputCursor
+	}
+	if m.commandMode || m.searchOpen || m.comments != nil {
 		return nil
 	}
-	if !m.disableCursorShapes && m.inlineTitle != nil && m.inlineCursorVisible {
-		cursor := tea.NewCursor(m.inlineCursorX, m.inlineCursorY)
-		cursor.Shape = tea.CursorBar
-		return cursor
+	if m.editor != nil && m.editor.mode == editorInsert {
+		return nil
 	}
 	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && m.editor.descriptionView() != nil) {
 		return nil
@@ -1996,8 +1995,6 @@ func (m *model) editorCursor() *tea.Cursor {
 	if m.editor.dueDatePickerActive() {
 		cursor.Shape = tea.CursorBlock
 		cursor.Blink = true
-	} else if m.editor.mode == editorInsert {
-		cursor.Shape = tea.CursorBar
 	} else {
 		cursor.Shape = tea.CursorBlock
 	}
@@ -2244,7 +2241,12 @@ func (m *model) modalContentHeight() int {
 }
 
 func (m *model) Render() string {
-	m.inlineCursorVisible = false
+	content, cursor := resolveInputCursor(m.renderContent(), m.disableCursorShapes, m.cursorVisible)
+	m.renderedInputCursor = cursor
+	return content
+}
+
+func (m *model) renderContent() string {
 	w, h := m.viewportSize()
 	if w < modalFallbackWidth || h < modalFallbackHeight {
 		return m.renderTextOnlyFallback(w, h)
@@ -2579,11 +2581,11 @@ func (m *model) renderStatusBar(w int) string {
 			hint = "[COMMENT " + mode + "] Esc normal  •  :w save  •  :q! discard"
 		}
 		if m.comments.commandMode {
-			hint = "COMMENTS COMMAND  :" + cursorMarkedText(m.comments.commandInput, m.comments.commandCursor)
+			hint = "COMMENTS COMMAND  :" + insertCursorText(m.comments.commandInput, m.comments.commandCursor)
 		}
 	}
 	if m.commandMode {
-		hint = ":" + cursorMarkedText(m.commandInput, m.commandCursor)
+		hint = ":" + insertCursorText(m.commandInput, m.commandCursor)
 		if m.commandCompletionFeedback != "" {
 			hint += "  •  " + m.commandCompletionFeedback
 		}
@@ -2643,8 +2645,8 @@ func (m *model) renderStatusBar(w int) string {
 	case m.quitHint:
 		status = renderFooterMessage(contentWidth, info, "", ":q quit")
 	case m.commandMode:
-		input := ":" + cursorMarkedText(m.commandInput, m.commandCursor)
-		status = renderFooterMessage(contentWidth, info, ":", cursorMarkedText(m.commandInput, m.commandCursor))
+		input := ":" + insertCursorText(m.commandInput, m.commandCursor)
+		status = renderFooterMessage(contentWidth, info, ":", insertCursorText(m.commandInput, m.commandCursor))
 		if m.commandCompletionFeedback != "" && footerFits(contentWidth, info, []string{input, m.commandCompletionFeedback}) {
 			status = composeFooter(info, []string{input, m.commandCompletionFeedback})
 		}
@@ -2665,14 +2667,14 @@ func (m *model) renderStatusBar(w int) string {
 		prefix := fmt.Sprintf("SEARCH [%s] ", m.searchModeLabel())
 		input := m.searchInput
 		if m.searchCommandMode {
-			prefix, input = "SEARCH COMMAND  :", cursorMarkedText(m.searchCommandInput, m.searchCommandCursor)
+			prefix, input = "SEARCH COMMAND  :", insertCursorText(m.searchCommandInput, m.searchCommandCursor)
 		} else if m.searchMode == searchInsertMode {
-			input = cursorMarkedText(m.searchInput, m.searchInputCursor)
+			input = insertCursorText(m.searchInput, m.searchInputCursor)
 		}
-		if m.searchMode == searchInsertMode && !m.searchCommandMode {
-			input += "_"
-		}
+
 		status = renderFooterMessage(contentWidth, info, prefix, input)
+	case strings.Contains(hint, insertCursorAnchor):
+		status = renderFooterMessage(contentWidth, info, "", hint)
 	default:
 		required := (m.focus == paneDetail && m.editor != nil && m.editor.mode != editorNormal) || m.focus == paneHelp || m.focus == paneInfo
 		width := contentWidth
@@ -2796,6 +2798,9 @@ func fitFooterTail(prefix, value string, width int) string {
 		return truncatePlain(prefix, width)
 	}
 	available := width - lipgloss.Width(prefix)
+	if strings.Contains(value, insertCursorAnchor) {
+		return prefix + fitInputCursor(value, available)
+	}
 	if available == 1 {
 		return prefix + "…"
 	}

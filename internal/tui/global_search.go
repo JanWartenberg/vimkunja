@@ -9,8 +9,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"github.com/charmbracelet/x/ansi"
 )
 
 type searchInputMode int
@@ -435,8 +435,8 @@ func (m *model) renderSearchOverlay(background string, width int) string {
 	layout := modalBounds(width, viewportHeight, searchModalWidth(width), searchModalHeight(viewportHeight))
 	contentWidth := layout.contentWidth
 	query := fmt.Sprintf("Search: %s", m.searchInput)
-	if m.searchMode == searchInsertMode {
-		query = "Search: " + cursorMarkedText(m.searchInput, m.searchInputCursor)
+	if m.searchMode == searchInsertMode && !m.searchCommandMode {
+		query = "Search: " + insertCursorText(m.searchInput, m.searchInputCursor)
 	}
 	body := []string{
 		lipgloss.NewStyle().Bold(true).Render("GLOBAL SEARCH · " + m.searchModeLabel()),
@@ -444,7 +444,7 @@ func (m *model) renderSearchOverlay(background string, width int) string {
 		"",
 	}
 	if m.searchCommandMode {
-		body = append(body, ":"+cursorMarkedText(m.searchCommandInput, m.searchCommandCursor), "")
+		body = append(body, ":"+insertCursorText(m.searchCommandInput, m.searchCommandCursor), "")
 	}
 	switch {
 	case strings.TrimSpace(m.searchInput) == "":
