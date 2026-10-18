@@ -75,21 +75,23 @@ func TestChecklistSummaryWrappingAndSourceOffsets(t *testing.T) {
 	}
 }
 
-func TestChecklistSummaryIsSuppressedDuringInsertMode(t *testing.T) {
+func TestPlainChecklistSyntaxRemainsLiteralInUnifiedEditor(t *testing.T) {
 	source := "[x] done\n[ ] open"
-	insertEditor := &taskEditor{field: fieldDescription, mode: editorInsert}
-	if lines := wrapTaskDescriptionForEditor(insertEditor, source, 100); len(lines) != 2 {
-		t.Fatalf("insert projection has synthetic rows: %v", lines)
-	}
-	normalEditor := &taskEditor{field: fieldDescription, mode: editorNormal}
-	var summaries int
-	for _, line := range wrapTaskDescriptionForEditor(normalEditor, source, 100) {
-		if line.start == -1 {
-			summaries++
+	for _, mode := range []editorMode{editorNormal, editorInsert} {
+		e := &taskEditor{field: fieldDescription, mode: mode, descriptionActive: true}
+		e.draft.Description = source
+		lines := wrapTaskDescriptionForEditor(e, source, 100)
+		if len(lines) != 2 {
+			t.Fatalf("unexpected plain rows: %v", lines)
 		}
-	}
-	if summaries != 1 {
-		t.Fatalf("normal projection summaries = %d, want 1", summaries)
+		for _, line := range lines {
+			if strings.Contains(line.text, "Checklist progress:") {
+				t.Fatal("imported plain syntax became a checklist")
+			}
+		}
+		if e.draft.Description != source {
+			t.Fatal("reading changed source")
+		}
 	}
 }
 
@@ -123,6 +125,7 @@ func TestChecklistSummaryScreenAndEditing(t *testing.T) {
 			m.editor.descriptionActive = true
 			m.editor.mode = editorInsert
 			m.editor.cursor = len([]rune("[x] first\n\n"))
+			positionDescriptionCursor(t, m, m.editor.cursor)
 			m = pressKey(m, tea.Key{Code: 'Z', Text: "Z"})
 			rows := strings.Split(ansi.Strip(m.Render()), "\n")
 			cursor := m.View().Cursor
@@ -132,7 +135,7 @@ func TestChecklistSummaryScreenAndEditing(t *testing.T) {
 			if strings.Contains(strings.Join(rows, "\n"), "Checklist progress:") {
 				t.Fatal("summary should be hidden during insert mode")
 			}
-			if m.editor.draft.Description != "[x] first\n\nZTARGET" {
+			if descriptionText(m) != "[x] first\n\nZTARGET" {
 				t.Fatal("synthetic text entered draft")
 			}
 			if m.editor.draft.Done {

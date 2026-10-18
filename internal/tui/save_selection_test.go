@@ -65,7 +65,7 @@ func TestDescriptionSaveKeepsSelectedTask(t *testing.T) {
 					_, next := m.Update(msg)
 					pending = append(pending, next)
 				}
-				if store.updatedDraft.Description != "Changed Before" {
+				if store.updatedDraft.Description != "<p>Changed Before</p>" {
 					t.Fatalf("Description not saved: %q", store.updatedDraft.Description)
 				}
 				if len(m.tasks) == 0 || m.tasks[m.taskSelected].ID != edited.ID {
@@ -74,7 +74,7 @@ func TestDescriptionSaveKeepsSelectedTask(t *testing.T) {
 				if command == "w" && (m.editor == nil || m.editor.id != edited.ID) {
 					t.Fatalf("Detail switched to another Task: %#v", m.editor)
 				}
-				if command == "w" && m.editor.draft.Description != "Changed Before" {
+				if command == "w" && m.editor.draft.Description != "<p>Changed Before</p>" {
 					t.Fatalf("reload replaced the saved Description: %q", m.editor.draft.Description)
 				}
 				if scope != "list" && !m.inOverview() {

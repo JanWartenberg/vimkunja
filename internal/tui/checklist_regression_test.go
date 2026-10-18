@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestChecklistTrailingSummaryReachable(t *testing.T) {
@@ -16,17 +16,22 @@ func TestChecklistTrailingSummaryReachable(t *testing.T) {
 			m := testModel()
 			m.width, m.height = 100, height
 			m.currentProjectID = 1
-			source := strings.Repeat("[x] entry\n\n", 10) + "[ ] final"
+			source := strings.Repeat(`<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><p>entry</p></li></ul><p></p>`, 10) + `<ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>final</p></li></ul>`
 			m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: source})
 			m.editor.field = fieldDescription
 			m.editor.descriptionActive = true
 			m = pressKey(m, tea.Key{Code: 'G', Text: "G"})
 			screen := ansi.Strip(m.Render())
 			if !strings.Contains(screen, "Checklist progress: 0/1") {
-				t.Fatalf("final summary inaccessible after G:\n%s", screen)
+				m = pressKey(m, tea.Key{Code: 'e', Mod: tea.ModCtrl})
+				screen = ansi.Strip(m.Render())
 			}
-			if m.editor.cursor != len([]rune(source)) {
-				t.Fatal("cursor moved outside source")
+			if !strings.Contains(screen, "Checklist progress: 0/1") {
+				w, h := m.nativeDescriptionGeometry()
+				t.Fatalf("final summary inaccessible after G (geometry=%d,%d scroll=%d):\n%s", w, h, m.editor.descScroll, screen)
+			}
+			if m.editor.draft.Description != source {
+				t.Fatal("navigation changed source")
 			}
 			if cursor := m.View().Cursor; cursor != nil {
 				row := strings.Split(screen, "\n")[cursor.Position.Y]
@@ -34,9 +39,9 @@ func TestChecklistTrailingSummaryReachable(t *testing.T) {
 					t.Fatal("native cursor targets summary")
 				}
 			}
-			m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+			m = pressKey(m, tea.Key{Code: 'A', Text: "A"})
 			m = pressKey(m, tea.Key{Code: 'Z', Text: "Z"})
-			if got := m.editor.draft.Description; got != source+"Z" {
+			if got := m.editor.draft.Description; got != strings.Replace(source, ">final<", ">finalZ<", 1) {
 				t.Fatalf("edit changed source: %q", got)
 			}
 			if screen := ansi.Strip(m.Render()); !strings.Contains(screen, "finalZ") {
@@ -52,12 +57,13 @@ func TestChecklistIntermediateSummaryScroll(t *testing.T) {
 			m := testModel()
 			m.width, m.height = 100, height
 			m.currentProjectID = 1
-			source := "[x] first\n\n[ ] last\n" + strings.Repeat("body\n", 20)
+			source := `<ul data-type="taskList"><li data-type="taskItem" data-checked="true"><p>first</p></li></ul><p></p><ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>last</p></li></ul>` + strings.Repeat("<p>body</p>", 20)
 			m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: source})
 			m.editor.field = fieldDescription
 			m.editor.descriptionActive = true
 			m.editor.cursor = 0
 			m.Render()
+			originalCursor := m.editor.nativeDraft.Cursor()
 			m = pressKey(m, tea.Key{Code: 'e', Mod: tea.ModCtrl})
 			screen := ansi.Strip(m.Render())
 			if !strings.Contains(screen, "Checklist progress: 1/1") {
@@ -66,23 +72,23 @@ func TestChecklistIntermediateSummaryScroll(t *testing.T) {
 			if m.editor.descScroll == 0 {
 				t.Fatal("viewport did not scroll")
 			}
-			if m.editor.cursor != 0 || m.editor.draft.Description != source {
+			if m.editor.nativeDraft.Cursor() != originalCursor || m.editor.draft.Description != source {
 				t.Fatal("viewport scrolling changed source or cursor")
 			}
 			if cursor := m.View().Cursor; cursor != nil {
 				t.Fatal("offscreen source cursor should be hidden")
 			}
 			m = pressKey(m, tea.Key{Code: 'y', Mod: tea.ModCtrl})
-			if !strings.Contains(ansi.Strip(m.Render()), "[x] first") {
+			if !strings.Contains(ansi.Strip(m.Render()), "first") {
 				t.Fatal("reverse scrolling did not restore first entry")
 			}
 			m = pressKey(m, tea.Key{Code: 'e', Mod: tea.ModCtrl})
 			m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
 			m = pressKey(m, tea.Key{Code: 'Z', Text: "Z"})
-			if m.editor.draft.Description != "Z"+source {
+			if m.editor.draft.Description != strings.Replace(source, ">first<", ">Zfirst<", 1) {
 				t.Fatal("editing did not resume at original source cursor")
 			}
-			if !strings.Contains(strings.ReplaceAll(ansi.Strip(m.Render()), "│", ""), "Z[x] first") {
+			if !strings.Contains(strings.ReplaceAll(ansi.Strip(m.Render()), "│", ""), "Zfirst") {
 				t.Fatal("editing did not restore cursor visibility")
 			}
 		})

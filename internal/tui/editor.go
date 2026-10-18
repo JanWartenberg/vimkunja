@@ -57,6 +57,7 @@ type taskEditor struct {
 	nativeFocused       bool
 	nativePrefix        string
 	nativeCount         int
+	nativeOperatorCount int
 	nativeTrigger       bool
 	nativeCodeEscape    bool
 	nativeLiteralTab    bool
@@ -187,24 +188,20 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if e.normal.selection != nil && e.field == fieldTitle {
+		result := applyTextNormalKey(&e.normal, e.fieldValue(), e.cursor, s, false)
+		e.setFieldValue(result.text)
+		e.cursor = result.cursor
+		if result.enterInsert {
+			return m.startEditorInsert()
+		}
+		return m, nil
+	}
 	if m.nativeDescriptionKey(s) {
 		return m, nil
 	}
 	if s == "esc" && e.normal.pending() {
 		e.normal.reset()
-		return m, nil
-	}
-	if e.field == fieldDescription && (s == "ctrl+e" || s == "ctrl+y") {
-		delta := 1
-		if s == "ctrl+y" {
-			delta = -1
-		}
-		m.scrollDescriptionViewport(delta)
-		return m, nil
-	}
-	e.descViewportScroll = false
-	if e.field == fieldDescription && descriptionHasHTML(e.draft.Description) && (s == "enter" || s == "i") {
-		m.recordError(fmt.Errorf("Description is read-only: HTML editing is not supported yet."))
 		return m, nil
 	}
 	if !e.descriptionActive {
@@ -219,18 +216,8 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if e.gArmed {
 		e.gArmed = false
-		count := max(1, e.normal.count)
-		hadCount := e.normal.count > 0
 		e.normal.reset()
 		switch s {
-		case "g":
-			if e.field == fieldDescription {
-				e.cursor = 0
-				if hadCount {
-					e.cursor = nthLineStart([]rune(e.draft.Description), count-1)
-				}
-				e.descScroll = max(0, e.descriptionLine())
-			}
 		case "t":
 			m.focusDetailField(fieldTitle)
 			e.cursor = e.fieldRuneLen()
@@ -284,45 +271,10 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, cursorBlinkCmd()
 		}
 	}
-	if e.field == fieldDescription && e.descriptionNavigated && !e.descriptionActive {
-		switch s {
-		case "enter":
-			e.descriptionActive = true
-			if m.compactDetail() {
-				e.moreFieldsExpanded = false
-			}
-			m.ensureDetailFieldVisible()
-		case "i":
-			e.descriptionActive = true
-			if m.compactDetail() {
-				e.moreFieldsExpanded = false
-			}
-			m.ensureDetailFieldVisible()
-			if descriptionHasHTML(e.draft.Description) {
-				return m, nil
-			}
-			return m.startEditorInsert()
-		case "j", "down":
-			m.moveField(1)
-		case "k", "up":
-			m.moveField(-1)
-		case "esc":
-			if e.dirty() {
-				m.recordError(errUnsavedNavigation)
-				return m, nil
-			}
-			m.closeTaskDetail()
-		}
-		return m, nil
-	}
 	if e.dArmed {
 		e.dArmed = false
 		if s == "d" {
-			if e.field == fieldDescription {
-				e.deleteDescriptionLine()
-			} else {
-				e.clearOptionalField()
-			}
+			e.clearOptionalField()
 		}
 		return m, nil
 	}
@@ -338,68 +290,16 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.closeTaskDetail()
 		return m, nil
 	}
-	if e.field == fieldDescription && descriptionHasHTML(e.draft.Description) {
-		limit := m.readOnlyDescriptionScrollLimit()
-		switch s {
-		case "G", "end":
-			e.descScroll = limit
-		case "home":
-			e.descScroll = 0
-		case "j", "down":
-			e.descScroll = clamp(e.descScroll+1, 0, limit)
-		case "k", "up":
-			if e.descScroll == 0 {
-				m.moveField(-1)
-			} else {
-				e.descScroll--
-			}
-		case "ctrl+d", "pgdown", "pagedown":
-			e.descScroll = clamp(e.descScroll+m.pageStep(), 0, limit)
-		case "ctrl+u", "pgup", "pageup":
-			e.descScroll = clamp(e.descScroll-m.pageStep(), 0, limit)
-		}
-		return m, nil
-	}
-	if e.field == fieldTitle || (e.field == fieldDescription && e.descriptionActive) {
-		result := applyTextNormalKey(&e.normal, e.fieldValue(), e.cursor, s, e.field == fieldDescription)
+	if e.field == fieldTitle {
+		result := applyTextNormalKey(&e.normal, e.fieldValue(), e.cursor, s, false)
 		if result.handled {
 			e.setFieldValue(result.text)
 			e.cursor = result.cursor
-			if e.field == fieldDescription {
-				e.descScroll = max(0, e.descriptionLine())
-			}
+
 			if result.enterInsert {
 				return m.startEditorInsert()
 			}
 			return m, nil
-		}
-	}
-	if e.field == fieldDescription {
-		switch s {
-		case "X":
-			e.deleteBeforeCursor()
-			return m, nil
-		case "D":
-			e.deleteToLineEnd()
-			return m, nil
-		case "a":
-			e.moveCursor(1)
-			return m.startEditorInsert()
-		case "I":
-			e.cursor = e.lineStart()
-			return m.startEditorInsert()
-		case "A":
-			e.cursor = e.lineEnd()
-			return m.startEditorInsert()
-		case "o":
-			e.cursor = e.lineEnd()
-			e.insertText("\n")
-			return m.startEditorInsert()
-		case "O":
-			e.cursor = e.lineStart()
-			e.insertText("\n")
-			e.cursor--
-			return m.startEditorInsert()
 		}
 	}
 	if s == "x" {
@@ -462,16 +362,6 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if (s == "G" || s == "end") && e.field == fieldDescription {
-		e.cursor = e.fieldRuneLen()
-		e.descScroll = max(0, len(strings.Split(e.draft.Description, "\n"))-1)
-		return m, nil
-	}
-	if s == "home" && e.field == fieldDescription {
-		e.cursor = 0
-		e.descScroll = 0
-		return m, nil
-	}
 	if e.field == fieldTitle {
 		switch s {
 		case "h", "left":
@@ -481,27 +371,6 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			e.moveCursor(1)
 			return m, nil
 		}
-	}
-	if e.field == fieldDescription {
-		switch s {
-		case "h", "left":
-			e.moveCursor(-1)
-		case "l", "right":
-			e.moveCursor(1)
-		case "j", "down":
-			e.moveCursorLine(1)
-		case "k", "up":
-			if e.descriptionLine() == 0 {
-				m.moveField(-1)
-			} else {
-				e.moveCursorLine(-1)
-			}
-		case "ctrl+d", "pgdown", "pagedown":
-			e.moveCursorLine(m.pageStep())
-		case "ctrl+u", "pgup", "pageup":
-			e.moveCursorLine(-m.pageStep())
-		}
-		return m, nil
 	}
 
 	switch s {
@@ -516,7 +385,8 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
-	if e.field == fieldDescription && e.nativeDraft != nil {
+	if e.field == fieldDescription {
+		e.descriptionView()
 		return m.updateNativeInsert(k)
 	}
 	switch s {
@@ -585,7 +455,9 @@ func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) insertEditorText(text string) {
 	e := m.editor
-	if e.field == fieldDescription && e.nativeDraft != nil {
+	if e.field == fieldDescription {
+		e.descriptionView()
+		e.descriptionActive = true
 		e.nativeTrigger = false
 		e.nativeCodeEscape = false
 		e.nativeLiteralTab = false
@@ -608,6 +480,10 @@ func (m *model) insertEditorText(text string) {
 }
 
 func (m *model) startEditorInsert() (tea.Model, tea.Cmd) {
+	if m.editor.field == fieldDescription {
+		m.editor.descriptionView()
+		m.editor.descriptionActive = true
+	}
 	m.editor.mode = editorInsert
 	m.cursorVisible = true
 	return m, cursorBlinkCmd()
@@ -662,6 +538,9 @@ func (e *taskEditor) clearOptionalField() bool {
 
 func (m *model) focusDetailField(field editorField) {
 	e := m.editor
+	if e.field != field {
+		e.normal.reset()
+	}
 	e.field = field
 	e.descriptionActive = false
 	e.descriptionNavigated = field == fieldDescription
@@ -1013,6 +892,7 @@ func (m *model) moveField(delta int) {
 			break
 		}
 	}
+	e.normal.reset()
 	e.field = fields[clamp(current+delta, 0, len(fields)-1)]
 	e.descriptionActive = false
 	e.descriptionNavigated = e.field == fieldDescription

@@ -12,6 +12,7 @@ import (
 
 func (m *model) syncNativeDraft() {
 	e := m.editor
+	e.nativeDescription.FollowCursor()
 	e.draft.Description = e.nativeDraft.DraftHTML()
 	e.draft.DescriptionCandidate = nil
 	if e.mode == editorNormal {
@@ -79,6 +80,7 @@ func (m *model) nativeEditKey(key string) bool {
 			_ = d.SetTarget(d.AfterTarget())
 		}
 
+		e.nativeDescription.FollowCursor()
 		e.mode = editorInsert
 		e.nativeCodeEscape = false
 		e.nativeTrigger = d.CodeMarkerParagraph(true)
@@ -107,6 +109,7 @@ func (m *model) nativeEditKey(key string) bool {
 		e.descriptionActive = true
 		return true
 	case "d":
+		e.nativeOperatorCount = max(1, e.nativeCount)
 		if sel != nil {
 			m.applyNative(description.Action{Kind: description.DeleteSelection}, false, false)
 		} else {
@@ -114,10 +117,38 @@ func (m *model) nativeEditKey(key string) bool {
 		}
 		return true
 	case "c":
+		e.nativeOperatorCount = max(1, e.nativeCount)
 		if sel != nil {
 			m.applyNative(description.Action{Kind: description.ReplaceSelection}, false, true)
 		} else {
 			e.nativePrefix = "c"
+		}
+		return true
+	case "r":
+		if sel != nil {
+			m.recordError(fmt.Errorf("Leave Visual mode before character replacement"))
+			return true
+		}
+		e.nativeOperatorCount = max(1, e.nativeCount)
+		e.nativePrefix = "r"
+		return true
+	case "~":
+		if sel != nil {
+			m.recordError(fmt.Errorf("Leave Visual mode before character case changes"))
+			return true
+		}
+		m.applyNative(description.Action{Kind: description.ToggleCase, Count: max(1, e.nativeCount)}, false, false)
+		return true
+	case "C", "D":
+		if sel != nil {
+			m.recordError(fmt.Errorf("Use c/d to change/delete the Visual selection"))
+			return true
+		}
+		m.applyNativeOperator(d.Target(), description.Target{Anchor: d.LineBoundary(true)}, key == "C")
+		return true
+	case "X":
+		if d.Cursor() != d.LineBoundary(false) {
+			m.applyNative(description.Action{Kind: description.Backspace}, false, false)
 		}
 		return true
 	case "x", "delete", "backspace":
@@ -132,7 +163,7 @@ func (m *model) nativeEditKey(key string) bool {
 		if sel != nil {
 			kind = description.DeleteSelection
 		}
-		m.applyNative(description.Action{Kind: kind}, false, false)
+		m.applyNative(description.Action{Kind: kind, Count: max(1, e.nativeCount)}, false, false)
 		return true
 	case "y":
 		e.nativeRegister = d.Copy()
@@ -157,6 +188,32 @@ func (m *model) nativeEditKey(key string) bool {
 	}
 	return false
 }
+
+// Operators select a range internally; one Undo restores the pre-command
+// cursor/selection, including the following Insert session for a change.
+func (m *model) applyNativeOperator(start, end description.Target, change bool) {
+	e := m.editor
+	d := e.nativeDraft
+	if err := d.SetTarget(start); err != nil {
+		m.recordError(err)
+		return
+	}
+	d.BeginUndoGroup()
+	if err := d.SelectRange(start, end); err != nil {
+		d.EndUndoGroup()
+		m.recordError(err)
+		return
+	}
+	kind := description.DeleteSelection
+	if change {
+		kind = description.ReplaceSelection
+	}
+	m.applyNative(description.Action{Kind: kind}, false, change)
+	if !change && e.nativePending == nil {
+		d.EndUndoGroup()
+	}
+}
+
 func (m *model) updateNativeInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	key := k.String()
@@ -346,7 +403,7 @@ func (m *model) nativePaletteKey(key string) bool {
 }
 func (m *model) nativePalette() string {
 	e := m.editor
-	if (!m.leaderArmed && !m.nativePaletteVisible) || m.focus != paneDetail || e == nil || e.field != fieldDescription || !e.descriptionActive || e.descriptionView() == nil {
+	if (!m.leaderArmed && !m.nativePaletteVisible) || m.focus != paneDetail || e == nil || e.field != fieldDescription || !e.descriptionActive || m.comments != nil || m.commandMode || m.searchOpen || m.labelUI != nil || e.descriptionView() == nil {
 		return ""
 	}
 	if s := e.nativeDraft.Selection(); s != nil {
@@ -358,7 +415,7 @@ func (m *model) nativePalette() string {
 		}
 		return "FORMAT  b bold · i italic · u underline · s strike · x checkbox · 0 clear · q/w quote · k/l list · o projects"
 	}
-	return "BLOCK  1/2/3 heading · 0 paragraph · u/n/x list · q quote · c code · l link · y copy URL · o projects"
+	return "BLOCK  1/2/3 heading · 0 paragraph · u/n/x list · q quote · c code · l link · y copy · p paste · Y URL · o projects"
 }
 func selectDescriptionBlockCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionView() != nil {
@@ -413,8 +470,8 @@ func (m *model) nativeModeHint() string {
 	if e.nativePending != nil {
 		return "CONFIRM  y/Enter · n/Esc cancel"
 	}
-	if hint := m.nativeLinkHint(); hint != "" {
-		return hint
+	if e.nativeLink != nil {
+		return m.nativeLinkHint()
 	}
 	if s := e.nativeDraft.Selection(); s != nil {
 		label := "VISUAL"
@@ -424,7 +481,10 @@ func (m *model) nativeModeHint() string {
 				label = "VISUAL CODE LINES"
 			}
 		}
-		return label + " · Space format · d delete · o swap · Esc cancel"
+		return strings.Join([]string{label, "Space format", "Space y copy", "Space p paste", "d delete", "o swap", "Esc cancel"}, footerSeparator)
+	}
+	if hint := m.nativeLinkHint(); hint != "" {
+		return hint
 	}
 	if e.mode == editorInsert && e.nativeDraft.InCode() {
 		return "INSERT CODE · Tab spaces · Ctrl+V Tab literal · Esc normal"
@@ -496,7 +556,7 @@ func (m *model) nativePaletteRow(w int) string {
 
 func (m *model) nativePasteText(text string) string {
 	e := m.editor
-	if m.focus == paneDetail && e != nil && e.field == fieldDescription && e.mode == editorInsert && e.nativeDraft != nil {
+	if m.focus == paneDetail && e != nil && e.field == fieldDescription && e.nativeDraft != nil {
 		if e.nativeDraft.InCode() {
 			return text
 		}

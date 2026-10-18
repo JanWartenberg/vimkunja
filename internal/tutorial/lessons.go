@@ -117,14 +117,14 @@ func basicLessons() []lesson {
 			return ok && t.Done
 		}}},
 		{topic: "Description editing", task: "Prefix Task ‘Practice the Vimkunja tutorial’ Description with ‘Tutorial: ’.", context: "Description supports Vim motions, word operators and multiline Insert.", hint: "I enters Insert at line start; type ‘Tutorial: ’, then Esc. Try ciw, w/b/e and counts freely.", project: 1, view: 11, setup: desc, goals: []func(tui.SessionSnapshot) bool{func(s tui.SessionSnapshot) bool {
-			return draftIs(s, 101) && strings.HasPrefix(s.Draft.Description, "Tutorial: Move through")
+			return draftIs(s, 101) && strings.HasPrefix(s.Draft.Description, "<p>Tutorial: Move through")
 		}}},
 		{topic: "Save", task: "Save Task ‘Practice the Vimkunja tutorial’ with Description ‘Saved in tutorial.’.", context: "A successful save clears the dirty marker; failed saves keep the draft.", hint: "In Description use 0, C; enter ‘Saved in tutorial.’, Esc, then :w. You may use :write or :wq too.", project: 1, view: 11, setup: desc, source: "Replace me", goals: []func(tui.SessionSnapshot) bool{func(s tui.SessionSnapshot) bool {
-			if s.Saved != nil && s.Saved.ID == 101 && s.Saved.Description == "Saved in tutorial." {
+			if s.Saved != nil && s.Saved.ID == 101 && s.Saved.Description == "<p>Saved in tutorial.</p>" {
 				return true
 			}
 			t, ok := foundTask(s, 101)
-			return ok && t.Description == "Saved in tutorial."
+			return ok && t.Description == "<p>Saved in tutorial.</p>"
 		}}},
 		{topic: "Pane focus", task: "Focus the Tasks Pane while keeping Task Detail open.", context: "Ctrl+W moves between Panes without closing them.", hint: "Ctrl+W k focuses the Tasks Pane above Task Detail; Ctrl+W j returns.", project: 1, view: 11, setup: detail, goals: []func(tui.SessionSnapshot) bool{func(s tui.SessionSnapshot) bool { return s.Focus == "Tasks" && draftIs(s, 101) }}},
 		{topic: "Close Detail", task: "Close Task Detail for ‘Practice the Vimkunja tutorial’.", context: "Closing a clean Task returns to the Tasks Pane.", hint: "Use :q or :quit; Ex commands support Tab completion.", project: 1, view: 11, setup: detail, goals: []func(tui.SessionSnapshot) bool{func(s tui.SessionSnapshot) bool { return s.Draft == nil && s.Focus == "Tasks" }}},

@@ -77,6 +77,21 @@ func (v *View) Viewport(width, height int, focused bool) Frame {
 		if f.CursorY >= v.top+height {
 			v.top = f.CursorY - height + 1
 		}
+		// Keep an adjacent checklist summary visible without giving it a cursor.
+		bottom := f.CursorY
+		for bottom+1 < len(f.Rows) && bottom-f.CursorY+1 < height {
+			summary := false
+			for _, span := range f.Rows[bottom+1].Spans {
+				summary = summary || span.Style&Summary != 0
+			}
+			if !summary {
+				break
+			}
+			bottom++
+		}
+		if bottom >= v.top+height {
+			v.top = bottom - height + 1
+		}
 		v.screenRow = f.CursorY - v.top
 		v.positioned = true
 	} else {
@@ -85,6 +100,9 @@ func (v *View) Viewport(width, height int, focused bool) Frame {
 	f.Top = v.top
 	return f
 }
+
+// FollowCursor resumes normal cursor tracking after an edit or entering Insert.
+func (v *View) FollowCursor() { v.manualScroll = false }
 
 // Scroll changes only the viewport; the document cursor remains anchored.
 func (v *View) Scroll(delta, width, height int) Frame {
@@ -290,6 +308,23 @@ func (v *View) Move(motion string, count, width, height int) bool {
 // Word motion follows semantic text across disclosed marks. Delimiters stay
 // reachable by h/l without splitting an imported word at its formatting edge.
 func wordMotion(points []point, index int, motion string, count int) int {
+	index, _ = wordMotionResult(points, index, motion, count)
+	return index
+}
+
+// WordOperatorEnd shares semantic word navigation with normal motions. Include
+// reports whether the final grapheme belongs to the operator's half-open range.
+func (v *View) WordOperatorEnd(motion string, count, width int) (end Target, include bool) {
+	f := v.Layout(max(1, width), true)
+	if len(f.points) == 0 {
+		return v.target, false
+	}
+	index, after := wordMotionResult(f.points, pointIndex(f.points, v.target), motion, max(1, min(count, 100000)))
+	return f.points[index].target, after || motion == "e" || motion == "E"
+}
+
+func wordMotionResult(points []point, index int, motion string, count int) (int, bool) {
+	after := false
 	var indices []int
 	current := 0
 	for i, p := range points {
@@ -301,7 +336,7 @@ func wordMotion(points []point, index int, motion string, count int) int {
 		}
 	}
 	if len(indices) == 0 {
-		return index
+		return index, false
 	}
 	current = min(current, len(indices)-1)
 	big := motion == "W" || motion == "B" || motion == "E" || motion == "gE"
@@ -343,9 +378,13 @@ func wordMotion(points []point, index int, motion string, count int) int {
 					current++
 				}
 			}
+			// At the last point there may be no next word start. An operator
+			// must consume that final grapheme rather than leave it behind.
+			after = current == last && (class(current) == c || class(current) == 0)
 			for current < last && class(current) == 0 {
 				current++
 			}
+			after = after || current == last && class(current) == 0
 		case "e", "E":
 			current = min(last, current+1)
 			for current < last && class(current) == 0 {
@@ -360,7 +399,7 @@ func wordMotion(points []point, index int, motion string, count int) int {
 			break
 		}
 	}
-	return indices[current]
+	return indices[current], after
 }
 
 // Resizing and cursor motion reveal Code using its document column. Explicit

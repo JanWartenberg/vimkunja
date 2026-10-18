@@ -136,14 +136,14 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 ## Description Normal Mode
 
 
-HTML Descriptions use the Native draft editor (06): `gn`, `Enter` activates navigation; `i/a/I/A` enters Insert. Ordinary editing, Visual Mode, local history and the Space palette are implemented. Advanced structure, Code/Tab/retab and syntax/URL actions are implemented in 07–09; practical terminal acceptance remains outstanding. Plain-text editing retains the existing behavior.
+All Descriptions, including empty and legacy plain-text values, use the same Native draft editor (06): `gn`, `Enter` activates navigation; `i/a/I/A` enters Insert. Ordinary editing, Visual Mode, local history and the Space palette are implemented. Advanced structure, Code/Tab/retab and syntax/URL actions are implemented in 07–09; practical terminal acceptance remains outstanding. There is no manual plain/rich editing-mode switch. Opening/navigation preserve stored source; actual edits produce Native HTML and remain unsaved until :w. Title and Comment drafts share the selection and system-clipboard bindings below.
 
 Native Normal Mode also supports `ciw`/`caw` and `diw`/`daw`. Change selects the semantic word, deletes it and enters Insert; Esc cancels an unfinished prefix. A completed word change (replacement plus typing until Esc) is one local Undo/Redo step. Opaque word replacements require confirmation and retain adjacent punctuation.
 
 | Binding | Action | Status |
 | --- | --- | --- |
 | `h/l`, arrows | Move the cursor horizontally | Implemented |
-| `j/k`, arrows | Plain text: move between Description lines | Implemented |
+| `j/k`, arrows | Move between Description blocks; Code uses source lines | Implemented |
 | `w/b` | Move by word | Implemented |
 | `~` / `count~` | Toggle Unicode-aware character case under the cursor, advance, and stop at the current line boundary. Also applies to Task Title and Comment drafts. | Implemented |
 | `gg/G`, Home/End | Start/end of Description | Implemented |
@@ -159,6 +159,9 @@ Native Normal Mode also supports `ciw`/`caw` and `diw`/`daw`. Change selects the
 | `ö` / `ä` | German-keyboard aliases for `{` / `}` in Normal Mode | Implemented for native read/navigation (05) |
 | `zh/zl` in an overwide Code block or table | Scroll that block horizontally | Implemented for native read/navigation (05) |
 | `x` on a Checkbox-list entry | Toggle only that entry's checked state | Agreed |
+| `dw/db/de`, `dW/dB/dE`, `cw/cb/ce`, `cW/cB/cE` | Delete/change by word motion; counts before/after the operator multiply. Change enters Insert; one Undo restores the command and following typing. | Implemented; synthetic tests |
+| `C` / `D` | Change/delete to source-line end in Normal Mode; use `c/d` for a Visual selection | Implemented; synthetic tests |
+| `[count]r{character}`, `[count]~`, `[count]x` | Replace characters, toggle case, or delete characters up to line end; preserve inline formatting and protected objects. `x` on a Checkbox retains its toggle action. | Implemented; synthetic tests |
 | `dd` | Delete the current logical Description block, including Native text and inline Opaque content, even on inline-atom focus; confirm the whole deletion if Opaque content is included. Inside nonempty Code delete only the source line; final nonempty line deletion keeps empty Code. Another dd deletes that empty block. Inside a Block quote delete the current child block and remove the quote after its final child. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `o` / `O` | Insert an empty paragraph after / before the current logical block;<br>inside a Code block insert a Code line, or inside a Block quote a same-depth quoted paragraph, below / above the current line; then enter Insert Mode | Agreed rich-text behavior |
 | Code Normal Mode: `ü` / `Ü` | Create a normal paragraph after / before the entire current Code block, move there and enter Insert Mode; preserve Code contents | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
@@ -179,7 +182,7 @@ Native Normal Mode also supports `ciw`/`caw` and `diw`/`daw`. Change selects the
 | `Space+c` | Create Code block | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `Space+o` | Toggle Projects Pane; never a Description formatting command | Agreed |
 | `Space+l` inside an existing link | Prompt with its current URL; link text remains ordinary Description text | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
-| `Space+y` inside a link | Copy its destination URL to the system clipboard without opening it | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
+| `Space+Y` inside a link | Copy its destination URL to the system clipboard without opening it | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
 
 ## Description Insert Mode
 
@@ -241,7 +244,11 @@ label and three actionable segments fit; otherwise hints win.
 | Help / Info | close Pane | — | Pane switching where available |
 | Leader, Views, Sort, Filter | shown choice actions | — | cancel where available |
 
-All text insertion uses the same blinking terminal bar cursor, including Title/inline Title, plain/Native Description and Code, Comment composer, Ex/Search/URL/Label prompts and relative-date inputs. Normal Mode retains a block cursor; the masked date uses a block for digit replacement. Explicitly disabled cursor shapes use the same vertical textual fallback across inputs. Wrapping/clipping must keep the insertion point visible and must not add cursor characters to source text.
+Normal/Visual text editors (Title, Description and Comment drafts) share `Space+y` to copy the selection or current line to the system clipboard and `Space+p` to insert at the current cursor or replace the selection, remaining in Normal Mode. Native prose copies its logical paragraph; Code copies its source line. Copy keeps the selection and draft unchanged. Clipboard errors leave text/selection unchanged; empty Paste is a no-op, and delayed reads are ignored after changing focus, field, mode, text or selection. Title Paste flattens newlines to spaces; prose/Comments normalize CRLF to LF, while Code preserves source Tabs/line endings. Insert-only prompts retain their existing Paste behavior.
+
+`v` selects characters; `V` selects complete lines in Title/Comments and logical blocks in Description (source lines inside Code). Motions extend the selection; `o` swaps ends, `viw/vaw` selects a word, `d/x` deletes, `c` changes it and `Esc` cancels. Wrapping does not change selection offsets. Empty/plain descriptions automatically use the existing document editor with one paragraph per source line and preserved blank lines/literal imported text. No conversion command is needed. Reading, selecting, resizing, and metadata-only saves retain the original Description bytes. A real Description edit produces an HTML draft; Undo before save can restore the exact original plain source, and :e! discards edits. Link URL copying uses **`Space+Y`** (uppercase); lowercase `Space+y` copies text. Bare Description `y/p` retains the local register.
+
+All text insertion uses the same blinking terminal bar cursor, including Title/inline Title, Description and Code, Comment composer, Ex/Search/URL/Label prompts and relative-date inputs. Normal Mode retains a block cursor; the masked date uses a block for digit replacement. Explicitly disabled cursor shapes use the same vertical textual fallback across inputs. Wrapping/clipping must keep the insertion point visible and must not add cursor characters to source text.
 
 In the Ex-command prompt, `Tab` completes a unique command or the longest shared
 prefix of multiple candidates and displays those candidates. For example,
@@ -273,4 +280,4 @@ Normal `x` on a Description Checkbox toggles its checked state; Task Done is ind
 
 Direct typing interprets `**bold**`, `*italic*`, `***both***`, `__underline__`, `~~strike~~` and paired single-backtick Inline-Code. A backslash masks the next agreed syntax character; imported/Paste/local-register text stays literal. At block start, `# `, `## `, `### `, `- `, `+ `, `* ` and `1. ` require the following Space. Three or more typed dashes form a rule; x/Undo retain the local dash count, Save emits canonical `<hr>`.
 
-`Space+l` on a characterwise selection or existing Link opens a separate URL prompt: Enter applies, Esc cancels, empty URL unlinks. Newly entered destinations require an absolute `://` URL with http, https, ftp, git, obsidian, notion or message; invalid input stays in the prompt. Safe imported foreign schemes remain preserved and replaceable. `Space+y` copies a Link destination to the system clipboard and reports the actual result. Typing at Link edges or outside the visible Inline-Code backticks stays outside; text targets between those backticks edit Code content. Inside a Link, typing retains the wrapper. Empty imported Link labels show the current URL without materializing it until a text edit.
+`Space+l` on a characterwise selection or existing Link opens a separate URL prompt: Enter applies, Esc cancels, empty URL unlinks. Newly entered destinations require an absolute `://` URL with http, https, ftp, git, obsidian, notion or message; invalid input stays in the prompt. Safe imported foreign schemes remain preserved and replaceable. `Space+Y` copies a Link destination to the system clipboard and reports the actual result. Typing at Link edges or outside the visible Inline-Code backticks stays outside; text targets between those backticks edit Code content. Inside a Link, typing retains the wrapper. Empty imported Link labels show the current URL without materializing it until a text edit.

@@ -47,9 +47,12 @@ const (
 	RetabAll
 	EditLink
 	Type
+	ReplaceCharacters
+	ToggleCase
 )
 
 type Action struct {
+	Count           int
 	Kind            ActionKind
 	Text            string
 	inside          bool
@@ -64,7 +67,8 @@ type Selection struct {
 	Start, End             Anchor
 	Blocks, WholeBlock     bool
 	startSyntax, endSyntax int
-	codeBlock              ID // Code-line origin remains stable when endpoints swap.
+	exclusive              bool // Internal operator ranges use a half-open end.
+	codeBlock              ID   // Code-line origin remains stable when endpoints swap.
 }
 type draftState struct {
 	nodes     []Node
@@ -105,6 +109,29 @@ func NewDraft(doc *Document) *Draft {
 	}
 	return d
 }
+
+// NewTextDraft gives legacy plain descriptions the same paragraph editor while
+// retaining their exact persistence baseline. Only a real edit produces HTML;
+// undoing back to the initial nodes restores the original bytes.
+func NewTextDraft(source string) *Draft {
+	if !utf8.ValidString(source) {
+		return NewDraft(Parse(source))
+	}
+	d := NewDraft(Parse(""))
+	text := strings.ReplaceAll(strings.ReplaceAll(source, "\r\n", "\n"), "\r", "\n")
+	for _, line := range strings.Split(text, "\n") {
+		var children []Node
+		if line != "" {
+			children = []Node{d.newNode(Node{Kind: Text, Text: line})}
+		}
+		d.state.nodes = append(d.state.nodes, d.newNode(Node{Kind: Element, Tag: "p", Children: children}))
+	}
+	d.baseline = source
+	d.savedNodes = cloneNodes(d.state.nodes)
+	d.state.cursor = d.first(d.state.nodes)
+	return d
+}
+
 func (d *Draft) assign(ns []Node) {
 	var scan func([]Node)
 	scan = func(ns []Node) {
@@ -599,6 +626,20 @@ func (d *Draft) After(a Anchor) Anchor {
 	return a
 }
 func (d *Draft) edit(a Action) error {
+	if a.Kind == ReplaceCharacters || a.Kind == ToggleCase {
+		return d.transformCharacters(a)
+	}
+	if a.Kind == Delete && a.Count > 1 {
+		for range min(a.Count, 100000) {
+			if d.state.syntax == 0 && d.Cursor() == d.LineBoundary(true) {
+				break
+			}
+			if err := d.edit(Action{Kind: Delete}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	switch a.Kind {
 	case Split, HardBreak, OpenAbove, OpenBelow, DeleteBlock, Convert, ConvertList,
 		CreateCode, CodeBefore, CodeAfter, ClearDescription, RecoverText:
@@ -723,6 +764,10 @@ func (d *Draft) edit(a Action) error {
 				return err
 			}
 			n = findNode(d.state.nodes, d.state.cursor.Node)
+		}
+		if b.Tag == "pre" && len(codeLeaves(b)) == 0 {
+			n = d.materializeCodeText(b)
+			d.state.cursor = Anchor{Node: n.ID}
 		}
 		if n.Kind == Opaque {
 			list, i := nodeList(&d.state.nodes, n.ID)
@@ -850,7 +895,11 @@ func (d *Draft) edit(a Action) error {
 	case DeleteBlock:
 		list, i := nodeList(&d.state.nodes, b.ID)
 		*list = slices.Delete(*list, i, i+1)
-		d.state.cursor = d.first(d.state.nodes)
+		if len(*list) > 0 {
+			d.state.cursor = d.first([]Node{(*list)[min(i, len(*list)-1)]})
+		} else {
+			d.state.cursor = d.first(d.state.nodes)
+		}
 		d.state.selection = nil
 		return nil
 	case Backspace, Delete:

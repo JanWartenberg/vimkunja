@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/x/ansi"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"github.com/charmbracelet/x/ansi"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -125,7 +125,7 @@ func TestHTMLDescriptionInsertUsesStructuredDraft(t *testing.T) {
 	m.editor.field = fieldDescription
 
 	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
-	if m.editor.mode != editorInsert || m.editor.nativeDraft==nil || m.editor.draft.Description != "<p>Fresh coffee beans</p>" {
+	if m.editor.mode != editorInsert || m.editor.nativeDraft == nil || m.editor.draft.Description != "<p>Fresh coffee beans</p>" {
 		t.Fatalf("HTML Description entered raw edit mode: %#v", m.editor)
 	}
 }
@@ -158,7 +158,7 @@ func TestReadOnlyDescriptionScrollbarUsesReservedWidth(t *testing.T) {
 	}
 }
 
-func TestReadOnlyHTMLDescriptionScrolls(t *testing.T) {
+func TestDescriptionViewportScrollsWithoutEditing(t *testing.T) {
 	var description strings.Builder
 	for line := 1; line <= 18; line++ {
 		fmt.Fprintf(&description, "<p>Line %d</p>", line)
@@ -171,7 +171,7 @@ func TestReadOnlyHTMLDescriptionScrolls(t *testing.T) {
 	if strings.Contains(before, "Line 4") {
 		t.Fatalf("fixture does not overflow the Detail Pane: %q", before)
 	}
-	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
+	m = pressKey(m, tea.Key{Code: 'e', Mod: tea.ModCtrl})
 	after := ansi.Strip(renderTaskDetail(m, 80, 16))
 	if m.editor.descScroll == 0 || !strings.Contains(after, "Line 2") {
 		t.Fatalf("read-only Description did not scroll: offset=%d detail=%q", m.editor.descScroll, after)

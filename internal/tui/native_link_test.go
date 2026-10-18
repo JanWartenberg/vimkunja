@@ -39,7 +39,7 @@ func TestNativeLinkClipboardReportsActualResult(t *testing.T) {
 			return nil
 		}
 		m = nativeKeys(m, "l", "space")
-		_, cmd := m.Update(tea.KeyPressMsg{Code: 'y', Text: "y"})
+		_, cmd := m.Update(tea.KeyPressMsg{Code: 'Y', Text: "Y"})
 		if cmd == nil {
 			t.Fatal("missing clipboard command")
 		}

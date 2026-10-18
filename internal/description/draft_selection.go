@@ -97,6 +97,8 @@ func (d *Draft) selectionRange() (int, int, map[ID]extent) {
 		}
 		lo, hi = min(ext[a.block].start, ext[b.block].start), max(ext[a.block].end, ext[b.block].end)
 		_ = blocks
+	} else if s.exclusive {
+		return lo, hi, ext
 	} else {
 		end, syntax := s.End, s.endSyntax
 		if anchorPosition(s.Start, ext) > anchorPosition(s.End, ext) || s.Start == s.End && s.startSyntax == 0 && s.endSyntax > 0 {
@@ -110,6 +112,21 @@ func (d *Draft) selectionRange() (int, int, map[ID]extent) {
 	}
 	return lo, hi, ext
 }
+
+// SelectRange selects the half-open document range used by Vim operators.
+func (d *Draft) SelectRange(start, end Target) error {
+	if err := d.SetTarget(start); err != nil {
+		return err
+	}
+	d.Select(false, false)
+	if err := d.SetTarget(end); err != nil {
+		d.CancelSelection()
+		return err
+	}
+	d.state.selection.exclusive = true
+	return nil
+}
+
 func (d *Draft) Selected(a Anchor) bool {
 	if d.state.selection == nil {
 		return false
@@ -118,6 +135,23 @@ func (d *Draft) Selected(a Anchor) bool {
 	p := anchorPosition(a, ext)
 	return p >= lo && p < hi
 }
+
+// CopyLine returns selected safe text, or the current paragraph/Code source line.
+func (d *Draft) CopyLine() string {
+	if d.state.selection != nil {
+		return d.Copy()
+	}
+	loc, err := d.live().ResolveAnchor(d.state.cursor)
+	if err == nil {
+		if b := findNode(d.state.nodes, loc.Block); b != nil && b.Tag == "pre" {
+			source := codeSource(b)
+			lo, hi := codeLineBounds(source, d.codeOffset(b, d.state.cursor))
+			return source[lo:hi]
+		}
+	}
+	return d.Copy()
+}
+
 func (d *Draft) Copy() string {
 	lo, hi, ext := d.selectionRange()
 	if d.state.selection == nil {
@@ -503,6 +537,7 @@ func (d *Draft) deleteSelection(a Action) error {
 		d.state.selection = nil
 		return d.applyCodeEdits(b, []codeEdit{{lo - ext[b.ID].start, hi - ext[b.ID].start, text}})
 	}
+	var replacement ID
 	var remove func([]Node) []Node
 	remove = func(ns []Node) []Node {
 		var out []Node
@@ -515,6 +550,13 @@ func (d *Draft) deleteSelection(a Action) error {
 			}
 			e := ext[n.ID]
 			if e.start >= lo && e.end <= hi && (n.Kind != Element || blocks && !codeLines) {
+				if blocks && a.Kind == ReplaceSelection && replacement == 0 && (n.Tag == "p" || n.Tag == "h1" || n.Tag == "h2" || n.Tag == "h3") {
+					leaf := d.newNode(Node{Kind: Text})
+					n.Children = []Node{leaf}
+					replacement = leaf.ID
+					out = append(out, n)
+					continue
+				}
 				if a.Kind == ReplaceSelection && !blocks && n.Kind == Text && n.ID == startAnchor.Node {
 					// Keep the insertion context when c consumes a whole leaf.
 					// Falling back to its neighbor would inherit unrelated marks.
@@ -540,6 +582,9 @@ func (d *Draft) deleteSelection(a Action) error {
 	d.state.nodes = remove(d.state.nodes)
 	d.state.selection = nil
 	d.state.cursor = d.anchorAt(lo)
+	if replacement != 0 {
+		d.state.cursor = Anchor{Node: replacement}
+	}
 	d.state.syntax = 0
 	if a.Kind == DeleteSelection {
 		d.parseTypedAtCursor()

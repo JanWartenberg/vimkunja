@@ -190,6 +190,15 @@ func (m *model) updateCommentInsert(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateCommentNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	composer := m.comments.composer
 	s := normalizeArrow(key.String())
+	if m.leaderArmed {
+		m.leaderArmed = false
+		cmd, _ := m.textClipboardKey(s)
+		return m, cmd
+	}
+	if isSpaceKey(key) {
+		m.leaderArmed = true
+		return m, tea.Tick(m.leaderTimeout, func(time.Time) tea.Msg { return leaderTimeoutMsg{} })
+	}
 	if result := applyTextNormalKey(&composer.normal, composer.text, composer.cursor, s, true); result.handled {
 		composer.text, composer.cursor = result.text, result.cursor
 		if result.enterInsert {
@@ -476,7 +485,7 @@ func (m *model) renderCommentComposer(width, height int) []string {
 	if composer.mode == editorInsert {
 		label += " · INSERT"
 	} else {
-		label += " · NORMAL"
+		label += " · " + composer.normal.selectionLabel()
 	}
 	divider := strings.Repeat("─", max(1, width))
 	visibleRows := max(1, height-2)
@@ -485,7 +494,10 @@ func (m *model) renderCommentComposer(width, height int) []string {
 	rows := []string{divider, label}
 	for i := start; i < min(len(layout.lines), start+visibleRows); i++ {
 		line := layout.lines[i]
-		if i == layout.cursorRow && !m.comments.commandMode {
+		if composer.normal.selection != nil && !m.comments.commandMode {
+			lo, hi := composer.normal.selectionRange(composer.text, composer.cursor)
+			line.text = renderSelectionRange(line.text, line.start, lo, hi)
+		} else if i == layout.cursorRow && !m.comments.commandMode {
 			if composer.mode == editorInsert {
 				line.text = insertCursorText(line.text, composer.cursor-line.start)
 			} else {

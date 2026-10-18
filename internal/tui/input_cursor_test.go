@@ -16,8 +16,8 @@ func TestTextInputsShareBlinkingTerminalBar(t *testing.T) {
 		{"plain Description", func(m *model) {
 			m.editor.field = fieldDescription
 			m.editor.draft.Description = "abc"
-			m.editor.cursor = 1
 			m.editor.mode = editorInsert
+			positionDescriptionCursor(t, m, 1)
 		}},
 		{"native Description", func(m *model) {
 			m.editor.field = fieldDescription
@@ -83,8 +83,8 @@ func TestTextInputCaretTracksUnicodeAndDoesNotLeakLayoutMarkers(t *testing.T) {
 			case "Description":
 				m.editor.field = fieldDescription
 				m.editor.draft.Description = text
-				m.editor.cursor = 3
 				m.editor.mode = editorInsert
+				positionDescriptionCursor(t, m, 3)
 			case "Native":
 				m.editor.field = fieldDescription
 				m.editor.draft.Description = "<p>" + text + "</p>"

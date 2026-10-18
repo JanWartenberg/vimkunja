@@ -25,10 +25,34 @@ func motionEditor(field editorField, text string, cursor int) *model {
 	m.editor.cursor = cursor
 	m.editor.setFieldValue(text)
 	m.editor.original = cloneTaskDraft(m.editor.draft)
+	if field == fieldDescription {
+		m.comments = &commentsUI{composer: &commentComposer{text: text, cursor: cursor, mode: editorNormal}}
+	}
 	return m
 }
 
-func TestTierOneLineMotions(t *testing.T) {
+// The multiline text engine is exercised through the Comment composer. Native
+// Description motions/formatting have their document-level integration tests.
+func motionCursor(m *model) int {
+	if m.comments != nil {
+		return m.comments.composer.cursor
+	}
+	return m.editor.cursor
+}
+func motionText(m *model) string {
+	if m.comments != nil {
+		return m.comments.composer.text
+	}
+	return m.editor.fieldValue()
+}
+func motionMode(m *model) editorMode {
+	if m.comments != nil {
+		return m.comments.composer.mode
+	}
+	return m.editor.mode
+}
+
+func TestTextEditorLineMotions(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		field  editorField
@@ -46,14 +70,14 @@ func TestTierOneLineMotions(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := pressMotionKeys(motionEditor(tc.field, tc.text, tc.cursor), tc.keys)
-			if m.editor.cursor != tc.want {
-				t.Fatalf("%s cursor = %d, want %d", tc.keys, m.editor.cursor, tc.want)
+			if motionCursor(m) != tc.want {
+				t.Fatalf("%s cursor = %d, want %d", tc.keys, motionCursor(m), tc.want)
 			}
 		})
 	}
 }
 
-func TestTierOneWordMotionsUseVimWordAndWORDClasses(t *testing.T) {
+func TestTextEditorWordMotionsUseVimWordAndWORDClasses(t *testing.T) {
 	const text = "alpha, beta  gamma\nδelta"
 	for _, tc := range []struct {
 		name   string
@@ -74,14 +98,14 @@ func TestTierOneWordMotionsUseVimWordAndWORDClasses(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := pressMotionKeys(motionEditor(fieldDescription, text, tc.cursor), tc.keys)
-			if m.editor.cursor != tc.want {
-				t.Fatalf("%s cursor = %d, want %d", tc.keys, m.editor.cursor, tc.want)
+			if motionCursor(m) != tc.want {
+				t.Fatalf("%s cursor = %d, want %d", tc.keys, motionCursor(m), tc.want)
 			}
 		})
 	}
 }
 
-func TestTierOneMotionCounts(t *testing.T) {
+func TestTextEditorMotionCounts(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		text   string
@@ -101,8 +125,8 @@ func TestTierOneMotionCounts(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := pressMotionKeys(motionEditor(fieldDescription, tc.text, tc.cursor), tc.keys)
-			if m.editor.cursor != tc.want {
-				t.Fatalf("%s cursor = %d, want %d", tc.keys, m.editor.cursor, tc.want)
+			if motionCursor(m) != tc.want {
+				t.Fatalf("%s cursor = %d, want %d", tc.keys, motionCursor(m), tc.want)
 			}
 		})
 	}
@@ -135,8 +159,8 @@ func TestTierOneDeleteAndChangeCombinations(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := pressMotionKeys(motionEditor(fieldDescription, tc.text, tc.cursor), tc.keys)
-			if m.editor.draft.Description != tc.wantText || m.editor.cursor != tc.wantCursor || m.editor.mode != tc.wantMode {
-				t.Fatalf("%s = text:%q cursor:%d mode:%v, want %q/%d/%v", tc.keys, m.editor.draft.Description, m.editor.cursor, m.editor.mode, tc.wantText, tc.wantCursor, tc.wantMode)
+			if motionText(m) != tc.wantText || motionCursor(m) != tc.wantCursor || motionMode(m) != tc.wantMode {
+				t.Fatalf("%s = text:%q cursor:%d mode:%v, want %q/%d/%v", tc.keys, motionText(m), motionCursor(m), motionMode(m), tc.wantText, tc.wantCursor, tc.wantMode)
 			}
 		})
 	}
@@ -157,7 +181,7 @@ func TestTierOneWordObjectsHandleWhitespacePunctuationAndUnicode(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := pressMotionKeys(motionEditor(fieldDescription, tc.text, tc.cursor), tc.keys)
-			if got := m.editor.draft.Description; got != tc.wantText {
+			if got := motionText(m); got != tc.wantText {
 				t.Fatalf("%s = %q, want %q", tc.keys, got, tc.wantText)
 			}
 		})
@@ -177,8 +201,8 @@ func TestTierOneCharacterCommandsUseDisplayedLineEndCharacter(t *testing.T) {
 	} {
 		t.Run(tc.keys, func(t *testing.T) {
 			m := pressMotionKeys(motionEditor(fieldDescription, "ab\ncd", 0), tc.keys)
-			if got := m.editor.draft.Description; got != tc.wantText || m.editor.mode != tc.wantMode {
-				t.Fatalf("%s = %q in mode %v, want %q in mode %v", tc.keys, got, m.editor.mode, tc.wantText, tc.wantMode)
+			if got := motionText(m); got != tc.wantText || motionMode(m) != tc.wantMode {
+				t.Fatalf("%s = %q in mode %v, want %q in mode %v", tc.keys, got, motionMode(m), tc.wantText, tc.wantMode)
 			}
 		})
 	}
@@ -200,8 +224,8 @@ func TestTierOneReplaceAndCountedCharacterDelete(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := pressMotionKeys(motionEditor(fieldDescription, tc.text, tc.cursor), tc.keys)
-			if m.editor.draft.Description != tc.wantText || m.editor.cursor != tc.wantCursor {
-				t.Fatalf("%s = %q at %d, want %q at %d", tc.keys, m.editor.draft.Description, m.editor.cursor, tc.wantText, tc.wantCursor)
+			if motionText(m) != tc.wantText || motionCursor(m) != tc.wantCursor {
+				t.Fatalf("%s = %q at %d, want %q at %d", tc.keys, motionText(m), motionCursor(m), tc.wantText, tc.wantCursor)
 			}
 		})
 	}
@@ -223,8 +247,8 @@ func TestNormalModeTildeTogglesCaseWithCountsAndStopsAtLineEnd(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			m := pressMotionKeys(motionEditor(tc.field, tc.text, tc.cursor), tc.keys)
-			if got := m.editor.fieldValue(); got != tc.wantText || m.editor.cursor != tc.wantCursor {
-				t.Fatalf("%s = %q at %d, want %q at %d", tc.keys, got, m.editor.cursor, tc.wantText, tc.wantCursor)
+			if got := motionText(m); got != tc.wantText || motionCursor(m) != tc.wantCursor {
+				t.Fatalf("%s = %q at %d, want %q at %d", tc.keys, got, motionCursor(m), tc.wantText, tc.wantCursor)
 			}
 		})
 	}
@@ -255,43 +279,34 @@ func TestTierOneMotionsAreSharedByTitleAndCommentComposer(t *testing.T) {
 	}
 }
 
-func TestTierOnePrefixesDoNotLeakOrChangeInsertAndReadOnlyText(t *testing.T) {
+func TestTierOnePrefixesDoNotLeakOrChangeInsertText(t *testing.T) {
 	m := motionEditor(fieldDescription, "one two", 0)
-	m = pressMotionKeys(m, "dQw")
-	if m.editor.draft.Description != "one two" || m.editor.cursor != 4 {
-		t.Fatalf("invalid operator prefix leaked: %q at %d", m.editor.draft.Description, m.editor.cursor)
+	pressMotionKeys(m, "dQw")
+	if motionText(m) != "one two" || motionCursor(m) != 4 {
+		t.Fatal("invalid operator prefix leaked")
 	}
-
 	m = motionEditor(fieldTitle, "one two", 0)
-	m = pressMotionKeys(m, "d")
+	pressMotionKeys(m, "d")
 	m = pressKey(m, tea.Key{Code: tea.KeyEsc})
 	if m.editor == nil || m.editor.normal.pending() {
-		t.Fatal("Esc did not cancel a pending operator without closing the Task")
+		t.Fatal("Esc did not cancel pending operator")
 	}
-
 	m = motionEditor(fieldDescription, "", 0)
-	m.editor.mode = editorInsert
-	m = pressMotionKeys(m, "dw2e")
-	if m.editor.draft.Description != "dw2e" {
-		t.Fatalf("Insert mode interpreted motions: %q", m.editor.draft.Description)
-	}
-
-	m = motionEditor(fieldDescription, "<p>one two</p>", 0)
-	m = pressMotionKeys(m, "dw")
-	if m.editor.draft.Description != "<p>one two</p>" {
-		t.Fatalf("read-only HTML changed: %q", m.editor.draft.Description)
+	m.comments.composer.mode = editorInsert
+	pressMotionKeys(m, "dw2e")
+	if motionText(m) != "dw2e" {
+		t.Fatal("Insert interpreted motions")
 	}
 }
-
 func TestTierOneEditPreservesDirtyAndDiscardContract(t *testing.T) {
-	m := motionEditor(fieldDescription, "one two", 0)
-	m = pressMotionKeys(m, "dw")
+	m := nativeEditingModel("one two")
+	pressMotionKeys(m, "dw")
 	if !m.editor.dirty() {
-		t.Fatal("dw did not mark the Task draft dirty")
+		t.Fatal("dw did not mark Description dirty")
 	}
-	m = pressKey(m, tea.Key{Code: tea.KeyEsc}) // leave active Description
-	m = pressKey(m, tea.Key{Code: tea.KeyEsc}) // attempt to close dirty Task
+	m = pressKey(m, tea.Key{Code: tea.KeyEsc})
+	m = pressKey(m, tea.Key{Code: tea.KeyEsc})
 	if m.editor == nil || m.lastErr == "" {
-		t.Fatal("Esc closed a Task with unsaved motion edits")
+		t.Fatal("Esc closed a dirty Task")
 	}
 }

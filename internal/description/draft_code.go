@@ -261,6 +261,24 @@ func codeLeaves(b *Node) []*Node {
 	walk(b)
 	return result
 }
+
+// Keep inserted content inside the imported code wrapper, including its metadata.
+func (d *Draft) materializeCodeText(b *Node) *Node {
+	target := b
+	var walk func(*Node)
+	walk = func(n *Node) {
+		if n.Tag == "code" {
+			target = n
+			return
+		}
+		for i := range n.Children {
+			walk(&n.Children[i])
+		}
+	}
+	walk(b)
+	target.Children = append(target.Children, d.newNode(Node{Kind: Text}))
+	return &target.Children[len(target.Children)-1]
+}
 func codeSource(b *Node) string {
 	var text strings.Builder
 	for _, n := range codeLeaves(b) {
@@ -329,11 +347,7 @@ func (d *Draft) applyCodeEdits(b *Node, edits []codeEdit) error {
 		pos += codeUnitLength(n)
 	}
 	if len(leaves) == 0 {
-		target := findNode(d.state.nodes, cursor.Node)
-		if target == nil || target.Kind != Element || (target.Tag != "pre" && target.Tag != "code") {
-			return ErrStructure
-		}
-		target.Children = append(target.Children, d.newNode(Node{Kind: Text}))
+		d.materializeCodeText(b)
 		leaves = codeLeaves(b)
 	}
 	for _, e := range edits {

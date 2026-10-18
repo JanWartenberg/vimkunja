@@ -84,3 +84,33 @@ Adjacent finding retained for separate work: appending and typing into an import
 ### User acceptance and cursor commit
 
 Jan confirms the Shift+A line-end cursor now works and authorizes committing the shared insertion-cursor implementation with that fix. Steps 11 and 13 remain accepted; repeating the entire tutorial is not required. The imported completely empty Code typing defect above remains open and belongs to implementation follow-up, not a user acceptance task. Physical clipboard/Windows input edge cases and live Vikunja round-trip remain under ticket 10.
+
+
+### Shared text selections/clipboard and explicit Richtext conversion
+
+Jan requests implementation of consistent Visual Mode and system Clipboard bindings after v/V did nothing in a Plaintext Description. Title, Plaintext Description and Comment drafts now share one source-offset selection implementation (v/V, motions, viw/vaw, endpoint swap, delete/change, Esc); Native Richtext retains its structured selection engine. Space+y copies selected safe text or the current line (Native prose: logical paragraph). Space+p performs literal Paste at the cursor or replaces the selection, staying Normal. Copy keeps the selection; an empty Clipboard and read/write errors never delete it. Clipboard reads are guarded against changed focus, field, mode, text, cursor and selection. Newlines flatten in Title, normalize in prose/Comments and retain Code source line endings/Tabs. Space+Y now copies Link URLs; the local Native y/p register remains unchanged.
+
+:descriptionrichtext explicitly converts a plain Description draft to escaped Native paragraphs, preserving blank lines without interpreting pasted Markdown. Only :w persists it; :e! restores the original plain baseline. Existing HTML/Blocked descriptions are rejected. Tests include real Update/View selection and Clipboard flows across all four editors, failures/stale reads, Unicode graphemes, current Code-line Copy, line deletion, literal Code Paste with one-step Undo, and conversion/save/reopen/formatting against disposable SQLite. No commit requested. The earlier imported-empty-Code input defect remains separate.
+
+
+Validation: the initial Update/View tests failed for missing Plaintext/Title/Comment Visual Mode, missing system Clipboard bindings, and the unknown conversion command. Full `go test -buildvcs=false ./... ./.scratch/description-rendering/verification` passes, including both complete tutorial courses and Store tests. Final TUI package tests with the race detector, `go vet ./...`, both entrypoint builds and whitespace checks pass. Follow-up review covers cancelled/incomplete selection prefixes, line-change separators, preservation of Opaque confirmation, empty/failing Clipboard operations, stale reads even after returning the cursor to its old position, and actual conversion/save/reopen with unchanged Task Done. Physical host Clipboard acceptance remains for Jan; no commit, dependency, schema or local user database changes.
+
+
+### One Description editor — supersedes explicit conversion, 2026-10-18
+
+Jan rejects two Description editing modes. Empty, plain and HTML Descriptions now open the same document editor, with selection and formatting immediately available. The previously proposed `:descriptionrichtext` command is removed. Plain source imports literally as paragraphs, preserving empty lines and whitespace on opening. Reading/selecting/resizing and metadata-only saves retain the exact source baseline. Actual Description edits produce HTML; Undo before save restores the original plain bytes, and `:e!` discards the draft. Title/Comment selections remain in their shared text module; Description uses its structured selection engine. All support Space+y/p for the system Clipboard; Space+Y copies a Link URL. Async Paste also rejects stale results after moving away and back.
+
+Review findings fixed in this slice:
+
+- **Medium:** Plain source passed through HTML parsing lost literal whitespace/anchors. Build literal Text nodes directly; test exact displayed text and unchanged baseline.
+- **Medium:** Unification exposed missing ordinary Vim editing behavior: final-word `dw` left a character, counted `dd` deleted only one block, invalid `d2Q` leaked the count into the next motion, and internal operator selections leaked into Undo. Word ranges, sibling cursor placement, count reset and one-command Undo groups are corrected. `C/D`, counted `x`, `r` and `~` preserve ordinary editing behavior and inline marks.
+- **Medium:** Blockwise `Vc` could insert into a neighboring paragraph. Retain the first selected paragraph as insertion context.
+- **Medium:** Tiny Description geometry disagreed with the renderer, preventing access to checklist summaries; manual scrolling also kept the cursor offscreen when typing. Match layout thresholds and resume following on Insert/edit. Summary rows remain scrollable without gaining a source cursor.
+- **Medium:** Imported completely empty `<pre><code></code></pre>` rejected typing. Materialize its first Text leaf inside the existing code wrapper, preserving wrapper/ancestor metadata. Real Update tests cover `i` and `A`, save preparation and Undo for bare and quoted Code.
+- **Low:** README still described a separate plain Description path. Active docs/help now describe one editor; earlier conversion notes above are historical and superseded.
+
+Targeted tests reproduced the operator/count/empty-Code failures before fixes and now pass. No additional user acceptance of steps 11/13 is requested. Remaining manual work: a short free-editor check with the actual OS Clipboard/terminal, plus the live Vikunja compatibility round-trip tracked by ticket 10. No commit requested.
+
+Final validation of the unified editor and review fixes: `go test -buildvcs=false ./... ./.scratch/description-rendering/verification` passes, including Store and both complete tutorial courses. `go test -race -buildvcs=false ./internal/description ./internal/tui ./internal/tutorial`, `go vet -buildvcs=false ./...` and both entrypoint builds pass. Whitespace checks pass. No additional confirmed findings remain in the reviewed changes; physical OS Clipboard/terminal and live Vikunja acceptance are still outstanding. Changes remain uncommitted.
+
+Jan authorizes committing this reviewed unified-editor/Clipboard slice. Manual free-editor/OS Clipboard and live Vikunja acceptance remain open as documented; tutorial steps 11/13 stay accepted.

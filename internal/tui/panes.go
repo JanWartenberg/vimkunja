@@ -95,6 +95,13 @@ func (m *model) editorFieldViewport(field editorField, value string, width int) 
 		}
 		return value
 	}
+	if m.editor.normal.selection != nil {
+		lo, hi := m.editor.normal.selectionRange(m.editor.fieldValue(), m.editor.cursor)
+		if start > 0 {
+			return "…" + renderSelectionRange(strings.TrimPrefix(value, "…"), start, lo, hi)
+		}
+		return renderSelectionRange(value, 0, lo, hi)
+	}
 	if m.nativeEditorCursorActive() {
 		return value
 	}
@@ -664,7 +671,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		descriptionViewportRows = layout.rows
 		end := min(len(layout.lines), layout.start+layout.rows)
 		for _, line := range layout.lines[layout.start:end] {
-			lines = append(lines, m.editorDescriptionText(line))
+			lines = append(lines, line.text)
 		}
 	}
 	if descriptionScrollable {
@@ -1043,7 +1050,7 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	}
 	for row := 0; row < descriptionRows; row++ {
 		if line := start + row; line < len(desc) {
-			body = append(body, "  "+m.editorDescriptionText(desc[line]))
+			body = append(body, "  "+desc[line].text)
 		} else {
 			body = append(body, "")
 		}
@@ -1086,7 +1093,7 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 // Detail Pane. The metadata and Comments entry remain available after Esc.
 func renderFocusedCompactDescription(m *model, textW, textH int) string {
 	e := m.editor
-	mode := "NORMAL"
+	mode := e.normal.selectionLabel()
 	if e.mode == editorInsert {
 		mode = "INSERT"
 	}
@@ -1113,7 +1120,7 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 		desc = layout.lines
 		for row := 0; row < available; row++ {
 			if line := layout.start + row; line < len(desc) {
-				lines = append(lines, m.editorDescriptionText(desc[line]))
+				lines = append(lines, desc[line].text)
 			} else {
 				lines = append(lines, "")
 			}
@@ -1136,7 +1143,7 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 	e.descScroll = start
 	for row := 0; row < available; row++ {
 		if line := start + row; line < len(desc) {
-			lines = append(lines, m.editorDescriptionText(desc[line]))
+			lines = append(lines, desc[line].text)
 		} else {
 			lines = append(lines, "")
 		}
@@ -1249,6 +1256,10 @@ func (m *model) editorText(field editorField, value string) string {
 	if m.editor == nil || m.editor.field != field || !m.editorInputFocused() {
 		return value
 	}
+	if m.editor.mode == editorNormal && m.editor.normal.selection != nil {
+		lo, hi := m.editor.normal.selectionRange(m.editor.fieldValue(), m.editor.cursor)
+		return renderSelectionRange(value, 0, lo, hi)
+	}
 	if m.editor.mode == editorInsert {
 		return insertCursorText(value, m.editor.cursor)
 	}
@@ -1340,34 +1351,6 @@ func (m *model) readOnlyDescriptionScrollLimit() int {
 	return max(0, len(lines)-available)
 }
 
-func (m *model) editorDescriptionText(line descriptionLine) string {
-	if m.editor == nil || m.focus != paneDetail || m.editor.field != fieldDescription || descriptionHasHTML(m.editor.draft.Description) {
-		return line.text
-	}
-	if m.editor.cursor < line.start || m.editor.cursor > line.end {
-		return line.text
-	}
-	if m.editor.mode == editorInsert {
-		if m.editorInputFocused() {
-			return insertCursorText(line.text, m.editor.cursor-line.start)
-		}
-		return line.text
-	}
-	if m.nativeEditorCursorActive() {
-		return line.text
-	}
-	cursor := m.editor.cursor - line.start
-	if m.editor.mode == editorNormal {
-		return normalCursorText(line.text, cursor)
-	}
-	if m.editor.mode == editorInsert {
-		return insertCursorText(line.text, cursor)
-	}
-	return line.text
-}
-
-// normalCursorText is Vim's static block cursor: white background and black
-// glyph, without adding a printable character to the line.
 func normalCursorText(value string, cursor int) string {
 	r := []rune(value)
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.dark)).Background(lipgloss.Color(tuiTheme.bright))

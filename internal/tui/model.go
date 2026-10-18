@@ -54,13 +54,14 @@ type Config struct {
 }
 
 type model struct {
-	codeConfig          Config
-	store               vimkunja.Store
-	perPage             int
-	disableCursorShapes bool
-	now                 func() time.Time
-	clipboardWrite      func(string) error
-	clipboardRead       func() (string, error)
+	codeConfig              Config
+	store                   vimkunja.Store
+	perPage                 int
+	disableCursorShapes     bool
+	now                     func() time.Time
+	clipboardWrite          func(string) error
+	clipboardRead           func() (string, error)
+	textClipboardGeneration uint64
 
 	width            int
 	height           int
@@ -457,6 +458,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if _, released := key.(tea.KeyReleaseMsg); released {
 			return m, nil
 		}
+		m.textClipboardGeneration++
 		// Keep the save's editor and close/quit intent stable until completion.
 		// Ctrl-C remains the explicit application-wide emergency exit.
 		if m.savingEditor != nil && strings.ToLower(key.String()) != "ctrl+c" {
@@ -557,8 +559,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.leaderArmed {
 			m.leaderArmed = false
-			if k == "y" && m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionActive && m.editor.descriptionView() != nil {
-				return m, m.copyNativeLink()
+			if cmd, handled := m.textClipboardKey(k); handled {
+				return m, cmd
 			}
 			if m.nativePaletteKey(k) {
 				return m, nil
@@ -957,6 +959,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searchViewport = clamp(m.searchViewport, 0, max(0, len(m.searchResults)-1))
 		return m, nil
 
+	case textCopiedMsg:
+		if typed.err != nil {
+			m.recordError(fmt.Errorf("write system clipboard: %w", typed.err))
+		} else {
+			m.toast = "Text copied to system clipboard"
+		}
+		return m, nil
+	case textClipboardReadMsg:
+		m.applyTextClipboardRead(typed)
+		return m, nil
 	case linkCopiedMsg:
 		if typed.err != nil {
 			m.recordError(fmt.Errorf("write system clipboard: %w", typed.err))
@@ -1397,6 +1409,9 @@ func isSpaceKey(key tea.KeyMsg) bool {
 
 // leaderEligible keeps Space available for field and picker input.
 func (m *model) leaderEligible() bool {
+	if m.editor != nil && m.focus == paneDetail && m.editor.field == fieldDescription && m.editor.nativePrefix == "r" {
+		return false
+	}
 	return m.focus != paneDetail || m.editor == nil || m.editor.mode == editorNormal
 }
 
@@ -1954,7 +1969,7 @@ func (m *model) editorCursor() *tea.Cursor {
 	if m.commandMode || m.searchOpen || m.comments != nil {
 		return nil
 	}
-	if m.editor != nil && m.editor.mode == editorInsert {
+	if m.editor != nil && (m.editor.mode == editorInsert || m.editor.normal.selection != nil) {
 		return nil
 	}
 	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && m.editor.descriptionView() != nil) {
@@ -2553,6 +2568,10 @@ func (m *model) renderStatusBar(w int) string {
 			hint = m.nativeModeHint()
 		}
 	}
+	if m.editorInputFocused() && m.editor.mode == editorNormal && m.editor.field == fieldTitle {
+		hint = strings.Join([]string{m.editor.normal.selectionLabel(), "v/V select", "Space y/p clipboard", "i edit", ":w save", "gt title", "gd due", "gp priority", "gl labels", "gc comments", "gn description"}, footerSeparator)
+
+	}
 	if m.focus == paneHelp {
 		hint = "Ctrl+W k tasks  •  :q close pane"
 	}
@@ -2578,7 +2597,13 @@ func (m *model) renderStatusBar(w int) string {
 			if m.comments.composer.mode == editorInsert {
 				mode = "INSERT"
 			}
-			hint = "[COMMENT " + mode + "] Esc normal  •  :w save  •  :q! discard"
+			if m.comments.composer.mode == editorNormal {
+				mode = m.comments.composer.normal.selectionLabel()
+			}
+			hint = strings.Join([]string{"[COMMENT " + mode + "]", "v/V select", "Space y/p clipboard", ":w save", ":q! discard"}, footerSeparator)
+			if m.comments.composer.mode == editorInsert {
+				hint = "[COMMENT INSERT] Esc normal  •  :w save  •  :q! discard"
+			}
 		}
 		if m.comments.commandMode {
 			hint = "COMMENTS COMMAND  :" + insertCursorText(m.comments.commandInput, m.comments.commandCursor)
