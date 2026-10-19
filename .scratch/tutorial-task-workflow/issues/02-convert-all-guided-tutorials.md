@@ -49,7 +49,7 @@ F12 validation passed: full Tutorial and tutorial-CLI tests (including both comp
 
 ### 2026-10-17 — acceptance and separate feature checkpoint
 
-Jan reports that the Rich-text tutorial otherwise fits and accepts the overall journey. The Code-whitespace cursor defect and the unconfirmed physical-key Backtick trigger are explicit open subtasks in [Rich-text follow-ups](../../description-rendering/issues/11-format-visual-selections-and-convert-touched-paragraphs.md#manual-acceptance-and-remaining-subtasks--2026-10-17). The general course remains partially manually checked; its remaining chapters are lower priority.
+Jan reports that the Rich-text tutorial otherwise fits and accepts the overall journey. The Code-whitespace cursor defect and the unconfirmed physical-key Backtick trigger are explicit open subtasks in [Rich-text follow-ups](../../../.archive/2026-10-19/description-rendering/issues/11-format-visual-selections-and-convert-touched-paragraphs.md#manual-acceptance-and-remaining-subtasks--2026-10-17). The general course remains partially manually checked; its remaining chapters are lower priority.
 
 The checkpoint also includes productive v/V formatting and paragraph-wide Checkbox conversion, the framed persistent Space palette with an active/expired cue, and Ex Tab completion to the longest shared prefix while retaining candidates. The separate Fuzz audit and its fixes/tests/corpus are excluded.
 

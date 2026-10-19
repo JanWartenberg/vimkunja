@@ -16,7 +16,7 @@
 
 **Dependencies satisfied:** [05 — native projection/navigation](../../../2026-10-08/description-rendering/issues/05-implement-native-description-projection-and-navigation.md), completed 2026-10-08; [04 — atomic saves](../../../2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md), completed 2026-10-07 (committed 2026-10-08).
 
-**Contract:** [spec.md](../../../../.scratch/description-rendering/spec.md), [decision/handoff ticket 02](../../../../.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md), [corpus and traceability](../../../../.scratch/description-rendering/corpus.md), [83 synthetic fixtures](../../../../.scratch/description-rendering/corpus.json), [keybinding contract](../../../../docs/keybindings.md).
+**Contract:** [spec.md](../../../2026-10-19/description-rendering/spec.md), [decision/handoff ticket 02](../../../2026-10-19/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md), [corpus and traceability](../../../../.scratch/description-rendering/corpus.md), [83 synthetic fixtures](../../../../.scratch/description-rendering/corpus.json), [keybinding contract](../../../../docs/keybindings.md).
 
 ## Scope
 

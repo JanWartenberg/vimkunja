@@ -375,6 +375,11 @@ func (m *model) nativePaletteKey(key string) bool {
 		}
 	}
 	if sel == nil {
+		format := map[string]string{"b": "make it bold", "i": "make it italic", "s": "strike it through"}
+		if action := format[key]; action != "" {
+			m.recordError(fmt.Errorf("Select text first (v/V or viw) to %s", action))
+			return true
+		}
 		if key == "c" {
 			m.applyNative(description.Action{Kind: description.CreateCode}, false, true)
 			return true

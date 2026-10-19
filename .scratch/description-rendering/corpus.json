@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "status": "decision-synchronized-unexecuted",
-  "contract": "spec.md",
+  "contract": "../../.archive/2026-10-19/description-rendering/spec.md",
   "provenance": {
     "kind": "synthetic",
     "vikunja_version": null,

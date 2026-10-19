@@ -49,12 +49,14 @@ const (
 	Type
 	ReplaceCharacters
 	ToggleCase
+	InsertLink
 )
 
 type Action struct {
 	Count           int
 	Kind            ActionKind
 	Text            string
+	Label           string // Visible text for InsertLink.
 	inside          bool
 	skipEscape      bool
 	Tabstop, Indent int
@@ -378,7 +380,7 @@ func (d *Draft) Redo() bool {
 }
 func (d *Draft) Apply(a Action, confirmed bool) error {
 	d.confirmation, d.confirmationBrief = "", ""
-	if !utf8.ValidString(a.Text) {
+	if !utf8.ValidString(a.Text) || !utf8.ValidString(a.Label) {
 		return fmt.Errorf("%w: invalid UTF-8 text", ErrStructure)
 	}
 	if d.Classification() == Blocked && a.Kind != ClearDescription && a.Kind != RecoverText {
@@ -666,6 +668,8 @@ func (d *Draft) edit(a Action) error {
 
 	case EscapeCodeMarker, CreateCode, CodeBefore, CodeAfter, InsertTab, IndentCode, OutdentCode, Retab, RetabAll:
 		return d.editCode(a)
+	case InsertLink:
+		return d.insertLink(a.Text, a.Label)
 	case EditLink:
 		return d.editLink(a.Text)
 	case IndentList, OutdentList:

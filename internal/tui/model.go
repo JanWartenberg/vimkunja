@@ -980,7 +980,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.PasteMsg:
 		if m.editor != nil && m.editor.nativeLink != nil {
 			p := m.editor.nativeLink
-			p.input = insertTextAtCursor(p.input, &p.cursor, typed.Content)
+			p.insertText(typed.Content)
 			return m, nil
 		}
 		if m.editor != nil && m.editor.nativePending != nil {
@@ -1004,7 +1004,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.recordError(typed.err)
 				} else {
 					p := typed.link
-					p.input = insertTextAtCursor(p.input, &p.cursor, typed.text)
+					p.insertText(typed.text)
 				}
 			}
 			return m, nil

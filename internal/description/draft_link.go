@@ -183,6 +183,32 @@ func (d *Draft) editLink(value string) error {
 	return nil
 }
 
+// insertLink keeps literal text insertion and link formatting in one atomic edit.
+func (d *Draft) insertLink(value, label string) error {
+	if err := ValidateLinkURL(value); err != nil {
+		return err
+	}
+	if label == "" || strings.ContainsAny(label, "\r\n") {
+		return fmt.Errorf("Enter a non-empty, single-line Link text")
+	}
+	if d.InCode() || d.state.selection != nil || d.currentLink() != nil {
+		return fmt.Errorf("Insert a Link in ordinary text outside an existing Link")
+	}
+	if err := d.edit(Action{Kind: Insert, Text: label}); err != nil {
+		return err
+	}
+	ext, _ := d.extents()
+	end := anchorPosition(d.state.cursor, ext)
+	d.state.selection = &Selection{Start: d.anchorAt(end - len(label)), End: d.state.cursor, exclusive: true}
+	if err := d.editLink(value); err != nil {
+		return err
+	}
+	d.state.selection = nil
+	d.state.cursor = d.anchorAt(end)
+	d.state.syntax = 0
+	return nil
+}
+
 func linkLayers(path []Node, value string) []Node {
 	attrs := []Attribute{{"href", value}, {"target", "_blank"}}
 	for _, p := range path {

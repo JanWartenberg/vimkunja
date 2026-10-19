@@ -83,7 +83,7 @@ var helpLines = []string{
 	"  v/V, viw/vaw         Select text / blocks / semantic word; o swaps end, Esc cancels",
 	"  :selectblock          Select complete block; Code V stays within source lines",
 	"  Visual v/V Space b/i/u/s  Bold / italic / underline / strike; 0 clears marks",
-	"  Space l / Space Y    Link URL prompt / copy Link destination; empty URL unlinks",
+	"  Space l / Space Y    Link insert/edit / copy destination; empty URL unlinks",
 	"  Normal Space 1/2/3/0  H1/H2/H3/paragraph; palette closes on action, Esc or timeout",
 	"  y/p, u/Ctrl+R         Safe visible local register / paste; local draft Undo/Redo",
 	"  y/Enter, n/Esc        Confirm / cancel preserved-content changes",

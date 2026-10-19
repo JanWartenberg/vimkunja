@@ -14,6 +14,9 @@ import (
 type nativeLinkPrompt struct {
 	input  string
 	cursor int
+	create bool
+	url    string
+	label  bool
 }
 type linkCopiedMsg struct{ err error }
 
@@ -26,11 +29,12 @@ func (m *model) DescriptionLinkPromptOpen() bool {
 func (m *model) openNativeLink() {
 	e := m.editor
 	info, ok := e.nativeDraft.LinkAtCursor()
-	if e.nativeDraft.Selection() == nil && !ok {
-		m.recordError(fmt.Errorf("Select text or place the cursor in a Link"))
+	create := e.nativeDraft.Selection() == nil && !ok
+	if create && e.nativeDraft.InCode() {
+		m.recordError(fmt.Errorf("Links cannot be inserted in Code blocks"))
 		return
 	}
-	e.nativeLink = &nativeLinkPrompt{input: info.URL, cursor: len([]rune(info.URL))}
+	e.nativeLink = &nativeLinkPrompt{input: info.URL, cursor: len([]rune(info.URL)), create: create}
 	e.nativePrefix = ""
 	e.nativeCount = 0
 }
@@ -41,10 +45,27 @@ func (m *model) updateNativeLink(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		e.nativeLink = nil
 	case "enter":
-		if err := e.nativeDraft.Apply(description.Action{Kind: description.EditLink, Text: p.input}, false); err != nil {
+		if p.create && !p.label {
+			if err := description.ValidateLinkURL(p.input); err != nil {
+				m.recordError(err)
+				return m, nil
+			}
+			// A new prompt also rejects late clipboard reads from the URL step.
+			e.nativeLink = &nativeLinkPrompt{create: true, url: p.input, label: true}
+			return m, nil
+		}
+		action := description.Action{Kind: description.EditLink, Text: p.input}
+		if p.create {
+			label := p.input
+			if label == "" {
+				label = p.url
+			}
+			action = description.Action{Kind: description.InsertLink, Text: p.url, Label: label}
+		}
+		if err := e.nativeDraft.Apply(action, false); err != nil {
 			if errors.Is(err, description.ErrConfirmation) {
 				e.nativeLink = nil
-				m.applyNative(description.Action{Kind: description.EditLink, Text: p.input}, false, false)
+				m.applyNative(action, false, false)
 			} else {
 				m.recordError(err)
 			}
@@ -54,11 +75,17 @@ func (m *model) updateNativeLink(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.syncNativeDraft()
 	case "ctrl+v":
 		return m, m.readClipboard(func(msg *clipboardPastedMsg) { msg.editor = e; msg.link = p })
+	case "ctrl+u":
+		p.input, p.cursor = "", 0
 	default:
 		updateSingleLineTextInput(&p.input, &p.cursor, key)
 	}
 	return m, nil
 }
+func (p *nativeLinkPrompt) insertText(text string) {
+	p.input = insertTextAtCursor(p.input, &p.cursor, text)
+}
+
 func (m *model) copyNativeLink() tea.Cmd {
 	info, ok := m.editor.nativeDraft.LinkAtCursor()
 	if !ok {
@@ -74,7 +101,14 @@ func (m *model) copyNativeLink() tea.Cmd {
 func (m *model) nativeLinkHint() string {
 	e := m.editor
 	if p := e.nativeLink; p != nil {
-		return "LINK URL  " + insertCursorText(sanitizeTerminalText(p.input), p.cursor) + " · Enter apply · empty unlink · Esc cancel"
+		field, hint := "LINK URL", " · Enter apply · empty unlink · Esc cancel"
+		if p.create {
+			hint = " · Enter next: link text · Esc cancel"
+		}
+		if p.label {
+			field, hint = "LINK TEXT", " · Enter insert · empty uses URL · Esc cancel"
+		}
+		return field + "  " + insertCursorText(sanitizeTerminalText(p.input), p.cursor) + hint
 	}
 	info, ok := e.nativeDraft.LinkAtCursor()
 	if !ok {

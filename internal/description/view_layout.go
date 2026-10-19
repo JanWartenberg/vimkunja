@@ -180,11 +180,8 @@ func (v *View) Layout(width int, focused bool) Frame {
 			text := g.text
 			if text == "\t" {
 				cells := v.options.Tabstop - contentCol%v.options.Tabstop
-				text = strings.Repeat(" ", cells)
-				if b.code {
-					text = ">" + strings.Repeat("~", cells-1)
-					g.style |= TabStyle
-				}
+				text = ">" + strings.Repeat("~", cells-1)
+				g.style |= TabStyle
 			}
 			gw := ansi.StringWidth(text)
 			availableWidth := width

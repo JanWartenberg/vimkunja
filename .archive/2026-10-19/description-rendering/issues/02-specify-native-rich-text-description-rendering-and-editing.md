@@ -4,13 +4,13 @@
 
 **Specification scope:** The M3 product rules for a native, keyboard-first terminal projection and editor are resolved. Maintain the accepted contract and examples, then prepare concrete implementation tickets.
 
-**Implementation prerequisites:** M2's read-only HTML-to-plain-text reader is complete; see its [archived ticket](../../../.archive/2026-08-05/description-rendering/issues/01-render-vikunja-html-descriptions.md). The decisions in this ticket govern the M3 implementation; the existing [Rich-Text Description Contract](../spec.md) is the starting point and must be updated only when a decision here changes it.
+**Implementation prerequisites:** M2's read-only HTML-to-plain-text reader is complete; see its [archived ticket](../../../2026-08-05/description-rendering/issues/01-render-vikunja-html-descriptions.md). The decisions in this ticket govern the M3 implementation; the existing [Rich-Text Description Contract](../spec.md) is the starting point and must be updated only when a decision here changes it.
 
 **Category:** enhancement
 
 **Priority:** Medium
 
-**Status:** ready-for-agent
+**Status:** completed
 
 **Current handoff — 2026-10-04:** product feedback is resolved. Spec, keybindings, glossary and 83 independent synthetic examples are synchronized with accepted V2/V4/default decisions. Artifact/dependency probes and focused Store preservation/rollback tests pass; current native editor/serializer remains unimplemented. Concrete technical gaps: atomic baseline compare-and-save, source-slice Code decoding, Code-specific literal-prefix/Paste dispatch, real Windows/German terminal captures, Native round trips/fuzz/layout and versioned VOA output. The user authorizes this synchronization and technical verification pass; no production Native editor or dependency changes are included.
 
@@ -63,13 +63,13 @@ The rules are accepted; these tickets make the remaining work executable. No new
 
 | Ticket | Deliverable | Blocked by |
 | --- | --- | --- |
-| [03 — Source-preserving Description document model](../../../.archive/2026-10-07/description-rendering/issues/03-implement-source-preserving-description-model.md) | Document/HTML preservation — completed 2026-10-07 | None |
-| [04 — Atomic Description saves and Checkbox identities](../../../.archive/2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md) | Completed 2026-10-07; transactional conflict check and UUID adoption, committed 2026-10-08 | — |
-| [05 — Native terminal projection and document navigation](../../../.archive/2026-10-08/description-rendering/issues/05-implement-native-description-projection-and-navigation.md) | Read/navigation and terminal layout | Completed and committed 2026-10-08 |
-| [06 — Native draft editing, Visual Mode and local history](../../../.archive/2026-10-09/description-rendering/issues/06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery completed 2026-10-09; committed 2026-10-09 | — |
-| [07 — List, Checkbox and Quote structure editing](../../../.archive/2026-10-10/description-rendering/issues/07-implement-list-and-quote-structure-editing.md) | L01–L12 / Q01–Q04 completed 2026-10-10; committed 2026-10-10 | — |
-| [08 — Code editing, Tabs and terminal input](../../../.archive/2026-10-10/description-rendering/issues/08-implement-native-code-editing-and-terminal-input.md) | Completed 2026-10-10; exact Code input/exits, Tabs/retab/config and synthetic terminal dispatch; committed 2026-10-10 | — |
-| [09 — Inline syntax, Inline-Code and Link editing](../../../.archive/2026-10-10/description-rendering/issues/09-implement-inline-syntax-code-and-links.md) | Completed 2026-10-10; five review rounds and targeted final fixes verified, committed 2026-10-10 | — |
+| [03 — Source-preserving Description document model](../../../2026-10-07/description-rendering/issues/03-implement-source-preserving-description-model.md) | Document/HTML preservation — completed 2026-10-07 | None |
+| [04 — Atomic Description saves and Checkbox identities](../../../2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md) | Completed 2026-10-07; transactional conflict check and UUID adoption, committed 2026-10-08 | — |
+| [05 — Native terminal projection and document navigation](../../../2026-10-08/description-rendering/issues/05-implement-native-description-projection-and-navigation.md) | Read/navigation and terminal layout | Completed and committed 2026-10-08 |
+| [06 — Native draft editing, Visual Mode and local history](../../../2026-10-09/description-rendering/issues/06-implement-description-draft-editor-and-visual-modes.md) | Draft/Visual/history/recovery completed 2026-10-09; committed 2026-10-09 | — |
+| [07 — List, Checkbox and Quote structure editing](../../../2026-10-10/description-rendering/issues/07-implement-list-and-quote-structure-editing.md) | L01–L12 / Q01–Q04 completed 2026-10-10; committed 2026-10-10 | — |
+| [08 — Code editing, Tabs and terminal input](../../../2026-10-10/description-rendering/issues/08-implement-native-code-editing-and-terminal-input.md) | Completed 2026-10-10; exact Code input/exits, Tabs/retab/config and synthetic terminal dispatch; committed 2026-10-10 | — |
+| [09 — Inline syntax, Inline-Code and Link editing](../../../2026-10-10/description-rendering/issues/09-implement-inline-syntax-code-and-links.md) | Completed 2026-10-10; five review rounds and targeted final fixes verified, committed 2026-10-10 | — |
 | [10 — Native Rich-text compatibility, terminal acceptance and documentation](10-verify-native-rich-text-compatibility-and-documentation.md) | VOA/terminal evidence, properties/fuzz, Help/tutorial | Integration completion: 03–09; preparation unblocked |
 
 Completed specification work is distinct from future Native test execution. The remaining deliverable checkboxes below remain open until their owning tickets provide evidence.
@@ -78,7 +78,7 @@ Completed specification work is distinct from future Native test execution. The 
 
 - [x] Establish the corpus plan and initial risk-based fixture inventory.
 - [x] Resolve product rules/defaults and synchronize applicable fixture expectations; technical execution and exact VOA output remain outstanding.
-- [x] Add a concrete synthetic HTML fixture draft with proposed terminal projections; see [corpus](../corpus.md). Expectations are not accepted goldens yet.
+- [x] Add a concrete synthetic HTML fixture draft with proposed terminal projections; see [corpus](../../../../.scratch/description-rendering/corpus.md). Expectations are not accepted goldens yet.
 - [x] Draft semantic round-trip and opaque-content preservation assertions for those fixtures; artifact/dependency and existing Store checks added; Native M3 execution still outstanding.
 - [x] Review synthetic expectations, resolve product ambiguities, correct stale references, and add Mention label/ID cases (83 records).
 - [ ] Add representative versioned VOA-generated fixtures; synthetic inputs do not certify VOA output.
@@ -260,7 +260,7 @@ These are the recorded outcomes, not unanswered questions. Practical validation 
 
 ### Next session — resume here
 
-**Saved checkpoint:** `1a5e5b7` records the accepted interview decisions; `927796d` adds the original 34-fixture synthetic corpus draft. A subsequent [maintenance pass](../corpus.md#non-semantic-maintenance-pass) extends it to 42 fixtures with settled editing/fallback/safety scenarios and preservation-failure assertions, and repairs documentation drift without approving goldens or choosing unresolved semantics. Artifact validation passed for the extended draft. The Go tests/build passed at the original checkpoint; they are not M3 evidence. At that original checkpoint no expectations were approved; later user rule/field approvals are recorded in the corpus review log. No M3 behavior tests have run.
+**Saved checkpoint:** `1a5e5b7` records the accepted interview decisions; `927796d` adds the original 34-fixture synthetic corpus draft. A subsequent [maintenance pass](../../../../.scratch/description-rendering/corpus.md#non-semantic-maintenance-pass) extends it to 42 fixtures with settled editing/fallback/safety scenarios and preservation-failure assertions, and repairs documentation drift without approving goldens or choosing unresolved semantics. Artifact validation passed for the extended draft. The Go tests/build passed at the original checkpoint; they are not M3 evidence. At that original checkpoint no expectations were approved; later user rule/field approvals are recorded in the corpus review log. No M3 behavior tests have run.
 
 #### Latest user checkpoint — V2/V4 feedback and next-session grilling
 
@@ -305,7 +305,7 @@ These are the recorded outcomes, not unanswered questions. Practical validation 
 
 #### Accepted topics — remaining execution checks
 
-All former queue topics have product rules. The [current traceability matrix](../corpus.md#traceability--accepted-decisions-and-technical-checks) maps every fixture to its decision family. Remaining work is execution and practical evidence:
+All former queue topics have product rules. The [current traceability matrix](../../../../.scratch/description-rendering/corpus.md#traceability--accepted-decisions-and-technical-checks) maps every fixture to its decision family. Remaining work is execution and practical evidence:
 
 | Topic | Required checks |
 | --- | --- |
@@ -318,7 +318,7 @@ All former queue topics have product rules. The [current traceability matrix](..
 
 #### Current verification scope and prerequisites
 
-The 2026-10-04 request authorizes Contract/example synchronization and HTML/Store/terminal checks. Completed: 83-record artifact validation, source-preserving tokenizer probes, terminal decoder probes and Store byte-preservation/rollback regressions. Source review identifies the remaining conflict and paste-dispatch gaps. Full details, commands and evidence limits: [corpus verification](../corpus.md#technical-verification--2026-10-04).
+The 2026-10-04 request authorizes Contract/example synchronization and HTML/Store/terminal checks. Completed: 83-record artifact validation, source-preserving tokenizer probes, terminal decoder probes and Store byte-preservation/rollback regressions. Source review identifies the remaining conflict and paste-dispatch gaps. Full details, commands and evidence limits: [corpus verification](../../../../.scratch/description-rendering/corpus.md#technical-verification--2026-10-04).
 
 **Next work:** production Native model/parser/serializer/editor preparation; transaction-baseline conflict handling including combined saves; Code CRLF-preserving decoding/Paste routing; independent Native round-trip/property/fuzz execution; versioned VOA captures and real native layout/Windows input checks. No further product-card vote is needed. This pass does not implement the Native editor or change dependencies/schema.
 
@@ -392,3 +392,12 @@ User authorizes starting 03 while main cleanup continues. `internal/description`
 ### 2026-10-10 — Ticket 09 execution handoff
 
 Inline syntax, Native Inline-Code and separate Link URL editing are implemented in the same isolated worktree. Forty independent edit HTML goldens across eleven focused corpus records now run through actual TUI dispatch/prepared-save, with additional origin/escape/history, URL, clipboard and temporary-SQLite adoption tests. Product rules remain unchanged. Ticket 10 owns integrated coverage reporting, tutorial and real VOA/German-layout/Windows acceptance; synthetic results do not certify those environments.
+
+
+## Final acceptance and closure — 2026-10-19
+
+Jan reports **10 PASS / 0 FAIL / 0 NOT ASSESSED — ACCEPT** for AT-01–AT-10, including Code Paste, actual OS Clipboard, German keyboard/AltGr paths, resize without losing drafts, and the bidirectional live Vikunja round-trip with in-app reload. The tutorial and steps 11/13 were already accepted. This final report supersedes earlier partial verdicts and outstanding manual checks above. The checklist's displayed base commit 059559f is historical; acceptance incorporates the subsequent fixes through 0120fbb and the tested working state, rather than claiming those fixes existed in 059559f.
+
+All confirmed defects have focused regressions; affected full suites, race checks, vet and both entrypoint builds pass. Direct Link insertion, initially empty Link-text input (empty Enter uses URL), specific selection hints and visible prose Tab markers are included in the final reviewed feature slice. Existing Space+Y remains the accepted URL-copy binding; choosing a different lowercase binding is an optional future UX change, not an acceptance blocker. No further Rich-text implementation/acceptance subtask remains in this ticket. Technical fixtures/captures and supplemental verification remain in .scratch/description-rendering because automated tests consume those fixed paths; no fixture/data migration is part of closure.
+
+Jan authorizes committing the remaining changes and closing the accepted feature.

@@ -1,6 +1,6 @@
 # Format Visual selections and convert touched paragraphs to Checkboxes
 
-Status: in-progress
+Status: completed
 
 ## User request — 2026-10-17
 
@@ -152,6 +152,21 @@ CR-only fix validation: full `go test -buildvcs=false ./... ./.scratch/descripti
 
 Jan requests rechecking and committing this CR-only Code Paste fix. Re-review found no additional confirmed findings; the code matches the isolated fully tested snapshot. Concurrent Link insertion and general Tab-marker changes are excluded. Manual AT-06 recheck remains outstanding.
 
+
+### Direct Link insertion — 2026-10-19
+
+Jan requests Space+l without selecting existing text. Outside a Link, Normal Space+l now asks for URL, then Link text prefilled with the URL. Enter accepts the default; first typing/Paste replaces it, cursor editing remains available and Ctrl+U clears. Esc cancels either step without modifying the draft. Invalid URLs or empty/multiline labels retain the prompt. Existing-Link/selection editing stays a single URL prompt; Code rejects new Links. A single document action inserts literal label text and formats it atomically, with one-step Undo/Redo. Late clipboard reads from the preceding URL prompt are ignored. Focused actual Update tests cover empty/plain/formatted neighbors, Unicode/escaping, cancellation, validation, Paste, history and SQLite save adoption. Space+u is proposed as a more accessible URL-copy binding; Space+Y remains unchanged pending Jan's choice. No commit requested.
+
+
+Validation for direct Link insertion: full `go test -buildvcs=false ./... ./.scratch/description-rendering/verification` and both entrypoint builds pass; focused Link tests additionally cover insertion within a paragraph and preservation of a neighboring Mention. No physical terminal/Clipboard acceptance claimed.
+
+
+### Tab markers throughout Description — 2026-10-19
+
+Jan requests visible Tabs outside Code as well. The shared Description layout now renders every actual Tab as muted > followed by ~ to the next configured tabstop, including plain text and ordinary Native paragraphs. Spaces retain their existing appearance. Tests first failed with blank spaces in place of the markers, then pass with the shared projection change. Coverage includes focused/unfocused layout, Unicode/tabstop widths, literal native insertion, CopyLine and source preservation, and full TUI Normal/Insert rendering across shrink/grow. No storage/schema, clipboard or Tab insertion semantics change. Existing imported HTML whitespace interpretation remains unchanged; only actual document Tabs receive markers. No commit requested.
+
+Validation: full `go test -buildvcs=false ./... ./.scratch/description-rendering/verification`, both entrypoint builds and whitespace checks pass. Physical terminal acceptance remains for Jan.
+
 ## Visual case toggle — 2026-10-19
 
 Fixed Jan's `viw` → `~` report: the TUI explicitly rejected Visual case changes, while the document transform only handled counted Normal-mode characters. ToggleCase now uses the existing structured selection range, changes only Native text, preserves wrappers/URLs/Opaque content, and retains Visual Mode, selection direction and the active cursor until Esc. Selection anchors track Unicode case mappings that change UTF-8 byte width, so repeated toggles target the same text. One local Undo/Redo restores the entire operation. Regression first reproduced the exact “Leave Visual mode before character case changes” error; model tests now cover word, forward/reverse, block and Code-line selections, Unicode with changing UTF-8 width, plain-source conversion, formatting, protected atoms and save preparation. Description, TUI and Store package tests pass. No manual terminal acceptance claimed.
@@ -164,3 +179,21 @@ Reproduced Jan's exact error via `go test -buildvcs=false ./internal/tui -run '^
 Cause: cloneTaskDraft used append-to-nil for LabelIDs. It normalized a loaded empty slice to nil; the asynchronous reload safety check uses reflect.DeepEqual and falsely found a difference. slices.Clone retains the representation and the independent backing array. No weakening of the late-edit guard: focused actual-command tests cover Tasks with/without labels, before/after TUI save, visible browser text and unchanged persisted browser source; additional tests retain Title/Description/Labels edits made after dispatch. The minimal exact error test failed before the fix and now passes. No commit requested.
 
 Reload-fix validation: full `go test -buildvcs=false ./... ./.scratch/description-rendering/verification`, TUI race tests, affected-package vet, both entrypoint builds, gofmt and whitespace checks pass. Re-review confirms the production change is limited to lossless LabelIDs snapshot cloning; the existing reload conflict guard remains intact. Jan confirms the physical in-app reload works; AT-10 is manually accepted. Jan authorizes committing this reload fix and its regression tests separately from concurrent Link/Tab-marker work.
+
+
+### Selection hints and empty Link-text input — 2026-10-19
+
+Jan requests an actionable formatting error when nothing is selected, and an empty second input when inserting a Link: URL first, then empty Link text; Enter on empty uses the URL. Normal Space+b/i/s now names the formatting action and suggests v/V or viw. Space+u retains its existing Normal list-format meaning. The Link-text step no longer prepopulates or implicitly replaces a default: ordinary typing/Paste fills the empty input, clearing it and pressing Enter also selects the URL fallback, multiline input still fails without changing the draft, and Esc still cancels either step. Stale Clipboard results from the preceding URL step remain rejected. This supersedes the earlier prefilled-label behavior above.
+
+Focused actual Update tests failed before the change (prefilled input, rejection of empty labels, generic selection error), then pass. Existing URL/selection editing is unchanged. Space+d (destination) and Space+e are unassigned candidates for easier URL Copy; Jan has not selected a replacement binding, so current Space+Y remains implemented. No commit requested.
+
+Validation for these input/hint changes: full `go test -buildvcs=false ./... ./.scratch/description-rendering/verification`, TUI race tests, affected-package vet, both entrypoint builds, formatting and whitespace checks pass. No physical terminal acceptance is claimed for the new empty-label UI yet. Changes remain uncommitted.
+
+
+## Final acceptance and closure — 2026-10-19
+
+Jan reports **10 PASS / 0 FAIL / 0 NOT ASSESSED — ACCEPT** for AT-01–AT-10, including Code Paste, actual OS Clipboard, German keyboard/AltGr paths, resize without losing drafts, and the bidirectional live Vikunja round-trip with in-app reload. The tutorial and steps 11/13 were already accepted. This final report supersedes earlier partial verdicts and outstanding manual checks above. The checklist's displayed base commit 059559f is historical; acceptance incorporates the subsequent fixes through 0120fbb and the tested working state, rather than claiming those fixes existed in 059559f.
+
+All confirmed defects have focused regressions; affected full suites, race checks, vet and both entrypoint builds pass. Direct Link insertion, initially empty Link-text input (empty Enter uses URL), specific selection hints and visible prose Tab markers are included in the final reviewed feature slice. Existing Space+Y remains the accepted URL-copy binding; choosing a different lowercase binding is an optional future UX change, not an acceptance blocker. No further Rich-text implementation/acceptance subtask remains in this ticket. Technical fixtures/captures and supplemental verification remain in .scratch/description-rendering because automated tests consume those fixed paths; no fixture/data migration is part of closure.
+
+Jan authorizes committing the remaining changes and closing the accepted feature.

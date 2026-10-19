@@ -135,6 +135,8 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 
 ## Description Normal Mode
 
+**Final acceptance:** Jan accepted the complete AT-01–AT-10 workflow on 2026-10-19, including OS Clipboard, German/AltGr input, resize and live Vikunja reload. Stage-numbered validation notes below are historical implementation checkpoints; automated edge cases remain distinct from individual physical observations.
+
 
 All Descriptions, including empty and legacy plain-text values, use the same Native draft editor (06): `gn`, `Enter` activates navigation; `i/a/I/A` enters Insert. Ordinary editing, Visual Mode, local history and the Space palette are implemented. Advanced structure, Code/Tab/retab and syntax/URL actions are implemented in 07–09; practical terminal acceptance remains outstanding. There is no manual plain/rich editing-mode switch. Opening/navigation preserve stored source; actual edits produce Native HTML and remain unsaved until :w. Title and Comment drafts share the selection and system-clipboard bindings below.
 
@@ -181,6 +183,7 @@ Native Normal Mode also supports `ciw`/`caw` and `diw`/`daw`. Change selects the
 | `Space+q` | Toggle the applicable local Quote layer; no implicit expansion to unselected blocks | Implemented (07); synthetic tests, practical terminal acceptance pending |
 | `Space+c` | Create Code block | Implemented (08); synthetic editor/config tests, real terminal acceptance pending |
 | `Space+o` | Toggle Projects Pane; never a Description formatting command | Agreed |
+| `Space+l` without a selection, outside a link | Insert at the cursor: URL, Enter, link text, Enter. The text field starts empty; Enter on empty text uses the URL as label. Typing/Paste fills it; Ctrl+U clears. Esc cancels without edits; one Undo removes the inserted link. Unavailable in Code. | Implemented; focused UI/save regression tests |
 | `Space+l` inside an existing link | Prompt with its current URL; link text remains ordinary Description text | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
 | `Space+Y` inside a link | Copy its destination URL to the system clipboard without opening it | Implemented (09); synthetic editor/save tests, practical terminal acceptance pending |
 
@@ -267,8 +270,8 @@ the useful error tail.
 
 - A **Pane** is focusable; a **View** is a Task representation inside the Tasks Pane. See [`../CONTEXT.md`](../CONTEXT.md).
 - A Checkbox list is embedded rich text in a Description; it is distinct from the Task Done state.
-- Preserve documented Vim Visual-Mode motions and operators. The rejected direct `b`, `i`, `u`, `s`, and `l` proposal and sources are recorded in [the binding review](../.scratch/description-rendering/research-vim-visual-bindings.md).
-- The Space formatting palette's framed, persistent hints and compact-height replacement threshold are implemented; practical validation remains outstanding in [the rich-text contract](../.scratch/description-rendering/spec.md).
+- Preserve documented Vim Visual-Mode motions and operators. The rejected direct `b`, `i`, `u`, `s`, and `l` proposal and sources are recorded in [the binding review](../.archive/2026-10-19/description-rendering/research-vim-visual-bindings.md).
+- The Space formatting palette's framed, persistent hints and compact-height replacement threshold are implemented; the accepted behavior is recorded in [the rich-text contract](../.archive/2026-10-19/description-rendering/spec.md).
 - Editable delimiters count as ordinary Vim characters, including in `5l`. Protected quote prefixes, Code fences, and emphasis-layer separators are never cursor targets, copied text, or independently editable content.
 - Opaque subtrees require discernible atomic boundaries with configurable bracket style and highlighting color; final styling awaits prototype review. Wrapped continuation rows retain a non-editable arrow, distinct from hard-break markers.
 
