@@ -506,6 +506,9 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	if m.editor.isPickerMode() {
 		return renderDetailPickerOverlay(m, textW, textH)
 	}
+	if m.focusedDescriptionDetail(textH) {
+		return renderFocusedCompactDescription(m, textW, textH)
+	}
 	if textH < 12 {
 		return renderCompactTaskDetail(m, textW, textH)
 	}
@@ -896,9 +899,6 @@ func renderEmptyKanbanDetail(textW, textH int) string {
 
 func renderCompactTaskDetail(m *model, textW, textH int) string {
 	e := m.editor
-	if e.descriptionActive && textH < 12 {
-		return renderFocusedCompactDescription(m, textW, textH)
-	}
 	header := "TASK EDITOR"
 	if e.id == 0 {
 		header = "NEW TASK"

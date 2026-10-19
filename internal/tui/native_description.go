@@ -110,7 +110,7 @@ func (e *taskEditor) nativeDescriptionLayout(width, height int) multilineTextLay
 func (m *model) nativeDescriptionGeometry() (int, int) {
 	width, _ := m.viewportSize()
 	width -= 4
-	if m.detailTextHeight() >= 12 {
+	if m.detailTextHeight() >= 12 && !m.focusedDescriptionDetail(m.detailTextHeight()) {
 		layout := m.taskDetailDescriptionLayout(width, m.detailTextHeight())
 		if layout.scrollable {
 			width -= 2
@@ -118,7 +118,7 @@ func (m *model) nativeDescriptionGeometry() (int, int) {
 		return max(1, width), max(1, layout.rows)
 	}
 	rows := m.compactDescriptionRows()
-	if m.editor.descriptionActive && m.detailTextHeight() < 12 {
+	if m.focusedDescriptionDetail(m.detailTextHeight()) {
 		rows = max(1, m.detailTextHeight()-2)
 	} else {
 		width -= 2

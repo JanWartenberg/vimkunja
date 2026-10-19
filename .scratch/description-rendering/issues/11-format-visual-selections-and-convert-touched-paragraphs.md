@@ -114,3 +114,18 @@ Targeted tests reproduced the operator/count/empty-Code failures before fixes an
 Final validation of the unified editor and review fixes: `go test -buildvcs=false ./... ./.scratch/description-rendering/verification` passes, including Store and both complete tutorial courses. `go test -race -buildvcs=false ./internal/description ./internal/tui ./internal/tutorial`, `go vet -buildvcs=false ./...` and both entrypoint builds pass. Whitespace checks pass. No additional confirmed findings remain in the reviewed changes; physical OS Clipboard/terminal and live Vikunja acceptance are still outstanding. Changes remain uncommitted.
 
 Jan authorizes committing this reviewed unified-editor/Clipboard slice. Manual free-editor/OS Clipboard and live Vikunja acceptance remain open as documented; tutorial steps 11/13 stay accepted.
+
+
+### Short-terminal Description visibility regression — 2026-10-19
+
+Jan reports that selecting Description and pressing Enter leaves only the label visible at a short terminal height. Reproduced through actual WindowSize/KeyPress/Full View at terminal heights 30/31 and 34/35 (Detail text heights 12 and 14), for both legacy plain text and HTML. The regular metadata/identifier/Comments budget leaves zero Description body rows. The earlier focused workspace was reached only below 12 Detail rows; it missed these intermediate layouts.
+
+Why existing regressions missed it: the activation test asserted editing state without examining visible content; compact visibility coverage exercised 22 terminal rows, and the no-cursor test deliberately covers the inactive, hidden body. None asserted the complete activated View across every neighboring height. Prior green suites therefore did not certify this case.
+
+`go test -buildvcs=false ./internal/tui -run '^TestActivatedDescriptionIsVisibleAcrossTerminalHeights$' -count=1` failed before the fix with `activated Description invisible at terminal height 30 (detail=12)` and the matching label-only View. The same test now passes. Active Description uses the existing focused workspace when the actual regular row budget is zero; rendering, native navigation geometry, viewport scrolling and cursor eligibility share this decision. Regular metadata remain accessible after Esc. No source/data/schema changes.
+
+New regressions assert real rendered Description content for every terminal height 18–46, with plain and HTML input. Additional 55/100-column shrink/grow journeys check unsaved text, on-screen insertion bar, one-step Undo and returning to Title. No debug instrumentation remains. No commit requested.
+
+Validation: full `go test -buildvcs=false ./... ./.scratch/description-rendering/verification`, TUI race tests, affected-package vet, both entrypoint builds, formatting and whitespace checks pass. This confirms automated rendered-view behavior; the physical terminal screenshot has not been rerun by Jan.
+
+Jan confirms the short-terminal Description visibility fix works and authorizes a separate commit. The focused-period escaping report is a subsequent, separate investigation.

@@ -1957,7 +1957,7 @@ func (m *model) nativeEditorCursorActive() bool {
 	}
 	// The tiny focused Description workspace has a different row geometry from
 	// the compact Detail document; its insertion caret follows rendered content.
-	return !(m.editor.descriptionActive && m.detailTextHeight() < 12)
+	return !m.focusedDescriptionDetail(m.detailTextHeight())
 }
 
 // Insertion positions come from the shared rendered anchor. Legacy coordinates
@@ -2158,18 +2158,18 @@ type taskDetailDescriptionLayout struct {
 	scrollable           bool
 }
 
-func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescriptionLayout {
-	e := m.editor
-	constrainedRegular := e.id != 0 && textH < 14
+// regularDescriptionRow is the first body row after the regular metadata.
+func (m *model) regularDescriptionRow(textH int) int {
+	constrainedRegular := m.editor.id != 0 && textH < 14
 	descriptionRow := 1 // Detail header.
 	if !constrainedRegular {
 		descriptionRow++ // Header separator.
 	}
 	descriptionRow += 4 // Project, Title, Priority, Due Date.
 	descriptionRow += 2 // Labels and Workflow Status.
-	if e.id != 0 {
+	if m.editor.id != 0 {
 		descriptionRow++ // Done.
-		if textH >= 12 && !e.isPickerMode() {
+		if textH >= 12 && !m.editor.isPickerMode() {
 			descriptionRow++ // Database identifier.
 		}
 	}
@@ -2177,6 +2177,19 @@ func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescript
 		descriptionRow++ // Description separator.
 	}
 	descriptionRow++ // Description label.
+	return descriptionRow
+}
+
+// Give an active Description a focused workspace whenever regular chrome would
+// leave no text row. Use the actual row budget rather than another height cutoff.
+func (m *model) focusedDescriptionDetail(textH int) bool {
+	return m.editor != nil && m.editor.descriptionActive && (textH < 12 ||
+		availableDetailDescriptionRows(textH, m.regularDescriptionRow(textH), m.editor.id != 0) == 0)
+}
+
+func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescriptionLayout {
+	e := m.editor
+	descriptionRow := m.regularDescriptionRow(textH)
 	rows := availableDetailDescriptionRows(textH, descriptionRow, e.id != 0)
 	text := e.draft.Description
 	scrollable := len(wrapTaskDescriptionForEditor(e, text, max(1, textW))) > rows

@@ -123,13 +123,13 @@ func (m *model) scrollDescriptionViewport(delta int) {
 	w, _ := m.viewportSize()
 	var lines []descriptionLine
 	var rows, start int
-	if !m.compactDetail() {
+	if !m.compactDetail() && !m.focusedDescriptionDetail(m.detailTextHeight()) {
 		layout := m.taskDetailDescriptionLayout(w-4, m.detailTextHeight())
 		lines, rows, start = layout.lines, layout.rows, layout.start
 	} else {
 		width := w - 4
 		rows = m.compactDescriptionRows()
-		if e.descriptionActive && m.detailTextHeight() < 12 {
+		if m.focusedDescriptionDetail(m.detailTextHeight()) {
 			rows = max(1, m.detailTextHeight()-2)
 		} else {
 			width -= 2
