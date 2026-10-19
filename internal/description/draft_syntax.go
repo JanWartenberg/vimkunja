@@ -7,6 +7,10 @@ import (
 
 const editorEscapable = "\\*_~`#-+.[]"
 
+// Ordinary periods have no disclosed escape target. Keep typed \. support
+// separate from the synthetic escapes displayed and edited around literal text.
+const editorDisclosedEscapable = "\\*_~`#-+[]"
+
 func textOrigins(n Node) []byte { out := make([]byte, len(n.Text)); copy(out, n.typed); return out }
 func (d *Draft) SetTarget(t Target) error {
 	if err := d.SetCursor(t.Anchor); err != nil {
@@ -614,7 +618,7 @@ func (d *Draft) editAdjacentSyntax(a Action) (bool, error) {
 	off := d.state.cursor.Offset
 	loc, _ := d.live().ResolveAnchor(d.state.cursor)
 	if a.Kind == Backspace && !a.skipEscape && off < len(n.Text) && textOrigins(*n)[off] == 0 {
-		escapable := editorEscapable
+		escapable := editorDisclosedEscapable
 		for _, id := range loc.Ancestors {
 			if p := findNode(d.state.nodes, id); p != nil && p.Tag == "code" {
 				escapable = "\\`"

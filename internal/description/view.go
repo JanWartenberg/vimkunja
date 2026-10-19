@@ -221,7 +221,7 @@ func (v *View) inline(nodes []Node, style Style, disclose bool, link string, lay
 			if disclose && style&Code == 0 {
 				var escaped []glyph
 				for _, g := range text {
-					needs := strings.ContainsAny(g.text, `\*_~`+"`"+`#-+.[]`)
+					needs := strings.ContainsAny(g.text, editorDisclosedEscapable)
 					if style&InlineCode != 0 {
 						needs = g.text == "`" || g.text == "\\"
 					}

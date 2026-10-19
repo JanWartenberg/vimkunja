@@ -129,3 +129,14 @@ New regressions assert real rendered Description content for every terminal heig
 Validation: full `go test -buildvcs=false ./... ./.scratch/description-rendering/verification`, TUI race tests, affected-package vet, both entrypoint builds, formatting and whitespace checks pass. This confirms automated rendered-view behavior; the physical terminal screenshot has not been rerun by Jan.
 
 Jan confirms the short-terminal Description visibility fix works and authorizes a separate commit. The focused-period escaping report is a subsequent, separate investigation.
+
+
+### Focused sentence punctuation — 2026-10-19
+
+After accepting the separate height fix (committed as b2209c0), Jan reports a synthetic backslash before the trailing period in the focused first practice paragraph. Reproduced with `TestFocusedDescriptionDoesNotEscapeSentencePeriod` through the full TUI View; model regressions also showed a Syntax:1 navigation target on an ordinary period and a hidden Backspace step that left abc. unchanged instead of deleting c.
+
+Cause: the focused inline disclosure escaped every literal period, using the same overly broad character set as adjacent-syntax editing. Ordinary periods are now excluded from synthetic disclosure and its adjacent-Backspace handling via a shared character set. Explicit typed backslash-period input remains supported by the unchanged input grammar. Source HTML and plain baselines are unchanged merely by opening/rendering. Tests cover plain/HTML sentences, decimal/domain punctuation, a literal numbered prefix, focused/unfocused display, cursor motion, Backspace and exact Undo. Existing protecting escapes for stars and deliberate escape/Undo tests remain green. A parallel read-only investigation independently identified the same display/edit coupling. No commit requested for this subsequent fix.
+
+Period-fix validation: the original full-View regression and semantic display/motion/Backspace regressions failed before the fix and now pass. Full `go test -buildvcs=false ./... ./.scratch/description-rendering/verification`, Description/TUI race tests, affected-package vet, both entrypoint builds and formatting/whitespace checks pass. No debug instrumentation remains. The height fix is committed; the period fix remains a separate uncommitted change.
+
+Jan authorizes committing the reviewed period-disclosure fix. AT-03 screenshots subsequently show the intended literal-star protection in the focused paragraph and unescaped literal stars after leaving that paragraph; these are distinct from the corrected ordinary-period escape. Screenshot evidence alone does not certify the external clipboard-copy portion of AT-03.
