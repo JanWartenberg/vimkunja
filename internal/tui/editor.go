@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1065,7 +1066,7 @@ func (m *model) projectPickerIndex(projectID int64, filter string) int {
 }
 
 func cloneTaskDraft(draft vimkunja.TaskDraft) vimkunja.TaskDraft {
-	draft.LabelIDs = append([]int64(nil), draft.LabelIDs...)
+	draft.LabelIDs = slices.Clone(draft.LabelIDs)
 	if draft.DescriptionBaseline != nil {
 		baseline := *draft.DescriptionBaseline
 		draft.DescriptionBaseline = &baseline
