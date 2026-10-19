@@ -374,7 +374,7 @@ func (m *model) renderCommentsOverlay(background string, width int) string {
 	} else if ui.err != nil && len(ui.items) == 0 {
 		threadRows = []string{"Unable to load Comments: " + ui.err.Error()}
 	} else if len(threadRows) == 0 {
-		threadRows = []string{"No comments yet. Press a, i, or o to append one."}
+		threadRows = []string{"No comments yet. Press a to add one."}
 	}
 	ui.viewport = clamp(ui.viewport, 0, max(0, len(threadRows)-available))
 	if selectedStart < ui.viewport {
