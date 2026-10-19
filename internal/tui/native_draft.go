@@ -133,10 +133,6 @@ func (m *model) nativeEditKey(key string) bool {
 		e.nativePrefix = "r"
 		return true
 	case "~":
-		if sel != nil {
-			m.recordError(fmt.Errorf("Leave Visual mode before character case changes"))
-			return true
-		}
 		m.applyNative(description.Action{Kind: description.ToggleCase, Count: max(1, e.nativeCount)}, false, false)
 		return true
 	case "C", "D":

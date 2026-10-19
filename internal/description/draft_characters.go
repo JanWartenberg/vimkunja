@@ -12,6 +12,9 @@ func (d *Draft) transformCharacters(a Action) error {
 	if a.Kind == ReplaceCharacters && (uniseg.GraphemeClusterCount(a.Text) != 1 || strings.ContainsAny(a.Text, "\r\n")) {
 		return ErrStructure
 	}
+	if a.Kind == ToggleCase && d.state.selection != nil {
+		return d.toggleSelectionCase()
+	}
 	if d.state.syntax != 0 {
 		return ErrStructure
 	}
@@ -70,15 +73,7 @@ func (d *Draft) transformCharacters(a Action) error {
 				}
 				replacement := a.Text
 				if a.Kind == ToggleCase {
-					replacement = strings.Map(func(r rune) rune {
-						if unicode.IsUpper(r) || unicode.IsTitle(r) {
-							return unicode.ToLower(r)
-						}
-						if unicode.IsLower(r) {
-							return unicode.ToUpper(r)
-						}
-						return r
-					}, g)
+					replacement = strings.Map(toggleCaseRune, g)
 				}
 				changed.WriteString(replacement)
 				end += len(g)
@@ -96,4 +91,52 @@ func (d *Draft) transformCharacters(a Action) error {
 	}
 	walk(block.Children)
 	return nil
+}
+
+// Transform only selected text; wrappers, link destinations and preserved atoms
+// retain their source. Selection ranges already include whole graphemes.
+func (d *Draft) toggleSelectionCase() error {
+	lo, hi, ext := d.selectionRange()
+	var walk func([]Node)
+	walk = func(nodes []Node) {
+		for i := range nodes {
+			n := &nodes[i]
+			if n.Kind == Opaque {
+				continue
+			}
+			if n.Kind != Text {
+				walk(n.Children)
+				continue
+			}
+			e := ext[n.ID]
+			if e.start >= hi || e.end <= lo {
+				continue
+			}
+			a, b := max(0, lo-e.start), min(len(n.Text), hi-e.start)
+			old, flags := n.Text, textOrigins(*n)
+			replacement := strings.Map(toggleCaseRune, old[a:b])
+			// Case mappings can change UTF-8 width. Keep both selection ends
+			// and the active cursor attached to the same source characters.
+			for _, anchor := range []*Anchor{&d.state.cursor, &d.state.selection.Start, &d.state.selection.End} {
+				if anchor.Node == n.ID && anchor.Offset > a {
+					end := min(anchor.Offset, b)
+					anchor.Offset += len(strings.Map(toggleCaseRune, old[a:end])) - (end - a)
+				}
+			}
+			n.Text = old[:a] + replacement + old[b:]
+			n.typed = append(append(append([]byte(nil), flags[:a]...), make([]byte, len(replacement))...), flags[b:]...)
+		}
+	}
+	walk(d.state.nodes)
+	return nil
+}
+
+func toggleCaseRune(r rune) rune {
+	if unicode.IsUpper(r) || unicode.IsTitle(r) {
+		return unicode.ToLower(r)
+	}
+	if unicode.IsLower(r) {
+		return unicode.ToUpper(r)
+	}
+	return r
 }
