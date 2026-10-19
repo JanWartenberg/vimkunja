@@ -155,14 +155,9 @@ func (d *Draft) editCodeSource(b *Node, a Action) error {
 			return nil
 		}
 		if start == len(source) && start > 0 {
-			start--
-			if start > 0 && source[start-1] == '\r' {
-				start--
-			}
-		} else if strings.HasPrefix(source[end:], "\r\n") {
-			end += 2
-		} else if strings.HasPrefix(source[end:], "\n") {
-			end++
+			start = graphemeBefore(source, start)
+		} else {
+			end += sourceNewlineLength(source, end)
 		}
 		return d.applyCodeEdits(b, []codeEdit{{start, end, ""}})
 	case Delete, Backspace:
@@ -204,14 +199,9 @@ func (d *Draft) editCodeSource(b *Node, a Action) error {
 		}
 	} else {
 		for pos := start; pos < end; {
-			stop := end
-			if i := strings.Index(source[pos:end], "\n"); i >= 0 {
-				stop = pos + i
-			}
+			_, lineEnd := codeLineBounds(source, pos)
+			stop := min(end, lineEnd)
 			contentEnd := stop
-			if contentEnd > pos && source[contentEnd-1] == '\r' {
-				contentEnd--
-			}
 			if contentEnd > pos {
 				if a.Kind == IndentCode {
 					edits = append(edits, codeEdit{pos, pos, strings.Repeat(" ", a.Indent)})
@@ -233,7 +223,10 @@ func (d *Draft) editCodeSource(b *Node, a Action) error {
 					}
 				}
 			}
-			pos = stop + 1
+			if stop == end {
+				break
+			}
+			pos = stop + sourceNewlineLength(source, stop)
 		}
 	}
 	return d.applyCodeEdits(b, edits)
@@ -458,15 +451,30 @@ func expandCodeTabs(text string, column, tabstop int) (string, int) {
 	return out.String(), column
 }
 
-// The end excludes CRLF's CR so line operations never split its two bytes.
+// A CRLF pair is one source newline; CR and LF are also valid independently.
+func sourceNewlineLength(text string, offset int) int {
+	if offset >= len(text) {
+		return 0
+	}
+	if strings.HasPrefix(text[offset:], "\r\n") {
+		return 2
+	}
+	if text[offset] == '\r' || text[offset] == '\n' {
+		return 1
+	}
+	return 0
+}
+
+func endsInSourceNewline(text string) bool {
+	return strings.HasSuffix(text, "\n") || strings.HasSuffix(text, "\r")
+}
+
+// The end excludes the complete newline so operations never split CRLF bytes.
 func codeLineBounds(text string, offset int) (int, int) {
-	start := strings.LastIndex(text[:offset], "\n") + 1
+	start := strings.LastIndexAny(text[:offset], "\r\n") + 1
 	end := len(text)
-	if i := strings.Index(text[offset:], "\n"); i >= 0 {
+	if i := strings.IndexAny(text[offset:], "\r\n"); i >= 0 {
 		end = offset + i
-		if end > start && text[end-1] == '\r' {
-			end--
-		}
 	}
 	return start, end
 }
@@ -531,11 +539,14 @@ func (d *Draft) remapCodeAnchors(id ID, mapOffset func(int) int) {
 }
 func codeNewline(text string, offset int) string {
 	_, end := codeLineBounds(text, offset)
-	if strings.HasPrefix(text[end:], "\r\n") {
-		return "\r\n"
+	if n := sourceNewlineLength(text, end); n > 0 {
+		return text[end : end+n]
 	}
-	if end == len(text) && strings.Contains(text, "\r\n") {
-		return "\r\n"
+	if previous := strings.LastIndexAny(text, "\r\n"); previous >= 0 {
+		if text[previous] == '\n' && previous > 0 && text[previous-1] == '\r' {
+			previous--
+		}
+		return text[previous : previous+sourceNewlineLength(text, previous)]
 	}
 	return "\n"
 }

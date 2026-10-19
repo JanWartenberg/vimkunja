@@ -189,10 +189,14 @@ func (v *View) textGlyphs(text string, id ID, style Style, link string) []glyph 
 	for it.Next() {
 		start, _ := it.Positions()
 		s := it.Str()
-		hard := s == "\n" || s == "\r\n"
-		out = append(out, glyph{text: terminalSafeText(s), style: style, target: Target{Anchor: Anchor{id, start}}, nav: true, hard: hard, word: wordClass(s), link: link})
+		hard := s == "\n" || s == "\r\n" || style&Code != 0 && s == "\r"
+		visible := terminalSafeText(s)
+		if hard && style&Code != 0 {
+			visible = s // Layout consumes line breaks; retain their source form internally.
+		}
+		out = append(out, glyph{text: visible, style: style, target: Target{Anchor: Anchor{id, start}}, nav: true, hard: hard, word: wordClass(s), link: link})
 	}
-	if v.inserting || len(out) == 0 || strings.HasSuffix(text, "\n") {
+	if v.inserting || len(out) == 0 || strings.HasSuffix(text, "\n") || style&Code != 0 && strings.HasSuffix(text, "\r") {
 		out = append(out, glyph{text: "", style: style, target: Target{Anchor: Anchor{id, len(text)}}, nav: true})
 	}
 	return out
@@ -339,6 +343,25 @@ func (v *View) add(n Node, prefix string, unit ID, code bool) {
 	b := block{id: n.ID, unit: unit, prefix: prefix, code: code}
 	if code {
 		b.friendly = v.inline(n.Children, Code, false, "", map[string]int{})
+		// A CRLF pair may straddle preserved wrappers. It still produces one row
+		// break, and no insertion target belongs between its two source bytes.
+		cr := -1
+		for i := range b.friendly {
+			g := &b.friendly[i]
+			if g.text == "" {
+				continue
+			}
+			if cr >= 0 && g.hard && g.text == "\n" {
+				g.text, g.hard, g.nav = "", false, false
+				for j := cr + 1; j < i; j++ {
+					b.friendly[j].nav = false
+				}
+			}
+			cr = -1
+			if g.hard && g.text == "\r" {
+				cr = i
+			}
+		}
 		b.disclosed = b.friendly
 	} else {
 		style := Style(0)

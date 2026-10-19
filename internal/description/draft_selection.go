@@ -74,17 +74,10 @@ func (d *Draft) selectionRange() (int, int, map[ID]extent) {
 				start, stop := codeLineBounds(source, lo-base)
 				_, stop = codeLineBounds(source, hi-base)
 				lo = base + start
-				if strings.HasPrefix(source[stop:], "\r\n") {
-					stop += 2
-				} else if strings.HasPrefix(source[stop:], "\n") {
-					stop++
-				}
+				stop += sourceNewlineLength(source, stop)
 				hi = base + stop
-				if lo == hi && lo > base && strings.HasSuffix(source, "\n") {
-					lo--
-					if lo > base && source[lo-base-1] == '\r' {
-						lo--
-					}
+				if lo == hi && lo > base && endsInSourceNewline(source) {
+					lo = base + graphemeBefore(source, lo-base)
 				}
 				return lo, hi, ext
 			}
@@ -874,7 +867,7 @@ func (d *Draft) ClampCodeSelection(target Anchor) Anchor {
 		for _, n := range ns {
 			if n.Kind == Text {
 				last = Anchor{n.ID, graphemeBefore(n.Text, len(n.Text))}
-				if strings.HasSuffix(n.Text, "\n") {
+				if endsInSourceNewline(n.Text) {
 					last.Offset = len(n.Text)
 				}
 			}

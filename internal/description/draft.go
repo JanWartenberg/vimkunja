@@ -1085,7 +1085,7 @@ func (d *Draft) InsertionView(v *View, on bool) {
 	}
 	if !on && d.state.syntax == 0 {
 		n := findNode(d.state.nodes, d.state.cursor.Node)
-		if n != nil && n.Kind == Text && d.state.cursor.Offset == len(n.Text) && n.Text != "" && !strings.HasSuffix(n.Text, "\n") {
+		if n != nil && n.Kind == Text && d.state.cursor.Offset == len(n.Text) && n.Text != "" && !(strings.HasSuffix(n.Text, "\n") || d.InCode() && strings.HasSuffix(n.Text, "\r")) {
 			d.state.cursor.Offset = graphemeBefore(n.Text, d.state.cursor.Offset)
 		}
 	}
