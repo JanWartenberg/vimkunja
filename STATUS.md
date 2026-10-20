@@ -20,6 +20,12 @@ MVP, **Meilenstein 1** und **Meilenstein 2** sind abgeschlossen: tägliche Aufga
 
 - [Richtext-Fuzz-Nachprüfung](.scratch/description-rendering/fuzz-audit-2026-10-17/report.md) – abgeschlossen; deterministische Regressionen und kurze CI-Fuzz-Prüfungen sichern die Korrekturen ab.
 
+## Vereinbarte nächste Schritte
+
+1. [URL-Copy-Taste](.scratch/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – freie Kleinschreibung wählen, umsetzen und prüfen.
+2. [Offene Subtasks prüfen und aufräumen](.scratch/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md) – echte Restarbeit von veralteten Statusangaben trennen; belegbar abgeschlossene Tickets archivieren.
+3. [GitHub-Initialisierung/Veröffentlichung abschließen](.scratch/publish-to-github/issues/01-publish-to-github.md) – verbleibende Release-Voraussetzungen klären und finalen Veröffentlichungsstand prüfen.
+
 ## Aktuelle Tickets
 
 Die All-Tasks-Übersicht, Task-Löschung, Cursor-Darstellung im Editor, Home/End-Aliasse, [Home/End im Insert Mode](.archive/2026-09-11/insert-mode-home-end/issues/01-support-home-end-in-insert-mode.md), Done-Toggle im Detail, Task-Metadaten-Darstellung, Task Labels, Task Comments inklusive Einzel-Löschung und [session-lokales Undo/Redo](.archive/2026-09-16/undo-task-actions/issues/01-undo-recent-task-actions.md) sind abgeschlossen. Die Standard-Kanban-Provisionierung, die einzelne und mehrfache manuelle Kanban Views, die Project-Hierarchie und die Globale Suche sind implementiert und archiviert. Die folgenden offenen Tickets sind nach Meilenstein eingeordnet; `needs-triage` in einem Ticket bedeutet weiterhin, dass dessen konkrete Spezifikation noch fehlt. Die Task-Status-Filter-Shortcuts sind implementiert und archiviert.
@@ -46,6 +52,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 20. [Erweiterte globale Suchabfragen und Ranking](.scratch/global-search-filter/issues/02-add-advanced-global-search-query-and-ranking.md) – Phrasen, Negation, Fuzzy-Matching und Ranking bewusst nach V1.
 21. [Fehlerhafte Project-Hierarchien diagnostizieren und reparieren](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – Feedback und sichere Reparatur bewusst nach dem Hierarchie-Reader.
 22. [Native Rich-Text-Beschreibungen](.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md) – abgeschlossen und archiviert; Implementierung 03–09 sowie Integration/Nacharbeiten 10/11 geprüft. Alle zehn manuellen Abnahmepunkte einschließlich Windows-/AltGr-, Clipboard-, Resize- und Live-Vikunja-Prüfung bestanden.
+22a. [Bequemere URL-Copy-Taste](.scratch/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – optionaler M3-Follow-up; freie Kleinschreibung statt `Space+Y` mit Jan wählen, danach konsistent verdrahten und dokumentieren.
 23. [Getrennte Historien für kontextspezifische Command-Prompts spezifizieren](.scratch/contextual-command-histories/issues/01-specify-independent-command-prompt-histories.md) – nach der M2-Ex-History; eigene session-lokale Historie je Prompt, ohne die Command-Grammatiken zu vereinheitlichen.
 23a. [Workspace-/Datenpräferenzen spezifizieren](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – Default-Project/View, Startfilter und persistierte Navigationspräferenzen; nach der lokalen TUI-Konfiguration.
 23b. [Multiline-Layout im Comment Composer wiederverwenden](.scratch/comment-composer-multiline-layout/issues/01-reuse-multiline-layout-in-comment-composer.md) – gemeinsames Multiline-Layout und einheitlicher Insert-Cursor implementiert; Regressionen für Umbruch, Leerzeilen, Scrollen und Unicode bestehen.

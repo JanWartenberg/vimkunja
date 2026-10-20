@@ -197,3 +197,7 @@ Jan reports **10 PASS / 0 FAIL / 0 NOT ASSESSED — ACCEPT** for AT-01–AT-10, 
 All confirmed defects have focused regressions; affected full suites, race checks, vet and both entrypoint builds pass. Direct Link insertion, initially empty Link-text input (empty Enter uses URL), specific selection hints and visible prose Tab markers are included in the final reviewed feature slice. Existing Space+Y remains the accepted URL-copy binding; choosing a different lowercase binding is an optional future UX change, not an acceptance blocker. No further Rich-text implementation/acceptance subtask remains in this ticket. Technical fixtures/captures and supplemental verification remain in .scratch/description-rendering because automated tests consume those fixed paths; no fixture/data migration is part of closure.
 
 Jan authorizes committing the remaining changes and closing the accepted feature.
+
+### Closure confirmation — 2026-10-19
+
+Jan requests final closure. Status remains completed; accepted implementation and closure are committed in 0b29408. The optional binding choice is now tracked separately in [Copy Link URL shortcut](../../../../.scratch/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) and does not reopen this ticket.

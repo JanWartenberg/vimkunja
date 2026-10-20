@@ -8,6 +8,8 @@
 
 **Status:** needs-triage
 
+**Order:** 3 of Jan's agreed next-work sequence: finish [URL-Copy shortcut](../../description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), then [subtask cleanup](../../release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md), then complete GitHub initialization/publication.
+
 ## VERBINDLICHE ENTSCHEIDUNG: Backup-Referenz niemals veröffentlichen
 
 **Nur `main` und ausdrücklich ausgewählte Tags veröffentlichen. `refs/original/refs/heads/main` und andere Backup-Referenzen dürfen NICHT auf GitHub gelangen. KEIN `git push --mirror`.**
@@ -32,7 +34,7 @@ Nach Prüfung erfolgt der tatsächliche Push mit denselben Referenzen ohne `--dr
 - Tickets, Specs, Prototypen, Archiv und Git-Historie möglichst mitnehmen; unfertige Ideen und dokumentierte Fehlentscheidungen sind kein Ausschlussgrund.
 - Keine Secrets, echten Nutzerdatenbanken, privaten oder unangemessenen persönlichen Inhalte veröffentlichen. Persönliche Inhalte zusätzlich manuell prüfen.
 - Leere Samples und synthetische Fixtures/Templates sind zulässig, sofern sie keine echten Nutzerdaten enthalten.
-- Vorbereitung kann parallel zum HTML-Richtext-Feature erfolgen. Ob dieses Feature Voraussetzung für die Erstveröffentlichung wird, ist noch nicht entschieden.
+- Rich-Text ist abgeschlossen und abgenommen. Vor Abschluss der Erstveröffentlichung folgen jetzt URL-Copy-Follow-up und Subtask-Cleanup; nicht alle übrigen M3-Features sind Veröffentlichungsvoraussetzungen.
 
 ## Prüfbefund vom 2026-10-04
 
@@ -103,7 +105,7 @@ Für einen produktiven frischen Start sollte die gewählte Vikunja-Version selbs
 - [ ] Konkrete Vikunja-Version durch Integrationstest belegen (Kompatibilitätsblocker).
 - [ ] Blanke DB / versioniertes Start-Template entscheiden; gegebenenfalls Schema-Prüfung und Initialisierungsworkflow spezifizieren.
 - [ ] Persönliche Inhalte und Commit-Metadaten prüfen; Veröffentlichungsumfang bestätigen.
-- [ ] Zeitpunkt der Erstveröffentlichung gegenüber dem HTML-Richtext-Feature entscheiden.
+- [x] Reihenfolge festgelegt: nach abgeschlossenem Rich-Text erst URL-Copy-Follow-up, dann Subtask-Cleanup, danach GitHub-Initialisierung/Veröffentlichung abschließen.
 - [ ] Aktuelle Änderungen sauber ordnen; reine Zeilenendenänderungen nicht als fachliche Änderungen committen.
 - [x] CI für Tests, beide Builds und Vet auf Linux/Windows vorbereiten.
 - [ ] Ersten echten GitHub-Actions-Lauf prüfen und native Windows-Terminaltests durchführen.
@@ -122,3 +124,7 @@ Möglichst alles transparent veröffentlichen, mit höchster Priorität für Cod
 ### 2026-10-04 — MIT und direkte Umsetzung
 
 Jan wählt MIT, beauftragt die direkte Umsetzung der übrigen behebbaren Findings und möchte einen frischen Start mit blanker DB oder Template prüfen. Die oben dokumentierten Vorbereitungen sind umgesetzt; ein produktives Start-Template bleibt eine offene Entscheidung.
+
+### 2026-10-19 — agreed next-work sequence
+
+Jan sets publication third, after URL-Copy usability and reconciliation of remaining subtasks. Rich-text AT-01–10 and the live Vikunja round-trip are accepted. Carry that evidence forward; the exact tested Vikunja release is not yet recorded in this ticket, so do not infer a version guarantee. Existing open publication requirements (startup contract, provenance/personal-content review, final history/secret checks and actual CI) remain to be reconciled and completed. This ticket update performs no GitHub creation, merge or push.

@@ -2,7 +2,7 @@
 
 Status: in-progress
 
-Implementation and automated verification complete. Jan accepts the Rich-text tutorial overall, with two tracked follow-ups; the general tutorial’s first third is manually checked, remaining chapters are lower priority.
+Implementation and automated verification complete. The Rich-text tutorial and its tracked follow-ups are accepted and closed (AT-01–10 PASS). The general tutorial’s first third is manually checked; remaining chapters are not yet manually accepted. Reconcile outstanding scope in the release cleanup before deciding closure.
 
 ## Agreed behavior
 
@@ -58,3 +58,7 @@ Pre-commit review used `review-changes`, inspecting staged feature changes and u
 ### Modal progress follow-up
 
 Jan requests the current chapter while the tutorial modal covers the task strip. Introductory and F1 help modals now display current / total at the top right, including after skipping chapters; long titles yield space to the counter. Actual runner coverage checks both course totals at 54x24. Rich-text Steps 11 and 13 are manually accepted, including Retab and the visible muted Tab cue tracked in ticket 11. Jan authorizes committing this follow-up separately from the subsequent shared insertion-cursor work.
+
+### 2026-10-19 — current acceptance and cleanup sequence
+
+Historical references above to open Rich-text cursor/Backtick/environment subtasks are superseded by final AT-01–10 acceptance and closure in 0b29408. No repeat Rich-text tutorial run is required. General tutorial manual coverage remains partial. Review whether any actual subtasks remain, and separate or close them with evidence, under [release subtask cleanup](../../release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md), after the URL-Copy shortcut and before finishing GitHub publication.
