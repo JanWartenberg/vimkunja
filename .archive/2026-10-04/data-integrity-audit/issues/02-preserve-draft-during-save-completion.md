@@ -22,7 +22,7 @@ Prevent input from changing the Detail session during its save; associate comple
 
 ## Evidence
 
-See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditEditDuringSaveRemainsDirty` in the ordinary TUI tests.
+See [audit report](../../../2026-10-20/data-integrity-audit/report.md) and `TestIntegrityAuditEditDuringSaveRemainsDirty` in the ordinary TUI tests.
 
 ## Comments
 

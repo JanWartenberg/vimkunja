@@ -22,7 +22,7 @@ Preserve done_at when Done does not transition. Respect the accepted undo exclus
 
 ## Evidence
 
-See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditCompletionTimestampPreservation` in ordinary regression coverage.
+See [audit report](../../../2026-10-20/data-integrity-audit/report.md) and `TestIntegrityAuditCompletionTimestampPreservation` in ordinary regression coverage.
 
 ## Comments
 

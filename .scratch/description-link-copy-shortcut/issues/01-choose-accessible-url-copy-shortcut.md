@@ -10,7 +10,7 @@
 
 **Status:** needs-triage
 
-**Order:** 1 of Jan's agreed next-work sequence. Follow with [subtask reconciliation](../../release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md), then GitHub publication.
+**Order:** 1 of Jan's agreed next-work sequence. Follow with [subtask reconciliation](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md), then GitHub publication.
 
 ## Scope and next action
 

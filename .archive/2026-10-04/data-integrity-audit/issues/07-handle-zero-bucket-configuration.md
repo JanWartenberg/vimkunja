@@ -22,7 +22,7 @@ Treat zero and NULL as unconfigured. Resolve an unconfigured default to the firs
 
 ## Evidence
 
-See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditZeroBucketConfiguration` in ordinary regression coverage.
+See [audit report](../../../2026-10-20/data-integrity-audit/report.md) and `TestIntegrityAuditZeroBucketConfiguration` in ordinary regression coverage.
 
 ## Comments
 

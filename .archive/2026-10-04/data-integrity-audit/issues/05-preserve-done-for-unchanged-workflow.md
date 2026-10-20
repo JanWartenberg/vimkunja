@@ -22,7 +22,7 @@ Distinguish loaded Workflow Status from an actual user change. Unrelated edits p
 
 ## Evidence
 
-See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditUnchangedWorkflowPreservesDone` in the ordinary Store tests.
+See [audit report](../../../2026-10-20/data-integrity-audit/report.md) and `TestIntegrityAuditUnchangedWorkflowPreservesDone` in the ordinary Store tests.
 
 ## Comments
 

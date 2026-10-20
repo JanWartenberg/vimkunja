@@ -22,7 +22,7 @@ Validate the destination inside the write transaction before removing any source
 
 ## Evidence
 
-See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditMissingTargetProject` in ordinary Store regression coverage.
+See [audit report](../../../2026-10-20/data-integrity-audit/report.md) and `TestIntegrityAuditMissingTargetProject` in ordinary Store regression coverage.
 
 ## Comments
 

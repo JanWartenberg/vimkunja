@@ -22,7 +22,7 @@ Reject additional Detail saves while one is in flight, including :wq/:wqa and di
 
 ## Evidence
 
-See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditRepeatedWriteDoesNotDuplicateTask` in the ordinary TUI tests.
+See [audit report](../../../2026-10-20/data-integrity-audit/report.md) and `TestIntegrityAuditRepeatedWriteDoesNotDuplicateTask` in the ordinary TUI tests.
 
 ## Comments
 

@@ -45,4 +45,4 @@ Jan clarifies that “set title” leaves the object ambiguous. The task line no
 
 ### 2026-10-16 — pilot accepted
 
-Jan accepts the task/reset/continue workflow and requests applying it to all tutorials. Full implementation and remaining verification are tracked in [ticket 02](../../../../.scratch/tutorial-task-workflow/issues/02-convert-all-guided-tutorials.md); this pilot is superseded by the shared course runner.
+Jan accepts the task/reset/continue workflow and requests applying it to all tutorials. Full implementation and remaining verification are tracked in [ticket 02](../../../2026-10-20/tutorial-task-workflow/issues/02-convert-all-guided-tutorials.md); this pilot is superseded by the shared course runner.

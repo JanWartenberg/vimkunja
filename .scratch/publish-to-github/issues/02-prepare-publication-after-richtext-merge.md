@@ -10,7 +10,7 @@
 
 **Startbedingung erfüllt:** Richtext und aufgabenbasierte Tutorials von `feature/tutorial-task-workflow` nach `main` übernommen.
 
-**Reihenfolge:** Vor Abschluss der Veröffentlichung zuerst [URL-Copy-Komfort](../../description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), dann [Subtask-Abgleich](../../release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md). Andere M3-Features sind keine pauschale Voraussetzung.
+**Reihenfolge:** Vor Abschluss der Veröffentlichung zuerst [URL-Copy-Komfort](../../description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), dann [Subtask-Abgleich](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md). Andere M3-Features sind keine pauschale Voraussetzung.
 
 **Erfüllte Dokumentationsvoraussetzung:** [Ticket 01 — Lizenz und Dokumentation](../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) ist abgeschlossen und archiviert.
 
@@ -78,3 +78,33 @@ Lizenz und Dokumentation für den aktuellen Stand sind geprüft und Ticket 01 is
 ### 2026-10-20 — Richtext-Integration und übernommene Folgeplanung
 
 Die im Richtext-Worktree am 2026-10-19 festgehaltene Reihenfolge bleibt erhalten: URL-Copy-Komfort, Subtask-Abgleich, danach Veröffentlichung abschließen. AT-01–10 und der Richtext-Live-Roundtrip sind abgenommen; die separate allgemeine Tutorial-Abnahme bleibt teilweise offen. Die auf `main` bereits belegte DB-Kompatibilität ausschließlich mit Vikunja 2.7.0 und die abgeschlossene Lizenzprüfung werden durch ältere offene Checklisten im Featurebranch nicht zurückgesetzt. Das dort noch vorhandene Gesamtticket 01 wird beim Merge nicht wieder als offenes Ticket angelegt; dieses Ticket 02 führt die verbleibende Arbeit weiter. Kein öffentlicher Push oder Umschreiben der Originalhistorie ist damit beauftragt.
+
+
+### 2026-10-20 — Subtask-Cleanup: Restarbeit übergeben
+
+Der technische Ticket-Abgleich ist erledigt; zwölf abgeschlossene Tickets und
+zwei Auditberichte sind archiviert. Der [Cleanup-Bericht](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md#reconciliation-result--2026-10-20)
+trennt verbleibende manuelle Abnahmen (allgemeines Tutorial ab Aufgabe 9,
+Comment-`~`, jüngster Satzzeichen-Fix) von bereits akzeptiertem Richtext/Layout.
+URL-Copy läuft auf Jans Auftrag parallel und bleibt dort zu bearbeiten.
+
+Die Veröffentlichungsarbeit bleibt offen: finale Arbeitsänderungen committen,
+Ausgangscommit wählen, releasebezogene Prüfungen/CI, Veröffentlichungskopie mit
+Metadaten-/Historienbereinigung, Secret-/DB-Scan und expliziter Push-Dry-Run.
+`e978e76` belegt den abgeschlossenen Merge, ist wegen nachfolgender lokaler
+Änderungen noch keine Zusage für den finalen Veröffentlichungsstand. Ein
+öffentlicher Push bleibt separat freizugeben. Die obigen Release-Checkboxen
+werden durch diesen Ticket-Abgleich nicht pauschal als erledigt markiert.
+
+### 2026-10-20 — Subtask-Cleanup abgeschlossen
+
+Jan bestätigt alle 20 Restabnahme-Checks PASS: allgemeines Tutorial 9–26,
+Comment-`~` / `2~` und literale Satzzeichen. Cleanup, Tutorial- und
+Editor-Motion-Ticket sind abgeschlossen und archiviert. Die vorherige
+Restabnahme-Übergabe ist damit erledigt. Der HTML-Zusammenfassungsexport war
+defekt; Jans explizite Chat-Rückmeldung ist der Abnahmenachweis. URL-Copy und
+die oben aufgeführten Veröffentlichungsaufgaben bleiben separat.
+
+Der akzeptierte Satzzeichen-Fix ist als `393a2b0` committet. Der zugehörige
+Cleanup-Abschluss wird separat versioniert; ein finaler Veröffentlichungsstand
+ist damit noch nicht ausgewählt.

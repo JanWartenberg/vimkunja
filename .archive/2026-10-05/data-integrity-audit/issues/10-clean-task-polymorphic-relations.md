@@ -22,7 +22,7 @@ Clean supported polymorphic relations transactionally before deleting the Task a
 
 ## Evidence
 
-See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditTaskDeletionCleansPolymorphicRelations` in ordinary regression coverage.
+See [audit report](../../../2026-10-20/data-integrity-audit/report.md) and `TestIntegrityAuditTaskDeletionCleansPolymorphicRelations` in ordinary regression coverage.
 
 ## Comments
 

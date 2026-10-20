@@ -22,7 +22,7 @@ Initialize destination View assignments according to persisted Done. Preserve th
 
 ## Evidence
 
-See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditCompletedProjectMove` in the ordinary Store tests.
+See [audit report](../../../2026-10-20/data-integrity-audit/report.md) and `TestIntegrityAuditCompletedProjectMove` in the ordinary Store tests.
 
 ## Comments
 

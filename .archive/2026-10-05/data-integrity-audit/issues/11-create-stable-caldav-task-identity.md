@@ -22,7 +22,7 @@ Generate a stable valid UID for creation where the supported schema includes uid
 
 ## Evidence
 
-See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditCalDAVIdentity` in ordinary regression coverage.
+See [audit report](../../../2026-10-20/data-integrity-audit/report.md) and `TestIntegrityAuditCalDAVIdentity` in ordinary regression coverage.
 
 ## Comments
 

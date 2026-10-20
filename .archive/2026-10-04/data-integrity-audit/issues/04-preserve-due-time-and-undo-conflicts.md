@@ -22,7 +22,7 @@ Keep date-only input while retaining exact untouched persisted timestamps. Inclu
 
 ## Evidence
 
-See [audit report](../../../../.scratch/data-integrity-audit/report.md) and `TestIntegrityAuditDueTimePreservation` in the ordinary Store tests.
+See [audit report](../../../2026-10-20/data-integrity-audit/report.md) and `TestIntegrityAuditDueTimePreservation` in the ordinary Store tests.
 
 ## Comments
 
