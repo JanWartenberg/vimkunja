@@ -8,7 +8,9 @@
 
 **Status:** needs-triage
 
-**Blocked by:** Merge der vereinbarten Richtext-Worktree-Arbeit nach `main` (aktuell Branch `feature/description-model`).
+**Startbedingung erfüllt:** Richtext und aufgabenbasierte Tutorials von `feature/tutorial-task-workflow` nach `main` übernommen.
+
+**Reihenfolge:** Vor Abschluss der Veröffentlichung zuerst [URL-Copy-Komfort](../../description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), dann [Subtask-Abgleich](../../release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md). Andere M3-Features sind keine pauschale Voraussetzung.
 
 **Erfüllte Dokumentationsvoraussetzung:** [Ticket 01 — Lizenz und Dokumentation](../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) ist abgeschlossen und archiviert.
 
@@ -16,7 +18,7 @@
 
 ## Startbedingung und Reihenfolge
 
-**Dieses Ticket beginnt erst nach dem vereinbarten Richtext-Merge.** Laufende Original-Worktrees und ihre Historie bleiben bis zum Zusammenführen unverändert. Der Merge selbst wird hier nicht vorzeitig ausgeführt. Die Startbedingung verlangt den vereinbarten Worktree-Merge, keinen pauschalen Abschluss aller Richtext-Backlogtickets oder des gesamten Meilensteins 3.
+**Dieses Ticket folgt auf den vereinbarten Richtext-Merge.** Original-Repository und bestehende Worktrees behalten ihre Historie; die spätere Bereinigung findet ausschließlich in der Veröffentlichungskopie statt. Die Startbedingung verlangt den vereinbarten Worktree-Merge, keinen pauschalen Abschluss aller Richtext-Backlogtickets oder des gesamten Meilensteins 3.
 
 1. Den zusammengeführten `main`-Commit festhalten; README/STATUS und Lizenzinventar auf Änderungen aus dem Merge abgleichen. Neue Funktionalität oder Abhängigkeiten erfordern nur die betroffenen Ergänzungen.
 2. Tests, beide Builds, Vet, Schwachstellenprüfung und CI-Konfiguration auf diesem Stand prüfen. Vorhandene CI weiterverwenden; einen echten Actions-Lauf prüfen, sobald ein geeigneter GitHub-Prüfstand verfügbar ist. Native Windows-Abnahme getrennt von Cross-Builds ausweisen.
@@ -72,3 +74,7 @@ Jan beauftragt die Aufteilung des bisherigen Veröffentlichungstickets. Ticket 0
 ### 2026-10-07 — Ticket 01 abgeschlossen
 
 Lizenz und Dokumentation für den aktuellen Stand sind geprüft und Ticket 01 ist archiviert. Die allein verbleibende Startbedingung dieses Tickets ist der vereinbarte Richtext-Merge; anschließend dessen konkrete Doku-/Dependency-Änderungen abgleichen. Noch keine operative Veröffentlichung begonnen.
+
+### 2026-10-20 — Richtext-Integration und übernommene Folgeplanung
+
+Die im Richtext-Worktree am 2026-10-19 festgehaltene Reihenfolge bleibt erhalten: URL-Copy-Komfort, Subtask-Abgleich, danach Veröffentlichung abschließen. AT-01–10 und der Richtext-Live-Roundtrip sind abgenommen; die separate allgemeine Tutorial-Abnahme bleibt teilweise offen. Die auf `main` bereits belegte DB-Kompatibilität ausschließlich mit Vikunja 2.7.0 und die abgeschlossene Lizenzprüfung werden durch ältere offene Checklisten im Featurebranch nicht zurückgesetzt. Das dort noch vorhandene Gesamtticket 01 wird beim Merge nicht wieder als offenes Ticket angelegt; dieses Ticket 02 führt die verbleibende Arbeit weiter. Kein öffentlicher Push oder Umschreiben der Originalhistorie ist damit beauftragt.

@@ -574,7 +574,7 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 		body = append(body, m.renderLabelMatches(matchWidth)...)
 	}
 	if ui.commandMode {
-		body = append(body, ":"+cursorMarkedText(ui.commandInput, ui.commandCursor))
+		body = append(body, ":"+insertCursorText(ui.commandInput, ui.commandCursor))
 	} else if ui.deleteConfirm {
 		label, _ := ui.selectedLabel()
 		message := fmt.Sprintf("Delete %q?", label.Title)
@@ -588,7 +588,7 @@ func (m *model) renderLabelOverlay(background string, width int) string {
 		if ui.inputAction == labelInputRename {
 			prompt = "Rename: "
 		}
-		body = append(body, prompt+cursorMarkedText(ui.input, ui.inputCursor), "")
+		body = append(body, prompt+insertCursorText(ui.input, ui.inputCursor), "")
 		appendMatches()
 	} else if ui.loading {
 		body = append(body, "Loading…")

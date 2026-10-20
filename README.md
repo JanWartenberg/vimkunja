@@ -66,15 +66,45 @@ VOA vor dem Start von Vimkunja beenden; Vimkunja vor dem Neustart von VOA beende
 
 Vimkunja löscht Tasks weiterhin **endgültig**, ohne Papierkorb oder Lösch-Undo; Attachment-Dateien bleiben erhalten. Tasks mit Time Entries lassen sich nur in VOA löschen. Wiederkehrende Tasks ebenfalls in VOA abschließen. Das Erstellen von Labels sowie das Schreiben/Löschen von Comments setzt genau einen lokalen User voraus. Direkte SQLite-Schreibzugriffe führen keine Serveraktionen wie Webhooks, Benachrichtigungen oder Reminder-Dienste aus. Native Windows-Terminaltests und ein Live-CalDAV-Test stehen weiterhin aus.
 
-Vor dem Arbeiten mit echten Daten ein Backup erstellen. Weitere Views und native Richtext-Bearbeitung sind geplant; der aktuelle Funktionsstand steht in [STATUS.md](STATUS.md).
+Vor dem Arbeiten mit echten Daten ein Backup erstellen. Native Richtext-Bearbeitung ist implementiert; weitere Views sind geplant; der aktuelle Funktionsstand steht in [STATUS.md](STATUS.md).
 
-### Interactive keystroke tutorial
+### Interactive task tutorial
 
 ```bash
 go run ./cmd/vimkunja-tutorial
 ```
 
-The separate tutorial executable runs the real Vimkunja UI and guides through every currently implemented feature group in English. Every run creates a freshly seeded SQLite database in the operating system's temporary directory. The tutorial accepts no database path, never opens `internal/db/vikunja.db` or another user database, and removes its disposable database on normal exit.
+The separate executable opens one flat menu with four modes and Quit. Use `j/k` or arrows to select, `Enter` to start, and `q` to leave. Learn the basics is selected by default.
+
+| Menu option | What it does | Direct-start flags |
+| --- | --- | --- |
+| Learn the basics | Result-based tasks for navigation, editing, Tasks and Views | `--guided` |
+| Practice the basics | Explore demo Tasks freely without lessons | `--practice` |
+| Learn markup | Result-based tasks in the real rich-text Description editor | `--markup` |
+| Practice markup | Explore rich-text examples freely without lessons | `--markup --practice` |
+| Quit | Exit without creating a database | — |
+
+Both Learn modes accept free application input: navigate, correct mistakes, Paste, undo or use alternative commands. A short context modal introduces each task; its top-right counter shows the current task and course total (also in F1 help). Enter or Esc dismisses it. The task strip shows only the concrete target and controls, with a colored left marker and no filled background. F1 opens optional help. The tutorial checks actual application results, never a prescribed key sequence. Return to Normal mode after editing; success remains visible while you explore further.
+
+F5 restores the **current task's complete starting state**, including saved edits, deleted demo data and local history. F8 starts the next task only after success; the final F8 shows completion. **F12 skips the current task**, including from context/help modals or during editing; seven presses from startup land on task 8. Skipped tasks are reported separately at the end and do not count as passed. Each task has independent disposable data, so experiments do not affect later tasks. At completion F5 repeats the last task; Ctrl+C exits at any time. `--tasks` remains an alias for the general Learn mode and cannot be combined with other mode flags.
+
+Mode flags skip the menu. Timeout flags and `--literal-tab-alias` alone keep the menu and apply to the selected mode. `--guided` and `--practice` cannot be combined.
+
+All modes run the real Vimkunja UI in English. Starting a mode creates a freshly seeded SQLite database in the operating system's temporary directory; leaving the menu does not. The tutorial accepts no database path, never opens `internal/db/vikunja.db` or another user database, and deletes its disposable database on normal exit.
+
+### Rich-text workshop
+
+```bash
+go run ./cmd/vimkunja-tutorial --markup
+```
+
+This course uses the real Description editor and independent disposable task fixtures. It covers Native navigation, Visual formatting, Links, typed syntax, Code creation and exits, literal Tabs, retab, Opaque confirmation, Undo/Redo, save/discard and blocked-source recovery. Start the general guided tutorial directly with `--guided`, or select it in the start menu. The workshop sets tabstop/indent to 4 and defaults to the literal-Tab alias Ctrl+Q. Use `--markup --literal-tab-alias ctrl+b` if the terminal intercepts Ctrl+Q; the lesson then teaches Ctrl+B.
+
+For unrestricted testing in the same disposable fixtures, use `go run ./cmd/vimkunja-tutorial --markup --practice`. Open the last Task with Enter, G, Enter, then use gn, Enter to activate Description. This mode accepts arbitrary keys and Paste without task guidance. Both guided courses also accept free input and real Ex-command completion; they recognize results instead of tracking command characters. In the Link task, any valid URL is accepted; Enter applies it, empty input unlinks, and Esc cancels. Invalid URLs stay editable and neither cancel nor unlink satisfies the task to create a Link.
+
+Code creation enters Insert mode. Inside Code, `o`/`O` add source lines; `ü`/`Ü` or `]Space`/`[Space` create paragraphs outside Code. Three or four directly typed backticks in an otherwise empty paragraph create Code only after Enter. With six directly typed backticks, move between the third and fourth and press Enter to create an empty Code block. Pasted markers remain literal. Real Tabs throughout the Description, including ordinary paragraphs and Code, appear as muted `>~~~` markers, sized to the next tabstop; retab replaces them with ordinary spaces. If your terminal intercepts Ctrl+V or Ctrl+Q, configure `literal_tab_alias = "ctrl+b"` for normal use; the workshop also accepts `--literal-tab-alias ctrl+b`.
+
+Existing unsupported HTML and Mentions stay protected locally: Native neighboring text remains editable. Deleting an Opaque atom requires confirmation. Blocked descriptions require explicit `:descriptionrecover` or `:descriptionclear`; both change a draft until `:w`. `:e!` discards edits, and external save conflicts require an explicit `:descriptionreload` before continuing; they are never silently merged.
 
 ### Local TUI configuration
 
@@ -93,6 +123,11 @@ leader_timeout = "500ms"
 
 # How long Ctrl-W waits for a pane direction or cycle key.
 ctrl_w_timeout = "2s"
+# Code editing: independent tab width and indent step (2 or 4).
+tabstop = 4
+indent_step = 4
+# Literal Tab prefix in Code Insert: ctrl+q, ctrl+b, or "" to disable the alias.
+literal_tab_alias = "ctrl+q"
 ```
 
 Timeouts use Go duration syntax, such as `250ms`, `1s`, or `1.5s`. Values must be positive; zero and negative values are invalid. The built-in defaults are `500ms` for `leader_timeout` and `2s` for `ctrl_w_timeout`.
@@ -126,7 +161,17 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 - `:kanban` oder `Space+v`, dann `k` – einzelne manuelle Kanban View öffnen oder nach Bestätigung standardkonform provisionieren
 - Im Kanban Board: `h/l` Buckets, `j/k` Karten, `Shift+H/L` Nachbar-Move, `m` Ziel-Bucket wählen
 
-Im Detail-Pane können Project, Title, Priority, Due Date, Labels, Plain-Text-Description und der Workflow-Status bearbeitet werden. **HTML-Beschreibungen werden lesbar projiziert und sind derzeit schreibgeschützt.** Native Richtext-Bearbeitung ist noch nicht implementiert. `gc` öffnet den Comments-Workspace; `gca` startet dort einen neuen Comment. Im Comment-Thread starten `a`, `i` und `o` einen neuen Comment; ein statischer Blockcursor markiert den ausgewählten Comment. `Space+l` öffnet den Label-Picker; `:labels` verwaltet globale Labels. Der Status verwendet die konfigurierten Buckets der eindeutigen Kanban View des Projects.
+Titel, Description und Comment-Entwürfe unterstützen im Normal Mode `v/V` zur Zeichen-/Zeilenauswahl (Description: logische Blöcke), `Space+y` zum Kopieren der Auswahl bzw. aktuellen Zeile/Absatzes in die Systemzwischenablage und `Space+p` zum Einfügen am Cursor bzw. Ersetzen der Auswahl. Copy erhält die Auswahl; Paste bleibt im Normal Mode. `Esc` hebt die Auswahl auf. `Space+Y` kopiert die Ziel-URL eines Links. **Descriptions haben einen gemeinsamen Editor:** `gn`, `Enter` aktiviert ihn auch für bisher leeren oder unformatierten Text. Auswahl, Formatierung und Tippen verwenden sofort dieselben Regeln; ein Richtext-Moduswechsel ist nicht erforderlich. Öffnen und Navigation ändern keine gespeicherten Bytes. Erst eine echte Bearbeitung erzeugt Richtext im Entwurf; `:w` speichert, `:e!` verwirft. Einfügen aus der Zwischenablage interpretiert keine Markdown-Formatierung.
+
+Texteingaben verwenden einheitlich einen dünnen, blinkenden Terminalcursor: Title, Description einschließlich Richtext/Code, Comments sowie Such-, Command-, URL- und Label-Prompts. Normal Mode verwendet einen Blockcursor. Die Datumsmaske markiert die zu ersetzende Ziffer als Überschreibcursor; relative Datumseingaben verwenden den dünnen Eingabecursor.
+
+Im Detail-Pane können Project, Title, Priority, Due Date, Labels, Description und der Workflow-Status bearbeitet werden. `gc` öffnet den Comments-Workspace; `gca` startet dort einen neuen Comment. Im Comment-Thread starten `a`, `i` und `o` einen neuen Comment; ein statischer Blockcursor markiert den ausgewählten Comment. `Space+l` öffnet den Label-Picker; `:labels` verwaltet globale Labels. Der Status verwendet die konfigurierten Buckets der eindeutigen Kanban View des Projects.
+
+HTML-Descriptions werden strukturiert angezeigt und als Native Draft bearbeitet. `gn`, dann `Enter` aktiviert die Navigation: `j/k` zwischen logischen Blöcken (in Code zwischen Quellzeilen, in Zitaten zwischen Kindblöcken), `gj/gk` zwischen sichtbaren Zeilen, `{`/`}` oder `ö/ä` zwischen ganzen Absatz-Einheiten. `h/l`, `0/^/_/$`, `w/b/e/ge`, Counts und `gg/G` bewegen den Dokumentcursor; `Ctrl+D/U` bewegt ihn ungefähr eine sichtbare Pane-Höhe. `zh/zl` scrollt Code und Tabellen horizontal, `Ctrl+E/Y` nur den Viewport. `Esc` verlässt die aktive Navigation. Der aktive Block zeigt Formatierungszeichen; Code zeigt geschützte Backtick-Ränder. Lesen und Resize ändern das gespeicherte HTML nicht. `i/a/I/A` startet Insert, `Enter` teilt Absätze, `Shift+Enter` setzt einen Hard Break. `o/O` erzeugt einen Absatz, innerhalb von Code eine Quellzeile. `dd` löscht logische Blöcke bzw. Codezeilen. `v/V`, `viw/vaw` und `o` wählen Text/Blöcke bzw. tauschen das aktive Ende; `Esc` beendet die Auswahl. In beiden Visual-Modi (`v` und `V`) formatiert `Space+b/i/u/s`, `Space+0` entfernt Inline-Formatierung einschließlich Links. `Space+x` wandelt jeden von der Auswahl berührten logischen Absatz/Listeneintrag in eine Checkbox um; bestehende Checkboxen behalten Zustand und Identität. Die Auswahl bleibt bis Esc bestehen. Normal `Space+1/2/3/0` wandelt Absatz/Heading um. Die Palette steht innerhalb des Footer-Rahmens und bleibt nach dem Leader-Timeout bis zur nächsten Taste lesbar: `SPACE ACTIVE` erlaubt direkte Kürzel, `Space again` verlangt erneut Space. Schmale Fenster umbrechen die Kürzel; bei sehr wenig Höhe ersetzt eine kompakte Palette die normale Footer-Zeile. `Space+o` bleibt global. `u/Ctrl+R` gilt hier für den lokalen Description-Draft. Opaque-Löschung, Ersatz und Änderungen am Native Parent benötigen eine Bestätigung (`y/Enter`, `n/Esc`); Undo erhält die ursprünglichen Bytes. `y/p` kopiert sichere sichtbare Inhalte in den lokalen Description-Register und fügt Native Text ein.
+
+Native Inline-Syntax entsteht nur durch bewusstes Tippen: `**fett**`, `*kursiv*`, `***beides***`, `__unterstrichen__`, `~~durchgestrichen~~` und einzelne gepaarte Backticks für Inline-Code. Paste bleibt wörtlicher Text; Backslash schützt das nächste Syntaxzeichen. `Space+l` bearbeitet die URL eines Links oder verlinkt ausgewählten Text, eine leere URL entfernt den Link. Ohne Auswahl und außerhalb eines Links fragt `Space+l` zuerst nach der URL, dann nach dem Linktext. Das Textfeld startet leer; direktes Tippen oder Paste füllt es. `Enter` bei leerem Text übernimmt die URL als Text. `Ctrl+U` leert die Eingabe, `Esc` bricht beide Schritte ohne Änderung ab. Einmal `u` macht das Einfügen rückgängig. `Space+Y` kopiert das Ziel in die System-Clipboard. Einfügen am Link-Rand oder außerhalb der sichtbaren Inline-Code-Backticks bleibt außerhalb; zwischen den Backticks wird der Code bearbeitet.
+
+`:selectblock` wählt ausdrücklich den ganzen Codeblock; `V` in Code bleibt auf dessen Quellzeilen begrenzt. Für Blocked HTML bieten `:descriptionrecover` und `:descriptionclear` bestätigte, ungespeicherte Recovery-Aktionen. `:e!` verwirft weiterhin den gesamten Task-Draft; `:descriptionreload` lädt den aktuellen Task aus der Datenbank und verwirft den Draft ausdrücklich. Ein Save-Konflikt behält den Draft offen, ohne Merge. Mit `Space+u/n/x` lassen sich Absätze in Listen/Checkbox-Listen umwandeln; `x` toggelt die Description-Checkbox unabhängig von Task-Done. `V` → `Space+k/l` rückt ausgewählte Einträge aus/ein, `Space+q/w` entfernt/ergänzt die Zitatebene. Normal `Space+q` toggelt lokal. Metadaten und Reihenfolge bleiben erhalten; nicht verlustfrei darstellbare Aktionen werden unverändert abgelehnt. Code wird mit Normal `Space+c` oder genau drei/vier direkt getippten Backticks plus Enter in einem leeren Absatz erstellt; bei sechs direkt getippten Backticks erzeugt Enter zwischen dem dritten und vierten einen leeren Codeblock. `ü/Ü` erzeugt danach/davor einen Absatz in Insert; `]Space/[Space` dasselbe in Normal. Code-`Tab` fügt Spaces bis zum nächsten Tabstop ein, `Ctrl+V Tab` (alternativ `Ctrl+Q Tab`, konfigurierbar) einen echten Tab; Paste erhält Tabs und CRLF. `V` → `Space+x/c` rückt Quellzeilen aus/ein; `:retab` wandelt Tabs im aktuellen Code bzw. ausgewählten Codezeilen um, `:retaball` in allen Native-Texten und überspringt Opaque. Beide ohne Argumente/Bang, jeweils ein Undo-Schritt. Leere, unformatierte und HTML-Descriptions verwenden denselben Dokumenteditor; Title und Comment Composer teilen ihre Textauswahl- und Zwischenablagebedienung.
 
 In den Command-Prompts von Comments, Labels und Global Search gelten ebenfalls `:qa`, `:qa!` und `:wqa`. `:qa` schützt ungespeicherte Task-/Comment-Entwürfe; `:wqa` speichert einen vorhandenen Comment-Entwurf zusammen mit dem Task atomar und beendet erst nach erfolgreichem Speichern. Bei Fehlern bleibt der Entwurf offen. Im Insert Mode zuerst `Esc` drücken.
 

@@ -25,8 +25,14 @@ jobs:
           go-version: stable
           cache-dependency-path: go.sum
       - name: Test
-        run: go test ./...
+        run: go test ./... ./.scratch/description-rendering/verification
       - name: Build both programs
         run: go build ./cmd/vimkunja ./cmd/vimkunja-tutorial
       - name: Vet
         run: go vet ./...
+      - name: Bounded Description parser fuzz
+        if: runner.os == 'Linux'
+        run: go test ./internal/description -run '^$' -fuzz '^FuzzParseAndSerialize$' -fuzztime=5s -parallel=2
+      - name: Bounded Description edit fuzz
+        if: runner.os == 'Linux'
+        run: go test ./internal/description -run '^$' -fuzz '^FuzzDraftActionsAreAtomic$' -fuzztime=5s -parallel=2

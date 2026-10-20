@@ -1,0 +1,3 @@
+import {fileURLToPath} from 'node:url'; const root=fileURLToPath(new URL('.',import.meta.url)).replace(/\/$/,'');
+import {defineConfig} from 'vite';import vue from '@vitejs/plugin-vue';
+export default defineConfig({plugins:[vue()],resolve:{alias:{'@':`${root}/frontend/src`},dedupe:['vue','pinia','vue-router','@tiptap/core','@tiptap/pm']},build:{cssCodeSplit:false,rollupOptions:{output:{inlineDynamicImports:true}}},server:{host:'0.0.0.0',port:3000,fs:{allow:[root,`${root}/frontend`]}},css:{preprocessorOptions:{scss:{additionalData:`@use "sass:math"; @import "${root}/frontend/src/styles/common-imports.scss";`}}}});

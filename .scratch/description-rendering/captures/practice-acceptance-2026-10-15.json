@@ -1,0 +1,32 @@
+{
+  "kind": "fresh-application-acceptance-journeys",
+  "date": "2026-10-15",
+  "command": "go test -json ./internal/tutorial -run 'TestMarkupPracticeChangeInnerWordFromFreshTask|TestMarkupPracticeAcceptanceCards' -count=1",
+  "passed": [
+    "TestMarkupPracticeChangeInnerWordFromFreshTask",
+    "TestMarkupPracticeAcceptanceCards/AT-02_bold_twice",
+    "TestMarkupPracticeAcceptanceCards/AT-03_link",
+    "TestMarkupPracticeAcceptanceCards/AT-04_checkbox",
+    "TestMarkupPracticeAcceptanceCards/AT-05_list_indent_outdent",
+    "TestMarkupPracticeAcceptanceCards/AT-06_quote",
+    "TestMarkupPracticeAcceptanceCards/AT-07_protected_mention",
+    "TestMarkupPracticeAcceptanceCards/AT-08_direct_code",
+    "TestMarkupPracticeAcceptanceCards/AT-08_marker_```",
+    "TestMarkupPracticeAcceptanceCards/AT-08_marker_````",
+    "TestMarkupPracticeAcceptanceCards/AT-09_code_lines",
+    "TestMarkupPracticeAcceptanceCards/AT-10_exit_\u00fc",
+    "TestMarkupPracticeAcceptanceCards/AT-10_exit_\u00dc",
+    "TestMarkupPracticeAcceptanceCards/AT-10_exit_]",
+    "TestMarkupPracticeAcceptanceCards/AT-10_exit_[",
+    "TestMarkupPracticeAcceptanceCards/AT-11_tabs_retab_undo",
+    "TestMarkupPracticeAcceptanceCards/AT-12_code_paste",
+    "TestMarkupPracticeAcceptanceCards/AT-12_syntax_typed",
+    "TestMarkupPracticeAcceptanceCards/AT-12_syntax_paste",
+    "TestMarkupPracticeAcceptanceCards/AT-13_save_reopen",
+    "TestMarkupPracticeAcceptanceCards/AT-14_discard",
+    "TestMarkupPracticeAcceptanceCards/AT-15_recovery_exact_card",
+    "TestMarkupPracticeAcceptanceCards/AT-16_resize_palette",
+    "TestMarkupPracticeAcceptanceCards"
+  ],
+  "limitations": "Actual application startup, key/Paste dispatch and disposable SQLite. Synthetic input events; no physical Windows/AltGr/dead-key or host clipboard PASS. Link destination writes are covered separately with injected writer UI tests."
+}

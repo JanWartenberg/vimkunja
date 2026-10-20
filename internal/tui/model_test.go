@@ -820,7 +820,7 @@ func TestNarrowFooterPreservesInputAndErrorTails(t *testing.T) {
 	m.commandInput = "a-very-long-command"
 	m.commandCursor = len([]rune(m.commandInput))
 	footer := ansi.Strip(m.renderStatusBar(25))
-	if !strings.Contains(footer, ":…mmand│") {
+	if !strings.Contains(footer, ":…ommand") {
 		t.Fatalf("command footer = %q, want input tail", footer)
 	}
 
@@ -3755,6 +3755,21 @@ func TestCommandPromptHistoryKeepsOneHundredMostRecentEntries(t *testing.T) {
 	}
 }
 
+func TestCommandPromptCompletesSharedDescriptionPrefix(t *testing.T) {
+	m := testModel()
+	m.openCommandPrompt()
+	m.commandInput = "desc"
+	for range 2 {
+		m = pressKey(m, tea.Key{Code: tea.KeyTab})
+		if m.commandInput != "description" || m.commandCursor != len("description") {
+			t.Fatalf("input=%q cursor=%d", m.commandInput, m.commandCursor)
+		}
+		if m.commandCompletionFeedback != "matches: descriptionclear, descriptionrecover, descriptionreload" {
+			t.Fatal(m.commandCompletionFeedback)
+		}
+	}
+}
+
 func TestCommandPromptCompletionUsesRegistryAndFooterFeedback(t *testing.T) {
 	m := testModel()
 	m.openCommandPrompt()
@@ -3767,7 +3782,7 @@ func TestCommandPromptCompletionUsesRegistryAndFooterFeedback(t *testing.T) {
 	m.commandInput = "w"
 	m = pressKey(m, tea.Key{Code: tea.KeyTab})
 	const matches = "matches: write, writequit, writequitall"
-	if m.commandInput != "w" || m.commandCompletionFeedback != matches {
+	if m.commandInput != "write" || m.commandCompletionFeedback != matches {
 		t.Fatalf("ambiguous completion = input:%q feedback:%q", m.commandInput, m.commandCompletionFeedback)
 	}
 	if footer := ansi.Strip(m.renderStatusBar(120)); !strings.Contains(footer, matches) {
@@ -4206,14 +4221,15 @@ func TestDescriptionNormalModeOpensLinesAndAppends(t *testing.T) {
 			m.editor.draft.Description = tc.description
 			m.editor.cursor = tc.cursor
 
+			positionDescriptionCursor(t, m, tc.cursor)
 			m = pressKey(m, tc.key)
 			if m.editor.mode != editorInsert {
 				t.Fatalf("mode = %v, want Insert", m.editor.mode)
 			}
-			if got := m.editor.draft.Description; got != tc.wantText {
+			if got := descriptionText(m); got != tc.wantText {
 				t.Fatalf("description = %q, want %q", got, tc.wantText)
 			}
-			if got := m.editor.cursor; got != tc.wantCursor {
+			if got := descriptionCursorOffset(m); got != tc.wantCursor {
 				t.Fatalf("cursor = %d, want %d", got, tc.wantCursor)
 			}
 		})
@@ -4242,12 +4258,25 @@ func TestEditorInsertHomeEndStayInInsertMode(t *testing.T) {
 			m.editor.cursor = tc.cursor
 			m.editor.mode = editorInsert
 
+			if tc.field == fieldDescription {
+				positionDescriptionCursor(t, m, tc.cursor)
+			}
 			m = pressKey(m, tea.Key{Code: tea.KeyHome})
-			if m.editor.mode != editorInsert || m.editor.cursor != tc.wantHome {
+			if m.editor.mode != editorInsert || func() int {
+				if tc.field == fieldDescription {
+					return descriptionCursorOffset(m)
+				}
+				return m.editor.cursor
+			}() != tc.wantHome {
 				t.Fatalf("Home = mode:%v cursor:%d, want Insert/%d", m.editor.mode, m.editor.cursor, tc.wantHome)
 			}
 			m = pressKey(m, tea.Key{Code: tea.KeyEnd})
-			if m.editor.mode != editorInsert || m.editor.cursor != tc.wantEnd {
+			if m.editor.mode != editorInsert || func() int {
+				if tc.field == fieldDescription {
+					return descriptionCursorOffset(m)
+				}
+				return m.editor.cursor
+			}() != tc.wantEnd {
 				t.Fatalf("End = mode:%v cursor:%d, want Insert/%d", m.editor.mode, m.editor.cursor, tc.wantEnd)
 			}
 		})
@@ -4368,10 +4397,11 @@ func TestDescriptionInsertAcceptsTerminalPaste(t *testing.T) {
 	m.editor.cursor = len([]rune("before "))
 	m.editor.mode = editorInsert
 
+	positionDescriptionCursor(t, m, m.editor.cursor)
 	updated, _ := m.Update(tea.PasteMsg{Content: "https://example.test"})
 	m = updated.(*model)
 
-	if got := m.editor.draft.Description; got != "before https://example.testafter" {
+	if got := descriptionText(m); got != "before https://example.testafter" {
 		t.Fatalf("description after terminal paste = %q", got)
 	}
 }
@@ -4388,7 +4418,7 @@ func TestDescriptionInsertNormalizesBrowserPasteLineEndings(t *testing.T) {
 	m = updated.(*model)
 
 	const want = "one two three\nalpha, beta\n  δelta epsilon\nlast word"
-	if got := m.editor.draft.Description; got != want {
+	if got := descriptionText(m); got != want {
 		t.Fatalf("Description after browser paste = %q, want %q", got, want)
 	}
 }
@@ -4703,10 +4733,11 @@ func TestHomeEndAliasesNavigateProjectsTasksAndDescription(t *testing.T) {
 				m.editor.field = fieldDescription
 				m.editor.draft.Description = "first\nsecond"
 				m.editor.cursor = 1
+				positionDescriptionCursor(t, m, 1)
 				return m
 			}(),
-			position: func(m *model) int { return m.editor.cursor },
-			last:     len([]rune("first\nsecond")),
+			position: func(m *model) int { return descriptionCursorOffset(m) },
+			last:     len([]rune("first\nsecond")) - 1,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -4952,7 +4983,7 @@ func TestTaskDetailActivatesDescriptionSeparatelyFromFieldNavigation(t *testing.
 	}
 	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
 	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
-	if m.editor.cursor == 0 {
+	if descriptionCursorOffset(m) == 0 {
 		t.Fatal("active Description did not receive its Normal-mode navigation")
 	}
 	m = pressKey(m, tea.Key{Code: tea.KeyEscape})
@@ -5006,6 +5037,7 @@ func TestTinyActiveDescriptionUsesWholeDetailPaneAndFollowsCursor(t *testing.T) 
 	m.editor.mode = editorInsert
 	m.editor.cursor = len([]rune(m.editor.draft.Description))
 	m.cursorVisible = true
+	positionDescriptionCursor(t, m, m.editor.cursor)
 
 	view := ansi.Strip(renderTaskDetail(m, 80, 8))
 	if !strings.Contains(view, "DESCRIPTION · INSERT") || !strings.Contains(view, "six") {
@@ -5015,7 +5047,7 @@ func TestTinyActiveDescriptionUsesWholeDetailPaneAndFollowsCursor(t *testing.T) 
 		t.Fatalf("tiny active Description retained Detail chrome: %q", view)
 	}
 
-	m.editor.insertText("\nseven")
+	m.Update(tea.PasteMsg{Content: "\nseven"})
 	view = ansi.Strip(renderTaskDetail(m, 80, 8))
 	if !strings.Contains(view, "seven") {
 		t.Fatalf("tiny active Description hid inserted line: %q", view)
@@ -5027,29 +5059,30 @@ func TestDescriptionNormalModeDeletesCharactersAndLines(t *testing.T) {
 		m := testModel()
 		m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: text})
 		m.editor.field, m.editor.descriptionActive, m.editor.cursor = fieldDescription, true, cursor
+		positionDescriptionCursor(t, m, cursor)
 		return m
 	}
 
 	m := newEditor("abc", 1)
 	m = pressKey(m, tea.Key{Code: 'x', Text: "x"})
-	if m.editor.draft.Description != "ac" {
-		t.Fatalf("x Description = %q, want ac", m.editor.draft.Description)
+	if descriptionText(m) != "ac" {
+		t.Fatalf("x Description = %q, want ac", descriptionText(m))
 	}
 	m = newEditor("abc", 1)
 	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
-	if m.editor.draft.Description != "bc" || m.editor.cursor != 0 {
-		t.Fatalf("X Description = %q at %d, want bc at 0", m.editor.draft.Description, m.editor.cursor)
+	if descriptionText(m) != "bc" || descriptionCursorOffset(m) != 0 {
+		t.Fatalf("X Description = %q at %d, want bc at 0", descriptionText(m), descriptionCursorOffset(m))
 	}
 	m = newEditor("abc\ndef", 1)
 	m = pressKey(m, tea.Key{Code: 'D', Text: "D"})
-	if m.editor.draft.Description != "a\ndef" {
-		t.Fatalf("D Description = %q, want a\\ndef", m.editor.draft.Description)
+	if descriptionText(m) != "a\ndef" {
+		t.Fatalf("D Description = %q, want a\\ndef", descriptionText(m))
 	}
 	m = newEditor("one\ntwo\nthree", 5)
 	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
 	m = pressKey(m, tea.Key{Code: 'd', Text: "d"})
-	if m.editor.draft.Description != "one\nthree" || m.editor.cursor != 4 {
-		t.Fatalf("dd Description = %q at %d, want one\\nthree at 4", m.editor.draft.Description, m.editor.cursor)
+	if descriptionText(m) != "one\nthree" || descriptionCursorOffset(m) != 4 {
+		t.Fatalf("dd Description = %q at %d, want one\\nthree at 4", descriptionText(m), descriptionCursorOffset(m))
 	}
 }
 
@@ -5064,9 +5097,9 @@ func TestTinyDescriptionInsertShowsCursorOnEmptyLine(t *testing.T) {
 	m.editor.cursor = len([]rune(m.editor.draft.Description))
 	m.cursorVisible = true
 
-	view := ansi.Strip(renderTaskDetail(m, 80, 8))
-	if !strings.Contains(view, "│") {
-		t.Fatalf("tiny empty Description line lacks insert cursor: %q", view)
+	view := m.View()
+	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBar {
+		t.Fatalf("tiny empty Description lacks terminal bar: %#v\n%s", view.Cursor, view.Content)
 	}
 }
 
@@ -5262,8 +5295,13 @@ func TestGlobalSearchOmitsNativeEditorCursor(t *testing.T) {
 	m.openNewEditor()
 	m.searchOpen = true
 
-	if view := m.View(); view.Cursor != nil {
-		t.Fatalf("Global Search cursor = %#v, want none", view.Cursor)
+	view := m.View()
+	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBar {
+		t.Fatalf("Global Search input cursor = %#v", view.Cursor)
+	}
+	row := strings.Split(ansi.Strip(view.Content), "\n")[view.Cursor.Position.Y]
+	if !strings.Contains(row, "Search:") {
+		t.Fatalf("Search retained editor cursor: %q", row)
 	}
 }
 
@@ -5456,6 +5494,7 @@ func TestNativeDescriptionCursorUsesTextPositionWithoutRenderedDuplicate(t *test
 	m.editor.cursor = 2
 	m.editor.mode = editorInsert
 	m.cursorVisible = true
+	positionDescriptionCursor(t, m, m.editor.cursor)
 
 	detail := renderTaskDetail(m, 96, 17)
 	if strings.Contains(detail, "\x1b[7m") {
@@ -5494,11 +5533,12 @@ func TestDescriptionCursorStaysWithDescriptionLinesAfterEmptyLines(t *testing.T)
 	m.editor.mode = editorInsert
 	m.editor.cursor = len([]rune("Try to build\n- a Tool in Pi in general [x]\n- a small ticket tool [x]\n  - create scratch tickets [x]\n  - archive scratch tickets [x]\n  - update [x]\n\n\n  - query them [x]\n\n"))
 	m.editor.descScroll = 9
+	positionDescriptionCursor(t, m, m.editor.cursor)
 	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
 
 	cursor := m.View().Cursor
 	rows := strings.Split(ansi.Strip(m.Render()), "\n")
-	if cursor == nil || cursor.Position.Y >= len(rows) || !strings.Contains(rows[cursor.Position.Y], "X- compare token usage") {
+	if cursor == nil || cursor.Position.Y >= len(rows) || !strings.Contains(strings.ReplaceAll(rows[cursor.Position.Y], "\\", ""), "X- compare token usage") {
 		t.Fatalf("description cursor after insertion = %#v, row=%q, want cursor on inserted compare line", cursor, rows[max(0, min(len(rows)-1, cursor.Position.Y))])
 	}
 }
@@ -5512,6 +5552,7 @@ func TestDescriptionCursorStaysWithWrappedInsertionLine(t *testing.T) {
 	m.editor.mode = editorInsert
 	m.editor.draft.Description = strings.Repeat("a", 54) + "target"
 	m.editor.cursor = 54
+	positionDescriptionCursor(t, m, m.editor.cursor)
 	m = pressKey(m, tea.Key{Code: 'X', Text: "X"})
 
 	cursor := m.View().Cursor
@@ -5531,12 +5572,13 @@ func TestDescriptionCursorTracksNewDoneFieldAfterSavingNewTask(t *testing.T) {
 	m.editor.draft.Description = "hello"
 	m.editor.cursor = 2
 
+	positionDescriptionCursor(t, m, 2)
 	m, saveCmd := typeCommand(t, m, "w")
 	updated, _ := m.Update(saveCmd())
 	m = updated.(*model)
 	cursor := m.View().Cursor
 	lines := strings.Split(ansi.Strip(m.Render()), "\n")
-	if cursor == nil || cursor.Shape != tea.CursorBlock || cursor.Position.Y >= len(lines) || !strings.Contains(lines[cursor.Position.Y], "hello") {
+	if cursor != nil || !inverseCell.MatchString(m.Render()) || !strings.Contains(strings.Join(lines, "\n"), "hello") {
 		t.Fatalf("description cursor = %#v, rendered lines = %q, want block cursor on Description", cursor, lines)
 	}
 }
@@ -5550,8 +5592,9 @@ func TestDisabledDescriptionCursorRetainsRenderedFallback(t *testing.T) {
 	m.editor.cursor = 2
 	m.editor.mode = editorInsert
 	m.cursorVisible = true
+	positionDescriptionCursor(t, m, m.editor.cursor)
 
-	if detail := ansi.Strip(renderTaskDetail(m, 80, 20)); !strings.Contains(detail, "he│llo") {
+	if detail := ansi.Strip(m.View().Content); !strings.Contains(detail, "he│llo") {
 		t.Fatalf("disabled cursor shapes lost vertical rendered fallback: %q", detail)
 	}
 }
@@ -6145,14 +6188,14 @@ func TestGNThenEnterActivatesDescriptionEditing(t *testing.T) {
 	}
 }
 
-func TestDescriptionCursorTargetsVisibleTextAtShortHeight(t *testing.T) {
+func TestDescriptionInsertionCursorTargetsVisibleTextAtShortHeight(t *testing.T) {
 	m := testModel()
 	m.width, m.height = 80, 30 // Detail text height is 12 rows.
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "Text"})
-	m.editor.field = fieldDescription
+	nativeKeys(m, "g", "n", "enter", "i")
 	view := m.View()
-	if view.Cursor == nil {
-		t.Fatal("visible Description has no native cursor")
+	if view.Cursor == nil || view.Cursor.Shape != tea.CursorBar {
+		t.Fatal("visible Description has no insertion cursor")
 	}
 	row := strings.Split(ansi.Strip(view.Content), "\n")[view.Cursor.Position.Y]
 	if !strings.HasPrefix(string([]rune(row)[view.Cursor.Position.X:]), "Text") {
@@ -6172,13 +6215,13 @@ func TestHiddenDescriptionInExpandedCompactDetailHasNoCursor(t *testing.T) {
 	}
 }
 
-func TestHTMLDescriptionEditingReportsReadOnlyReason(t *testing.T) {
+func TestHTMLDescriptionEditingStartsNativeInsert(t *testing.T) {
 	m := testModel()
 	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "<p>HTML</p>"})
 	m.editor.field = fieldDescription
 	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
-	if m.editor.mode != editorNormal || !strings.Contains(m.lastErr, "read-only") {
-		t.Fatalf("HTML Description edit = mode:%v error:%q, want Normal Mode with read-only reason", m.editor.mode, m.lastErr)
+	if m.editor.mode != editorInsert || m.editor.nativeDraft == nil || m.lastErr != "" {
+		t.Fatalf("HTML Description edit = mode:%v error:%q, want Native Insert", m.editor.mode, m.lastErr)
 	}
 }
 
@@ -6190,7 +6233,7 @@ func TestGNThenITypesIntoPlainTextDescription(t *testing.T) {
 	m = pressKey(m, tea.Key{Code: 'n', Text: "n"})
 	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
 	m = pressKey(m, tea.Key{Text: "!"})
-	if m.editor.mode != editorInsert || m.editor.draft.Description != "!Text" {
+	if m.editor.mode != editorInsert || m.editor.draft.Description != "<p>!Text</p>" {
 		t.Fatalf("gn then i = mode:%v Description:%q, want Insert !Text", m.editor.mode, m.editor.draft.Description)
 	}
 }

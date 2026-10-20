@@ -1,0 +1,28 @@
+{
+  "kind": "real-linux-pty-binary-smoke",
+  "date": "2026-10-11",
+  "command": "TERM=xterm-256color /tmp/vimkunja-markup-workshop --markup",
+  "size": "80x24",
+  "keys": [
+    "Enter",
+    "Enter",
+    "G",
+    "Enter",
+    "g",
+    "n",
+    "Enter",
+    "g",
+    "g",
+    "v",
+    "i",
+    "w",
+    "Space",
+    "b",
+    "Esc",
+    "Ctrl+C"
+  ],
+  "observation": "Workshop opened, Native Description rendered Alpha beta/original()/@Jan; Visual Bold produced **Alpha**; lesson advanced to local history; Ctrl+C restored terminal and exited.",
+  "limitations": "Keys injected through PTY, not physical keyboard. Captured ANSI is incremental output for Bold, not a standalone screen image. No German-layout/Windows-terminal or host clipboard proof.",
+  "bold_output": "\u001b[11;3H\u001b[7m**\u001b[1mAlpha\u001b[m** beta\u001b[17;14HVISUAL · Space format · d delete · o swap · Esc cancel\u001b[23;9HEsc  ·  key 6/6\u001b[11;3H**\u001b[1mAlph\u001b[m\u001b[17;14H:h help\u001b[47X\n\n\n 5/23  ·  Local history    \n\u001b[3GUndo with u, then redo with Ctrl+R.\u001b[29X\n\u001b[3GDescription history is local and remains available after a successful save. \u001b[23;9Hu  ·  key 1/2  ",
+  "exit": 0
+}

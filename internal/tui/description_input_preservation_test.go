@@ -18,7 +18,7 @@ func TestDescriptionInsertPreservesGroupedBackticksAndGermanCharacters(t *testin
 			want += chunk
 			updated, _ := m.Update(tea.KeyPressMsg(tea.Key{Code: []rune(chunk)[0], Text: chunk}))
 			m = updated.(*model)
-			if m.editor.draft.Description != want {
+			if m.editor.nativeDescription.ContentText() != want {
 				t.Fatalf("text chunks %q lost characters: got %q, want %q", chunks, m.editor.draft.Description, want)
 			}
 		}

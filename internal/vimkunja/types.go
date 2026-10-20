@@ -1,6 +1,10 @@
 package vimkunja
 
-import "time"
+import (
+	"time"
+
+	"github.com/JanWartenberg/vimkunja/internal/description"
+)
 
 // Project represents a Vikunja project (formerly called "list" in older versions).
 type Project struct {
@@ -149,18 +153,26 @@ type TaskCommentDraft struct {
 // Existing updates preserve the full due timestamp when the date is unchanged;
 // changing or clearing the date writes midnight UTC or NULL, respectively.
 type TaskDraft struct {
-	ID               int64
-	ProjectID        int64
-	Title            string
-	Description      string
-	Priority         int64
-	DueDate          string
-	WorkflowBucketID int64 // Zero omits workflow writes; an unchanged existing assignment preserves Done.
-	Done             bool
-	DoneSet          bool // Done participates in an existing Task update only when changed in the editor.
-	LabelIDs         []int64
-	LabelIDsSet      bool // Labels participate only after the Detail has loaded or changed them.
-	CreatedByID      int64
+	ID          int64
+	ProjectID   int64
+	Title       string
+	Description string
+	// DescriptionBaseline enables atomic conflict detection, including an empty
+	// baseline. Nil retains the legacy raw persistence API for non-editor callers.
+	DescriptionBaseline *string
+	// DescriptionCandidate is validated immutable Native HTML; it overrides
+	// Description and defaults the baseline to its source document. An explicit
+	// DescriptionBaseline takes precedence. Adopt returned Task HTML only
+	// after successful persistence, never mutate this candidate or the draft.
+	DescriptionCandidate *description.SaveCandidate
+	Priority             int64
+	DueDate              string
+	WorkflowBucketID     int64 // Zero omits workflow writes; an unchanged existing assignment preserves Done.
+	Done                 bool
+	DoneSet              bool // Done participates in an existing Task update only when changed in the editor.
+	LabelIDs             []int64
+	LabelIDsSet          bool // Labels participate only after the Detail has loaded or changed them.
+	CreatedByID          int64
 }
 
 // TaskBucketAssignment is one persisted Bucket assignment for a Task. A Task

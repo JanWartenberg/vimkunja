@@ -3,6 +3,7 @@ package tui
 import "unicode"
 
 type textNormalState struct {
+	selection     *textSelection
 	count         int
 	operator      rune
 	operatorCount int
@@ -18,6 +19,9 @@ type textNormalResult struct {
 }
 
 func applyTextNormalKey(state *textNormalState, text string, cursor int, key string, multiline bool) textNormalResult {
+	if state.selection != nil || (key == "v" || key == "V") && !state.pending() {
+		return applyTextSelectionKey(state, text, cursor, key, multiline)
+	}
 	result := textNormalResult{text: text, cursor: clamp(cursor, 0, len([]rune(text)))}
 	if state.replaceCount > 0 {
 		result.handled = true
@@ -60,6 +64,14 @@ func applyTextNormalKey(state *textNormalState, text string, cursor int, key str
 		return result
 	}
 
+	if state.operator == 'g' {
+		result.handled = true
+		if key == "g" && multiline {
+			result.cursor = nthLineStart([]rune(text), max(1, state.operatorCount)-1)
+		}
+		state.reset()
+		return result
+	}
 	if state.operator != 0 {
 		result.handled = true
 		if key == "i" || key == "a" {
@@ -90,6 +102,13 @@ func applyTextNormalKey(state *textNormalState, text string, cursor int, key str
 		return result
 	}
 
+	if key == "g" {
+		state.operator = 'g'
+		state.operatorCount = max(1, state.count)
+		state.count = 0
+		result.handled = true
+		return result
+	}
 	if key == "d" || key == "c" {
 		state.operator = []rune(key)[0]
 		state.operatorCount = max(1, state.count)
@@ -202,7 +221,7 @@ func wordClass(r rune, big bool) int {
 	if unicode.IsSpace(r) {
 		return 0
 	}
-	if big || unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_' {
+	if big || unicode.IsLetter(r) || unicode.IsDigit(r) || unicode.IsMark(r) || r == '_' {
 		return 1
 	}
 	return 2

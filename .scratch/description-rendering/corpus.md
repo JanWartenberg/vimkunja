@@ -1,8 +1,8 @@
 # Rich-text compatibility corpus — decision-synchronized examples
 
-**Stand 2026-10-04:** 83 synthetic, independently authored records; accepted product decisions synchronized. Static consistency checks and dependency/Store boundary probes pass. Native rendering/editing and semantic round trips are not implemented or verified by these records. No blanket user golden approval or captured VOA output is claimed.
+**Stand 2026-10-11:** 83 unveränderte synthetische Fixtures; alle Import-/Serialisierungs- und Projektionsfälle bestehen. 203 indizierte Native Edit-Fälle führen sämtliche nicht-null HTML-Goldens aus. Die übrigen 32 Fälle haben assertion-basierte Erwartungen: ergänzende fokussierte Tests bestehen, ohne damit jeden Corpus-Aktionsdatensatz als eigenen ausgeführten Driver zu deklarieren. Hinzu kommen sieben echte upstream Editor-Komponenten-Captures, ein überprüfter Vimkunja→Editor-Roundtrip, tatsächliche TUI-Modell-Layouts und ein Linux-PTY-Smoke. Physische deutsche Tastatur/Windows-Terminal und die manuelle Gesamtabnahme bleiben offen. Details stehen im [Ausführungsledger](captures/native-execution-2026-10-11.json) und [Ticket 10](../../.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md).
 
-**Contract:** [spec.md](spec.md). **Ticket:** [02](issues/02-specify-native-rich-text-description-rendering-and-editing.md). **Examples:** [corpus.json](corpus.json). **Checks:** [verification/boundaries_test.go](verification/boundaries_test.go).
+**Contract:** [spec.md](../../.archive/2026-10-19/description-rendering/spec.md). **Ticket:** [02](../../.archive/2026-10-19/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md). **Examples:** [corpus.json](corpus.json). **Checks:** [verification/boundaries_test.go](verification/boundaries_test.go).
 
 ## Reading the examples
 
@@ -23,30 +23,44 @@ Other synchronized examples cover C05 final Code-line deletion (leaves empty Cod
 
 | Decision / risk | Focused example records | Status |
 | --- | --- | --- |
-| HTML persistence, semantic serialization, escaping (1–8) | `basic-blocks`, `entities-and-whitespace`, `serialization-normalization`, `root-inline-fragment`, `root-block-grouping`, `empty-description` | Specified; Native execution outstanding. |
-| Checkbox identity/state, atomic repair (10/27, L07, S12/S13) | `checkbox-lists`, `checkbox-duplicate-ids`, `checkbox-id-reservation-atomicity`, `checkbox-middle-split` | Specified; Native execution outstanding. |
-| Marks, syntax variants, all-family off (12/21, E01–E03) | `inline-marks`, `inline-boundaries`, `uniform-toggle`, `triple-strong-off`, `all-mark-families-off` | Specified; Native execution outstanding. |
-| Literal import/paste and escape grammar (E04/E06–E10) | `editor-delimiters`, `typed-versus-pasted-markers`, `literal-import-edit`, `syntax-escape-parity` | Specified; Native execution outstanding. |
-| Native Inline-Code (S08) | `native-inline-code`, `inline-code-typed-literal` | Specified; Native execution outstanding. |
-| Code creation, boundaries, o/O/dd (14/32/33/36, C05–C08) | `code-trigger-events`, `standalone-code-editing`, `code-exit-boundaries`, `code-exit-nested`, `code-exit-list-entry`, `exact-code-import` | Specified; Native execution outstanding. |
-| Tabs/retab/indent, Code selection (C01–C04) | `code-tabs-retab`, `retaball-native-scope`, `code-indent-outdent`, `code-line-selection` | Specified; Native execution outstanding. |
-| List moves, kinds, overlaps, atomicity (13, L01–L09/L12) | `nested-lists`, `list-indent-existing-children`, `list-outdent-reading-order`, `list-selection-atomicity`, `list-kind-preservation` | Specified; Native execution outstanding. |
-| List splits/numbering/empty imports (26, L08/L10/L11, S06) | `list-editing`, `ordered-list-editing`, `ordered-middle-exit`, `checkbox-middle-split`, `empty-imported-ul`, `empty-imported-ol`, `empty-imported-checkbox` | Specified; Native execution outstanding. |
-| Quotes: local/shared/atomic scope and shared references (15/31, Q01–Q04) | `code-and-quotes`, `quote-shared-source-split`, `quote-unique-attribute-split`, `quote-shared-wrap-atomic`, `empty-structures` | Specified; Native execution outstanding. |
-| Links: label/URL independence, edges/schemes/copy (17, K01–K05) | `links`, `link-import-edges`, `empty-link-label-edit`, `cross-paragraph-links` | Specified; Native execution outstanding. |
-| Rules and incremental dash history (16, E11) | `basic-blocks`, `typed-rule-dash-history` | Specified; Native execution outstanding. |
-| Selection/motions/Unicode/history (9/20/22/29/34/35, E05/E13) | `native-selection-and-history`, `graphemes-and-delimiter-selection`, `code-line-selection`, `opaque-node`, `code-and-quotes` | Specified; Native execution outstanding. |
-| Breaks, empty blocks and normal block commands (11/23–25) | `hard-breaks`, `paragraph-creation-and-split`, `empty-structures`, `typed-versus-pasted-markers` | Specified; Native execution outstanding. |
-| Opaque bytes/identities/allowed parent changes (18/20/29, T06) | `opaque-edit-neighbors`, `opaque-nesting`, `attribute-preservation`, `opaque-parent-conversion`, `opaque-identical-atom-identity` | Specified; Native execution outstanding. |
-| Smallest-region safety, duplicate attrs and media (S01–S05) | `duplicate-native-attributes`, `unsafe-html`, `unsafe-attributes-and-urls`, `unsafe-isolated-and-opaque`, `unsafe-url-only`, `embedded-media-neighbors`, `malformed-html`, `document-wrappers`, `valid-optional-end-tags` | Specified; Native execution outstanding. |
-| Tables, images, unknown inner boundaries (19, S07/S09–S11) | `table-mixed-content`, `table-irregular`, `empty-table`, `image-fallbacks`, `image-empty-alt`, `unknown-node`, `unknown-inner-block-boundaries`, `opaque-inline-q` | Specified; Native execution outstanding. |
-| Opaque Mentions: visible label/id, preserved bytes, skip-format, safe copy/paste and confirmed removal (18 / native subset) | `mention-label`, `mention-id-fallback` | Specified synthetic inputs; Native execution and real VOA captures outstanding. |
-| Palette/reflow/config design (28, P01–P12/C02) | `layout-and-palette`, `code-line-selection`, `code-tabs-retab`, `opaque-node` | Specified; Native execution outstanding. |
-| Conflict rejection and candidate retention (30, T07) | `external-save-conflict`, `checkbox-id-reservation-atomicity` | Specified; Native execution outstanding. |
+| HTML persistence, semantic serialization, escaping (1–8) | `basic-blocks`, `entities-and-whitespace`, `serialization-normalization`, `root-inline-fragment`, `root-block-grouping`, `empty-description` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Checkbox identity/state, atomic repair (10/27, L07, S12/S13) | `checkbox-lists`, `checkbox-duplicate-ids`, `checkbox-id-reservation-atomicity`, `checkbox-middle-split` | Candidate repair and persistence verified; middle-split snapshot verified at save seam, editor split/terminal outstanding. |
+| Marks, syntax variants, all-family off (12/21, E01–E03) | `inline-marks`, `inline-boundaries`, `uniform-toggle`, `triple-strong-off`, `all-mark-families-off` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Literal import/paste and escape grammar (E04/E06–E10) | `editor-delimiters`, `typed-versus-pasted-markers`, `literal-import-edit`, `syntax-escape-parity` | Model and focused actual-editor/prepared-save expectations verified (09); real terminal/VOA acceptance outstanding (10). |
+| Native Inline-Code (S08) | `native-inline-code`, `inline-code-typed-literal` | Model and focused actual-editor/prepared-save expectations verified (09); real terminal/VOA acceptance outstanding (10). |
+| Code creation, boundaries, o/O/dd (14/32/33/36, C05–C08) | `code-trigger-events`, `standalone-code-editing`, `code-exit-boundaries`, `code-exit-nested`, `code-exit-list-entry`, `exact-code-import` | Model and focused actual-editor/prepared-save expectations verified (08); real terminal acceptance outstanding (10). |
+| Tabs/retab/indent, Code selection (C01–C04) | `code-tabs-retab`, `retaball-native-scope`, `code-indent-outdent`, `code-line-selection` | Model and focused actual-editor/prepared-save expectations verified (08); real terminal acceptance outstanding (10). |
+| List moves, kinds, overlaps, atomicity (13, L01–L09/L12) | `nested-lists`, `list-indent-existing-children`, `list-outdent-reading-order`, `list-selection-atomicity`, `list-kind-preservation` | Model import/serialization verified; editor/terminal execution outstanding. |
+| List splits/numbering/empty imports (26, L08/L10/L11, S06) | `list-editing`, `ordered-list-editing`, `ordered-middle-exit`, `checkbox-middle-split`, `empty-imported-ul`, `empty-imported-ol`, `empty-imported-checkbox` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Quotes: local/shared/atomic scope and shared references (15/31, Q01–Q04) | `code-and-quotes`, `quote-shared-source-split`, `quote-unique-attribute-split`, `quote-shared-wrap-atomic`, `empty-structures` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Links: label/URL independence, edges/schemes/copy (17, K01–K05) | `links`, `link-import-edges`, `empty-link-label-edit`, `cross-paragraph-links` | Model and focused actual-editor/prepared-save expectations verified (09); real terminal/VOA acceptance outstanding (10). |
+| Rules and incremental dash history (16, E11) | `basic-blocks`, `typed-rule-dash-history` | Model and focused actual-editor/prepared-save expectations verified (09); real terminal/VOA acceptance outstanding (10). |
+| Selection/motions/Unicode/history (9/20/22/29/34/35, E05/E13) | `native-selection-and-history`, `graphemes-and-delimiter-selection`, `code-line-selection`, `opaque-node`, `code-and-quotes` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Breaks, empty blocks and normal block commands (11/23–25) | `hard-breaks`, `paragraph-creation-and-split`, `empty-structures`, `typed-versus-pasted-markers` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Opaque bytes/identities/allowed parent changes (18/20/29, T06) | `opaque-edit-neighbors`, `opaque-nesting`, `attribute-preservation`, `opaque-parent-conversion`, `opaque-identical-atom-identity` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Smallest-region safety, duplicate attrs and media (S01–S05) | `duplicate-native-attributes`, `unsafe-html`, `unsafe-attributes-and-urls`, `unsafe-isolated-and-opaque`, `unsafe-url-only`, `embedded-media-neighbors`, `malformed-html`, `document-wrappers`, `valid-optional-end-tags` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Tables, images, unknown inner boundaries (19, S07/S09–S11) | `table-mixed-content`, `table-irregular`, `empty-table`, `image-fallbacks`, `image-empty-alt`, `unknown-node`, `unknown-inner-block-boundaries`, `opaque-inline-q` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Opaque Mentions: visible label/id, preserved bytes, skip-format, safe copy/paste and confirmed removal (18 / native subset) | `mention-label`, `mention-id-fallback` | Synthetic model bytes/label/id fallback verified; editor and real VOA captures outstanding. |
+| Palette/reflow/config design (28, P01–P12/C02) | `layout-and-palette`, `code-line-selection`, `code-tabs-retab`, `opaque-node` | Model import/serialization verified; editor/terminal execution outstanding. |
+| Conflict rejection and candidate retention (30, T07) | `external-save-conflict`, `checkbox-id-reservation-atomicity` | Atomic persistence and Detail/combined conflict retention verified on disposable DBs; native editing/terminal outstanding. |
 
-Task-level Attachments remain outside Description scope. `mention-label` and `mention-id-fallback` now specify synthetic @label/@id inputs, neighbor edits, skipped formatting, safe copy/paste, internal-edit rejection and confirmed removal/Undo. Their data attributes are hand-authored input assumptions; local `mention-user`/label-or-id source is a lead, not captured generated-output evidence. Exact VOA/Tiptap serialization still needs versioned captures. HTTP/HTTPS/FTP host syntax and non-web scheme-specific URI checks need runtime validator examples; no DNS checks or new allowlist. Existing matrix coverage does not claim exhaustive URL/Unicode/attribute/fuzz coverage.
+Task-level Attachments remain outside Description scope. `mention-label` and `mention-id-fallback` now specify synthetic @label/@id inputs, neighbor edits, skipped formatting, safe copy/paste, internal-edit rejection and confirmed removal/Undo. Their data attributes are hand-authored input assumptions; local `mention-user`/label-or-id source is a lead, not captured generated-output evidence. Exact VOA/Tiptap serialization still needs versioned captures. Ticket 09 validates the fixed seven-scheme creation policy with web/FTP/Git host syntax and non-web resource-authority examples, without DNS checks; safe foreign imports remain distinct from creation. Existing matrix coverage does not claim exhaustive URL/Unicode/attribute/fuzz coverage.
 
-## Technical verification — 2026-10-04
+
+## Document-model verification — 2026-10-07
+
+[Completed ticket 03](../../.archive/2026-10-07/description-rendering/issues/03-implement-source-preserving-description-model.md) supplies the model seam without changing the TUI or Store:
+- [Model fixture tests](../../internal/description/document_test.go) execute classification for all 83 fixtures, 78 exact ordinary-save HTML goldens, two Blocked rejections and current-ID preservation for the three UUID-seam cases.
+- [Independent semantic tests](../../internal/description/meaning_test.go) compare all 81 savable outputs with hand-authored expected HTML using the independent HTML tree parser; mutation-sensitivity cases cover meaningful Native dimensions, and 100 deterministic generated examples exercise combinations. Original-slice Code goldens separately certify exact LF/CRLF/Tabs/final newline.
+- [Anchor tests](../../internal/description/anchor_test.go) check stable unique imported IDs, logical blocks/ancestors, UTF-8 boundaries, structural/empty/Opaque boundaries and detached data. [Regression tests](../../internal/description/regression_test.go) execute actual useful recovery text, local protection, preserved Code metadata and terminal-control escaping.
+- Opaque tests retain identity, order, bytes and declared positions/parents, including identical atoms and explicit removals. Failed serialization never mutates source or supplied draft.
+- Full tests, focused race/vet, builds with VCS stamping disabled and a bounded ten-second fuzz run pass. No fixture edit action, transactional save/UUID adoption, VOA capture or interactive native terminal layout is claimed executed.
+
+## Atomic-save verification — 2026-10-07
+
+[Completed ticket 04](../../.archive/2026-10-07/description-rendering/issues/04-implement-atomic-description-save.md) is implemented and committed on 2026-10-08. [Candidate tests](../../internal/description/save_test.go) execute the four focused Checkbox corpus inputs with independently authored deterministic UUID goldens, Opaque/source-ID reservation, collision/failure and stable repeat saves. The middle split is supplied as the accepted edited snapshot; this does not execute editor keys. [Store tests](../../internal/vimkunja/description_save_test.go) exercise two-handle remote changes after preparation, transactional conflict rejection, create/update/combined success and rollback, unchanged HTML/Done, concurrent writers and failed COMMIT with an external reader. [Detail tests](../../internal/tui/description_save_test.go) cover baseline capture, conflict/draft retention, committed adoption, late edits and post-commit history-read errors. Full tests, affected race/vet and both builds pass; no live DB or real terminal/VOA evidence is claimed. Ticket 06 owns adopting committed node identities into its live editor and rebuilding future candidates.
+
+## Historical technical verification — 2026-10-04
 
 - Artifact checks: 83 unique records; null outputs justified; Blocked records have no ordinary-save golden; retained Opaque slices occur byte-for-byte in source/output in order and multiplicity.
 - Existing `x/net/html`: copied Raw tokens reconstruct original UTF-8, mixed quote/case/duplicate attributes and CRLF. Token/Text normalizes CRLF to LF. Native Code therefore needs decoding from original text slices. Tree parsing repairs malformed/unexpectedly nested HTML without an error; strict acceptance cannot rely on ParseFragment success alone.
@@ -70,7 +84,7 @@ Remaining execution work: Native model/parser/serializer/editor and identity-awa
 
 ## Next work
 
-No further product card confirmation is required. Follow [the implementation index](issues/02-specify-native-rich-text-description-rendering-and-editing.md#implementation-tickets--2026-10-05), starting with ticket 03 when implementation is authorized. Tickets 04/05 follow 03; ticket 10 capture and case preparation can begin independently. Use the accepted rules/examples at those test seams; do not substitute the existing lossy reader for the future serializer. Actual Native tests and versioned VOA captures remain prerequisites for claiming full rich-text compatibility.
+No further product card confirmation is required. Continue with ticket 05 native projection/navigation using the completed model/save seams; do not substitute the existing lossy reader for its serializer. Model tests pass, while editor/terminal execution and versioned VOA captures remain prerequisites for claiming full rich-text compatibility.
 
 ## Follow-up consistency cleanup — 2026-10-04
 
@@ -231,3 +245,102 @@ User explicitly accepts cards 1–7 of `explain-description-restpunkte-2026-10-0
 ### Reduced critical review — noncritical defaults adopted
 
 The noncritical rest and, on 2026-10-04, the final Quote-source split rule are accepted. Both retained Quote fragments preserve the same known `data-comment-id`/`cite` reference without an extra confirmation for repeating it; genuinely unique IDs/unknown attributes still require lossless allocation, and actual metadata loss retains Q03 confirmation. Upstream `blockquoteWithCommentId.ts` identifies `data-comment-id` as the original comment reference, not a unique Quote identity. Existing fixture outputs remain untouched; a targeted split example and preservation assertions still need corpus synchronization and tests. No blanket golden/evidence approval or runtime authorization is inferred.
+
+### 2026-10-08 — Ticket 05 projection/navigation execution
+
+`internal/description/view_contract_test.go` runs all 83 synthetic sources at widths 1/4/12/40/80 and heights 1/3/12: bounded safe rows, anchor-preserving resize, navigation/scroll and unchanged Source HTML. Nine focused records check independently authored logical content: `layout-and-palette`, `graphemes-and-delimiter-selection`, `code-and-quotes`, `table-mixed-content`, `table-irregular`, `unknown-inner-block-boundaries`, `image-empty-alt`, `mention-label`, `mention-id-fallback`. Protected frames/list markers are excluded from semantic copy text; Code tabs/newlines remain exact. This does not execute the fixtures' edit actions.
+
+Additional tests cover style roles, graphemes, mark disclosure, hard/soft breaks, logical and visual motions, block-bounded semantic words, whole quote/Code paragraph units, counting, horizontal limits/restoration, simple/styled/irregular tables and captions, Opaque checkbox summaries, ASCII cues, malformed safety and short/narrow/wide Task Detail layouts. The SQLite-backed TUI test verifies no source/database/draft changes while navigating/resizing. Bounded projection fuzz seeds exercise arbitrary input. Native live editing/history/recovery and actual clipboard integration remain later-ticket work. Windows/German-terminal input captures, practical palette readability and versioned VOA captures remain outstanding; no manual acceptance is claimed.
+
+### Native draft execution — ticket 06, 2026-10-09
+
+`TestDraftAcceptedCorpusEdits` executes independently specified expected HTML for ten focused fixture records: paragraph-creation-and-split, hard-breaks, native-selection-and-history, uniform-toggle, triple-strong-off, all-mark-families-off, opaque-parent-conversion, opaque-edit-neighbors, malformed-html and document-wrappers. Additional Draft/TUI regressions exercise Code-line selection/clamping, partial nested mark removal, cross-mark word objects, Opaque skipping/confirmation/paint, literal paste, graphemes, merge, local history and identity adoption across real temporary-SQLite saves/conflicts. These are representative edits, not every action in all 83 fixtures. Save/normalization output goldens remain independent of implementation. Real VOA and terminal acceptance remain ticket 10.
+
+
+### 2026-10-09 — Ticket 06 verification completed
+
+Draft/Visual implementation is archived, committed 2026-10-09, after five review rounds and targeted final fix rechecks with no remaining confirmed findings. Full tests, affected race/vet, both builds and bounded draft fuzz (50,298 executions in the final run) pass. Regression tests additionally cover selected-Opaque skip feedback, quote-source metadata confirmation on empty Enter exit, visible Normal deletion cursors and atomic rejection of inline formatting across Code. Earlier corpus expectations remain independently authored and synthetic; this does not certify every future 07–09 edit or real VOA/terminal behavior.
+
+
+### 2026-10-10 — Ticket 07 structure execution
+
+`TestDraftStructureCorpusEdits` executes ten independent HTML expectations for list-indent-existing-children, list-outdent-reading-order, list-selection-atomicity, list-kind-preservation, ordered-middle-exit, empty-imported-ul, empty-imported-ol, quote-shared-source-split, quote-unique-attribute-split and quote-shared-wrap-atomic. checkbox-middle-split and empty-imported-checkbox have structural state/identity tests; random IDs are checked through actual candidate adoption and repeated temporary-SQLite saves instead of literal HTML goldens. Dedicated Draft/TUI regressions cover all L01–L12/Q01–Q04 paths, parent-child overlap, invalid mixed selections, implicit reversed continuation, safe mixed-kind outdent, Opaque/history, nested scope, empty Native metadata and selection-origin stability. No goldens were generated from the serializer.
+
+Five full review rounds and final targeted independent rechecks leave no confirmed findings. Full tests, affected race/vet, both builds and bounded structure fuzz (36,734 final executions) pass. Ticket 07 is archived, committed 2026-10-10. This remains synthetic/module/TUI/temporary-SQLite execution evidence; real VOA captures, Windows/dead-key behavior and human terminal acceptance remain Ticket 10.
+
+## Code editing verification — 2026-10-10 (08, completed; committed 2026-10-10)
+
+`internal/tui/native_code_test.go` executes all 38 non-null edit goldens for nine focused Code records through actual model Key/Paste/clipboard dispatch and compares prepared-save HTML against the independently authored corpus. `code-line-selection` is covered by existing 06 origin/clamping tests and 08 selected-indent/retab tests. The mappings are `code-trigger-events`, `code-exit-boundaries`, `code-exit-nested`, `code-exit-list-entry`, `standalone-code-editing`, `exact-code-import`, `code-tabs-retab`, `retaball-native-scope`, `code-indent-outdent`. Additional module/TUI regressions exercise grouped chunks, escaped markers, Backspace, Unicode-width tabs, multi-wrapper Code source/metadata/anchors, protected Code-child source gaps, CRLF line-end append, last-line deletion, prefix errors/focus cancellation, Comment isolation and independent config validation. Synthetic events are not real keyboard/terminal evidence; Ticket 10 retains German/Windows capture and integrated acceptance.
+
+Four independent review pairs completed; both final reviewers report no findings. Full tests, focused race/vet, both builds and ten-second Code retab preservation fuzz pass. [Completed ticket 08](../../.archive/2026-10-10/description-rendering/issues/08-implement-native-code-editing-and-terminal-input.md) records exact commands and coverage.
+
+## Inline editing verification — 2026-10-10 (09)
+
+`internal/tui/native_inline_corpus_test.go` executes all 40 non-null edit goldens in eleven focused records through actual model Key/Paste/URL-prompt dispatch and compares prepared-save HTML against independently authored expectations: `editor-delimiters`, `typed-versus-pasted-markers`, `literal-import-edit`, `syntax-escape-parity`, `native-inline-code`, `inline-code-typed-literal`, `typed-rule-dash-history`, `links`, `link-import-edges`, `empty-link-label-edit`, `cross-paragraph-links`. No corpus goldens were regenerated.
+
+Dedicated Draft/TUI tests additionally cover all agreed escapes, editable delimiter selection/highlighting, imported/pasted origin across splits, grouped typing, malformed/crossed/empty syntax, Inline-Code literal preservation and outside-fence boundaries, seven-scheme URL rejection/acceptance, meaningful metadata/unique-ID guards, empty-label fallback edit/unlink/delete, linked `c` replacements, cross-paragraph scope, actual clipboard-result feedback and confirmation precedence. A temporary-SQLite integration verifies inline typing/URL save adoption and retained local Undo. Inline-Code Text targets at the first/last content gap are inside the displayed backticks; structural Code targets and gaps outside those backticks insert outside.
+
+These are synthetic editor/module/persistence results. Versioned VOA captures, real German/Windows events, practical layout acceptance and complete per-rule integration reporting remain Ticket 10.
+
+Five independent review pairs and targeted final fix verification leave no confirmed findings. Full tests including artifact checks, affected race/vet, both builds and bounded inline grouping fuzz pass. [Completed ticket 09](../../.archive/2026-10-10/description-rendering/issues/09-implement-inline-syntax-code-and-links.md) records exact commands and limitations; committed 2026-10-10 after user authorization.
+
+## Integration evidence — 2026-10-11
+
+- [Per-fixture execution ledger](captures/native-execution-2026-10-11.json): all 83 imports/serializations and projections, 203 indexed edit executions, remaining assertion-record indices and names of passing focused regressions. This distinguishes exact fixture drivers from related contract tests.
+- [Seven actual editor-component captures](captures/upstream-editor-2026-10-11.json): upstream commit, component SHA-256, runtime versions, original input and actual `getHTML()`. Includes edited Checkbox HTML prepared through the public Draft API and reimported into the component; its output was byte-identical. These are separate from synthetic corpus records and are not an authenticated Task/backend capture.
+- [Actual model layouts](captures/tui-model-layouts-2026-10-11.json): model rendering at 120×40, 54×12 and 20×6 and return to 120×40; synthetic size events retain the draft and document anchor. This complements existing cursor, palette, Code/Table scroll, wrap and protected-atom assertions; it is not physical terminal evidence.
+- [Linux PTY smoke](captures/linux-pty-smoke-2026-10-11.json): built workshop binary opened the real Native editor and applied Visual Bold. Injected PTY keys, partial incremental ANSI output and clean exit are recorded explicitly. The [practice smoke](captures/linux-pty-practice-2026-10-11.json) also confirms unrestricted input and four-backtick/Enter creation in the built binary.
+- Actual Checkbox wrappers required a narrow compatibility adapter. Known controls are hidden from document navigation, body text/nested lists remain Native, checked state is synchronized, and ordinary saves retain wrappers. Structural operations may emit direct paragraphs/lists. Unsafe/unknown control attributes remain locally Opaque; safe body text beside them stays editable. No synthetic expected HTML was regenerated.
+- Regression fixes retain plain formatting when replacing a whole text leaf beside a mark, copy a focused Mention's safe projection without its whole paragraph, and retain the direct-inline representation when splitting a plain list entry at its end.
+
+### Reproduce the component capture
+
+The small isolated host is in `captures/host/`; it imports unmodified upstream sources, not Vimkunja runtime dependencies. Use a disposable Linux directory and the recorded upstream checkout/commit. Node 24+ is needed. No backend or user DB is opened. The host pins direct dependencies and all Tiptap overrides; the capture JSON records resolved runtime versions. It does not claim a full upstream pnpm environment.
+
+```bash
+mkdir -p /tmp/vimkunja-voa-recapture && cp .scratch/description-rendering/captures/host/* /tmp/vimkunja-voa-recapture/
+```
+
+```bash
+git -C /workspace/go-vikunja archive 82ee780161c6ed250cdb1fc4d2952b72464cb724 frontend/src frontend/tsconfig.json | tar -x -C /tmp/vimkunja-voa-recapture
+```
+
+```bash
+cp /tmp/vimkunja-voa-recapture/frontend-tsconfig.json /tmp/vimkunja-voa-recapture/frontend/tsconfig.json && cd /tmp/vimkunja-voa-recapture && npm install --ignore-scripts && npm run dev
+```
+
+In the browser, for each recorded `input_html`, run `const e = window.captureEditor(); e.commands.setContent(input, {emitUpdate: false}); e.getHTML()`. In this session the browser host could not reach the container's HTTP listener; the same built component bundle was transferred into the collaborative browser and mounted there. The capture method records that limitation.
+
+### Automated commands
+
+```bash
+go test ./... ./.scratch/description-rendering/verification
+```
+
+```bash
+go test -race ./internal/description ./internal/tui ./internal/tutorial ./internal/vimkunja
+```
+
+```bash
+go test ./internal/description -run '^$' -fuzz '^FuzzParseAndSerialize$' -fuzztime=5s -parallel=2
+```
+
+```bash
+go test ./internal/description -run '^$' -fuzz '^FuzzDraftActionsAreAtomic$' -fuzztime=5s -parallel=2
+```
+
+```bash
+go vet ./... && go build -buildvcs=false ./cmd/vimkunja ./cmd/vimkunja-tutorial
+```
+
+The two bounded fuzz runs are also configured in normal Linux CI. `-buildvcs=false` is needed in this shared worktree because of VCS ownership; no production dependency or database schema changed.
+
+## Fresh-start acceptance re-review — 2026-10-15
+
+All 16 human checklist topics now have actual fresh-app key/Paste journeys in `internal/tutorial/practice_acceptance_test.go` and the AT-01 test in `markup_test.go`. These check independent saved HTML, unchanged Task Done, reopen/discard and actual recovery state transitions. The workshop test also requires a real Quit message. This does not turn injected events or the Link clipboard writer tests into physical Windows/host clipboard evidence.
+
+Independent Spec/Standards reviews found and fixed child-entry text leaking into parent word selection, unsupported standalone Opaque word selection and partial Checkbox deletion losing render controls. Their focused model/UI regressions include save/adoption/Undo and whole-entry deletion. Recovery Card/workshop instructions were corrected. Exact original corpus expectations remain unchanged; detailed findings and final verification are recorded in Ticket 10.
+
+## Final acceptance — 2026-10-19
+
+Jan accepts AT-01–AT-10 after the integrated fixes. The contract and completed tickets are archived under `.archive/2026-10-19/description-rendering/`; executable fixtures/captures and verification retain their existing paths. Only corpus.json's contract reference changes during archival: fixture inputs/expected outputs and synthetic provenance remain unchanged. Its original status describes the creation checkpoint; current execution evidence is recorded in this ledger and the completion tickets.

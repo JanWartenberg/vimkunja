@@ -12,8 +12,20 @@ MVP, **Meilenstein 1** und **Meilenstein 2** sind abgeschlossen: tägliche Aufga
 - Einheitliche Due-Date-, Priority- und Identifier-Darstellung in Liste, Overview und Detail; stabiles Metadaten-Layout bei schmalen Pane-Breiten
 - [Kompakte Task-Details](.archive/2026-08-14/task-detail-compact-layout/issues/01-preserve-description-access-in-short-terminals.md#regression-correction--2026-10-09): Description-Sichtbarkeit und Scroll-Feedback bei geringer Höhe repariert; Layout von Jan unter Windows akzeptiert.
 - List-, Overview- und Kanban-Views mit Vim-Navigation, Pane-Fokus, Ex-Commands, Help, Fehlerlog und Leader-Key; Kanban-Karten- und Task-Detail-Auswahl bleiben synchron
-- Separates englisches Keystroke-Tutorial mit bei jedem Start frisch erzeugter, temporärer SQLite-Datenbank
+- Separates englisches Tutorial mit flachem Startmenü: Bedienung oder Markup jeweils geführt oder frei üben, plus Quit; temporäre SQLite-Datenbank erst nach Moduswahl
 - `go test ./...` grün
+
+- [Aufgabenbasierte Tutorials](.scratch/tutorial-task-workflow/issues/02-convert-all-guided-tutorials.md) – allgemeiner Lernweg und Richtext-Workshop auf `main`: 26 allgemeine und 22 Richtext-Aufgaben mit freier Bedienung, Ergebnisprüfung, F5 für den aktuellen Startzustand und F8 nach Erfolg sowie F12 zum Überspringen; kompakte Anzeige und bestätigbare Kontext-/Hilfemodals. Richtext-Ausgangsstand auf `feature/description-model` bei `10ff5d2` gesichert.
+
+- [Native Rich-Text-Descriptions](.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md) – implementiert und manuell abgenommen: **AT-01–10 PASS**, Tutorial abgeschlossen. Auswahl/Formatierung, Checkboxen, Code/Tabs, Systemzwischenablage und Live-Vikunja-Roundtrip einschließlich In-App-Reload geprüft; bekannte Fehler durch Regressionen abgesichert. [Editor-Nacharbeiten](.archive/2026-10-19/description-rendering/issues/11-format-visual-selections-and-convert-touched-paragraphs.md) abgeschlossen.
+
+- [Richtext-Fuzz-Nachprüfung](.scratch/description-rendering/fuzz-audit-2026-10-17/report.md) – abgeschlossen; deterministische Regressionen und kurze CI-Fuzz-Prüfungen sichern die Korrekturen ab.
+
+## Vereinbarte nächste Schritte
+
+1. [URL-Copy-Taste](.scratch/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – freie Kleinschreibung wählen, umsetzen und prüfen.
+2. [Offene Subtasks prüfen und aufräumen](.scratch/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md) – echte Restarbeit von veralteten Statusangaben trennen; belegbar abgeschlossene Tickets archivieren.
+3. [GitHub-Initialisierung/Veröffentlichung abschließen](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) – verbleibende Release-Voraussetzungen klären und finalen Veröffentlichungsstand prüfen.
 
 ## Aktuelle Tickets
 
@@ -40,11 +52,12 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 19. [Lokale Suche im fokussierten Pane](.scratch/local-search/issues/01-search-within-focused-pane.md) – `/` sowie `n`/`N` sind vereinbart, die Pane-Semantik bleibt offen.
 20. [Erweiterte globale Suchabfragen und Ranking](.scratch/global-search-filter/issues/02-add-advanced-global-search-query-and-ranking.md) – Phrasen, Negation, Fuzzy-Matching und Ranking bewusst nach V1.
 21. [Fehlerhafte Project-Hierarchien diagnostizieren und reparieren](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – Feedback und sichere Reparatur bewusst nach dem Hierarchie-Reader.
-22. [Native Rich-Text-Beschreibungen](.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md#implementation-tickets--2026-10-05) – Regel-Quercheck akzeptiert; 83 synthetische Beispiele. Acht Umsetzungstickets **03–10** vorbereitet, Start mit [03 — Dokumentmodell/HTML-Erhaltung](.scratch/description-rendering/issues/03-implement-source-preserving-description-model.md); reale VOA-Beispiele können parallel gesammelt werden. Native Umsetzung noch nicht begonnen; technische Abnahme in Ticket 10.
+22. [Native Rich-Text-Beschreibungen](.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md) – abgeschlossen und archiviert; Implementierung 03–09 sowie Integration/Nacharbeiten 10/11 geprüft. Alle zehn manuellen Abnahmepunkte einschließlich Windows-/AltGr-, Clipboard-, Resize- und Live-Vikunja-Prüfung bestanden.
 22a. [Ausgewählten Task in die Zwischenablage kopieren](.scratch/task-clipboard-copy/issues/01-copy-selected-task-to-clipboard.md) – `:copy` für genau einen Task; nach der aktuellen Rich-Text-Arbeit einordnen, Metadatenformat und Umgang mit ungespeicherten Änderungen noch spezifizieren.
+22b. [Bequemere URL-Copy-Taste](.scratch/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – optionaler M3-Follow-up; freie Kleinschreibung statt `Space+Y` mit Jan wählen, danach konsistent verdrahten und dokumentieren.
 23. [Getrennte Historien für kontextspezifische Command-Prompts spezifizieren](.scratch/contextual-command-histories/issues/01-specify-independent-command-prompt-histories.md) – nach der M2-Ex-History; eigene session-lokale Historie je Prompt, ohne die Command-Grammatiken zu vereinheitlichen.
 23a. [Workspace-/Datenpräferenzen spezifizieren](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – Default-Project/View, Startfilter und persistierte Navigationspräferenzen; nach der lokalen TUI-Konfiguration.
-23b. [Multiline-Layout im Comment Composer wiederverwenden](.scratch/comment-composer-multiline-layout/issues/01-reuse-multiline-layout-in-comment-composer.md) – bewusst in eine spätere Session verschoben; zuerst screen-level Regressionstests ergänzen.
+23b. [Multiline-Layout im Comment Composer wiederverwenden](.scratch/comment-composer-multiline-layout/issues/01-reuse-multiline-layout-in-comment-composer.md) – gemeinsames Multiline-Layout und einheitlicher Insert-Cursor implementiert; Regressionen für Umbruch, Leerzeilen, Scrollen und Unicode bestehen.
 23c. [Hilfe strukturieren und Richtext separieren](.scratch/help-structure/issues/01-rethink-help-structure-and-richtext-reference.md) – uneinheitliche Einrückung und schlechte Lesbarkeit; Aufteilung, Navigation und Layout brainstormen und kritisch prüfen, mindestens eigene Richtext-Hilfeseite. Konzeption offen, keine Umsetzung beauftragt.
 
 ### Meilenstein 4
@@ -60,7 +73,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 
 - [Vikunja-DB-Kompatibilität ausschließlich 2.7.0](.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md) — **abgeschlossen; Kompatibilitätsvoraussetzung der Veröffentlichung erfüllt**. Produktive Revisionsprüfung, Store-Fixes und Regressionen implementiert; [Prüfbericht](.archive/2026-10-05/vikunja-db-compatibility/report.md) belegt Fresh-/Baseline-Roundtrips mit offiziellem VOA 2.7.0. Tests, Vet und beide Builds grün. Nur 2.7.0, sequenzieller Betrieb; permanente Löschung von Tasks mit Time Entries gesperrt. Native Windows-Terminaltests weiterhin offen.
 - [01 — Lizenz und Dokumentation für GitHub](.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) — **abgeschlossen und archiviert**. Lizenzinventar (30 Module/128 zusätzliche Hinweise), README, Beispiele und Links geprüft; HTML-Schreibschutz, Konfigurationspriorität, Binary-Start und Release-Grenzen präzisiert.
-- [02 — Veröffentlichung nach dem Richtext-Merge](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) — **wartet auf den vereinbarten Worktree-Merge; Ticket 01 ist abgeschlossen**. Danach CI/Tests, E-Mail-/Historienbereinigung in separater Veröffentlichungskopie, finale Secret-/DB-Prüfung und Push-Dry-Run. **Nur `main` und bestätigte Tags; keine Backup-Referenzen, kein Mirror-Push. Öffentlicher Push nur auf ausdrücklichen Auftrag.**
+- [02 — Veröffentlichung nach dem Richtext-Merge](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) — **Richtext nach `main` übernommen; Ticket 01 ist abgeschlossen**. Danach CI/Tests, E-Mail-/Historienbereinigung in separater Veröffentlichungskopie, finale Secret-/DB-Prüfung und Push-Dry-Run. **Nur `main` und bestätigte Tags; keine Backup-Referenzen, kein Mirror-Push. Öffentlicher Push nur auf ausdrücklichen Auftrag.**
 
 ## Dokumentation
 

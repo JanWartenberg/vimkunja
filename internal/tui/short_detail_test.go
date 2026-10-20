@@ -15,9 +15,9 @@ func TestShortTaskDetailKeepsDescriptionVisible(t *testing.T) {
 	for _, height := range []int{28, 30, 32, 34, 36, 38, 40} {
 		for _, html := range []bool{false, true} {
 			t.Run(fmt.Sprintf("height=%d/html=%v", height, html), func(t *testing.T) {
-				description := "FIRST_DESCRIPTION_LINE\nSECOND_DESCRIPTION_LINE\nTHIRD_DESCRIPTION_LINE"
+				description := "FIRSTDESCRIPTIONLINE\nSECONDDESCRIPTIONLINE\nTHIRDDESCRIPTIONLINE"
 				if html {
-					description = "<p>FIRST_DESCRIPTION_LINE</p><p>SECOND_DESCRIPTION_LINE</p><p>THIRD_DESCRIPTION_LINE</p>"
+					description = "<p>FIRSTDESCRIPTIONLINE</p><p>SECONDDESCRIPTIONLINE</p><p>THIRDDESCRIPTIONLINE</p>"
 				}
 				m := testModel()
 				m.width, m.height = 100, height
@@ -33,7 +33,7 @@ func TestShortTaskDetailKeepsDescriptionVisible(t *testing.T) {
 						m = pressKey(m, tea.Key{Code: tea.KeyEnter})
 					}
 					view := ansi.Strip(m.Render())
-					for _, line := range []string{"FIRST_DESCRIPTION_LINE", "SECOND_DESCRIPTION_LINE", "THIRD_DESCRIPTION_LINE"} {
+					for _, line := range []string{"FIRSTDESCRIPTIONLINE", "SECONDDESCRIPTIONLINE", "THIRDDESCRIPTIONLINE"} {
 						if !strings.Contains(view, line) {
 							t.Fatalf("activated=%v: missing %s in short Task Detail", activate, line)
 						}
@@ -49,12 +49,12 @@ func TestShortTaskDetailKeepsDescriptionVisible(t *testing.T) {
 
 func TestShortTaskDetailScrollPercentageTracksVisibleDescription(t *testing.T) {
 	percent := regexp.MustCompile(`\b\d+%`)
-	visibleLines := regexp.MustCompile(`DESCRIPTION_LINE_\d+`)
+	visibleLines := regexp.MustCompile(`DESCRIPTIONLINE\d+`)
 	for _, height := range []int{28, 30, 32, 34, 36, 38, 40} {
 		t.Run(fmt.Sprint(height), func(t *testing.T) {
 			lines := make([]string, 24)
 			for i := range lines {
-				lines[i] = fmt.Sprintf("DESCRIPTION_LINE_%02d", i)
+				lines[i] = fmt.Sprintf("DESCRIPTIONLINE%02d", i)
 			}
 			m := testModel()
 			m.width, m.height = 100, height
@@ -90,26 +90,25 @@ func TestShortTaskDetailScrollPercentageTracksVisibleDescription(t *testing.T) {
 func TestShortTaskDetailExpandedMetadataKeepsHTMLDescriptionVisible(t *testing.T) {
 	m := testModel()
 	m.width, m.height = 100, 30
-	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "<p>FIRST_LINE</p><p>SECOND_LINE</p><p>THIRD_LINE</p><p>LAST_LINE</p>"})
+	m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: "<p>FIRSTLINE</p><p>SECONDLINE</p><p>THIRDLINE</p><p>LASTLINE</p>"})
 	m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
 	m = pressKey(m, tea.Key{Code: tea.KeyEnter}) // Expand More fields.
 	for steps := 0; m.editor.field != fieldDescription && steps < 12; steps++ {
 		m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
 	}
 	view := ansi.Strip(m.Render())
-	for _, line := range []string{"FIRST_LINE", "SECOND_LINE", "THIRD_LINE"} {
+	for _, line := range []string{"FIRSTLINE", "SECONDLINE", "THIRDLINE"} {
 		if !strings.Contains(view, line) {
 			t.Fatalf("expanded metadata hides %s after Description navigation", line)
 		}
 	}
-	m = pressKey(m, tea.Key{Code: tea.KeyEnter})
-	m = pressKey(m, tea.Key{Code: 'u', Mod: tea.ModCtrl}) // Page back to metadata.
-	if strings.Contains(ansi.Strip(m.Render()), "FIRST_LINE") {
+	m.pageDetail(-1) // Outer viewport starts on metadata, before native navigation resumes.
+	if strings.Contains(ansi.Strip(m.Render()), "FIRSTLINE") {
 		t.Fatal("outer-page fixture must hide Description before resuming inner scrolling")
 	}
 	m = pressKey(m, tea.Key{Code: 'e', Mod: tea.ModCtrl})
 	view = ansi.Strip(m.Render())
-	if !strings.Contains(view, "LAST_LINE") || !strings.Contains(view, "100%") || !strings.Contains(view, "Comments") {
+	if !strings.Contains(view, "LASTLINE") || !strings.Contains(view, "100%") || !strings.Contains(view, "Comments") {
 		t.Fatalf("expanded Description must show last line, 100%% and pinned Comments:\n%s", view)
 	}
 }
@@ -119,17 +118,17 @@ func TestHTMLDescriptionEndScrollReachesLastVisibleLine(t *testing.T) {
 		t.Run(fmt.Sprint(height), func(t *testing.T) {
 			m := testModel()
 			m.width, m.height = 100, height
-			m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: strings.Repeat("<p>Body</p>", 24) + "<p>LAST_LINE</p>"})
-			// Start in the existing read-only Description navigation state.
-			m.editor.field = fieldDescription
+			m.openExistingEditor(vimkunja.Task{ID: 1, ProjectID: 1, Title: "Task", Description: strings.Repeat("<p>Body</p>", 24) + "<p>LASTLINE</p>"})
+			// Use the actual native Description navigation flow.
+			nativeKeys(m, "g", "n", "enter")
 			m = pressKey(m, tea.Key{Code: 'G', Text: "G"})
 			view := ansi.Strip(m.Render())
-			if !strings.Contains(view, "LAST_LINE") || !strings.Contains(view, "100%") {
+			if !strings.Contains(view, "LASTLINE") || !strings.Contains(view, "100%") {
 				t.Fatalf("HTML end-scroll must show last line and 100%% at height %d", height)
 			}
 			m = pressKey(m, tea.Key{Code: tea.KeyHome})
 			view = ansi.Strip(m.Render())
-			if !strings.Contains(view, "Body") || strings.Contains(view, "LAST_LINE") || !strings.Contains(view, "0%") {
+			if !strings.Contains(view, "Body") || strings.Contains(view, "LASTLINE") || !strings.Contains(view, "0%") {
 				t.Fatal("HTML Home must restore first viewport and 0%")
 			}
 		})

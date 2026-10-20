@@ -131,7 +131,7 @@ func (m *model) closeTaskDetail() {
 func (m *model) openOverviewNewEditor() tea.Cmd {
 	draft := vimkunja.TaskDraft{}
 	m.editor = &taskEditor{
-		draft: draft, original: draft, field: fieldProject,
+		draft: draft, original: draft, field: fieldProject, nativeTabstop: m.codeConfig.Tabstop,
 		mode: editorProjectPicker, pickerIndex: m.projectPickerIndex(0, ""),
 	}
 	m.showDetail = true

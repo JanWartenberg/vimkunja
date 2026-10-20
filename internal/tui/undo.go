@@ -89,6 +89,9 @@ func (m *model) rememberUndo(entry *undoEntry) {
 }
 
 func (m *model) undoKeyAllowed() bool {
+	if m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionActive && m.editor.descriptionView() != nil {
+		return false
+	}
 	if m.focus != paneTasks && m.focus != paneDetail {
 		return false
 	}
@@ -185,6 +188,11 @@ func (m *model) refreshEditorAfterUndo(state vimkunja.TaskUndoState) {
 		WorkflowBucketID: bucketID, Done: state.Done,
 		LabelIDs: append([]int64(nil), state.LabelIDs...),
 	}
+	m.editor.nativeDraft = nil
+	m.editor.nativeDescription = nil
+	m.editor.nativePending = nil
+	m.editor.nativePrefix = ""
+	m.editor.nativeCount = 0
 	m.editor.draft = draft
 	m.editor.original = cloneTaskDraft(draft)
 	m.editor.labelsLoading = true

@@ -9,6 +9,7 @@ import (
 )
 
 type clipboardPastedMsg struct {
+	link     *nativeLinkPrompt
 	editor   *taskEditor
 	composer *commentComposer
 	text     string

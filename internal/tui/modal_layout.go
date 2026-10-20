@@ -44,6 +44,9 @@ func modalBounds(viewportWidth, viewportHeight, preferredWidth, preferredHeight 
 func renderModalFrame(rows []string, layout modalLayout) string {
 	fitted := make([]string, 0, len(rows))
 	for _, row := range rows {
+		if strings.Contains(row, insertCursorAnchor) {
+			row = fitInputCursor(row, layout.contentWidth)
+		}
 		fitted = append(fitted, ansi.Truncate(row, layout.contentWidth, ""))
 	}
 	if layout.fallback && len(fitted) > layout.contentHeight {

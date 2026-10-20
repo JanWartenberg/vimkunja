@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"reflect"
 	"strings"
 	"time"
 
@@ -38,7 +39,9 @@ type paneNeighbors struct {
 }
 
 type Config struct {
-	Store vimkunja.Store
+	Tabstop, IndentStep int
+	LiteralTabAlias     string
+	Store               vimkunja.Store
 
 	PerPage int
 
@@ -51,11 +54,14 @@ type Config struct {
 }
 
 type model struct {
-	store               vimkunja.Store
-	perPage             int
-	disableCursorShapes bool
-	now                 func() time.Time
-	clipboardRead       func() (string, error)
+	codeConfig              Config
+	store                   vimkunja.Store
+	perPage                 int
+	disableCursorShapes     bool
+	now                     func() time.Time
+	clipboardWrite          func(string) error
+	clipboardRead           func() (string, error)
+	textClipboardGeneration uint64
 
 	width            int
 	height           int
@@ -65,6 +71,7 @@ type model struct {
 	ctrlWArmed               bool
 	ctrlWTimeout             time.Duration
 	leaderArmed              bool
+	nativePaletteVisible     bool
 	viewSwitchArmed          bool
 	deleteArmed              bool
 	deleteConfirm            bool
@@ -146,21 +153,18 @@ type model struct {
 	kanbanEmptyDetailOrigin     bool
 
 	// Tasks pane
-	tasks               []vimkunja.Task
-	projectTasks        []vimkunja.Task
-	taskFilter          overviewFilter
-	taskSelected        int
-	taskLoading         bool
-	inlineTitle         *inlineTitleEdit
-	inlineCursorX       int
-	inlineCursorY       int
-	inlineCursorVisible bool
-	taskScope           taskScope
-	overviewTasks       []vimkunja.Task
-	overviewLabel       vimkunja.Label
-	overviewFilter      overviewFilter
-	overviewSort        overviewSort
-	overviewPrompt      overviewPrompt
+	tasks          []vimkunja.Task
+	projectTasks   []vimkunja.Task
+	taskFilter     overviewFilter
+	taskSelected   int
+	taskLoading    bool
+	inlineTitle    *inlineTitleEdit
+	taskScope      taskScope
+	overviewTasks  []vimkunja.Task
+	overviewLabel  vimkunja.Label
+	overviewFilter overviewFilter
+	overviewSort   overviewSort
+	overviewPrompt overviewPrompt
 
 	// Detail and auxiliary panes
 	showDetail bool
@@ -174,12 +178,15 @@ type model struct {
 	editor                    *taskEditor
 	savingEditor              *taskEditor
 	cursorVisible             bool
+	renderedInputCursor       *tea.Cursor
 
 	initialProjectID int64
 	initialViewID    int64
 
-	undoHistory []*undoEntry
-	redoHistory []*undoEntry
+	createdTaskIDs    []int64
+	lastDeletedTaskID int64
+	undoHistory       []*undoEntry
+	redoHistory       []*undoEntry
 }
 
 func NewModel(cfg Config) tea.Model {
@@ -191,7 +198,18 @@ func NewModel(cfg Config) tea.Model {
 	if ctrlWTimeout <= 0 {
 		ctrlWTimeout = DefaultCtrlWTimeout
 	}
+	if cfg.Tabstop <= 0 && cfg.LiteralTabAlias == "" {
+		cfg.LiteralTabAlias = "ctrl+q"
+	}
+	if cfg.Tabstop <= 0 {
+		cfg.Tabstop = 4
+	}
+	if cfg.IndentStep != 2 && cfg.IndentStep != 4 {
+		cfg.IndentStep = 4
+	}
+	// A zero Config uses the default alias; TOML can explicitly disable it.
 	m := &model{
+		codeConfig:          cfg,
 		store:               cfg.Store,
 		perPage:             max(1, cfg.PerPage),
 		disableCursorShapes: cfg.DisableCursorShapes,
@@ -310,6 +328,7 @@ type (
 		closeAfter bool
 		undo       *undoEntry
 		err        error
+		historyErr error
 	}
 	cursorBlinkMsg   struct{}
 	leaderTimeoutMsg struct{}
@@ -439,6 +458,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if _, released := key.(tea.KeyReleaseMsg); released {
 			return m, nil
 		}
+		m.textClipboardGeneration++
 		// Keep the save's editor and close/quit intent stable until completion.
 		// Ctrl-C remains the explicit application-wide emergency exit.
 		if m.savingEditor != nil && strings.ToLower(key.String()) != "ctrl+c" {
@@ -446,6 +466,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
+		// The palette stays readable after timeout until the next key.
+		m.nativePaletteVisible = false
 		// A footer error is transient feedback. The full error remains available
 		// in the session log for the future :errors pane.
 		m.lastErr = ""
@@ -455,9 +477,26 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		k := key.String()
 		kLower := strings.ToLower(k)
+		if kLower == "ctrl+w" && m.editor != nil {
+			m.editor.nativeLiteralTab = false
+			m.editor.nativeTrigger = false
+			m.editor.nativeCodeEscape = false
+			m.editor.nativePrefix = ""
+		}
 
+		if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.mode == editorInsert && m.editor.nativeLiteralTab && kLower != "ctrl+c" && kLower != "ctrl+w" {
+			return m.updateNativeInsert(key)
+		}
+		if m.editor != nil && m.editor.nativeLink != nil && kLower != "ctrl+c" {
+			return m.updateNativeLink(key)
+		}
 		if !m.searchOpen && kLower == "ctrl+o" && m.searchReturn != nil {
 			return m, m.restoreLastSearch()
+		}
+
+		if m.focus == paneDetail && m.editor != nil && m.editor.nativePending != nil && kLower != "ctrl+c" {
+			m.nativeDescriptionKey(k)
+			return m, nil
 		}
 
 		// Quit
@@ -514,12 +553,26 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.inlineTitle != nil && !m.ctrlWArmed && kLower != "ctrl+w" {
 			return m.updateInlineTitleEdit(key)
 		}
+		if m.focus == paneDetail && m.editor != nil && m.editor.mode == editorNormal && (m.editor.nativePrefix == "[" || m.editor.nativePrefix == "]") {
+			m.nativeDescriptionKey(k)
+			return m, nil
+		}
 		if m.leaderArmed {
 			m.leaderArmed = false
+			if cmd, handled := m.textClipboardKey(k); handled {
+				return m, cmd
+			}
+			if m.nativePaletteKey(k) {
+				return m, nil
+			}
 			switch k {
 			case "f":
 				m.openSearch()
 			case "l":
+				if m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionActive && m.editor.descriptionView() != nil {
+					m.recordError(fmt.Errorf("Description is read-only: Link editing is not supported yet."))
+					return m, nil
+				}
 				if m.focus == paneDetail && m.editor != nil {
 					return m, m.openTaskLabelPicker()
 				}
@@ -537,6 +590,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.leaderEligible() && isSpaceKey(key) {
 			m.leaderArmed = true
+			m.nativePaletteVisible = m.nativePalette() != ""
 			return m, tea.Tick(m.leaderTimeout, func(time.Time) tea.Msg { return leaderTimeoutMsg{} })
 		}
 
@@ -792,11 +846,23 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if typed.taskChanged {
 			m.redoHistory = nil
 		}
-		m.editor.id = typed.task.ID
-		m.editor.draft.ID = typed.task.ID
-		m.editor.draft.Done = typed.task.Done
-		m.editor.draft.DoneSet = false
-		m.editor.original = cloneTaskDraft(m.editor.draft)
+		if typed.editor != nil {
+			if typed.editor != m.editor {
+				return m, m.refreshActiveTasks()
+			}
+			m.editor.adoptSavedTask(typed.draft, typed.task)
+			if m.editor.dirty() && (typed.closeAfter || quitAfterSave) {
+				typed.closeAfter = false
+				quitAfterSave = false
+				m.recordError(fmt.Errorf("Task draft changed while saving; save again before closing."))
+			}
+		} else {
+			m.editor.id = typed.task.ID
+			m.editor.draft.ID = typed.task.ID
+			m.editor.draft.Done = typed.task.Done
+			m.editor.draft.DoneSet = false
+			m.editor.original = cloneTaskDraft(m.editor.draft)
+		}
 		m.commentRequest++
 		m.editor.commentsRequest = m.commentRequest
 		m.editor.commentsLoading = false
@@ -893,7 +959,33 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.searchViewport = clamp(m.searchViewport, 0, max(0, len(m.searchResults)-1))
 		return m, nil
 
+	case textCopiedMsg:
+		if typed.err != nil {
+			m.recordError(fmt.Errorf("write system clipboard: %w", typed.err))
+		} else {
+			m.toast = "Text copied to system clipboard"
+		}
+		return m, nil
+	case textClipboardReadMsg:
+		m.applyTextClipboardRead(typed)
+		return m, nil
+	case linkCopiedMsg:
+		if typed.err != nil {
+			m.recordError(fmt.Errorf("write system clipboard: %w", typed.err))
+		} else {
+			m.toast = "Link destination copied"
+		}
+		return m, nil
+
 	case tea.PasteMsg:
+		if m.editor != nil && m.editor.nativeLink != nil {
+			p := m.editor.nativeLink
+			p.insertText(typed.Content)
+			return m, nil
+		}
+		if m.editor != nil && m.editor.nativePending != nil {
+			return m, nil
+		}
 		text := normalizePastedText(typed.Content)
 		if m.comments != nil && m.comments.composer != nil && m.comments.composer.mode == editorInsert {
 			composer := m.comments.composer
@@ -901,11 +993,28 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.focus == paneDetail && m.editor != nil && (m.editor.mode == editorInsert || (m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) {
-			m.insertEditorText(text)
+			m.insertEditorText(m.nativePasteText(typed.Content))
 		}
 		return m, nil
 
 	case clipboardPastedMsg:
+		if typed.link != nil {
+			if m.editor == typed.editor && m.editor != nil && m.editor.nativeLink == typed.link {
+				if typed.err != nil {
+					m.recordError(typed.err)
+				} else {
+					p := typed.link
+					p.insertText(typed.text)
+				}
+			}
+			return m, nil
+		}
+		if m.editor != nil && m.editor.nativeLink != nil {
+			return m, nil
+		}
+		if m.editor != nil && m.editor.nativePending != nil {
+			return m, nil
+		}
 		if typed.err != nil {
 			m.recordError(typed.err)
 			return m, nil
@@ -916,7 +1025,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.focus == paneDetail && m.editor == typed.editor && (m.editor.mode == editorInsert || (m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) {
-			m.insertEditorText(text)
+			m.insertEditorText(m.nativePasteText(typed.text))
 		}
 		return m, nil
 
@@ -952,6 +1061,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case undoRestoredMsg:
 		return m, m.applyUndoRestore(typed)
 
+	case descriptionReloadedMsg:
+		if typed.editor != m.editor {
+			return m, nil
+		}
+		if typed.err != nil {
+			m.recordError(typed.err)
+			return m, nil
+		}
+		if !reflect.DeepEqual(typed.submitted, m.editor.draft) {
+			m.recordError(fmt.Errorf("Task draft changed while reloading; explicit reload again to discard it"))
+			return m, nil
+		}
+		m.editor.nativeDraft = nil
+		m.editor.nativeDescription = nil
+		m.editor.nativePending = nil
+		m.refreshEditorAfterUndo(typed.state)
+		m.editor.mode = editorNormal
+		return m, tea.Batch(m.loadEditorLabels(typed.state.TaskID), m.loadUndoWorkflowStatus(typed.state.ProjectID, typed.state.TaskID))
 	case taskSavedMsg:
 		if typed.editor == nil || typed.editor != m.savingEditor {
 			return m, nil
@@ -967,6 +1094,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		if typed.draft.ID == 0 {
+			m.createdTaskIDs = append(m.createdTaskIDs, typed.task.ID)
+		}
+		if typed.historyErr != nil {
+			m.redoHistory = nil
+			m.recordError(fmt.Errorf("Task saved; undo history unavailable: %w", typed.historyErr))
+		}
 		m.rememberUndo(typed.undo)
 		if typed.editor != m.editor {
 			// A background refresh replaced the Detail while the write ran.
@@ -974,21 +1108,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.refreshActiveTasks()
 		}
 		if m.editor != nil {
-			saved := cloneTaskDraft(typed.draft)
-			// Metadata loaded during the save was not part of a requested write.
-			if !saved.LabelIDsSet {
-				saved.LabelIDs = append([]int64(nil), m.editor.original.LabelIDs...)
-			}
-			if saved.WorkflowBucketID == 0 {
-				saved.WorkflowBucketID = m.editor.original.WorkflowBucketID
-			}
-			saved.ID, saved.Done, saved.DoneSet = typed.task.ID, typed.task.Done, false
-			m.editor.id, m.editor.draft.ID = typed.task.ID, typed.task.ID
-			if m.editor.draft.Done == typed.draft.Done {
-				m.editor.draft.Done = typed.task.Done
-			}
-			m.editor.original = saved
-			m.editor.draft.DoneSet = m.editor.draft.Done != saved.Done
+			m.editor.adoptSavedTask(typed.draft, typed.task)
 			if m.editor.dirty() && (typed.closeAfter || quitAfterSave) {
 				typed.closeAfter, quitAfterSave = false, false
 				m.recordError(fmt.Errorf("Task draft changed while saving; save again before closing."))
@@ -1045,6 +1165,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.recordError(typed.err)
 			return m, nil
 		}
+		m.lastDeletedTaskID = typed.taskID
 		if m.editor != nil && m.editor.id == typed.taskID {
 			m.closeTaskDetail()
 		}
@@ -1275,7 +1396,7 @@ func (m *model) completeCommandInput() {
 	completion, candidates := m.commands.Complete(m.commandInput)
 	if completion != "" {
 		m.commandInput = completion
-		return
+		m.commandCursor = len([]rune(completion))
 	}
 	if len(candidates) > 0 {
 		m.commandCompletionFeedback = "matches: " + strings.Join(candidates, ", ")
@@ -1288,6 +1409,9 @@ func isSpaceKey(key tea.KeyMsg) bool {
 
 // leaderEligible keeps Space available for field and picker input.
 func (m *model) leaderEligible() bool {
+	if m.editor != nil && m.focus == paneDetail && m.editor.field == fieldDescription && m.editor.nativePrefix == "r" {
+		return false
+	}
 	return m.focus != paneDetail || m.editor == nil || m.editor.mode == editorNormal
 }
 
@@ -1813,8 +1937,6 @@ func (m *model) View() tea.View {
 	return v
 }
 
-// editorCursor delegates cursor-shape support to Bubble Tea. Its renderer
-// restores the terminal default when a previously visible cursor becomes nil.
 func removeComment(comments []vimkunja.TaskComment, id int64) []vimkunja.TaskComment {
 	for index, comment := range comments {
 		if comment.ID == id {
@@ -1834,20 +1956,23 @@ func (m *model) nativeEditorCursorActive() bool {
 		return false
 	}
 	// The tiny focused Description workspace has a different row geometry from
-	// the compact Detail document, so it renders its own cursor marker.
-	return !(m.editor.descriptionActive && m.detailTextHeight() < 12)
+	// the compact Detail document; its insertion caret follows rendered content.
+	return !m.focusedDescriptionDetail(m.detailTextHeight())
 }
 
+// Insertion positions come from the shared rendered anchor. Legacy coordinates
+// are retained only for Normal-mode and masked overwrite cursors.
 func (m *model) editorCursor() *tea.Cursor {
-	if m.searchOpen || m.comments != nil {
+	if m.renderedInputCursor != nil {
+		return m.renderedInputCursor
+	}
+	if m.commandMode || m.searchOpen || m.comments != nil {
 		return nil
 	}
-	if !m.disableCursorShapes && m.inlineTitle != nil && m.inlineCursorVisible {
-		cursor := tea.NewCursor(m.inlineCursorX, m.inlineCursorY)
-		cursor.Shape = tea.CursorBar
-		return cursor
+	if m.editor != nil && (m.editor.mode == editorInsert || m.editor.normal.selection != nil) {
+		return nil
 	}
-	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && descriptionHasHTML(m.editor.draft.Description)) {
+	if !m.nativeEditorCursorActive() || m.editor.isPickerMode() || m.labelUI != nil || m.editor.field == fieldLabels || (m.editor.field == fieldDescription && m.editor.descriptionView() != nil) {
 		return nil
 	}
 	if m.editor.mode == editorNormal && m.editor.field != fieldDescription && m.editor.field != fieldTitle {
@@ -1879,8 +2004,6 @@ func (m *model) editorCursor() *tea.Cursor {
 	if m.editor.dueDatePickerActive() {
 		cursor.Shape = tea.CursorBlock
 		cursor.Blink = true
-	} else if m.editor.mode == editorInsert {
-		cursor.Shape = tea.CursorBar
 	} else {
 		cursor.Shape = tea.CursorBlock
 	}
@@ -1999,6 +2122,7 @@ func (m *model) compactDescriptionCursorRendered() bool {
 type taskDetailDescriptionLayout struct {
 	multilineTextLayout
 	rows, descriptionRow int
+	width                int
 	scrollable           bool
 }
 
@@ -2014,9 +2138,9 @@ func (m *model) compactTaskDescriptionLayout(textW, textH int) taskDetailDescrip
 	rows := compactDescriptionRows(textH-pinnedRows, staticRows)
 	descriptionRow := 2 + staticRows - e.detailScroll
 	width := max(1, textW-2) // Description indentation.
-	if e.descriptionActive && textH < 12 {
-		rows, width = max(1, textH-2), max(1, textW)
-		descriptionRow = 2
+	if m.focusedDescriptionDetail(textH) {
+		descriptionRow = min(2, max(1, textH-1))
+		rows, width = max(1, textH-descriptionRow), max(1, textW)
 	}
 	scrollable := len(wrapTaskDescriptionForEditor(e, e.draft.Description, width)) > rows
 	if scrollable {
@@ -2027,25 +2151,41 @@ func (m *model) compactTaskDescriptionLayout(textW, textH int) taskDetailDescrip
 		scroll = e.descScroll
 	}
 	layout := layoutTaskDescription(e.draft.Description, width, rows, scroll, e.cursor, e)
-	if e.field == fieldDescription && e.descriptionActive && !descriptionHasHTML(e.draft.Description) && !e.descViewportScroll {
+	if e.field == fieldDescription && e.descriptionActive && e.descriptionView() == nil && !descriptionHasHTML(e.draft.Description) && !e.descViewportScroll {
 		layout.start = descriptionViewportStart(layout.lines, rows, scroll, layout.cursorRow, e.mode == editorNormal && e.cursor == e.fieldRuneLen())
 	}
-	return taskDetailDescriptionLayout{multilineTextLayout: layout, rows: rows, descriptionRow: descriptionRow, scrollable: scrollable}
+	return taskDetailDescriptionLayout{multilineTextLayout: layout, rows: rows, width: width, descriptionRow: descriptionRow, scrollable: scrollable}
 }
 
-func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescriptionLayout {
-	e := m.editor
+// regularDescriptionRow is the first body row after the regular metadata.
+func (m *model) regularDescriptionRow(textH int) int {
 	descriptionRow := 2 // Detail header and separator.
 	descriptionRow += 4 // Project, Title, Priority, Due Date.
 	descriptionRow += 2 // Labels and Workflow Status.
-	if e.id != 0 {
+	if m.editor.id != 0 {
 		descriptionRow++ // Done.
-		if textH >= 12 && !e.isPickerMode() {
+		if textH >= 12 && !m.editor.isPickerMode() {
 			descriptionRow++ // Database identifier.
 		}
 	}
 	descriptionRow++ // Description separator.
 	descriptionRow++ // Description label.
+	return descriptionRow
+}
+
+// Tiny panes give active Description editing the whole workspace. At larger
+// heights, the compact metadata layout already reserves Description rows.
+func (m *model) focusedDescriptionDetail(textH int) bool {
+	if m.editor == nil || !m.editor.descriptionActive {
+		return false
+	}
+	return textH < 12 || (!m.compactDetailAtHeight(textH) &&
+		availableDetailDescriptionRows(textH, m.regularDescriptionRow(textH), m.editor.id != 0) == 0)
+}
+
+func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescriptionLayout {
+	e := m.editor
+	descriptionRow := m.regularDescriptionRow(textH)
 	rows := availableDetailDescriptionRows(textH, descriptionRow, e.id != 0)
 	text := e.draft.Description
 	scrollable := len(wrapTaskDescriptionForEditor(e, text, max(1, textW))) > rows
@@ -2058,12 +2198,13 @@ func (m *model) taskDetailDescriptionLayout(textW, textH int) taskDetailDescript
 		scroll = e.descScroll
 	}
 	layout := layoutTaskDescription(text, width, rows, scroll, e.cursor, e)
-	if e.field == fieldDescription && !descriptionHasHTML(text) && rows > 0 && !e.descViewportScroll {
+	if e.field == fieldDescription && e.descriptionView() == nil && rows > 0 && !e.descViewportScroll {
 		layout.start = descriptionViewportStart(layout.lines, rows, scroll, layout.cursorRow, e.mode == editorNormal && e.cursor == e.fieldRuneLen())
 	}
 	return taskDetailDescriptionLayout{
 		multilineTextLayout: layout,
 		rows:                rows,
+		width:               width,
 		descriptionRow:      descriptionRow,
 		scrollable:          scrollable,
 	}
@@ -2094,7 +2235,7 @@ func (m *model) tasksPaneTextX() int {
 
 func (m *model) viewportSize() (int, int) {
 	if m.viewportReceived {
-		return max(1, m.width), max(1, m.height)
+		return max(1, m.width), max(1, m.height-m.nativePaletteExtraRows())
 	}
 	w, h := m.width, m.height
 	if w < 40 {
@@ -2103,7 +2244,7 @@ func (m *model) viewportSize() (int, int) {
 	if h < 10 {
 		h = 24
 	}
-	return w, h
+	return w, max(1, h-m.nativePaletteExtraRows())
 }
 
 func (m *model) detailPaneTop() int {
@@ -2125,7 +2266,12 @@ func (m *model) modalContentHeight() int {
 }
 
 func (m *model) Render() string {
-	m.inlineCursorVisible = false
+	content, cursor := resolveInputCursor(m.renderContent(), m.disableCursorShapes, m.cursorVisible)
+	m.renderedInputCursor = cursor
+	return content
+}
+
+func (m *model) renderContent() string {
 	w, h := m.viewportSize()
 	if w < modalFallbackWidth || h < modalFallbackHeight {
 		return m.renderTextOnlyFallback(w, h)
@@ -2425,6 +2571,16 @@ func (m *model) renderStatusBar(w int) string {
 			hint = "[" + mode + "]  i edit  •  j/k navigate  •  :h help  •  gt title  •  gd due  •  gp priority  •  gl labels  •  gc comments  •  gn description  •  :w save  •  :q close  •  Ctrl+W switch pane"
 		}
 	}
+	if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionView() != nil {
+		hint = "Enter read · j/k blocks · gj/gk rows · {/} paragraphs · zh/zl scroll · Esc fields · :h help"
+		if m.editor.descriptionActive {
+			hint = m.nativeModeHint()
+		}
+	}
+	if m.editorInputFocused() && m.editor.mode == editorNormal && m.editor.field == fieldTitle {
+		hint = strings.Join([]string{m.editor.normal.selectionLabel(), "v/V select", "Space y/p clipboard", "i edit", ":w save", "gt title", "gd due", "gp priority", "gl labels", "gc comments", "gn description"}, footerSeparator)
+
+	}
 	if m.focus == paneHelp {
 		hint = "Ctrl+W k tasks  •  :q close pane"
 	}
@@ -2450,20 +2606,29 @@ func (m *model) renderStatusBar(w int) string {
 			if m.comments.composer.mode == editorInsert {
 				mode = "INSERT"
 			}
-			hint = "[COMMENT " + mode + "] Esc normal  •  :w save  •  :q! discard"
+			if m.comments.composer.mode == editorNormal {
+				mode = m.comments.composer.normal.selectionLabel()
+			}
+			hint = strings.Join([]string{"[COMMENT " + mode + "]", "v/V select", "Space y/p clipboard", ":w save", ":q! discard"}, footerSeparator)
+			if m.comments.composer.mode == editorInsert {
+				hint = "[COMMENT INSERT] Esc normal  •  :w save  •  :q! discard"
+			}
 		}
 		if m.comments.commandMode {
-			hint = "COMMENTS COMMAND  :" + cursorMarkedText(m.comments.commandInput, m.comments.commandCursor)
+			hint = "COMMENTS COMMAND  :" + insertCursorText(m.comments.commandInput, m.comments.commandCursor)
 		}
 	}
 	if m.commandMode {
-		hint = ":" + cursorMarkedText(m.commandInput, m.commandCursor)
+		hint = ":" + insertCursorText(m.commandInput, m.commandCursor)
 		if m.commandCompletionFeedback != "" {
 			hint += "  •  " + m.commandCompletionFeedback
 		}
 	}
-	if m.leaderArmed {
+	if (m.leaderArmed || m.nativePaletteVisible) && !m.nativePaletteSecondary() {
 		hint = "[LEADER] a Overview/return  •  o toggle projects pane  •  v views"
+		if palette := m.nativePalette(); palette != "" && !m.nativePaletteSecondary() {
+			hint = strings.Join(append([]string{m.nativePaletteCue()}, strings.Split(palette, " · ")...), footerSeparator)
+		}
 	}
 	if m.viewSwitchArmed {
 		hint = "[VIEWS] l list  •  k Kanban  •  t table  •  g Gantt"
@@ -2507,13 +2672,15 @@ func (m *model) renderStatusBar(w int) string {
 		status = renderFooterMessage(contentWidth, info, "Error: ", m.lastErr)
 	case m.lastWarning != "":
 		status = renderFooterMessage(contentWidth, info, "Warning: ", m.lastWarning)
+	case m.editor != nil && m.editor.nativePending != nil:
+		status = m.renderNativeConfirmation(contentWidth, info)
 	case m.toast != "":
 		status = renderFooterMessage(contentWidth, info, "", m.toast)
 	case m.quitHint:
 		status = renderFooterMessage(contentWidth, info, "", ":q quit")
 	case m.commandMode:
-		input := ":" + cursorMarkedText(m.commandInput, m.commandCursor)
-		status = renderFooterMessage(contentWidth, info, ":", cursorMarkedText(m.commandInput, m.commandCursor))
+		input := ":" + insertCursorText(m.commandInput, m.commandCursor)
+		status = renderFooterMessage(contentWidth, info, ":", insertCursorText(m.commandInput, m.commandCursor))
 		if m.commandCompletionFeedback != "" && footerFits(contentWidth, info, []string{input, m.commandCompletionFeedback}) {
 			status = composeFooter(info, []string{input, m.commandCompletionFeedback})
 		}
@@ -2534,14 +2701,14 @@ func (m *model) renderStatusBar(w int) string {
 		prefix := fmt.Sprintf("SEARCH [%s] ", m.searchModeLabel())
 		input := m.searchInput
 		if m.searchCommandMode {
-			prefix, input = "SEARCH COMMAND  :", cursorMarkedText(m.searchCommandInput, m.searchCommandCursor)
+			prefix, input = "SEARCH COMMAND  :", insertCursorText(m.searchCommandInput, m.searchCommandCursor)
 		} else if m.searchMode == searchInsertMode {
-			input = cursorMarkedText(m.searchInput, m.searchInputCursor)
+			input = insertCursorText(m.searchInput, m.searchInputCursor)
 		}
-		if m.searchMode == searchInsertMode && !m.searchCommandMode {
-			input += "_"
-		}
+
 		status = renderFooterMessage(contentWidth, info, prefix, input)
+	case strings.Contains(hint, insertCursorAnchor):
+		status = renderFooterMessage(contentWidth, info, "", hint)
 	default:
 		required := (m.focus == paneDetail && m.editor != nil && m.editor.mode != editorNormal) || m.focus == paneHelp || m.focus == paneInfo
 		width := contentWidth
@@ -2557,6 +2724,9 @@ func (m *model) renderStatusBar(w int) string {
 			percent := int(math.Round(100 * float64(scrollTop) / float64(maxScroll)))
 			status += strings.Repeat(" ", free-lipgloss.Width(fmt.Sprintf("%d%%", percent))) + fmt.Sprintf("%d%%", percent)
 		}
+	}
+	if m.nativePaletteSecondary() {
+		status += "\n" + m.nativePaletteRow(contentWidth)
 	}
 	return statusStyle.Render(status)
 }
@@ -2662,6 +2832,9 @@ func fitFooterTail(prefix, value string, width int) string {
 		return truncatePlain(prefix, width)
 	}
 	available := width - lipgloss.Width(prefix)
+	if strings.Contains(value, insertCursorAnchor) {
+		return prefix + fitInputCursor(value, available)
+	}
 	if available == 1 {
 		return prefix + "…"
 	}

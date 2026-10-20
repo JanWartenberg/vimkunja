@@ -18,10 +18,12 @@ Der Screenshot zeigt im Pane `HELP` dicht aufeinanderfolgende Richtext-Zeilen: T
 
 ## Befund auf `main` vor Richtext-Integration
 
+Historischer Ausgangsbefund: Richtext ist inzwischen integriert. Die folgende Bestandsaufnahme bleibt für den Vergleich erhalten; vor der Konzeption den zusammengeführten Stand inventarisieren.
+
 - `internal/tui/help.go` enthält eine einzige lange Liste manuell mit Leerzeichen ausgerichteter Strings. Schon vorhandene Einträge wie `count+motion`, `diw / daw` und benachbarte Zeilen haben unterschiedliche Beschreibungsanfänge.
 - `helpCommand` in `internal/tui/commands.go` öffnet stets dieselbe Liste. `infoPaneRows` in `internal/tui/panes.go` reicht sie an den allgemeinen Textumbruch weiter; es gibt dort kein semantisches Layout für Taste, Modus und Erklärung.
 - Die zusätzlichen Richtext-Zeilen des Screenshots stehen in diesem Checkout noch nicht in `help.go`. Ihre konkrete Implementierungsquelle und der Stand nach Integration der Richtext-Arbeit müssen vor Umsetzung geprüft werden. Keine vollständige Fehlerursache des Screenshots aus diesem Checkout ableiten.
-- `docs/keybindings.md` trennt implementierte und vereinbarte Bindings; automatische Ableitung der Hilfe ist bisher zurückgestellt. Die [Richtext-Spec](../../description-rendering/spec.md) verlangt außerdem dauerhaft dokumentierte Markup-Regeln und einen Tutorial-Abschnitt. Hilfe, vollständige Referenz und Tutorial haben unterschiedliche Zwecke.
+- `docs/keybindings.md` trennt implementierte und vereinbarte Bindings; automatische Ableitung der Hilfe ist bisher zurückgestellt. Die [Richtext-Spec](../../../.archive/2026-10-19/description-rendering/spec.md) verlangt außerdem dauerhaft dokumentierte Markup-Regeln und einen Tutorial-Abschnitt. Hilfe, vollständige Referenz und Tutorial haben unterschiedliche Zwecke.
 
 ## Vorgaben und offene Entscheidungen
 

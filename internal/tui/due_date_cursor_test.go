@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestDueDatePickerHasBlinkingOverwriteCursor(t *testing.T) {
@@ -54,8 +54,13 @@ func TestDueDatePickerHasBlinkingOverwriteCursor(t *testing.T) {
 			m = pressKey(m, tea.Key{Code: tea.KeyLeft}) // separator; next overwrite is still month
 			check(5)
 			m = pressKey(m, tea.Key{Code: 'j', Text: "j"})
-			if m.View().Cursor != nil {
-				t.Fatal("relative helper retains date-row cursor")
+			view := m.View()
+			if view.Cursor == nil || view.Cursor.Shape != tea.CursorBar {
+				t.Fatalf("relative input has no bar cursor: %#v", view.Cursor)
+			}
+			row := strings.Split(ansi.Strip(view.Content), "\n")[view.Cursor.Position.Y]
+			if !strings.Contains(row, "In days:") {
+				t.Fatalf("relative input retained date-row cursor: %q", row)
 			}
 			m = pressKey(m, tea.Key{Code: 'k', Text: "k"})
 			check(5)

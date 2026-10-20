@@ -88,16 +88,27 @@ func (m *model) editorFieldViewport(field editorField, value string, width int) 
 	if start > 0 {
 		value = "…" + value
 	}
-	// Bubble Tea owns the sole native cursor. Render a textual fallback only
-	// when native cursor shapes are explicitly disabled.
+	visibleCursor := cursor - start + boolToInt(start > 0)
+	if m.editor.mode == editorInsert {
+		if m.editorInputFocused() {
+			return insertCursorText(value, visibleCursor)
+		}
+		return value
+	}
+	if m.editor.normal.selection != nil {
+		lo, hi := m.editor.normal.selectionRange(m.editor.fieldValue(), m.editor.cursor)
+		if start > 0 {
+			return "…" + renderSelectionRange(strings.TrimPrefix(value, "…"), start, lo, hi)
+		}
+		return renderSelectionRange(value, 0, lo, hi)
+	}
 	if m.nativeEditorCursorActive() {
 		return value
 	}
-	visibleCursor := cursor - start + boolToInt(start > 0)
 	if m.editor.mode == editorNormal {
 		return normalCursorText(value, visibleCursor)
 	}
-	return cursorMarkedText(value, visibleCursor)
+	return insertCursorText(value, visibleCursor)
 }
 
 func boolToInt(value bool) int {
@@ -311,6 +322,10 @@ func renderTasks(m *model, textW, textH int) string {
 		}
 
 		titleContent, titleTruncated := truncateTitle(titleText, layout.titleWidth)
+		if inlineEditing {
+			titleContent = fitInputCursor(insertCursorText(titleText, m.inlineTitle.cursor), layout.titleWidth)
+			titleTruncated = false
+		}
 		title := rend(titleContent)
 		ellipsisWidth := 0
 		if titleTruncated {
@@ -325,17 +340,6 @@ func renderTasks(m *model, textW, textH int) string {
 		}
 		if layout.showProject && project != "" {
 			segments = append(segments, project)
-		}
-		if inlineEditing {
-			cursor := clamp(m.inlineTitle.cursor, 0, len([]rune(titleText)))
-			cursorWidth := min(lipgloss.Width(string([]rune(titleText)[:cursor])), layout.titleWidth)
-			prefixWidth := lipgloss.Width(strings.Join(segments, " "))
-			if len(segments) > 0 {
-				prefixWidth++
-			}
-			m.inlineCursorX = m.tasksPaneTextX() + prefixWidth + cursorWidth
-			m.inlineCursorY = 2 + i // pane border, header, then visible Task row
-			m.inlineCursorVisible = true
 		}
 		segments = append(segments, title)
 		if layout.showDue {
@@ -490,6 +494,9 @@ func renderInfoPane(pane *infoPane, textW, textH int, focused bool) string {
 }
 
 func renderTaskDetail(m *model, textW, textH int) string {
+	if m.editor != nil {
+		m.editor.nativeFocused = m.editorInputFocused() && m.editor.field == fieldDescription
+	}
 	if m.editor == nil {
 		if m.kanbanActive && !m.inOverview() {
 			return renderEmptyKanbanDetail(textW, textH)
@@ -498,6 +505,9 @@ func renderTaskDetail(m *model, textW, textH int) string {
 	}
 	if m.editor.isPickerMode() {
 		return renderDetailPickerOverlay(m, textW, textH)
+	}
+	if m.focusedDescriptionDetail(textH) {
+		return renderFocusedCompactDescription(m, textW, textH)
 	}
 	if m.compactDetailAtHeight(textH) {
 		return renderCompactTaskDetail(m, textW, textH)
@@ -637,7 +647,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 			choices = append(choices, bucket.Title)
 		}
 		lines = append(lines, renderDetailPickerChoices(choices, e.workflowStatusIndex, tuiTheme.selectionAccent, textW, textH, len(lines))...)
-	} else if description := projectDescription(e.draft.Description, map[int]bool{}); description == "" {
+	} else if description := projectDescription(e.draft.Description, map[int]bool{}); description == "" && e.descriptionView() == nil {
 		if availableDetailDescriptionRows(textH, len(lines), e.id != 0) > 0 {
 			lines = append(lines, placeholderText("  (no description)"))
 		}
@@ -655,7 +665,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		descriptionViewportRows = layout.rows
 		end := min(len(layout.lines), layout.start+layout.rows)
 		for _, line := range layout.lines[layout.start:end] {
-			lines = append(lines, m.editorDescriptionText(line))
+			lines = append(lines, line.text)
 		}
 	}
 	if descriptionScrollable {
@@ -880,9 +890,6 @@ func renderEmptyKanbanDetail(textW, textH int) string {
 
 func renderCompactTaskDetail(m *model, textW, textH int) string {
 	e := m.editor
-	if e.descriptionActive && textH < 12 {
-		return renderFocusedCompactDescription(m, textW, textH)
-	}
 	header := "TASK EDITOR"
 	if e.id == 0 {
 		header = "NEW TASK"
@@ -1019,7 +1026,7 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	}
 	for row := 0; row < descriptionRows; row++ {
 		if line := start + row; line < len(desc) {
-			body = append(body, "  "+m.editorDescriptionText(desc[line]))
+			body = append(body, "  "+desc[line].text)
 		} else {
 			body = append(body, "")
 		}
@@ -1064,11 +1071,15 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 // Detail Pane. The metadata and Comments entry remain available after Esc.
 func renderFocusedCompactDescription(m *model, textW, textH int) string {
 	e := m.editor
-	mode := "NORMAL"
+	mode := e.normal.selectionLabel()
 	if e.mode == editorInsert {
 		mode = "INSERT"
 	}
-	lines := []string{" " + renderHeading("DESCRIPTION · "+mode) + " ", ""}
+	lines := []string{" " + renderHeading("DESCRIPTION · "+mode) + " "}
+	if textH > 2 {
+		lines = append(lines, "")
+	}
+	headerRows := len(lines)
 	layout := m.compactTaskDescriptionLayout(textW, textH)
 	available := layout.rows
 	desc := layout.lines
@@ -1079,13 +1090,13 @@ func renderFocusedCompactDescription(m *model, textW, textH int) string {
 	e.descScroll = start
 	for row := 0; row < available; row++ {
 		if line := start + row; line < len(desc) {
-			lines = append(lines, m.editorDescriptionText(desc[line]))
+			lines = append(lines, desc[line].text)
 		} else {
 			lines = append(lines, "")
 		}
 	}
 	if len(desc) > available {
-		return renderVerticalScrollbar(lines, textW, textH, start, len(desc), 2, available, true)
+		return renderVerticalScrollbar(lines, textW, textH, start, len(desc), headerRows, available, true)
 	}
 	return fitBlock(lines, textW, textH)
 }
@@ -1168,8 +1179,8 @@ func renderDueDatePickerChoices(m *model) []string {
 		selected := e.dueDatePickerSelected == index+1
 		row := "  " + label
 		input := e.dueDatePickerInputs[index]
-		if selected && m.cursorVisible && !m.nativeEditorCursorActive() {
-			input = cursorMarkedText(input, e.cursor)
+		if selected && !m.nativeEditorCursorActive() {
+			input = insertCursorText(input, e.cursor)
 		}
 		if input == "" {
 			input = placeholderText("n")
@@ -1187,13 +1198,22 @@ func placeholderText(value string) string {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true).Render(value)
 }
 
-// editorText marks the character at the insertion point instead of inserting a
-// printable cursor glyph, so the text never shifts while the cursor blinks.
+// editorText provides the common insertion caret without changing text width.
 func (m *model) editorText(field editorField, value string) string {
-	if m.editor == nil || (m.editor.mode != editorInsert && !(m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0)) || m.editor.field != field || !m.cursorVisible || m.nativeEditorCursorActive() {
+	if m.editor == nil || m.editor.field != field || !m.editorInputFocused() {
 		return value
 	}
-	return cursorMarkedText(value, m.editor.cursor)
+	if m.editor.mode == editorNormal && m.editor.normal.selection != nil {
+		lo, hi := m.editor.normal.selectionRange(m.editor.fieldValue(), m.editor.cursor)
+		return renderSelectionRange(value, 0, lo, hi)
+	}
+	if m.editor.mode == editorInsert {
+		return insertCursorText(value, m.editor.cursor)
+	}
+	if m.editor.dueDatePickerActive() && m.editor.dueDatePickerSelected == 0 && !m.nativeEditorCursorActive() {
+		return insertCursorText(value, m.editor.cursor)
+	}
+	return value
 }
 
 type descriptionLine struct {
@@ -1263,28 +1283,6 @@ func (m *model) readOnlyDescriptionScrollLimit() int {
 	return max(0, len(layout.lines)-layout.rows)
 }
 
-func (m *model) editorDescriptionText(line descriptionLine) string {
-	if m.editor == nil || m.focus != paneDetail || m.editor.field != fieldDescription || descriptionHasHTML(m.editor.draft.Description) {
-		return line.text
-	}
-	if m.editor.cursor < line.start || m.editor.cursor > line.end {
-		return line.text
-	}
-	if m.nativeEditorCursorActive() {
-		return line.text
-	}
-	cursor := m.editor.cursor - line.start
-	if m.editor.mode == editorNormal {
-		return normalCursorText(line.text, cursor)
-	}
-	if m.editor.mode == editorInsert {
-		return cursorMarkedText(line.text, cursor)
-	}
-	return line.text
-}
-
-// normalCursorText is Vim's static block cursor: white background and black
-// glyph, without adding a printable character to the line.
 func normalCursorText(value string, cursor int) string {
 	r := []rune(value)
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.dark)).Background(lipgloss.Color(tuiTheme.bright))
@@ -1298,13 +1296,6 @@ func normalCursorText(value string, cursor int) string {
 	}
 	block := style.Render(string(r[index]))
 	return string(r[:index]) + block + string(r[index+1:])
-}
-
-func cursorMarkedText(value string, cursor int) string {
-	r := []rune(value)
-	cursor = clamp(cursor, 0, len(r))
-	marker := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render("│")
-	return string(r[:cursor]) + marker + string(r[cursor:])
 }
 
 func priorityName(priority int64) string {

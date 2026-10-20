@@ -1656,14 +1656,20 @@ func taskCommentHTML(text string) (string, error) {
 }
 
 func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, error) {
+	var prepareErr error
+	draft, prepareErr = prepareDescriptionDraft(draft)
+	if prepareErr != nil {
+		return Task{}, prepareErr
+	}
 	if err := validateDraft(draft); err != nil {
 		return Task{}, err
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, connection, err := beginTaskSave(ctx, s.db)
 	if err != nil {
 		return Task{}, fmt.Errorf("begin create task transaction: %w", err)
 	}
+	defer connection.Close()
 	defer tx.Rollback()
 	if err := writableProject(ctx, tx, draft.ProjectID); err != nil {
 		return Task{}, err
@@ -1723,14 +1729,14 @@ func (s *SQLiteStore) CreateTask(ctx context.Context, draft TaskDraft) (Task, er
 			return Task{}, err
 		}
 	}
-	if err := tx.Commit(); err != nil {
-		return Task{}, fmt.Errorf("commit create task: %w", err)
-	}
 	created := Task{ID: id, ProjectID: draft.ProjectID, Title: draft.Title, Description: draft.Description, Priority: draft.Priority, DueDate: draft.DueDate, Index: index}
 	if draft.WorkflowBucketID != 0 {
-		if err := s.db.QueryRowContext(ctx, `SELECT done FROM tasks WHERE id = ?`, id).Scan(&created.Done); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT done FROM tasks WHERE id = ?`, id).Scan(&created.Done); err != nil {
 			return Task{}, fmt.Errorf("get created task done state: %w", err)
 		}
+	}
+	if err := commitTaskSave(tx, connection); err != nil {
+		return Task{}, fmt.Errorf("commit create task: %w", err)
 	}
 	return created, nil
 }
@@ -1769,28 +1775,39 @@ func (s *SQLiteStore) UpdateTaskTitle(ctx context.Context, taskID int64, title s
 }
 
 func (s *SQLiteStore) UpdateTask(ctx context.Context, draft TaskDraft) (Task, error) {
+	var prepareErr error
+	draft, prepareErr = prepareDescriptionDraft(draft)
+	if prepareErr != nil {
+		return Task{}, prepareErr
+	}
 	if draft.ID == 0 {
 		return Task{}, fmt.Errorf("update task: missing task id")
 	}
 	if err := validateDraft(draft); err != nil {
 		return Task{}, err
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, connection, err := beginTaskSave(ctx, s.db)
 	if err != nil {
 		return Task{}, fmt.Errorf("begin update task transaction: %w", err)
 	}
+	defer connection.Close()
 	defer tx.Rollback()
 	task, err := updateTaskInTx(ctx, tx, draft)
 	if err != nil {
 		return Task{}, err
 	}
-	if err := tx.Commit(); err != nil {
+	if err := commitTaskSave(tx, connection); err != nil {
 		return Task{}, fmt.Errorf("commit update task: %w", err)
 	}
 	return task, nil
 }
 
 func (s *SQLiteStore) SaveTaskWithComment(ctx context.Context, draft TaskDraft, commentDraft TaskCommentDraft) (Task, TaskComment, error) {
+	var prepareErr error
+	draft, prepareErr = prepareDescriptionDraft(draft)
+	if prepareErr != nil {
+		return Task{}, TaskComment{}, prepareErr
+	}
 	if draft.ID == 0 {
 		return Task{}, TaskComment{}, fmt.Errorf("save Task with Comment: Task must be persisted")
 	}
@@ -1801,10 +1818,11 @@ func (s *SQLiteStore) SaveTaskWithComment(ctx context.Context, draft TaskDraft, 
 	if err != nil {
 		return Task{}, TaskComment{}, err
 	}
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, connection, err := beginTaskSave(ctx, s.db)
 	if err != nil {
 		return Task{}, TaskComment{}, fmt.Errorf("begin Task Comment transaction: %w", err)
 	}
+	defer connection.Close()
 	defer tx.Rollback()
 	actorID, err := onlyLocalUser(ctx, tx)
 	if err != nil {
@@ -1827,7 +1845,7 @@ func (s *SQLiteStore) SaveTaskWithComment(ctx context.Context, draft TaskDraft, 
 	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(NULLIF(TRIM(name), ''), username) FROM users WHERE id = ?`, actorID).Scan(&author); err != nil {
 		return Task{}, TaskComment{}, fmt.Errorf("get Task Comment author: %w", err)
 	}
-	if err := tx.Commit(); err != nil {
+	if err := commitTaskSave(tx, connection); err != nil {
 		return Task{}, TaskComment{}, fmt.Errorf("commit Task Comment: %w", err)
 	}
 	created, _ := parseDatabaseTimestamp(now)
@@ -1878,8 +1896,12 @@ func updateTaskInTx(ctx context.Context, tx *sql.Tx, draft TaskDraft) (Task, err
 	var oldProjectID int64
 	var done bool
 	var currentDue sql.NullTime
-	if err := tx.QueryRowContext(ctx, `SELECT project_id, done, due_date FROM tasks WHERE id = ?`, draft.ID).Scan(&oldProjectID, &done, &currentDue); err != nil {
+	var currentDescription sql.NullString
+	if err := tx.QueryRowContext(ctx, `SELECT project_id, done, due_date, description FROM tasks WHERE id = ?`, draft.ID).Scan(&oldProjectID, &done, &currentDue, &currentDescription); err != nil {
 		return Task{}, fmt.Errorf("get task for update: %w", err)
+	}
+	if draft.DescriptionBaseline != nil && currentDescription.String != *draft.DescriptionBaseline {
+		return Task{}, &DescriptionConflictError{Baseline: *draft.DescriptionBaseline, Current: currentDescription.String}
 	}
 	// The destination may have disappeared since the editor loaded Projects.
 	// Validate it in this transaction before changing the Task or its relations.

@@ -3,6 +3,7 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -89,6 +90,24 @@ func (r *CommandRegistry) Execute(m *model, input string) (tea.Model, tea.Cmd, e
 	return updated, cmd, nil
 }
 
+// CommandInputMatches reports whether the current Ex prompt resolves to the
+// requested command and arguments. Guided lessons use it after real completion.
+func (m *model) CommandInputMatches(input string) bool {
+	if !m.commandMode {
+		return false
+	}
+	if m.commandInput == input {
+		return true
+	}
+	actual, expected := strings.Fields(m.commandInput), strings.Fields(input)
+	if len(actual) == 0 || len(expected) == 0 || !slices.Equal(actual[1:], expected[1:]) {
+		return false
+	}
+	a, _ := m.commands.resolve(actual[0])
+	b, _ := m.commands.resolve(expected[0])
+	return a != nil && a == b
+}
+
 // dispatchModalGlobalCommand handles application-wide commands before modal
 // key handlers. Local commands (q, w, wq, etc.) remain owned by each prompt.
 // Resolve through the main registry so aliases and unique prefixes cannot drift.
@@ -135,14 +154,31 @@ func (m *model) dispatchModalGlobalCommand(key tea.KeyMsg) (tea.Model, tea.Cmd, 
 	}
 }
 
-// Complete returns the canonical command for a unique prefix or all canonical
-// candidates for an ambiguous prefix. An exact spelling does not take precedence.
+// Complete returns the canonical command for a unique prefix. Ambiguous matches
+// return their shared prefix and all candidates. Exact spellings do not take precedence.
 func (r *CommandRegistry) Complete(prefix string) (string, []string) {
 	command, candidates := r.resolvePrefix(prefix)
 	if command != nil {
 		return command.canonical, nil
 	}
-	return "", candidates
+	if len(candidates) == 0 {
+		return "", nil
+	}
+	common := []rune(candidates[0])
+	for _, candidate := range candidates[1:] {
+		other := []rune(candidate)
+		i := 0
+		for i < len(common) && i < len(other) && common[i] == other[i] {
+			i++
+		}
+		common = common[:i]
+	}
+	// Aliases can match commands whose canonical names do not share the input.
+	completion := string(common)
+	if !strings.HasPrefix(completion, normalizeCommandName(prefix)) {
+		completion = ""
+	}
+	return completion, candidates
 }
 
 func (r *CommandRegistry) resolve(name string) (*registeredCommand, []string) {
@@ -191,6 +227,12 @@ func newDefaultCommandRegistry() *CommandRegistry {
 		{"quitall", []string{"qa"}, quitAllCommand},
 		{"quitall!", []string{"qa!"}, forceQuitAllCommand},
 		{"edit!", []string{"e!"}, forceEditCommand},
+		{"selectblock", nil, selectDescriptionBlockCommand},
+		{"retab", nil, retabDescriptionCommand},
+		{"retaball", nil, retabAllDescriptionCommand},
+		{"descriptionclear", nil, clearDescriptionCommand},
+		{"descriptionrecover", nil, recoverDescriptionCommand},
+		{"descriptionreload", nil, reloadDescriptionCommand},
 		{"new", nil, newTaskCommand},
 		{"write", []string{"w"}, writeCommand},
 		{"writequit", []string{"wq"}, writeQuitCommand},
@@ -258,6 +300,11 @@ func forceEditCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	e.draft = cloneTaskDraft(e.original)
+	e.nativeDraft = nil
+	e.nativeDescription = nil
+	e.nativePending = nil
+	e.nativePrefix = ""
+	e.nativeCount = 0
 	e.labels = append([]vimkunja.Label(nil), e.originalLabels...)
 	e.labelSelected = clamp(e.labelSelected, 0, max(0, len(e.labels)-1))
 	e.mode = editorNormal

@@ -40,6 +40,8 @@ type taskCommentsLoadedMsg struct {
 }
 
 type taskCommentSavedMsg struct {
+	editor      *taskEditor
+	draft       vimkunja.TaskDraft
 	task        vimkunja.Task
 	comment     vimkunja.TaskComment
 	closeAfter  bool
@@ -188,6 +190,15 @@ func (m *model) updateCommentInsert(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateCommentNormal(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	composer := m.comments.composer
 	s := normalizeArrow(key.String())
+	if m.leaderArmed {
+		m.leaderArmed = false
+		cmd, _ := m.textClipboardKey(s)
+		return m, cmd
+	}
+	if isSpaceKey(key) {
+		m.leaderArmed = true
+		return m, tea.Tick(m.leaderTimeout, func(time.Time) tea.Msg { return leaderTimeoutMsg{} })
+	}
 	if result := applyTextNormalKey(&composer.normal, composer.text, composer.cursor, s, true); result.handled {
 		composer.text, composer.cursor = result.text, result.cursor
 		if result.enterInsert {
@@ -327,14 +338,18 @@ func (m *model) saveTaskWithComment(closeAfter bool) tea.Cmd {
 		m.recordError(fmt.Errorf("Comment text is required"))
 		return nil
 	}
-	draft := m.editor.saveDraft()
+	editor := m.editor
+	if !m.prepareNativeSave() {
+		return nil
+	}
+	draft := editor.saveDraft()
 	taskChanged := m.editor.dirty()
 	m.comments.saving = true
 	return func() tea.Msg {
 		ctx, cancel := contextWithTimeout()
 		defer cancel()
 		task, comment, err := m.store.SaveTaskWithComment(ctx, draft, vimkunja.TaskCommentDraft{Text: text})
-		return taskCommentSavedMsg{task: task, comment: comment, closeAfter: closeAfter, taskChanged: taskChanged, err: err}
+		return taskCommentSavedMsg{editor: editor, draft: draft, task: task, comment: comment, closeAfter: closeAfter, taskChanged: taskChanged, err: err}
 	}
 }
 
@@ -359,7 +374,7 @@ func (m *model) renderCommentsOverlay(background string, width int) string {
 	} else if ui.err != nil && len(ui.items) == 0 {
 		threadRows = []string{"Unable to load Comments: " + ui.err.Error()}
 	} else if len(threadRows) == 0 {
-		threadRows = []string{"No comments yet. Press a, i, or o to append one."}
+		threadRows = []string{"No comments yet. Press a to add one."}
 	}
 	ui.viewport = clamp(ui.viewport, 0, max(0, len(threadRows)-available))
 	if selectedStart < ui.viewport {
@@ -470,34 +485,26 @@ func (m *model) renderCommentComposer(width, height int) []string {
 	if composer.mode == editorInsert {
 		label += " · INSERT"
 	} else {
-		label += " · NORMAL"
+		label += " · " + composer.normal.selectionLabel()
 	}
 	divider := strings.Repeat("─", max(1, width))
-	text := composer.text
-	if composer.mode == editorInsert {
-		cursor := composer.cursor
-		text = insertTextAtCursor(text, &cursor, "_")
-	}
-	lines := wrapDescription(text, max(1, width))
-	if composer.mode == editorNormal {
-		for index, line := range lines {
-			if composer.cursor >= line.start && composer.cursor <= line.end {
-				lines[index].text = normalCursorText(line.text, composer.cursor-line.start)
-				break
+	visibleRows := max(1, height-2)
+	layout := layoutMultilineText(composer.text, max(1, width), visibleRows, 0, composer.cursor)
+	start := clamp(layout.cursorRow-visibleRows+1, 0, max(0, len(layout.lines)-visibleRows))
+	rows := []string{divider, label}
+	for i := start; i < min(len(layout.lines), start+visibleRows); i++ {
+		line := layout.lines[i]
+		if composer.normal.selection != nil && !m.comments.commandMode {
+			lo, hi := composer.normal.selectionRange(composer.text, composer.cursor)
+			line.text = renderSelectionRange(line.text, line.start, lo, hi)
+		} else if i == layout.cursorRow && !m.comments.commandMode {
+			if composer.mode == editorInsert {
+				line.text = insertCursorText(line.text, composer.cursor-line.start)
+			} else {
+				line.text = normalCursorText(line.text, composer.cursor-line.start)
 			}
 		}
-	}
-	rows := []string{divider, label}
-	if len(lines) == 0 {
-		rows = append(rows, "_")
-	} else {
-		for _, line := range lines {
-			rows = append(rows, line.text)
-		}
-	}
-	if len(rows) > height {
-		contentRows := max(1, height-2)
-		rows = append(rows[:2], rows[len(rows)-contentRows:]...)
+		rows = append(rows, line.text)
 	}
 	return rows
 }

@@ -3,11 +3,13 @@ package tui
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/JanWartenberg/vimkunja/internal/description"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 
 	tea "charm.land/bubbletea/v2"
@@ -40,13 +42,27 @@ const (
 )
 
 type taskEditor struct {
-	id        int64
-	taskIndex int64
-	original  vimkunja.TaskDraft
-	draft     vimkunja.TaskDraft
-	field     editorField
-	mode      editorMode
-	cursor    int // rune offset in the active text field
+	id                  int64
+	taskIndex           int64
+	original            vimkunja.TaskDraft
+	draft               vimkunja.TaskDraft
+	field               editorField
+	mode                editorMode
+	cursor              int // rune offset in the active text field
+	nativeLink          *nativeLinkPrompt
+	nativeDescription   *description.View
+	nativeDraft         *description.Draft
+	nativePending       *description.Action
+	nativePendingInsert bool
+	nativeRegister      string
+	nativeFocused       bool
+	nativePrefix        string
+	nativeCount         int
+	nativeOperatorCount int
+	nativeTrigger       bool
+	nativeCodeEscape    bool
+	nativeLiteralTab    bool
+	nativeTabstop       int
 
 	projectFilter           string
 	fieldViewportStart      int
@@ -83,7 +99,7 @@ func (m *model) openNewEditor() tea.Cmd {
 	if draft.ProjectID == 0 {
 		field = fieldProject
 	}
-	m.editor = &taskEditor{draft: draft, original: draft, field: field, workflowStatusLoading: draft.ProjectID != 0}
+	m.editor = &taskEditor{draft: draft, original: draft, field: field, nativeTabstop: m.codeConfig.Tabstop, workflowStatusLoading: draft.ProjectID != 0}
 	m.showDetail = true
 	m.focus = paneDetail
 	if draft.ProjectID != 0 {
@@ -104,7 +120,7 @@ func (m *model) openExistingEditor(task vimkunja.Task) {
 		ID: task.ID, ProjectID: task.ProjectID, Title: task.Title,
 		Description: task.Description, Priority: task.Priority, DueDate: task.DueDate, Done: task.Done,
 	}
-	m.editor = &taskEditor{id: task.ID, taskIndex: task.Index, draft: draft, original: cloneTaskDraft(draft), field: fieldTitle, workflowStatusLoading: true, labelsLoading: true, commentsLoading: true}
+	m.editor = &taskEditor{id: task.ID, taskIndex: task.Index, draft: draft, original: cloneTaskDraft(draft), field: fieldTitle, nativeTabstop: m.codeConfig.Tabstop, workflowStatusLoading: true, labelsLoading: true, commentsLoading: true}
 	m.showDetail = true
 	m.focus = paneDetail
 }
@@ -173,21 +189,20 @@ func (m *model) updateDetailKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if e.normal.selection != nil && e.field == fieldTitle {
+		result := applyTextNormalKey(&e.normal, e.fieldValue(), e.cursor, s, false)
+		e.setFieldValue(result.text)
+		e.cursor = result.cursor
+		if result.enterInsert {
+			return m.startEditorInsert()
+		}
+		return m, nil
+	}
+	if m.nativeDescriptionKey(s) {
+		return m, nil
+	}
 	if s == "esc" && e.normal.pending() {
 		e.normal.reset()
-		return m, nil
-	}
-	if e.field == fieldDescription && (s == "ctrl+e" || s == "ctrl+y") {
-		delta := 1
-		if s == "ctrl+y" {
-			delta = -1
-		}
-		m.scrollDescriptionViewport(delta)
-		return m, nil
-	}
-	e.descViewportScroll = false
-	if e.field == fieldDescription && descriptionHasHTML(e.draft.Description) && (s == "enter" || s == "i") {
-		m.recordError(fmt.Errorf("Description is read-only: HTML editing is not supported yet."))
 		return m, nil
 	}
 	if !e.descriptionActive {
@@ -202,18 +217,8 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if e.gArmed {
 		e.gArmed = false
-		count := max(1, e.normal.count)
-		hadCount := e.normal.count > 0
 		e.normal.reset()
 		switch s {
-		case "g":
-			if e.field == fieldDescription {
-				e.cursor = 0
-				if hadCount {
-					e.cursor = nthLineStart([]rune(e.draft.Description), count-1)
-				}
-				e.descScroll = max(0, e.descriptionLine())
-			}
 		case "t":
 			m.focusDetailField(fieldTitle)
 			e.cursor = e.fieldRuneLen()
@@ -267,45 +272,10 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, cursorBlinkCmd()
 		}
 	}
-	if e.field == fieldDescription && e.descriptionNavigated && !e.descriptionActive {
-		switch s {
-		case "enter":
-			e.descriptionActive = true
-			if m.compactDetail() {
-				e.moreFieldsExpanded = false
-			}
-			m.ensureDetailFieldVisible()
-		case "i":
-			e.descriptionActive = true
-			if m.compactDetail() {
-				e.moreFieldsExpanded = false
-			}
-			m.ensureDetailFieldVisible()
-			if descriptionHasHTML(e.draft.Description) {
-				return m, nil
-			}
-			return m.startEditorInsert()
-		case "j", "down":
-			m.moveField(1)
-		case "k", "up":
-			m.moveField(-1)
-		case "esc":
-			if e.dirty() {
-				m.recordError(errUnsavedNavigation)
-				return m, nil
-			}
-			m.closeTaskDetail()
-		}
-		return m, nil
-	}
 	if e.dArmed {
 		e.dArmed = false
 		if s == "d" {
-			if e.field == fieldDescription {
-				e.deleteDescriptionLine()
-			} else {
-				e.clearOptionalField()
-			}
+			e.clearOptionalField()
 		}
 		return m, nil
 	}
@@ -321,68 +291,16 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.closeTaskDetail()
 		return m, nil
 	}
-	if e.field == fieldDescription && descriptionHasHTML(e.draft.Description) {
-		limit := m.readOnlyDescriptionScrollLimit()
-		switch s {
-		case "G", "end":
-			e.descScroll = limit
-		case "home":
-			e.descScroll = 0
-		case "j", "down":
-			e.descScroll = clamp(e.descScroll+1, 0, limit)
-		case "k", "up":
-			if e.descScroll == 0 {
-				m.moveField(-1)
-			} else {
-				e.descScroll--
-			}
-		case "ctrl+d", "pgdown", "pagedown":
-			e.descScroll = clamp(e.descScroll+m.pageStep(), 0, limit)
-		case "ctrl+u", "pgup", "pageup":
-			e.descScroll = clamp(e.descScroll-m.pageStep(), 0, limit)
-		}
-		return m, nil
-	}
-	if e.field == fieldTitle || (e.field == fieldDescription && e.descriptionActive) {
-		result := applyTextNormalKey(&e.normal, e.fieldValue(), e.cursor, s, e.field == fieldDescription)
+	if e.field == fieldTitle {
+		result := applyTextNormalKey(&e.normal, e.fieldValue(), e.cursor, s, false)
 		if result.handled {
 			e.setFieldValue(result.text)
 			e.cursor = result.cursor
-			if e.field == fieldDescription {
-				e.descScroll = max(0, e.descriptionLine())
-			}
+
 			if result.enterInsert {
 				return m.startEditorInsert()
 			}
 			return m, nil
-		}
-	}
-	if e.field == fieldDescription {
-		switch s {
-		case "X":
-			e.deleteBeforeCursor()
-			return m, nil
-		case "D":
-			e.deleteToLineEnd()
-			return m, nil
-		case "a":
-			e.moveCursor(1)
-			return m.startEditorInsert()
-		case "I":
-			e.cursor = e.lineStart()
-			return m.startEditorInsert()
-		case "A":
-			e.cursor = e.lineEnd()
-			return m.startEditorInsert()
-		case "o":
-			e.cursor = e.lineEnd()
-			e.insertText("\n")
-			return m.startEditorInsert()
-		case "O":
-			e.cursor = e.lineStart()
-			e.insertText("\n")
-			e.cursor--
-			return m.startEditorInsert()
 		}
 	}
 	if s == "x" {
@@ -445,16 +363,6 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
-	if (s == "G" || s == "end") && e.field == fieldDescription {
-		e.cursor = e.fieldRuneLen()
-		e.descScroll = max(0, len(strings.Split(e.draft.Description, "\n"))-1)
-		return m, nil
-	}
-	if s == "home" && e.field == fieldDescription {
-		e.cursor = 0
-		e.descScroll = 0
-		return m, nil
-	}
 	if e.field == fieldTitle {
 		switch s {
 		case "h", "left":
@@ -464,27 +372,6 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			e.moveCursor(1)
 			return m, nil
 		}
-	}
-	if e.field == fieldDescription {
-		switch s {
-		case "h", "left":
-			e.moveCursor(-1)
-		case "l", "right":
-			e.moveCursor(1)
-		case "j", "down":
-			e.moveCursorLine(1)
-		case "k", "up":
-			if e.descriptionLine() == 0 {
-				m.moveField(-1)
-			} else {
-				e.moveCursorLine(-1)
-			}
-		case "ctrl+d", "pgdown", "pagedown":
-			e.moveCursorLine(m.pageStep())
-		case "ctrl+u", "pgup", "pageup":
-			e.moveCursorLine(-m.pageStep())
-		}
-		return m, nil
 	}
 
 	switch s {
@@ -499,6 +386,10 @@ func (m *model) updateEditorNormal(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	e := m.editor
 	s := k.String()
+	if e.field == fieldDescription {
+		e.descriptionView()
+		return m.updateNativeInsert(k)
+	}
 	switch s {
 	case "ctrl+v":
 		return m, m.pasteClipboard(e)
@@ -565,6 +456,19 @@ func (m *model) updateEditorInsert(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *model) insertEditorText(text string) {
 	e := m.editor
+	if e.field == fieldDescription {
+		e.descriptionView()
+		e.descriptionActive = true
+		e.nativeTrigger = false
+		e.nativeCodeEscape = false
+		e.nativeLiteralTab = false
+		kind := description.Insert
+		if e.nativeDraft.Selection() != nil {
+			kind = description.ReplaceSelection
+		}
+		m.applyNative(description.Action{Kind: kind, Text: text}, false, true)
+		return
+	}
 	if e.field == fieldDueDate {
 		for _, r := range text {
 			if r >= '0' && r <= '9' {
@@ -577,6 +481,10 @@ func (m *model) insertEditorText(text string) {
 }
 
 func (m *model) startEditorInsert() (tea.Model, tea.Cmd) {
+	if m.editor.field == fieldDescription {
+		m.editor.descriptionView()
+		m.editor.descriptionActive = true
+	}
 	m.editor.mode = editorInsert
 	m.cursorVisible = true
 	return m, cursorBlinkCmd()
@@ -631,6 +539,9 @@ func (e *taskEditor) clearOptionalField() bool {
 
 func (m *model) focusDetailField(field editorField) {
 	e := m.editor
+	if e.field != field {
+		e.normal.reset()
+	}
 	e.field = field
 	e.descriptionActive = false
 	e.descriptionNavigated = field == fieldDescription
@@ -864,10 +775,51 @@ func (e *taskEditor) workflowStatusPickerIndex() int {
 // Creation still needs its initial Bucket, and explicit changes keep their ID.
 func (e *taskEditor) saveDraft() vimkunja.TaskDraft {
 	draft := cloneTaskDraft(e.draft)
+	if draft.ID != 0 {
+		baseline := e.original.Description
+		draft.DescriptionBaseline = &baseline
+	} else {
+		draft.DescriptionBaseline = nil
+	}
 	if draft.ID != 0 && draft.ProjectID == e.original.ProjectID && draft.WorkflowBucketID == e.original.WorkflowBucketID {
 		draft.WorkflowBucketID = 0
 	}
 	return draft
+}
+
+// adoptSavedTask updates the baseline from committed data while preserving any
+// asynchronous edits made after dispatch. Save-only metadata stays out of drafts.
+func (e *taskEditor) adoptSavedTask(submitted vimkunja.TaskDraft, task vimkunja.Task) {
+	saved := cloneTaskDraft(submitted)
+	if e.nativeDraft != nil && submitted.DescriptionCandidate != nil {
+		if err := e.nativeDraft.AdoptSave(*submitted.DescriptionCandidate); err == nil {
+			e.draft.Description = e.nativeDraft.DraftHTML()
+			e.draft.DescriptionCandidate = nil
+			e.nativeDraft.UpdateView(e.nativeDescription)
+		}
+	}
+	if submitted.DescriptionCandidate != nil {
+		saved.Description = task.Description
+		if e.draft.Description == submitted.Description && e.draft.DescriptionCandidate != nil && *e.draft.DescriptionCandidate == *submitted.DescriptionCandidate {
+			e.draft.Description = task.Description
+			e.draft.DescriptionCandidate = nil
+		}
+	}
+	saved.DescriptionBaseline = nil
+	saved.DescriptionCandidate = nil
+	if !saved.LabelIDsSet {
+		saved.LabelIDs = append([]int64(nil), e.original.LabelIDs...)
+	}
+	if saved.WorkflowBucketID == 0 {
+		saved.WorkflowBucketID = e.original.WorkflowBucketID
+	}
+	saved.ID, saved.Done, saved.DoneSet = task.ID, task.Done, false
+	e.id, e.draft.ID = task.ID, task.ID
+	if e.draft.Done == submitted.Done {
+		e.draft.Done = task.Done
+	}
+	e.original = saved
+	e.draft.DoneSet = e.draft.Done != saved.Done
 }
 
 func (m *model) saveEditor(closeAfter bool) tea.Cmd {
@@ -897,6 +849,9 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 			return cursorBlinkCmd()
 		}
 	}
+	if !m.prepareNativeSave() {
+		return nil
+	}
 	draft := e.saveDraft()
 	m.savingEditor = e
 	m.toast = "Saving Task…"
@@ -906,6 +861,7 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 		defer cancel()
 		var task vimkunja.Task
 		var undo *undoEntry
+		var historyErr error
 		var err error
 		if draft.ID == 0 {
 			task, err = m.store.CreateTask(ctx, draft)
@@ -917,13 +873,13 @@ func (m *model) saveEditor(closeAfter bool) tea.Cmd {
 			task, err = m.store.UpdateTask(ctx, draft)
 			if err == nil {
 				var after vimkunja.TaskUndoState
-				after, err = m.store.TaskUndoState(ctx, draft.ID)
-				if err == nil {
+				after, historyErr = m.store.TaskUndoState(ctx, draft.ID)
+				if historyErr == nil {
 					undo = newUndoEntry(before, after)
 				}
 			}
 		}
-		return taskSavedMsg{task: task, editor: e, draft: draft, closeAfter: closeAfter, undo: undo, err: err}
+		return taskSavedMsg{task: task, editor: e, draft: draft, closeAfter: closeAfter, undo: undo, historyErr: historyErr, err: err}
 	}
 }
 
@@ -937,6 +893,7 @@ func (m *model) moveField(delta int) {
 			break
 		}
 	}
+	e.normal.reset()
 	e.field = fields[clamp(current+delta, 0, len(fields)-1)]
 	e.descriptionActive = false
 	e.descriptionNavigated = e.field == fieldDescription
@@ -1125,7 +1082,15 @@ func (m *model) projectPickerIndex(projectID int64, filter string) int {
 }
 
 func cloneTaskDraft(draft vimkunja.TaskDraft) vimkunja.TaskDraft {
-	draft.LabelIDs = append([]int64(nil), draft.LabelIDs...)
+	draft.LabelIDs = slices.Clone(draft.LabelIDs)
+	if draft.DescriptionBaseline != nil {
+		baseline := *draft.DescriptionBaseline
+		draft.DescriptionBaseline = &baseline
+	}
+	if draft.DescriptionCandidate != nil {
+		candidate := *draft.DescriptionCandidate
+		draft.DescriptionCandidate = &candidate
+	}
 	return draft
 }
 

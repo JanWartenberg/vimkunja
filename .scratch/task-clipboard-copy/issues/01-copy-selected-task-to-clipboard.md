@@ -13,8 +13,8 @@
 - [ ] Define what happens when no Task or multiple Tasks are selected; copying is initially supported only for exactly one selected Task.
 - [ ] Define whether copy uses persisted values or the current Task Detail draft, including unsaved edits.
 - [ ] Define behavior for an empty Description and clipboard write failures; report failures through existing error feedback.
-- [ ] Check the keybinding contract and implemented clipboard actions after Rich-text integration before assigning an optional Leader-key shortcut. The current `main` planning documents reserve `Space+y` for Link URLs; the Rich-text worktree uses `Space+y` for text and `Space+Y` for Link URLs. Do not assign a shortcut based on the older planning state.
+- [ ] Check the keybinding contract and implemented clipboard actions after Rich-text integration before assigning an optional Leader-key shortcut. The integrated editor uses `Space+y` for text and `Space+Y` for Link URLs. Do not displace these actions.
 
 ## Further context
 
-On the current `main` baseline, the TUI reads the system clipboard for Insert-mode paste. The Rich-text worktree also implements clipboard writes for text and Link URLs. Schedule this Task-level export after Rich-text integration and reuse the resulting clipboard infrastructure. Copying must leave Task data and drafts unchanged.
+The integrated editor reads the system clipboard for paste and writes text and Link URLs to it. Reuse this clipboard infrastructure for Task-level export. Copying must leave Task data and drafts unchanged.

@@ -25,14 +25,17 @@ func renderHeading(text string) string {
 // roles here lets a future user-configurable theme replace mappings without
 // finding terminal colour codes throughout individual panes.
 var tuiTheme = struct {
-	selectionAccent, inactiveSelection, muted, danger    string
-	dueSoon, dueUpcoming, ctrlWHint, bright, dark        string
-	scrollbarRail, scrollbarThumb, scrollbarThumbFocused string
-	heading                                              textFormat
-	checkboxListSummary                                  textFormat
-	priority                                             [6]string
+	codeBackground, opaqueForeground, opaqueBackground, opaqueOpen, opaqueClose string
+	nativeASCII                                                                 bool
+	selectionAccent, inactiveSelection, muted, danger                           string
+	dueSoon, dueUpcoming, ctrlWHint, bright, dark                               string
+	scrollbarRail, scrollbarThumb, scrollbarThumbFocused                        string
+	heading                                                                     textFormat
+	checkboxListSummary                                                         textFormat
+	priority                                                                    [6]string
 }{
-	selectionAccent:       "205",
+	selectionAccent: "205",
+	codeBackground:  "236", opaqueForeground: "245", opaqueBackground: "235", opaqueOpen: "[", opaqueClose: "]",
 	inactiveSelection:     "229",
 	muted:                 "245",
 	danger:                "196",

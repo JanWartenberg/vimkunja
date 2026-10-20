@@ -87,7 +87,7 @@ func TestCommandRegistryReportsStableAmbiguityAndCompletion(t *testing.T) {
 	if err == nil || err.Error() != "ambiguous command: wr (matches: write, writequit, writequitall)" {
 		t.Fatalf("ambiguity error = %v", err)
 	}
-	if completion, candidates := registry.Complete("w"); completion != "" || !reflect.DeepEqual(candidates, []string{"write", "writequit", "writequitall"}) {
+	if completion, candidates := registry.Complete("w"); completion != "write" || !reflect.DeepEqual(candidates, []string{"write", "writequit", "writequitall"}) {
 		t.Fatalf("completion = %q, candidates = %#v", completion, candidates)
 	}
 	if completion, candidates := registry.Complete("writequita"); completion != "writequitall" || candidates != nil {

@@ -6,7 +6,7 @@
 
 **Chosen strategy:** Extract readable plain text from Vikunja HTML. This ticket introduces no new Description writing or HTML serialization behavior.
 
-**Scope boundary:** This is phase 1 of the Description plan. Native structured rendering and editing, Visual Mode, formatting commands, and preservation-aware serialization belong to the separate M3 ticket [02 — Specify native Rich-Text Description rendering and editing](../../../../.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md) and its companion contract [`../../../../.scratch/description-rendering/spec.md`](../../../../.scratch/description-rendering/spec.md).
+**Scope boundary:** This is phase 1 of the Description plan. Native structured rendering and editing, Visual Mode, formatting commands, and preservation-aware serialization belong to the separate M3 ticket [02 — Specify native Rich-Text Description rendering and editing](../../../2026-10-19/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md) and its companion contract [`../../../../.scratch/description-rendering/spec.md`](../../../2026-10-19/description-rendering/spec.md).
 
 **Implementation prerequisites:** None — deliberately deferred until after the Fundament/MVP.
 
