@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**Stand:** 2026-10-09 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
+**Stand:** 2026-10-20 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
 
 ## Aktueller Stand
 
@@ -41,9 +41,11 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 20. [Erweiterte globale Suchabfragen und Ranking](.scratch/global-search-filter/issues/02-add-advanced-global-search-query-and-ranking.md) – Phrasen, Negation, Fuzzy-Matching und Ranking bewusst nach V1.
 21. [Fehlerhafte Project-Hierarchien diagnostizieren und reparieren](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – Feedback und sichere Reparatur bewusst nach dem Hierarchie-Reader.
 22. [Native Rich-Text-Beschreibungen](.scratch/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md#implementation-tickets--2026-10-05) – Regel-Quercheck akzeptiert; 83 synthetische Beispiele. Acht Umsetzungstickets **03–10** vorbereitet, Start mit [03 — Dokumentmodell/HTML-Erhaltung](.scratch/description-rendering/issues/03-implement-source-preserving-description-model.md); reale VOA-Beispiele können parallel gesammelt werden. Native Umsetzung noch nicht begonnen; technische Abnahme in Ticket 10.
+22a. [Ausgewählten Task in die Zwischenablage kopieren](.scratch/task-clipboard-copy/issues/01-copy-selected-task-to-clipboard.md) – `:copy` für genau einen Task; nach der aktuellen Rich-Text-Arbeit einordnen, Metadatenformat und Umgang mit ungespeicherten Änderungen noch spezifizieren.
 23. [Getrennte Historien für kontextspezifische Command-Prompts spezifizieren](.scratch/contextual-command-histories/issues/01-specify-independent-command-prompt-histories.md) – nach der M2-Ex-History; eigene session-lokale Historie je Prompt, ohne die Command-Grammatiken zu vereinheitlichen.
 23a. [Workspace-/Datenpräferenzen spezifizieren](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – Default-Project/View, Startfilter und persistierte Navigationspräferenzen; nach der lokalen TUI-Konfiguration.
 23b. [Multiline-Layout im Comment Composer wiederverwenden](.scratch/comment-composer-multiline-layout/issues/01-reuse-multiline-layout-in-comment-composer.md) – bewusst in eine spätere Session verschoben; zuerst screen-level Regressionstests ergänzen.
+23c. [Hilfe strukturieren und Richtext separieren](.scratch/help-structure/issues/01-rethink-help-structure-and-richtext-reference.md) – uneinheitliche Einrückung und schlechte Lesbarkeit; Aufteilung, Navigation und Layout brainstormen und kritisch prüfen, mindestens eigene Richtext-Hilfeseite. Konzeption offen, keine Umsetzung beauftragt.
 
 ### Meilenstein 4
 
