@@ -232,20 +232,20 @@ func TestDraftInlineCodeStructuralEdgesRemainOutside(t *testing.T) {
 }
 
 func TestDraftBackspaceAfterProtectingEscapeKeepsContent(t *testing.T) {
-	d := NewDraft(Parse(`<p>A*B</p>`))
+	d := NewDraft(Parse(`<p>A*B*</p>`))
 	id := d.Cursor().Node
 	d.SetCursor(Anchor{id, 1})
 	if err := d.Apply(Action{Kind: Backspace}, false); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := d.HTML(); err != nil || got != `<p>A*B</p>` {
+	if got, err := d.HTML(); err != nil || got != `<p>A*B*</p>` {
 		t.Fatalf("%q %v", got, err)
 	}
 	d.SetTarget(Target{Anchor: Anchor{id, 1}, Syntax: 1})
 	if err := d.Apply(Action{Kind: Backspace}, false); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := d.HTML(); err != nil || got != `<p>*B</p>` {
+	if got, err := d.HTML(); err != nil || got != `<p>*B*</p>` {
 		t.Fatalf("before escape: %q %v", got, err)
 	}
 }

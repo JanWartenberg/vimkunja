@@ -66,7 +66,8 @@ func TestNativeAdjacentSyntaxDeletionDoesNotJoinParagraphs(t *testing.T) {
 		keys       []string
 		want       string
 	}{
-		{`<p>A*B</p>`, "A*B", 1, []string{"i", "backspace"}, `<p>A*B</p>`},
+		{`<p>A*B*</p>`, "A*B*", 1, []string{"i", "backspace"}, `<p>A*B*</p>`},
+		{`<p>A*B</p>`, "A*B", 1, []string{"i", "backspace"}, `<p>*B</p>`},
 		{`<p>before</p><p><strong>bold</strong></p>`, "bold", 0, []string{"i", "backspace"}, `<p>before</p><p>*bold**</p>`},
 		{`<p><strong>bold</strong></p><p>after</p>`, "bold", 3, []string{"a", "delete"}, `<p>**bold*</p><p>after</p>`},
 	} {

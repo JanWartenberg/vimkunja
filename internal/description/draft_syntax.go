@@ -7,9 +7,36 @@ import (
 
 const editorEscapable = "\\*_~`#-+.[]"
 
-// Ordinary periods have no disclosed escape target. Keep typed \. support
-// separate from the synthetic escapes displayed and edited around literal text.
-const editorDisclosedEscapable = "\\*_~`#-+[]"
+// Disclose protection only where literal text could be mistaken for an inline
+// formatting pair. Reuse the editor grammar so lone punctuation has neither a
+// synthetic backslash nor an invisible editing target. Typed escapes stay valid.
+func disclosedTextEscapes(n Node, inlineCode bool) []bool {
+	escapes := make([]bool, len(n.Text))
+	if !strings.ContainsAny(n.Text, editorEscapable) {
+		return escapes
+	}
+	probe := n
+	probe.typed = []byte(strings.Repeat("\x01", len(n.Text)))
+	_, tokens := parseTyped(probe)
+	for _, token := range tokens {
+		for offset := token.start; offset < token.end; offset++ {
+			escapes[offset] = true
+		}
+	}
+	flags := textOrigins(n)
+	for offset, r := range n.Text {
+		if inlineCode {
+			// An interior backtick could be confused with the disclosed closer.
+			escapes[offset] = r == '`' || r == '\\'
+		} else if r == '\\' && offset+1 < len(n.Text) {
+			escapes[offset] = strings.ContainsRune(editorEscapable, rune(n.Text[offset+1]))
+		}
+		if flags[offset] != 0 {
+			escapes[offset] = false
+		}
+	}
+	return escapes
+}
 
 func textOrigins(n Node) []byte { out := make([]byte, len(n.Text)); copy(out, n.typed); return out }
 func (d *Draft) SetTarget(t Target) error {
@@ -618,13 +645,13 @@ func (d *Draft) editAdjacentSyntax(a Action) (bool, error) {
 	off := d.state.cursor.Offset
 	loc, _ := d.live().ResolveAnchor(d.state.cursor)
 	if a.Kind == Backspace && !a.skipEscape && off < len(n.Text) && textOrigins(*n)[off] == 0 {
-		escapable := editorDisclosedEscapable
+		inlineCode := false
 		for _, id := range loc.Ancestors {
 			if p := findNode(d.state.nodes, id); p != nil && p.Tag == "code" {
-				escapable = "\\`"
+				inlineCode = true
 			}
 		}
-		if strings.ContainsRune(escapable, rune(n.Text[off])) {
+		if disclosedTextEscapes(*n, inlineCode)[off] {
 			flags := textOrigins(*n)
 			flags[off] = 1
 			n.typed = flags
