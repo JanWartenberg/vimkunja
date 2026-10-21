@@ -407,6 +407,10 @@ func kanbanCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 		m.editor = nil
 		m.projectsPaneCollapsed = m.lastProjectPaneCollapsed
 		m.focus = paneTasks
+		if m.currentViewID == 0 {
+			m.viewLoading = true
+			return m, m.loadViews(m.currentProjectID)
+		}
 	}
 	if len(m.manualKanbanViewIndices()) > 1 {
 		return m, m.beginKanbanViewPicker()
@@ -425,6 +429,9 @@ func listCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	if m.currentProjectID == 0 {
 		m.recordError(fmt.Errorf(":list requires a Project context"))
 		return m, nil
+	}
+	if m.inOverview() && m.currentViewID == 0 {
+		return m, m.restoreProjectScope()
 	}
 	m.viewSelected = m.pickListViewIndex()
 	if m.viewSelected < 0 {

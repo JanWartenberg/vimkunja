@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**Stand:** 2026-10-20 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
+**Stand:** 2026-10-21 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
 
 ## Aktueller Stand
 
@@ -25,7 +25,7 @@ MVP, **Meilenstein 1** und **Meilenstein 2** sind abgeschlossen: tägliche Aufga
 
 1. [URL-Copy-Taste](.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – `Space+e` implementiert und geprüft; `Space+Y` bleibt Alias, Timeout unverändert.
 2. [Offene Subtasks prüfen und aufräumen](.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md) – abgeschlossen und archiviert: technischer Abgleich erledigt; Jan bestätigt **20/20 PASS** für Tutorial 9–26, Comment-`~` und Satzzeichen-Fix. [Prüfcheckliste](.archive/2026-10-20/release-ticket-cleanup/acceptance.html).
-3. [GitHub-Initialisierung/Veröffentlichung abschließen](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) – verbleibende Release-Voraussetzungen klären und finalen Veröffentlichungsstand prüfen.
+3. [GitHub-Initialisierung/Veröffentlichung abschließen](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) – verbleibende Release-Voraussetzungen klären und finalen Veröffentlichungsstand prüfen. [Async-Navigation-Fix](.archive/2026-10-21/stale-navigation-results/issues/01-discard-obsolete-navigation-loads.md) abgeschlossen, unabhängig geprüft und in `main` übernommen.
 
 ## Aktuelle Tickets
 

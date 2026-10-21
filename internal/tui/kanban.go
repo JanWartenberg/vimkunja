@@ -139,6 +139,7 @@ func (m *model) beginKanbanViewPicker() tea.Cmd {
 	if len(indices) <= 1 {
 		return nil
 	}
+	m.taskRequest++
 	m.kanbanActive = true
 	m.kanbanViewPicker = true
 	m.kanbanViewPickerIndex = 0

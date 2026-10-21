@@ -304,6 +304,11 @@ func (m *model) restoreLastSearch() tea.Cmd {
 		return nil
 	}
 	snapshot := m.searchReturn
+	// The restored snapshot owns the pane; pending results belong to the
+	// context we are leaving, even when its Project or Label IDs match.
+	m.viewRequest++
+	m.taskRequest++
+	m.viewLoading, m.taskLoading = false, false
 	m.restoreSearchOrigin(snapshot.origin)
 	origin := snapshot.origin
 	m.searchOrigin = &origin

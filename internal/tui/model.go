@@ -134,6 +134,7 @@ type model struct {
 	projectViews                []vimkunja.ProjectView
 	viewSelected                int
 	viewLoading                 bool
+	viewRequest                 uint64
 	currentViewID               int64
 	projectViewPreference       projectViewPreference
 	kanbanActive                bool
@@ -158,6 +159,7 @@ type model struct {
 	taskFilter     overviewFilter
 	taskSelected   int
 	taskLoading    bool
+	taskRequest    uint64 // Shared by List, Kanban and Overview loads.
 	inlineTitle    *inlineTitleEdit
 	taskScope      taskScope
 	overviewTasks  []vimkunja.Task
@@ -259,16 +261,22 @@ type (
 		err error
 	}
 	viewsLoadedMsg struct {
-		views []vimkunja.ProjectView
-		err   error
+		request   uint64
+		projectID int64
+		views     []vimkunja.ProjectView
+		err       error
 	}
 	tasksLoadedMsg struct {
-		tasks []vimkunja.Task
-		err   error
+		request   uint64
+		projectID int64
+		tasks     []vimkunja.Task
+		err       error
 	}
 	kanbanBoardLoadedMsg struct {
-		board vimkunja.KanbanBoard
-		err   error
+		request   uint64
+		projectID int64
+		board     vimkunja.KanbanBoard
+		err       error
 	}
 	kanbanProvisionedMsg struct {
 		board vimkunja.KanbanBoard
@@ -359,12 +367,19 @@ func (m *model) moveProject(projectID int64, direction vimkunja.ProjectMoveDirec
 }
 
 func (m *model) loadViews(projectID int64) tea.Cmd {
+	m.viewRequest++
+	request := m.viewRequest
+	// Project navigation invalidates Tasks before its Views arrive. Metadata
+	// refreshes in Overview must leave the independent Overview load valid.
+	if !m.inOverview() {
+		m.taskRequest++
+	}
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 
 		items, _, err := m.store.ListViews(ctx, projectID, 1, 200)
-		return viewsLoadedMsg{views: items, err: err}
+		return viewsLoadedMsg{request: request, projectID: projectID, views: items, err: err}
 	}
 }
 
@@ -390,6 +405,8 @@ func (m *model) loadWorkflowStatus(projectID, taskID int64) tea.Cmd {
 }
 
 func (m *model) loadKanbanBoard(projectID int64) tea.Cmd {
+	m.taskRequest++
+	request := m.taskRequest
 	viewID := m.currentKanbanViewID()
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
@@ -402,7 +419,7 @@ func (m *model) loadKanbanBoard(projectID int64) tea.Cmd {
 		} else {
 			board, err = m.store.LoadManualKanbanBoard(ctx, projectID)
 		}
-		return kanbanBoardLoadedMsg{board: board, err: err}
+		return kanbanBoardLoadedMsg{request: request, projectID: projectID, board: board, err: err}
 	}
 }
 
@@ -429,12 +446,15 @@ func (m *model) provisionStandardKanbanView(projectID int64) tea.Cmd {
 }
 
 func (m *model) loadTasks(projectID, viewID int64) tea.Cmd {
+	m.taskRequest++
+	request := m.taskRequest
+	perPage := m.perPage
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 
-		items, _, err := m.store.ListTasksInView(ctx, projectID, viewID, 1, m.perPage)
-		return tasksLoadedMsg{tasks: items, err: err}
+		items, _, err := m.store.ListTasksInView(ctx, projectID, viewID, 1, perPage)
+		return tasksLoadedMsg{request: request, projectID: projectID, tasks: items, err: err}
 	}
 }
 
@@ -686,6 +706,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.projects = typed.projects
 		m.projectTree = newProjectTree(m.projects, collapsed)
 		if len(m.projects) == 0 {
+			m.viewRequest++
+			m.taskRequest++
 			m.projectSelected = 0
 			m.projectViewportStart = 0
 			m.currentProjectID = 0
@@ -726,6 +748,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.loadProjects()
 
 	case viewsLoadedMsg:
+		if typed.request != m.viewRequest || typed.projectID != m.currentProjectID {
+			return m, nil
+		}
 		m.viewLoading = false
 		if typed.err != nil {
 			m.recordError(typed.err)
@@ -1182,6 +1207,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.refreshActiveTasks()
 
 	case kanbanBoardLoadedMsg:
+		if typed.request != m.taskRequest || typed.projectID != m.currentProjectID || m.inOverview() {
+			return m, nil
+		}
 		m.taskLoading = false
 		if typed.err != nil {
 			m.recordError(typed.err)
@@ -1224,7 +1252,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.loadKanbanBoard(m.currentProjectID)
 
 	case overviewTasksLoadedMsg:
-		if !m.inOverview() {
+		if typed.request != m.taskRequest || !m.inOverview() {
 			return m, nil
 		}
 		m.taskLoading = false
@@ -1236,7 +1264,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tasksLoadedMsg:
-		if m.inOverview() {
+		if typed.request != m.taskRequest || typed.projectID != m.currentProjectID || m.inOverview() {
 			return m, nil
 		}
 		m.taskLoading = false
@@ -1878,6 +1906,8 @@ func (m *model) onProjectSelectionChanged() tea.Cmd {
 	}
 	m.currentProjectID = selected.ID
 	m.currentViewID = 0
+	m.projectViews = nil
+	m.viewSelected = 0
 	m.tasks = nil
 	m.taskSelected = 0
 	m.lastErr = ""

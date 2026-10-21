@@ -46,8 +46,9 @@ const (
 )
 
 type overviewTasksLoadedMsg struct {
-	tasks []vimkunja.Task
-	err   error
+	request uint64
+	tasks   []vimkunja.Task
+	err     error
 }
 
 var errUnsavedNavigation = errors.New("unsaved changes; use :w or :q! before changing task context")
@@ -55,26 +56,29 @@ var errUnsavedNavigation = errors.New("unsaved changes; use :w or :q! before cha
 func (m *model) inOverview() bool { return m.taskScope == scopeOverview }
 
 func (m *model) loadOverview() tea.Cmd {
+	m.taskRequest++
+	request := m.taskRequest
+	labelID := m.overviewLabel.ID
+	perPage := max(200, m.perPage)
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
-		perPage := max(200, m.perPage)
 		var all []vimkunja.Task
 		for page := 1; ; page++ {
 			var items []vimkunja.Task
 			var totalPages int
 			var err error
-			if m.overviewLabel.ID != 0 {
-				items, totalPages, err = m.store.ListTasksForLabel(ctx, m.overviewLabel.ID, page, perPage)
+			if labelID != 0 {
+				items, totalPages, err = m.store.ListTasksForLabel(ctx, labelID, page, perPage)
 			} else {
 				items, totalPages, err = m.store.ListOverviewTasks(ctx, page, perPage)
 			}
 			if err != nil {
-				return overviewTasksLoadedMsg{err: err}
+				return overviewTasksLoadedMsg{request: request, err: err}
 			}
 			all = append(all, items...)
 			if totalPages == 0 || page >= totalPages {
-				return overviewTasksLoadedMsg{tasks: all}
+				return overviewTasksLoadedMsg{request: request, tasks: all}
 			}
 		}
 	}
@@ -100,6 +104,10 @@ func (m *model) openOverviewForLabel(label vimkunja.Label) tea.Cmd {
 	} else if m.taskScope == scopeProject && m.taskSelected >= 0 && m.taskSelected < len(m.tasks) {
 		m.pendingTaskID = m.tasks[m.taskSelected].ID
 	}
+	// Project metadata requested before this navigation no longer owns
+	// the visible loading/error state. Saves may request fresh metadata later.
+	m.viewRequest++
+	m.viewLoading = false
 	m.lastProjectPaneCollapsed = m.projectsPaneCollapsed
 	m.taskScope = scopeOverview
 	m.overviewLabel = label
@@ -155,6 +163,10 @@ func (m *model) restoreProjectScope() tea.Cmd {
 	m.taskLoading = true
 	if wasKanban {
 		return m.loadKanbanBoard(m.currentProjectID)
+	}
+	if m.currentViewID == 0 {
+		m.viewLoading = true
+		return m.loadViews(m.currentProjectID)
 	}
 	return m.loadTasks(m.currentProjectID, m.currentViewID)
 }
