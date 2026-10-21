@@ -114,7 +114,7 @@ func (m *model) nativeLinkHint() string {
 	if !ok {
 		return ""
 	}
-	hint := "Link → " + sanitizeTerminalText(info.URL) + " · typing extends link · Space+l edit · Space+Y copy URL"
+	hint := "Link → " + sanitizeTerminalText(info.URL) + " · typing extends link · Space+l edit · Space+e copy URL"
 	if info.Edge {
 		hint = "Link edge → " + sanitizeTerminalText(info.URL) + " · typing is outside link · Space+l edit"
 	}

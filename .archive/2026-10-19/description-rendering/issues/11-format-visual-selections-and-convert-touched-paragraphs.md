@@ -200,4 +200,4 @@ Jan authorizes committing the remaining changes and closing the accepted feature
 
 ### Closure confirmation — 2026-10-19
 
-Jan requests final closure. Status remains completed; accepted implementation and closure are committed in 0b29408. The optional binding choice is now tracked separately in [Copy Link URL shortcut](../../../../.scratch/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) and does not reopen this ticket.
+Jan requests final closure. Status remains completed; accepted implementation and closure are committed in 0b29408. The optional binding choice is now tracked separately in [Copy Link URL shortcut](../../../2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) and does not reopen this ticket.

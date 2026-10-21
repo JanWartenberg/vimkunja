@@ -99,14 +99,14 @@ func (m *model) textClipboardTarget() (textClipboardTarget, bool) {
 	}, true
 }
 func (m *model) textClipboardKey(key string) (tea.Cmd, bool) {
-	if key != "y" && key != "p" && key != "Y" {
+	if key != "y" && key != "p" && key != "e" && key != "Y" {
 		return nil, false
 	}
 	target, ok := m.textClipboardTarget()
 	if !ok {
 		return nil, false
 	}
-	if key == "Y" {
+	if key == "e" || key == "Y" {
 		if m.comments == nil && m.editor.field == fieldDescription && m.editor.nativeDraft != nil {
 			return m.copyNativeLink(), true
 		}

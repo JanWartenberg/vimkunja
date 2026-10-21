@@ -10,7 +10,7 @@
 
 **Startbedingung erfüllt:** Richtext und aufgabenbasierte Tutorials von `feature/tutorial-task-workflow` nach `main` übernommen.
 
-**Reihenfolge:** Vor Abschluss der Veröffentlichung zuerst [URL-Copy-Komfort](../../description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), dann [Subtask-Abgleich](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md). Andere M3-Features sind keine pauschale Voraussetzung.
+**Reihenfolge:** Vor Abschluss der Veröffentlichung zuerst [URL-Copy-Komfort](../../../.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), dann [Subtask-Abgleich](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md). Andere M3-Features sind keine pauschale Voraussetzung.
 
 **Erfüllte Dokumentationsvoraussetzung:** [Ticket 01 — Lizenz und Dokumentation](../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) ist abgeschlossen und archiviert.
 
@@ -108,3 +108,10 @@ die oben aufgeführten Veröffentlichungsaufgaben bleiben separat.
 Der akzeptierte Satzzeichen-Fix ist als `393a2b0` committet. Der zugehörige
 Cleanup-Abschluss wird separat versioniert; ein finaler Veröffentlichungsstand
 ist damit noch nicht ausgewählt.
+
+### 2026-10-21 — URL-Copy integration
+
+`feature/url-copy-key` (`c6d25a0`) is integrated into main: `Space+e` copies a
+Link destination; `Space+Y` remains an alias. URL-Copy implementation and
+Subtask-Cleanup are complete. Publication checks remain owned by this ticket;
+this merge does not perform or authorize a public push.
