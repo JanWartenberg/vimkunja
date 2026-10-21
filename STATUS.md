@@ -23,7 +23,7 @@ MVP, **Meilenstein 1** und **Meilenstein 2** sind abgeschlossen: tägliche Aufga
 
 ## Vereinbarte nächste Schritte
 
-1. [URL-Copy-Taste](.scratch/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – freie Kleinschreibung wählen, umsetzen und prüfen.
+1. [URL-Copy-Taste](.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – `Space+e` implementiert und geprüft; `Space+Y` bleibt Alias, Timeout unverändert.
 2. [Offene Subtasks prüfen und aufräumen](.scratch/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md) – echte Restarbeit von veralteten Statusangaben trennen; belegbar abgeschlossene Tickets archivieren.
 3. [GitHub-Initialisierung/Veröffentlichung abschließen](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) – verbleibende Release-Voraussetzungen klären und finalen Veröffentlichungsstand prüfen.
 
@@ -54,7 +54,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 21. [Fehlerhafte Project-Hierarchien diagnostizieren und reparieren](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – Feedback und sichere Reparatur bewusst nach dem Hierarchie-Reader.
 22. [Native Rich-Text-Beschreibungen](.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md) – abgeschlossen und archiviert; Implementierung 03–09 sowie Integration/Nacharbeiten 10/11 geprüft. Alle zehn manuellen Abnahmepunkte einschließlich Windows-/AltGr-, Clipboard-, Resize- und Live-Vikunja-Prüfung bestanden.
 22a. [Ausgewählten Task in die Zwischenablage kopieren](.scratch/task-clipboard-copy/issues/01-copy-selected-task-to-clipboard.md) – `:copy` für genau einen Task; nach der aktuellen Rich-Text-Arbeit einordnen, Metadatenformat und Umgang mit ungespeicherten Änderungen noch spezifizieren.
-22b. [Bequemere URL-Copy-Taste](.scratch/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – optionaler M3-Follow-up; freie Kleinschreibung statt `Space+Y` mit Jan wählen, danach konsistent verdrahten und dokumentieren.
+22b. [Bequemere URL-Copy-Taste](.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – abgeschlossen und archiviert: `Space+e`, weiterhin `Space+Y` als Alias; Palette und Hinweise zeigen `Space+e`.
 23. [Getrennte Historien für kontextspezifische Command-Prompts spezifizieren](.scratch/contextual-command-histories/issues/01-specify-independent-command-prompt-histories.md) – nach der M2-Ex-History; eigene session-lokale Historie je Prompt, ohne die Command-Grammatiken zu vereinheitlichen.
 23a. [Workspace-/Datenpräferenzen spezifizieren](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – Default-Project/View, Startfilter und persistierte Navigationspräferenzen; nach der lokalen TUI-Konfiguration.
 23b. [Multiline-Layout im Comment Composer wiederverwenden](.scratch/comment-composer-multiline-layout/issues/01-reuse-multiline-layout-in-comment-composer.md) – gemeinsames Multiline-Layout und einheitlicher Insert-Cursor implementiert; Regressionen für Umbruch, Leerzeilen, Scrollen und Unicode bestehen.

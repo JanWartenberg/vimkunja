@@ -8,7 +8,7 @@
 
 **Status:** needs-triage
 
-**Order:** 2 of Jan's agreed next-work sequence, after [URL-Copy shortcut](../../description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), before [GitHub publication](../../publish-to-github/issues/02-prepare-publication-after-richtext-merge.md).
+**Order:** 2 of Jan's agreed next-work sequence, after [URL-Copy shortcut](../../../.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), before [GitHub publication](../../publish-to-github/issues/02-prepare-publication-after-richtext-merge.md).
 
 ## Scope and next action
 

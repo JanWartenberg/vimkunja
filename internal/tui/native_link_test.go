@@ -1,11 +1,13 @@
 package tui
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"fmt"
-	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestNativeLinkPromptRejectsAndReplacesURL(t *testing.T) {
@@ -27,32 +29,78 @@ func TestNativeLinkPromptRejectsAndReplacesURL(t *testing.T) {
 }
 
 func TestNativeLinkClipboardReportsActualResult(t *testing.T) {
-	for _, fail := range []bool{false, true} {
-		m := nativeEditingModel(`<p><a href="https://example.test/x">Read</a></p>`)
-		before := m.editor.draft.Description
-		called := ""
-		m.clipboardWrite = func(value string) error {
-			called = value
-			if fail {
-				return fmt.Errorf("clipboard unavailable")
+	for _, key := range []string{"e", "Y"} {
+		for _, mode := range []string{"normal", "v", "V"} {
+			for _, fail := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/%s/fail=%v", key, mode, fail), func(t *testing.T) {
+					m := nativeEditingModel(`<p><a href="https://example.test/x">Read</a></p>`)
+					nativeKeys(m, "l")
+					if mode != "normal" {
+						nativeKeys(m, mode)
+					}
+					before := m.editor.draft.Description
+					cursor := m.editor.nativeDescription.Cursor()
+					selection := m.editor.nativeDraft.Selection()
+					if selection != nil {
+						copied := *selection
+						selection = &copied
+					}
+					called := ""
+					m.clipboardWrite = func(value string) error {
+						called = value
+						if fail {
+							return fmt.Errorf("clipboard unavailable")
+						}
+						return nil
+					}
+					m.Update(clipboardAction(t, m, key)())
+					if called != "https://example.test/x" || m.editor.draft.Description != before || m.editor.dirty() {
+						t.Fatal("copy returned wrong URL or changed draft")
+					}
+					if m.editor.nativeDescription.Cursor() != cursor || !reflect.DeepEqual(m.editor.nativeDraft.Selection(), selection) {
+						t.Fatal("copy changed cursor or selection")
+					}
+					if fail && !strings.Contains(m.lastErr, "clipboard unavailable") {
+						t.Fatal(m.lastErr)
+					}
+					if !fail && m.toast != "Link destination copied" {
+						t.Fatal(m.toast)
+					}
+				})
 			}
-			return nil
 		}
-		m = nativeKeys(m, "l", "space")
-		_, cmd := m.Update(tea.KeyPressMsg{Code: 'Y', Text: "Y"})
-		if cmd == nil {
-			t.Fatal("missing clipboard command")
-		}
-		m.Update(cmd())
-		if called != "https://example.test/x" || m.editor.draft.Description != before || m.editor.dirty() {
-			t.Fatal("copy changed draft")
-		}
-		if fail && !strings.Contains(m.lastErr, "clipboard unavailable") {
-			t.Fatal(m.lastErr)
-		}
-		if !fail && m.toast != "Link destination copied" {
-			t.Fatal(m.toast)
-		}
+	}
+}
+
+func TestNativeLinkCopyWithoutLinkReportsUnavailable(t *testing.T) {
+	for _, key := range []string{"e", "Y"} {
+		t.Run(key, func(t *testing.T) {
+			m := nativeEditingModel("Plain text")
+			m.clipboardWrite = func(string) error { t.Fatal("unexpected clipboard write"); return nil }
+			nativeKeys(m, "space", key)
+			if !strings.Contains(m.lastErr, "Place the cursor in a Link") || m.editor.dirty() {
+				t.Fatalf("unavailable copy changed draft or lost feedback: %s", m.lastErr)
+			}
+		})
+	}
+}
+
+func TestNativeLinkCopyHintsShowLowercaseShortcut(t *testing.T) {
+	m := nativeEditingModel(`<p><a href="https://example.test/x">Read</a></p>`)
+	m.width = 240
+	nativeKeys(m, "l")
+	hint := ansi.Strip(m.Render())
+	if !strings.Contains(hint, "Space+e copy URL") || strings.Contains(hint, "Space+Y") {
+		t.Fatalf("Link hint: %s", hint)
+	}
+	nativeKeys(m, "space")
+	palette := ansi.Strip(m.Render())
+	if !strings.Contains(palette, "e URL") || strings.Contains(palette, "Y URL") {
+		t.Fatalf("palette: %s", palette)
+	}
+	help := strings.Join(helpLines, "\n")
+	if !strings.Contains(help, "Space e") || strings.Contains(help, "Space Y") {
+		t.Fatalf("help: %s", help)
 	}
 }
 

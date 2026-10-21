@@ -416,7 +416,7 @@ func (m *model) nativePalette() string {
 		}
 		return "FORMAT  b bold · i italic · u underline · s strike · x checkbox · 0 clear · q/w quote · k/l list · o projects"
 	}
-	return "BLOCK  1/2/3 heading · 0 paragraph · u/n/x list · q quote · c code · l link · y copy · p paste · Y URL · o projects"
+	return "BLOCK  1/2/3 heading · 0 paragraph · u/n/x list · q quote · c code · l link · y copy · p paste · e URL · o projects"
 }
 func selectDescriptionBlockCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.descriptionView() != nil {

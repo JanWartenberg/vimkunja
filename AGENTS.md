@@ -20,7 +20,7 @@ Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funkt
 - **Vim-Navigation:** `hjkl`, `gg/G`, `Ctrl+D/U`, `Ctrl+W` (Panes)
 - **Commands:** `:q`, `:qa`, `:h` (analog Vim)
 - **Leader-Key:** `Space` + Action
-- **Einheitliche Textauswahl/Clipboard:** Normal-/Visual-Texteditoren nutzen die gemeinsame Auswahl- und Clipboard-Logik (`text_normal.go`, `text_selection.go`, `text_clipboard.go`): `v/V`, `Space+y/p`; Richtext-Links kopieren ihre URL mit `Space+Y`. Insert-only-Prompts behalten ihre Eingaberegeln.
+- **Einheitliche Textauswahl/Clipboard:** Normal-/Visual-Texteditoren nutzen die gemeinsame Auswahl- und Clipboard-Logik (`text_normal.go`, `text_selection.go`, `text_clipboard.go`): `v/V`, `Space+y/p`; Richtext-Links kopieren ihre URL mit `Space+e` (`Space+Y` bleibt Alias). Insert-only-Prompts behalten ihre Eingaberegeln.
 - **Einheitliche Eingabecursor:** Jede neue Texteingabe nutzt `insertCursorText` aus `internal/tui/input_cursor.go`; keine eigenen Block-/Unterstrich-Cursor oder feldspezifischen Cursor-Shapes für Insert. Die gemeinsame Render-Auflösung positioniert den blinkenden Terminal-Barcursor nach dem Layout. Normal-/explizite Überschreibcursor bleiben getrennt.
 
 ---
