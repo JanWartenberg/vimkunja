@@ -318,7 +318,7 @@ All former queue topics have product rules. The [current traceability matrix](..
 
 #### Current verification scope and prerequisites
 
-The 2026-10-04 request authorizes Contract/example synchronization and HTML/Store/terminal checks. Completed: 83-record artifact validation, source-preserving tokenizer probes, terminal decoder probes and Store byte-preservation/rollback regressions. Source review identifies the remaining conflict and paste-dispatch gaps. Full details, commands and evidence limits: [corpus verification](../../../../.scratch/description-rendering/corpus.md#technical-verification--2026-10-04).
+The 2026-10-04 request authorizes Contract/example synchronization and HTML/Store/terminal checks. Completed: 83-record artifact validation, source-preserving tokenizer probes, terminal decoder probes and Store byte-preservation/rollback regressions. Source review identifies the remaining conflict and paste-dispatch gaps. Full details, commands and evidence limits: [corpus verification](../../../../.scratch/description-rendering/corpus.md#historical-technical-verification--2026-10-04).
 
 **Next work:** begin implementation with ticket 03 when separately authorized, then 04/05 and the dependent editor tickets in the implementation index. Ticket 10 capture and test-case preparation can begin independently; its final integration requires 03–09. Gather Native round-trip/property/fuzz, versioned VOA rich-text output and real native layout/Windows input evidence during execution. No further product-card vote is needed. This pass does not implement the Native editor or change dependencies/schema.
 

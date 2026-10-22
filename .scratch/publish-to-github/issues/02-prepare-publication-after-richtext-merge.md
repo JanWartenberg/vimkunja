@@ -47,15 +47,17 @@ Nach Freigabe erfolgt der tatsächliche Push mit denselben expliziten Referenzen
 
 ## Abnahme
 
-- [ ] Ticket 01 abgeschlossen und vereinbarter Richtext-Merge enthalten; finaler Ausgangscommit dokumentiert.
-- [ ] Aktueller Funktionsumfang, README/STATUS und gegebenenfalls neue Dependency-Lizenzhinweise nach dem Merge abgeglichen.
-- [ ] Tests, beide Builds, Vet, Schwachstellenprüfung und Workflow-Prüfung erfolgreich; echter Actions-Lauf und Plattformabnahme bzw. verbleibende Grenzen dokumentiert.
-- [x] Veröffentlichungskopie enthält nur `main`, keine Tags oder Backup-Referenzen; Original und bestehende Worktrees bleiben erhalten.
+- [x] Ticket 01 abgeschlossen und vereinbarter Richtext-Merge enthalten; geprüfter Ausgangscommit `bd340c2` dokumentiert. Nachfolgende Doku-Korrekturen und Prüfergebnisse separat dokumentiert.
+- [x] Aktueller Funktionsumfang, README/STATUS und Dependency-Lizenzhinweise nach dem Merge abgeglichen.
+- [x] Lokale Tests, beide Builds, Vet, Schwachstellenprüfung und Workflow-Prüfung erfolgreich; verbleibende Plattformgrenzen dokumentiert.
+- [ ] Echter GitHub-Actions-Lauf für den vorgesehenen Veröffentlichungsstand erfolgreich.
+- [x] Zur Veröffentlichung ausschließlich `main` ausgewählt; keine Tags, Backup- oder lokalen T3-Prüfreferenzen. Original und bestehende Worktrees bleiben erhalten.
 - [x] Persönliche Adresse aus Author-/Committer-Metadaten, Commit-/Tag-Inhalten und historischer Dateihistorie entfernt; Zieladresse und künftige lokale Git-Identität des Veröffentlichungsrepositories geprüft.
-- [ ] Secret-, Datenschutz- und DB-Historienprüfung der vollständig erreichbaren Veröffentlichungshistorie erfolgreich; keine echten Nutzerdaten oder DB-Sidecars enthalten.
+- [x] Secret-, Datenschutz- und DB-Historienprüfung der vorgesehenen Veröffentlichungshistorie ohne konkrete Findings; keine echten Nutzerdaten oder DB-Sidecars gefunden. Umfang und Grenzen unten dokumentiert.
+- [x] HTTPS-Remote konfiguriert, Mirror-/Push-Einstellungen geprüft und explizite Übertragung ausschließlich von `main` an lokalem Bare-Repository erprobt.
 - [ ] Remote-Ziel, Mirror-Einstellungen, Push-Refspecs und expliziter Dry Run geprüft; konkreter Veröffentlichungsstand zur Freigabe bereit.
 - [ ] Tatsächlicher öffentlicher Push ausdrücklich beauftragt, durchgeführt und Remote-Referenzen kontrolliert.
-- [ ] Übergang auf die bereinigte Historie für weitere Arbeit dokumentiert.
+- [x] Übergang auf die bereinigte Historie für weitere Arbeit dokumentiert; siehe Weiterarbeit und Prüfbericht unten.
 
 ## Grenzen
 
@@ -142,3 +144,24 @@ Der geprüfte Ausgangscommit enthält die nachfolgenden Dokumentationsänderunge
 ### 2026-10-22 — Unabhängige Projektkennzeichnung
 
 Jan beauftragt den README-Untertitel „An unofficial Vim-style terminal interface for Vikunja.“ und den Hinweis „Vimkunja is an independent project, not affiliated with or endorsed by Vikunja.“ Beide stehen direkt unter dem Projektnamen. Eine Zustimmung des Vikunja-Projekts zum Namen ist damit nicht dokumentiert. Die Veröffentlichungsnotizen sind auf den erreichten Bereinigungsstand abgeglichen; finale Prüfungen und öffentlicher Push bleiben offen.
+
+### 2026-10-22 — Lokale Veröffentlichungsvorbereitung geprüft
+
+Jan beauftragt alle bereits möglichen Veröffentlichungsvorbereitungen. Geprüfter Quellcode-Ausgangspunkt: `bd340c216e4f60942bd43341e74e0e76c4669666` (`main`, 191 Commits). Die folgenden Dokumentationskorrekturen werden mit den lokalen Prüfergebnissen separat versioniert; es wurde nichts öffentlich gepusht.
+
+- **Dokumentation und Lizenzen:** 329 veröffentlichbare Dateien, davon 111 Markdown-Dateien, mit 10 lokalen Fragment-Verweisen geprüft. Einen veralteten Corpus-Anker im archivierten Richtext-Ticket 02 korrigiert; danach keine defekten lokalen Datei-/Fragment-Links. Alle 40 externen Dokumentationslinks antworten erfolgreich. Alle 30 kompilierten Drittanbieter-Modulversionen für beide Entrypoints unter Linux amd64, Windows amd64 und Darwin amd64/arm64 stimmen mit `THIRD_PARTY_NOTICES.txt` überein; Inventar-Lizenztexte gegen Modulquellen und Notices geprüft, einschließlich Go und beider APSL-Texte. Keine Dependency-Änderung nötig. README dokumentiert weiterhin ausschließlich Vikunja 2.7.0, sequenziellen DB-Zugriff und die Grenzen späterer Binary-Releases.
+- **Herkunfts-Nachprüfung:** 916 historische Go-Blobs von `main` mit den Backend-Go-Quellen des lokalen Vikunja-Upstreams (`82ee780161c6ed250cdb1fc4d2952b72464cb724`) verglichen. Keine identische Folge von acht nichttrivialen Zeilen nach der bestehenden Normalisierung gefunden. Das ist kein lückenloser Herkunftsnachweis und erkennt kurze oder umgeschriebene Übernahmen nicht.
+- **Tests und CI:** Mit Go 1.27.1 bestehen `go test ./... ./.scratch/description-rendering/verification`, beide Entrypoint-Builds und `go vet ./...`. `go mod verify` besteht ebenfalls. Beide CI-Fuzz-Ziele bestehen mit je fünf Sekunden Laufzeit. Actionlint prüft den vorhandenen Linux-/Windows-Workflow erfolgreich; beide referenzierten Action-Tags `v7` sind im jeweiligen Upstream vorhanden. Windows-amd64-Crossbuild beider Programme erfolgreich. Beide CLI-Hilfen, fehlender DB-Pfad ohne Dateineuanlage und Tutorial-Menü/Practice in Linux-PTY inklusive Ctrl+C und temporärer DB-Bereinigung geprüft. Keine produktive Nutzerdatenbank geöffnet.
+- **Schwachstellen:** Der erste Lauf mit dem lokalen Standard-Go 1.25.0 meldet drei erreichbare Standardbibliotheks-Findings (`GO-2025-4010`, `GO-2026-4341`, `GO-2026-4601`). Erneuter Scan mit dem vorhandenen Go 1.27.1: keine erreichbaren Findings. Der Scanner nennt zusätzlich eine Schwachstelle in importierten Packages und 13 in benötigten Modulen ohne nachgewiesenen Aufruf. Für Builds weiter eine aktuelle sicherheitsgepatchte Toolchain verwenden; die ungepatchte Systeminstallation wurde nicht verändert.
+- **Secrets und Datenschutz:** Gitleaks 8.30.1 über `main` (188 Commits mit ausgewerteten Änderungen) und den aktuellen veröffentlichbaren Dateibaum ohne Findings. Alle 3.350 physisch vorhandenen Git-Objekte zusätzlich exportiert und gescannt: vier Treffer, ausschließlich bestätigte `modernc.org/token`-Prüfsummen in historischen `go.sum`-Blobs. Keine echten Secrets gefunden. Alle Objektinhalte und aktuellen Dateien auf die zuvor bereinigte private Adresse einschließlich UTF-16 geprüft: null Treffer. Keine DB-/Sidecar-Pfade in der erreichbaren Historie und keine SQLite-Dateisignaturen in den Objektinhalten. Persönlicher Pfad-Kandidat in `help.go` ist nur der Tastaturhinweis `/Home/End,`. Synthetische Test-/Tutorial-Fixtures bleiben erhalten. Diese technischen Scans sind kein Beweis für das Fehlen jeder denkbaren sensiblen Information.
+- **Referenzen und Push-Probe:** `origin` zeigt per HTTPS auf `https://github.com/JanWartenberg/vimkunja.git`; kein Mirror-Modus, keine zusätzlichen Push-Refspecs, `push.default=nothing`. Die App hat inzwischen lokale `refs/t3/orchestration-v2/checkpoints/...` angelegt; diese bleiben lokal und werden nicht gelöscht. Expliziter Dry Run und anschließender Push in ein temporäres lokales Bare-Repository ergeben exakt `refs/heads/main` bei `bd340c2`, keine Tags oder weiteren Referenzen. `git fsck --full` erfolgreich. Keine Veröffentlichung auf GitHub erfolgt.
+- **GitHub-Blocker:** Anonyme Repository-API antwortet HTTP 404; daraus ist nicht unterscheidbar, ob das Ziel fehlt oder privat ist. GitHub-`ls-remote` und echter HTTPS-Push-Dry-Run scheitern mit `could not read Username for 'https://github.com': No such device or address`. In dieser Sitzung steht kein authentifizierter GitHub-Zugriff bereit. Repository-Zustand, Schreibrechte und echter GitHub-Dry-Run sind deshalb nicht bestätigt. Kein Repository auf Verdacht angelegt.
+- **Verbleibende Abnahmen:** Echter GitHub-Actions-Lauf erst mit geeignetem zugänglichem GitHub-Prüfstand. Windows-Crossbuild ersetzt keine native Terminal-/Clipboard-Abnahme; deren Grenzen bleiben ebenso wie der offene Live-CalDAV-Test dokumentiert. Automatische Release-Binaries, macOS-Binary-Freigabe und produktives Start-Template bleiben außerhalb der Quellcode-Erstveröffentlichung.
+
+Lokale Rohberichte und Push-Probe: `/tmp/vimkunja-readiness-20261022/` (temporär, nicht Teil der Veröffentlichung). Der dokumentierte Übergang auf die bereinigte Historie bleibt verbindlich: hier weiterarbeiten und keine alten Branches samt privater Metadaten hineinmergen.
+
+**Noch zu erledigen:** Jan richtet das GitHub-Repository und authentifizierten Zugriff ein; danach Ziel und echten Dry Run bestätigen; nach ausdrücklichem öffentlichen Push-Auftrag veröffentlichen, Remote-Referenzen und Actions prüfen. Das Ticket bleibt bis dahin `in-progress`.
+
+### 2026-10-22 — Prüfbericht committen, GitHub-Einrichtung durch Jan
+
+Jan beauftragt den Commit der vier Dokumentationsänderungen und übernimmt die GitHub-Einrichtung. Erinnerung: `JanWartenberg/vimkunja` als leeres öffentliches Repository ohne automatisch angelegte README, Lizenz oder `.gitignore` anlegen (falls noch nicht vorhanden) und authentifizierten HTTPS-Push-Zugriff bereitstellen. Anschließend echten Dry Run prüfen; öffentlicher Push bleibt separat zu beauftragen.

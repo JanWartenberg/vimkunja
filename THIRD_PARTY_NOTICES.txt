@@ -1,7 +1,7 @@
 Third-party notices for Vimkunja
 ================================
 
-Inventory rechecked 2026-10-07 against go.mod and the dependency closure of
+Inventory rechecked 2026-10-22 against go.mod and the dependency closure of
 both entrypoints for Linux amd64, Windows amd64 and macOS amd64/arm64
 (CGO_ENABLED=0). All 30 module versions and their root license texts match.
 Additional embedded source notices and APSL 1.1/2.0 texts are included below.
