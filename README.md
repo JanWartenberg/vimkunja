@@ -1,5 +1,9 @@
 # Vimkunja
 
+An unofficial Vim-style terminal interface for Vikunja.
+
+Vimkunja is an independent project, not affiliated with or endorsed by Vikunja.
+
 ## 1. Was es ist
 
 Vimkunja ist eine tastaturorientierte Terminal-Oberfläche für eine lokale [Vikunja](https://vikunja.io/)-SQLite-Datenbank. Sie richtet sich an Vim-Nutzer und ergänzt Vikunjas Task-Verwaltung um einen schnellen Terminal-Workflow mit Projects, List View, Task-Detail und Workflow-Status.

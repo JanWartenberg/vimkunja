@@ -6,7 +6,7 @@
 
 **Priority:** High nach dem Richtext-Merge
 
-**Status:** needs-triage
+**Status:** in-progress
 
 **Startbedingung erfüllt:** Richtext und aufgabenbasierte Tutorials von `feature/tutorial-task-workflow` nach `main` übernommen.
 
@@ -50,8 +50,8 @@ Nach Freigabe erfolgt der tatsächliche Push mit denselben expliziten Referenzen
 - [ ] Ticket 01 abgeschlossen und vereinbarter Richtext-Merge enthalten; finaler Ausgangscommit dokumentiert.
 - [ ] Aktueller Funktionsumfang, README/STATUS und gegebenenfalls neue Dependency-Lizenzhinweise nach dem Merge abgeglichen.
 - [ ] Tests, beide Builds, Vet, Schwachstellenprüfung und Workflow-Prüfung erfolgreich; echter Actions-Lauf und Plattformabnahme bzw. verbleibende Grenzen dokumentiert.
-- [ ] Veröffentlichungskopie enthält nur `main` und bestätigte Tags, keine Backup-Referenzen; Original und bestehende Worktrees bleiben erhalten.
-- [ ] Persönliche Adresse aus Author-/Committer-Metadaten, Commit-/Tag-Inhalten und historischer Dateihistorie entfernt; Zieladresse und künftige lokale Git-Identität des Veröffentlichungsrepositories geprüft.
+- [x] Veröffentlichungskopie enthält nur `main`, keine Tags oder Backup-Referenzen; Original und bestehende Worktrees bleiben erhalten.
+- [x] Persönliche Adresse aus Author-/Committer-Metadaten, Commit-/Tag-Inhalten und historischer Dateihistorie entfernt; Zieladresse und künftige lokale Git-Identität des Veröffentlichungsrepositories geprüft.
 - [ ] Secret-, Datenschutz- und DB-Historienprüfung der vollständig erreichbaren Veröffentlichungshistorie erfolgreich; keine echten Nutzerdaten oder DB-Sidecars enthalten.
 - [ ] Remote-Ziel, Mirror-Einstellungen, Push-Refspecs und expliziter Dry Run geprüft; konkreter Veröffentlichungsstand zur Freigabe bereit.
 - [ ] Tatsächlicher öffentlicher Push ausdrücklich beauftragt, durchgeführt und Remote-Referenzen kontrolliert.
@@ -115,3 +115,30 @@ ist damit noch nicht ausgewählt.
 Link destination; `Space+Y` remains an alias. URL-Copy implementation and
 Subtask-Cleanup are complete. Publication checks remain owned by this ticket;
 this merge does not perform or authorize a public push.
+
+### 2026-10-22 — Veröffentlichungsfokus und E-Mail-Bereinigung beauftragt
+
+Jan stellt alle noch nicht begonnenen Backlog-Aufgaben zurück und priorisiert die Veröffentlichung. Die automatisierte Entfernung seiner privaten E-Mail aus der Historie ist ausdrücklich beauftragt. Umsetzung in einer separaten Veröffentlichungskopie mit der bestätigten GitHub-noreply-Adresse; Originalhistorie, Worktrees und lokale Backups bleiben erhalten. Zunächst nur `main`, keine Tags ohne ausdrückliche Auswahl und kein öffentlicher Push.
+
+#### Ergebnis der Historienbereinigung
+
+- Veröffentlichungskopie: `/workspace/vimkunja-publication`, eigenständiges Repository ohne Objekt-Alternates, Remotes oder Backup-Referenzen. Einzige Referenz: `refs/heads/main`; Tags weiterhin nicht ausgewählt.
+- Ausgangscommit: `57c94e46645c6d8639f78e682f7fc365a5d19b03`; bereinigter Commit: `af4a50fbdce1362066ec1ae982b62ec309b9f80c`.
+- Automatisiert mit `git-filter-repo` 2.47.0. Eine bestätigte private Identität ersetzt: Author-/Committer-Felder in fünf Commits und drei historische Blob-Versionen in den beiden früheren Pfaden von Veröffentlichungsticket 01. Commit-Nachrichten und Dateiinhalte wurden ebenfalls geprüft und bei Treffern ersetzt, einschließlich Groß-/Kleinschreibung und UTF-16. Andere Identitäten bleiben unverändert.
+- Alle 190 Commits und beide Merges erhalten. Jeder Commit wurde gegen das Original verglichen: Parent-Zuordnung, Nachrichten, Metadaten, Dateinamen, Modi und sämtliche historischen Inhalte stimmen bis auf die beauftragte E-Mail-Ersetzung und daraus folgende Objekt-IDs überein. Keine weiteren Inhaltsänderungen.
+- Alle 3.324 physisch vorhandenen Git-Objekte und die Rohdateien unter `.git` geprüft: kein Treffer der bestätigten privaten Adresse. Keine Datenbank-/Sidecar-Dateinamen oder SQLite-Dateisignaturen in erreichbaren Blobs gefunden. `git fsck --full` erfolgreich. Das ist kein vollständiger Secret-Scan oder allgemeiner Datenschutz-Audit.
+- Künftige lokale Identität der Kopie: `Jan Wartenberg <5298128+JanWartenberg@users.noreply.github.com>`. Kein Remote eingerichtet; `push.default=nothing` verhindert einen unbeabsichtigten Standard-Push.
+- Auf dem bereinigten Commit mit der lokal vorhandenen Go-1.27.1-Toolchain: `go test ./... ./.scratch/description-rendering/verification`, beide Builds und `go vet ./...` erfolgreich. Die Toolchain-Version allein belegt keine aktuelle Sicherheitsprüfung.
+- Original-`main`, lokale Backups, andere Worktrees, Nutzerdatenbanken und der unversionierte Task-Copy-Spec bleiben erhalten. Die alte Historie enthält lokal weiterhin die private Adresse und darf nicht veröffentlicht werden.
+
+Commit-Zuordnung: `/workspace/vimkunja-publication/.git/filter-repo/commit-map`.
+Maschinenlesbare Prüfergebnisse: `/workspace/vimkunja-publication/.git/filter-repo/privacy-verification.json`.
+Der geprüfte Ausgangscommit enthält die nachfolgenden Dokumentationsänderungen noch nicht. Der endgültige Veröffentlichungscommit ist nach Abschluss der Dokumentation festzuhalten und zu prüfen. Der sonstige Backlog ist zurückgestellt.
+
+**Nächste Release-Schritte:** Aktualisierten Dokumentationsstand als Ausgangspunkt der finalen Release-Prüfung festhalten; aktuellen Schwachstellen-/Secret-Scan, CI-Konfiguration und gegebenenfalls Plattformgrenzen prüfen; GitHub-Ziel und expliziten Push-Dry-Run prüfen. Ein echter Actions-Lauf benötigt einen geeigneten GitHub-Prüfstand. Öffentlicher Push weiterhin nur auf ausdrücklichen Auftrag.
+
+**Weiterarbeit:** Veröffentlichungsarbeit in der bereinigten Kopie fortsetzen. Alte Branches und Worktrees nur als Referenz verwenden; ein Merge der alten Historie würde private Metadaten wieder eintragen. Spätere Änderungen gezielt übertragen. Die Dokumentation der Historienbereinigung ist bereits übertragen; der unversionierte Task-Copy-Spec wurde nicht in die Veröffentlichungskopie übernommen.
+
+### 2026-10-22 — Unabhängige Projektkennzeichnung
+
+Jan beauftragt den README-Untertitel „An unofficial Vim-style terminal interface for Vikunja.“ und den Hinweis „Vimkunja is an independent project, not affiliated with or endorsed by Vikunja.“ Beide stehen direkt unter dem Projektnamen. Eine Zustimmung des Vikunja-Projekts zum Namen ist damit nicht dokumentiert. Die Veröffentlichungsnotizen sind auf den erreichten Bereinigungsstand abgeglichen; finale Prüfungen und öffentlicher Push bleiben offen.

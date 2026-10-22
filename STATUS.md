@@ -1,10 +1,10 @@
 # Vimkunja – Status
 
-**Stand:** 2026-10-21 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
+**Stand:** 2026-10-22 | **Branch:** main | **MVP:** abgeschlossen und archiviert | **Aktueller Meilenstein:** Meilenstein 3
 
 ## Aktueller Stand
 
-MVP, **Meilenstein 1** und **Meilenstein 2** sind abgeschlossen: tägliche Aufgabenverwaltung ist ohne Wechsel zur Original-App praktikabel. Die weitere Arbeit konzentriert sich auf die offenen Spezifikationen und Erweiterungen des Meilensteins 3.
+MVP, **Meilenstein 1** und **Meilenstein 2** sind abgeschlossen: tägliche Aufgabenverwaltung ist ohne Wechsel zur Original-App praktikabel. Aktueller Fokus ist die GitHub-Erstveröffentlichung. Alle noch nicht begonnenen Backlog-Aufgaben sind bis dahin zurückgestellt; ihre Meilenstein-Zuordnung bleibt bestehen.
 
 - Lokale Vikunja-SQLite-Datenbank: Projects, List View, All-Tasks-Overview, Task-Detail, Task-Editor und Task-Löschung
 - Hierarchischer Projects Pane mit Einrückung, session-lokaler Faltung, defensiven Recovery-Einträgen und persistenter Geschwister-Sortierung
@@ -22,6 +22,8 @@ MVP, **Meilenstein 1** und **Meilenstein 2** sind abgeschlossen: tägliche Aufga
 - [Richtext-Fuzz-Nachprüfung](.archive/2026-10-20/description-rendering/fuzz-audit-2026-10-17/report.md) – abgeschlossen; deterministische Regressionen und kurze CI-Fuzz-Prüfungen sichern die Korrekturen ab.
 
 ## Vereinbarte nächste Schritte
+
+**2026-10-22:** Veröffentlichung priorisieren; keine neuen Backlog-Aufgaben beginnen. Die E-Mail-Historienbereinigung ist in der separaten Veröffentlichungskopie abgeschlossen und geprüft (bereinigter Ausgangscommit: `af4a50f`). README kennzeichnet Vimkunja als unabhängiges, inoffizielles Projekt. Die Veröffentlichungsdokumentation ist aktualisiert; finale Release-Prüfungen und Push-Dry-Run stehen aus. Öffentlicher Push bleibt separat freizugeben.
 
 1. [URL-Copy-Taste](.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – `Space+e` implementiert und geprüft; `Space+Y` bleibt Alias, Timeout unverändert.
 2. [Offene Subtasks prüfen und aufräumen](.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md) – abgeschlossen und archiviert: technischer Abgleich erledigt; Jan bestätigt **20/20 PASS** für Tutorial 9–26, Comment-`~` und Satzzeichen-Fix. [Prüfcheckliste](.archive/2026-10-20/release-ticket-cleanup/acceptance.html).
@@ -73,7 +75,7 @@ Die read-only HTML-Description-Projektion, das Scroll-Feedback, die [weiteren Ke
 
 - [Vikunja-DB-Kompatibilität ausschließlich 2.7.0](.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md) — **abgeschlossen; Kompatibilitätsvoraussetzung der Veröffentlichung erfüllt**. Produktive Revisionsprüfung, Store-Fixes und Regressionen implementiert; [Prüfbericht](.archive/2026-10-05/vikunja-db-compatibility/report.md) belegt Fresh-/Baseline-Roundtrips mit offiziellem VOA 2.7.0. Tests, Vet und beide Builds grün. Nur 2.7.0, sequenzieller Betrieb; permanente Löschung von Tasks mit Time Entries gesperrt. Native Windows-Terminaltests weiterhin offen.
 - [01 — Lizenz und Dokumentation für GitHub](.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) — **abgeschlossen und archiviert**. Lizenzinventar (30 Module/128 zusätzliche Hinweise), README, Beispiele und Links geprüft; HTML-Schreibschutz, Konfigurationspriorität, Binary-Start und Release-Grenzen präzisiert.
-- [02 — Veröffentlichung nach dem Richtext-Merge](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) — **Richtext nach `main` übernommen; Ticket 01 ist abgeschlossen**. Danach CI/Tests, E-Mail-/Historienbereinigung in separater Veröffentlichungskopie, finale Secret-/DB-Prüfung und Push-Dry-Run. **Nur `main` und bestätigte Tags; keine Backup-Referenzen, kein Mirror-Push. Öffentlicher Push nur auf ausdrücklichen Auftrag.**
+- [02 — Veröffentlichung nach dem Richtext-Merge](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) — **Richtext integriert, Ticket 01 abgeschlossen, E-Mail-Historie in separater Veröffentlichungskopie bereinigt**. Offen: finale Release-Prüfungen einschließlich CI und Secret-/DB-Prüfung sowie Push-Dry-Run. **Zunächst nur `main`, keine Tags ausgewählt; keine Backup-Referenzen, kein Mirror-Push. Öffentlicher Push nur auf ausdrücklichen Auftrag.**
 
 ## Dokumentation
 
