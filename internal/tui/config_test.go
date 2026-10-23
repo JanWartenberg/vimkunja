@@ -88,7 +88,7 @@ func TestLoadUserConfigRejectsExplicitEmptyCLIValue(t *testing.T) {
 
 func TestLoadCodeSettingsAndIndependentFallbacks(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
+	setConfigHome(t, dir)
 	path := filepath.Join(dir, "vimkunja", "config.toml")
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		t.Fatal(err)
