@@ -4,7 +4,7 @@
 
 ## Current state
 
-The MVP, **Milestone 1**, and **Milestone 2** are complete: everyday task management is practical without switching to the original application. The current focus is the initial GitHub publication. All backlog work that has not started is deferred until then; milestone assignments remain unchanged.
+The MVP, **Milestone 1**, **Milestone 2**, and the initial GitHub source publication are complete. Everyday task management is practical without switching to the original application. Open M3 work remains in the backlog; publication no longer blocks it, and no new implementation priority has been selected.
 
 - Local Vikunja SQLite database: Projects, List View, All Tasks Overview, Task Detail, Task Editor, and Task deletion
 - Hierarchical Projects Pane with indentation, session-local folding, defensive recovery entries, and persistent sibling ordering
@@ -15,7 +15,7 @@ The MVP, **Milestone 1**, and **Milestone 2** are complete: everyday task manage
 - Separate English tutorial with a flat start menu: guided or free practice for controls or markup, plus Quit; temporary SQLite database created only after mode selection
 - `go test ./...` passes
 
-- [Task-based tutorials](.archive/2026-10-20/tutorial-task-workflow/issues/02-convert-all-guided-tutorials.md) – general course and rich-text workshop on `main`: 26 general and 22 rich-text tasks with free interaction, result checks, F5 to restore the current starting state, F8 after success, and F12 to skip; compact display and dismissible context/help modals. Rich-text starting point preserved on `feature/description-model` at `10ff5d2`.
+- [Task-based tutorials](.archive/2026-10-20/tutorial-task-workflow/issues/02-convert-all-guided-tutorials.md) – general course and rich-text workshop on `main`: 26 general and 22 rich-text tasks with free interaction, result checks, F5 to restore the current starting state, F8 after success, and F12 to skip; compact display and dismissible context/help modals. Earlier branch references in archived reports are historical; old worktrees have been retired.
 
 - [Native rich-text Descriptions](.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md) – implemented and manually accepted: **AT-01–10 PASS**, tutorial completed. Selection/formatting, Checkboxes, Code/Tabs, system clipboard, and live Vikunja round trip including in-app reload verified; regression tests cover known defects. [Editor follow-up](.archive/2026-10-19/description-rendering/issues/11-format-visual-selections-and-convert-touched-paragraphs.md) completed.
 
@@ -23,15 +23,14 @@ The MVP, **Milestone 1**, and **Milestone 2** are complete: everyday task manage
 
 ## Agreed next steps
 
-**2026-10-22:** Prioritize publication; do not start new backlog tasks. Email history cleaned; README identifies Vimkunja as an independent, unofficial project. Local release checks on `bd340c2` passed: tests/builds/vet with Go 1.27.1, license/link review, workflow lint, security/secret/database checks, and a local push rehearsal for `main` only. HTTPS remote configured. The GitHub dry run was blocked by missing authenticated access (anonymous target HTTP 404); Actions and public push remained pending. Local findings and documentation corrections are recorded; Jan handles GitHub setup. Public push requires a separate instruction.
+**2026-10-23 — Publication complete:** [JanWartenberg/vimkunja](https://github.com/JanWartenberg/vimkunja) is public, with `main` at `4358202d7b72c7c5e9766422dbaa55588e844180`, matching the local source state before this documentation update. Remote heads/tags contain only `main`. [Actions run 39991127576](https://github.com/JanWartenberg/vimkunja/actions/runs/39991127576) succeeds on Windows and Ubuntu, including tests, both builds, and vet. The prior Windows configuration-test failure is corrected; the Store suite passes on the runner in this run. The cause of the earlier timeout is not established.
 
-**2026-10-23:** Jan confirms repository creation and a successful HTTPS push dry run for `main`. The initial Actions run confirms the source reached GitHub; Windows CI still requires correction and revalidation. Repository documentation and remaining German messages are translated into English; tests, builds, vet, links, and local HTML checks pass. Translation and verification are recorded in the publication commit.
+**Local consolidation accepted:** Jan moved the retired folders outside the workspace. The remaining `/workspace/vimkunja` checkout has the GitHub HTTPS remote and `main` upstream configured; Git lists no additional worktrees. The current database and its sidecars are ignored. Jan confirms `go run ./cmd/vimkunja` starts successfully from this isolated checkout on Windows. Backups were verified before consolidation; this update does not alter user data.
 
-**Windows CI follow-up:** Ubuntu Actions passes. The configuration test's Windows path isolation is corrected using the shared `setConfigHome` helper; native Windows revalidation is pending. The separate Store-package timeout on the Windows runner remains unresolved; Jan's local Windows Store suite passes in 32.331 seconds. See publication Ticket 02 for evidence and limits.
+**Ticket reconciliation:** All open issue files reviewed. Publication is completed and archived; other tickets remain `needs-triage`. Completed prerequisites and current clipboard bindings are reflected in their tickets, and the adopted Task-copy spec is included. First-run database initialization remains separate open M3 work; broader platform acceptance, live CalDAV, and binary releases are not claimed by publication closure.
 
-1. [URL-copy shortcut](.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – `Space+e` implemented and checked; `Space+Y` remains an alias, timeout unchanged.
-2. [Review and clean up open subtasks](.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md) – completed and archived: technical reconciliation done; Jan confirms **20/20 PASS** for tutorial tasks 9–26, Comment `~`, and the punctuation fix. [Checklist](.archive/2026-10-20/release-ticket-cleanup/acceptance.html).
-3. [Finish GitHub initialization/publication](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) – clarify remaining release prerequisites and check the final publication state. [Async navigation fix](.archive/2026-10-21/stale-navigation-results/issues/01-discard-obsolete-navigation-loads.md) completed, independently reviewed, and integrated into `main`.
+1. Select the next M3 ticket and resolve its open product decisions before implementation.
+2. Keep first-run database initialization separate from the accepted startup with an existing database.
 
 ## Current tickets
 
@@ -57,20 +56,25 @@ Read-only HTML Description projection, scroll feedback, [additional keyboard sho
 18. [Manage manual Kanban Buckets](.scratch/kanban-bucket-management/issues/01-manage-manual-kanban-buckets.md)
 19. [Local search in the focused pane](.scratch/local-search/issues/01-search-within-focused-pane.md) – `/` and `n`/`N` agreed; pane semantics remain open.
 20. [Advanced Global Search queries and ranking](.scratch/global-search-filter/issues/02-add-advanced-global-search-query-and-ranking.md) – phrases, negation, fuzzy matching, and ranking deliberately deferred beyond V1.
-21. [Diagnose and repair malformed Project hierarchies](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – feedback and safe repair deliberately deferred until after the hierarchy reader.
+21. [Diagnose and repair malformed Project hierarchies](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – hierarchy reader completed; diagnostic feedback and safe repair still require specification.
 22. [Native rich-text Descriptions](.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md) – completed and archived; implementation 03–09 and integration/follow-up 10/11 verified. All ten manual acceptance points passed, including Windows/AltGr, clipboard, resize, and live Vikunja checks.
-22a. [Copy the selected Task to the clipboard](.scratch/task-clipboard-copy/issues/01-copy-selected-task-to-clipboard.md) – `:copy` for exactly one Task; prioritize after current rich-text work, with metadata format and unsaved-change handling still to specify.
+22a. [Copy the selected Task to the clipboard](.scratch/task-clipboard-copy/issues/01-copy-selected-task-to-clipboard.md) – adopted [spec](.scratch/task-clipboard-copy/spec.md): `:copy` for exactly one Task; rich-text integration is complete, while metadata format and unsaved-change handling remain to specify.
 22b. [More accessible URL-copy shortcut](.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – completed and archived: `Space+e`, with `Space+Y` retained as an alias; palette and hints show `Space+e`.
 23. [Specify separate histories for contextual command prompts](.scratch/contextual-command-histories/issues/01-specify-independent-command-prompt-histories.md) – follows M2 Ex history; separate session-local history per prompt without unifying command grammars.
 23a. [Specify workspace/data preferences](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – default Project/View, startup filters, and persisted navigation preferences; follows local TUI configuration.
 23b. [Reuse multiline layout in Comment Composer](.archive/2026-10-20/comment-composer-multiline-layout/issues/01-reuse-multiline-layout-in-comment-composer.md) – technically complete and archived; shared layout and Insert cursor with regressions for wrapping, blank lines, scrolling, and Unicode.
 23c. [Restructure help and separate rich text](.scratch/help-structure/issues/01-rethink-help-structure-and-richtext-reference.md) – inconsistent indentation and poor readability; brainstorm and critically review grouping, navigation, and layout, with at least a separate rich-text help page. Design remains open; implementation has not been requested.
+23d. [Fresh database and default path](.scratch/first-run-database/issues/01-support-first-run-database-and-default-path.md) – allow a fresh installation to start without an existing database or `--db`, using compatible initialization or a validated starter template. Define the default path and minimum starter records; preserve existing databases. Specification pending.
 
 ### Milestone 4
 
 24. [Add View and Global Search navigation history](.scratch/navigation-history/issues/01-add-view-and-search-navigation-history.md) – `Ctrl+O` back and `Ctrl+I` forward through semantic TUI contexts; specify the restore contract first.
 25. [Brainstorm timeboxed focus plans](.scratch/timeboxed-focus-plans/issues/01-brainstorm-timeboxed-focus-plans.md) – possible additive Vimkunja layer for limited, regular attention to ongoing Projects; discuss and prototype first.
 26. [Investigate full Vim Normal Mode](.scratch/full-vim-normal-mode/issues/01-investigate-full-vim-normal-mode.md) – assess full Vim compatibility against effort, conflicts, and limited scope; follows Tier 1 motions.
+
+### Backlog — milestone not assigned
+
+- [Delete empty Labels](.scratch/label-deletion/issues/01-add-delete-empty-labels-command.md) – specify command, confirmation, and failure reporting; remains `needs-triage`.
 
 ## Publication
 
@@ -79,7 +83,7 @@ Read-only HTML Description projection, scroll feedback, [additional keyboard sho
 
 - [Vikunja database compatibility: 2.7.0 only](.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md) — **completed; publication compatibility prerequisite met**. Production revision checks, Store fixes, and regressions implemented; the [verification report](.archive/2026-10-05/vikunja-db-compatibility/report.md) documents fresh/baseline round trips with official VOA 2.7.0. Tests, vet, and both builds pass. Only 2.7.0, sequential use; permanent deletion of Tasks with Time Entries is blocked. Native Windows terminal tests remain open.
 - [01 — License and documentation for GitHub](.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) — **completed and archived**. License inventory (30 modules/128 additional notices), README, examples, and links reviewed; HTML write protection, configuration precedence, binary startup, and release boundaries clarified.
-- [02 — Publication after the rich-text merge](.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) — **local publication preparation and English translation verified**, with evidence and platform limitations in the ticket. Jan confirms GitHub setup and successful dry run; public push and Actions remain to complete. **Initially `main` only, no tags selected; no backup/T3 checkpoint references, no mirror push. Public push requires an explicit instruction.**
+- [02 — Publication after the rich-text merge](.archive/2026-10-23/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md) — **completed and archived**. Cleaned source published on `main`; public repository, matching remote commit, selected heads/tags, and successful Windows/Ubuntu Actions verified. No tags or backup branches published. Automatic binaries, a production starter database, and macOS binary approval remain outside this completed source-publication scope.
 
 ## Documentation
 

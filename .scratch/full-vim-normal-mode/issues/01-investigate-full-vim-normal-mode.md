@@ -4,7 +4,7 @@
 
 **What to investigate:** Determine whether Vimkunja should eventually support a substantially complete Vim/Neovim Normal mode beyond the Tier 1 editor motions.
 
-**Implementation prerequisites:** Tier 1 editor motions should be specified and implemented first so the missing behavior and architectural seams are known.
+**Implementation prerequisites:** [Tier 1 editor motions](../../../.archive/2026-10-20/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md) are implemented, accepted, and archived. Broader compatibility still needs the investigation below.
 
 **Category:** enhancement
 

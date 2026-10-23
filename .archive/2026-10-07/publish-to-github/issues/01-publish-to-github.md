@@ -8,7 +8,7 @@
 
 **Status:** completed
 
-**Successor:** [02 — Prepare publication after the rich-text merge](../../../../.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md)
+**Successor:** [02 — Publication after the rich-text merge (completed)](../../../../.archive/2026-10-23/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md)
 
 **Prerequisite met:** [Vikunja database compatibility: 2.7.0 only](../../../2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md)
 

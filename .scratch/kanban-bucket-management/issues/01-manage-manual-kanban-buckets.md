@@ -2,7 +2,7 @@
 
 **What to build:** A Vimkunja user can manage the Buckets of a Project's single manual Kanban View without leaving the terminal.
 
-**Implementation prerequisites:** Initial Kanban-View provisioning and rendering/navigation of the single manual Kanban View must be specified and implemented first. Multiple Kanban Views remain outside this ticket.
+**Implementation prerequisites:** Initial Kanban-View provisioning and rendering/navigation are implemented and archived. Bucket-administration interactions still require specification. Multiple Kanban Views remain outside this ticket.
 
 **Category:** enhancement
 

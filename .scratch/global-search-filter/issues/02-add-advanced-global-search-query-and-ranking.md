@@ -4,7 +4,7 @@
 
 **What to build:** Global Search can later support quoted exact phrases, negation, typo-tolerant fuzzy matching, and/or relevance ranking without making V1's predictable exact matching surprising.
 
-**Implementation prerequisites:** The V1 global Search overlay and typed result model must be implemented and evaluated in real use first.
+**Implementation prerequisites:** The V1 global Search overlay and typed result model are implemented and archived. Evaluate their real-use limits before choosing advanced query behavior; this follow-up is not yet specified.
 
 **Category:** enhancement
 

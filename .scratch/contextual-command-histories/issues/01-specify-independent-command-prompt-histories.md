@@ -4,7 +4,7 @@
 
 **What to decide:** Define session-local, independent command histories for every Vimkunja command-input context without making context-specific commands share a grammar or history.
 
-**Implementation prerequisites:** M2's top-level Ex-command history contract must be implemented and evaluated first. That contract covers non-empty Enter submissions, Up/Down draft restoration, editable recalls, and a 100-entry session-only limit.
+**Implementation prerequisites:** M2's [top-level Ex-command history](../../../.archive/2026-08-12/command-line-enhancements/issues/01-add-project-goto-command-history-and-completion.md) is implemented and archived. That contract covers non-empty Enter submissions, Up/Down draft restoration, editable recalls, and a 100-entry session-only limit. Context-specific histories still require specification.
 
 **Category:** enhancement
 
@@ -26,7 +26,7 @@ The intended direction is one distinct, session-only history per command-input c
 
 ## Decisions confirmed
 
-- Defer this work until after M2 top-level Ex history is implemented and evaluated.
+- Follow the completed M2 top-level Ex history; its completion does not specify context-specific histories.
 - Maintain distinct, session-only histories per command-input context; do not share entries between top-level Ex, Global Search, or the Label picker.
 - Do not require grammar unification to add independent histories. Grammar unification remains a separate future design question.
 - Keep future user-configured command/keymap availability and the immutable-command boundary explicit triage questions rather than silently introducing override behavior.

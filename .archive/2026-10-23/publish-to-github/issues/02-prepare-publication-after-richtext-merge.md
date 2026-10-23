@@ -6,15 +6,17 @@
 
 **Priority:** High after the rich-text merge
 
-**Status:** in-progress
+**Status:** completed
+
+**Completed:** 2026-10-23 — public `main` verified at `4358202d7b72c7c5e9766422dbaa55588e844180`; Windows and Ubuntu Actions pass. The active checkout is now `/workspace/vimkunja`. Earlier paths and pending-work statements below are historical; the final closure record supersedes them.
 
 **Start condition met:** Rich text and task-based tutorials from `feature/tutorial-task-workflow` integrated into `main`.
 
-**Order:** Before finishing publication, complete [URL-copy convenience](../../../.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), then [subtask reconciliation](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md). Other M3 features are not blanket prerequisites.
+**Order:** Before finishing publication, complete [URL-copy convenience](../../../../.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), then [subtask reconciliation](../../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md). Other M3 features are not blanket prerequisites.
 
-**Documentation prerequisite met:** [Ticket 01 — License and documentation](../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) is completed and archived.
+**Documentation prerequisite met:** [Ticket 01 — License and documentation](../../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) is completed and archived.
 
-**Prerequisite met:** [Vikunja database compatibility: 2.7.0 only](../../../.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md)
+**Prerequisite met:** [Vikunja database compatibility: 2.7.0 only](../../../../.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md)
 
 ## Start condition and order
 
@@ -50,13 +52,13 @@ After approval, use the same explicit references without `--dry-run` for the act
 - [x] Ticket 01 complete and agreed rich-text merge included; verified starting commit `bd340c2` recorded. Subsequent documentation corrections and findings documented separately.
 - [x] Current features, README/STATUS, and dependency license notices reconciled after the merge.
 - [x] Local tests, both builds, vet, vulnerability scan, and workflow checks pass; remaining platform limitations documented.
-- [ ] Real GitHub Actions run succeeds for the intended publication state.
+- [x] Real GitHub Actions run succeeds for the intended publication state: run `39991127576` on `4358202`, Windows and Ubuntu.
 - [x] Only `main` selected for publication; no tags, backup references, or local T3 checkpoint references. Original and existing worktrees preserved.
 - [x] Personal address removed from author/committer metadata, commit/tag contents, and historical files; target address and future local Git identity of the publication repository verified.
 - [x] Secret, privacy, and database-history checks of intended publication history without concrete findings; no real user data or database sidecars found. Scope and limits documented below.
 - [x] HTTPS remote configured, mirror/push settings checked, and explicit transfer of `main` alone rehearsed against a local bare repository.
-- [ ] Remote target, mirror settings, push refspecs, and explicit dry run verified; exact publication state ready for approval.
-- [ ] Actual public push explicitly requested, performed, and remote references checked.
+- [x] Remote target, mirror settings, and push refspecs verified; Jan confirmed the explicit HTTPS dry run before publication.
+- [x] Actual publication performed by Jan; public repository and remote heads/tags verified: `main` only at `4358202`.
 - [x] Transition to cleaned history documented; see continuation guidance and report below.
 
 ## Boundaries
@@ -65,7 +67,7 @@ Updating this ticket does not authorize a merge, history rewrite, remote creatio
 
 ## Existing evidence
 
-Dated license, CI, secret, and reference checks remain in the [former overall ticket, now Ticket 01](../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md#historical-findings-from-the-former-overall-ticket). The last recheck of committed state `e77f00c` found no reachable database files or backup references in a fresh publication clone; secret and vulnerability scans had no findings. These results do not replace checks of the later merged and cleaned state.
+Dated license, CI, secret, and reference checks remain in the [former overall ticket, now Ticket 01](../../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md#historical-findings-from-the-former-overall-ticket). The last recheck of committed state `e77f00c` found no reachable database files or backup references in a fresh publication clone; secret and vulnerability scans had no findings. These results do not replace checks of the later merged and cleaned state.
 
 ## Comments
 
@@ -83,7 +85,7 @@ The order recorded in the rich-text worktree on 2026-10-19 remains: URL-copy con
 
 ### 2026-10-20 — Subtask cleanup: remaining work handed over
 
-Technical ticket reconciliation is done; twelve completed tickets and two audit reports are archived. The [cleanup report](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md#reconciliation-result--2026-10-20) separates remaining manual acceptance (general tutorial from task 9, Comment `~`, latest punctuation fix) from already accepted rich text/layout. URL-copy work runs in parallel at Jan's request and remains owned there.
+Technical ticket reconciliation is done; twelve completed tickets and two audit reports are archived. The [cleanup report](../../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md#reconciliation-result--2026-10-20) separates remaining manual acceptance (general tutorial from task 9, Comment `~`, latest punctuation fix) from already accepted rich text/layout. URL-copy work runs in parallel at Jan's request and remains owned there.
 
 Publication work remains open: commit final working changes, select a starting commit, run release checks/CI, create the publication copy with metadata/history cleanup, scan secrets/databases, and perform an explicit push dry run. `e978e76` establishes the completed merge but does not identify the final publication state because subsequent local changes exist. Public push needs separate approval. This reconciliation does not blanket-check the release boxes above.
 
@@ -163,3 +165,15 @@ The first GitHub Actions run passes on Ubuntu but fails on Windows. Jan also rep
 The existing test reproduces the exact reported defaults failure using a temporary Go overlay that substitutes the Windows config-directory lookup on Linux; it passes after the helper change. This is a deterministic path-selection regression check, not a native Windows execution claim. Full local tests including corpus verification, both builds, and vet pass with Go 1.27.1. Gofmt and whitespace checks pass.
 
 The separate Windows runner timeout remains open: the ten-minute limit applies to the entire Store test package, and the test visible in the timeout stack had run only two seconds. The same test passes locally on Linux in 0.32 seconds; Jan's native Windows Store package passes in 32.331 seconds. The runner stack is inside SQLite `FlushFileBuffers`, but that snapshot alone does not establish why the full package exceeded ten minutes. Do not weaken production SQLite durability or claim this configuration-test fix resolves runner performance. Native Windows/GHA revalidation is still required. Jan requests committing this fix and its verification record; no push performed.
+
+### 2026-10-23 — Publication verified and ticket closed
+
+Jan asks to close publication, reconcile the tickets and STATUS, and commit the documentation. Read-only GitHub API and Git checks establish:
+
+- [JanWartenberg/vimkunja](https://github.com/JanWartenberg/vimkunja) is public, with `main` as its default branch. Remote `main` and local HEAD before this documentation update both identify `4358202d7b72c7c5e9766422dbaa55588e844180`.
+- `git ls-remote --heads --tags origin` returns only `refs/heads/main` at that commit. No tags or backup branches were published. The HTTPS remote has its normal fetch refspec, no mirror setting, and no additional push refspec. `main` tracks `origin/main`; the deliberate `push.default=nothing` setting still requires explicit push arguments.
+- [Actions run 39991127576](https://github.com/JanWartenberg/vimkunja/actions/runs/39991127576) completed successfully on that commit. Both `check (windows-latest)` and `check (ubuntu-latest)` pass tests, both program builds, and vet; bounded fuzz checks run on Linux. This supplies the missing native Windows CI revalidation. The earlier Store timeout did not recur in this run; its underlying cause is not established.
+- Jan consolidated the active checkout as `/workspace/vimkunja` and moved retired folders outside the workspace. Git lists only this main checkout. The production database and sidecars are ignored; previously verified backups were retained during consolidation. No database data is changed by this closure.
+- Jan confirms the native Windows startup `go run ./cmd/vimkunja` works in the isolated checkout with the existing database and without `--db`. This does not verify first-run initialization when the database is absent.
+
+All source-publication acceptance points are met. The first-run database/default-path ticket remains open M3 work. Broader native-platform acceptance, live CalDAV, automatic binaries, macOS binary license approval, and migration of tickets to GitHub Issues remain outside this closure. Historical reports retain their original evidence and limitations. This closure makes no additional public push.

@@ -10,9 +10,9 @@ Vimkunja is a keyboard-driven terminal interface for a local [Vikunja](https://v
 
 ### Installation and first run
 
-Requirements: Git, an interactive terminal, and a currently maintained Go version. The module requires Go 1.25 or later; use a current, security-patched toolchain to build it (CI uses `stable`). Linux amd64 has been checked locally; Windows amd64 builds successfully, but native Windows terminal tests are still pending.
+Requirements: Git, an interactive terminal, and a currently maintained Go version. The module requires Go 1.25 or later; use a current, security-patched toolchain to build it (CI uses `stable`). Linux amd64 has been checked locally; Windows and Ubuntu CI pass. Startup with an existing database is confirmed in a native Windows terminal; broader platform checks remain limited as described below.
 
-The intended clone URL is:
+Clone the public repository:
 
 ```bash
 git clone https://github.com/JanWartenberg/vimkunja.git vimkunja
