@@ -1,6 +1,6 @@
 # Rich-text compatibility corpus — decision-synchronized examples
 
-**Stand 2026-10-11:** 83 unveränderte synthetische Fixtures; alle Import-/Serialisierungs- und Projektionsfälle bestehen. 203 indizierte Native Edit-Fälle führen sämtliche nicht-null HTML-Goldens aus. Die übrigen 32 Fälle haben assertion-basierte Erwartungen: ergänzende fokussierte Tests bestehen, ohne damit jeden Corpus-Aktionsdatensatz als eigenen ausgeführten Driver zu deklarieren. Hinzu kommen sieben echte upstream Editor-Komponenten-Captures, ein überprüfter Vimkunja→Editor-Roundtrip, tatsächliche TUI-Modell-Layouts und ein Linux-PTY-Smoke. Physische deutsche Tastatur/Windows-Terminal und die manuelle Gesamtabnahme bleiben offen. Details stehen im [Ausführungsledger](captures/native-execution-2026-10-11.json) und [Ticket 10](../../.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md).
+**As of 2026-10-11:** 83 unchanged synthetic fixtures; all import/serialization and projection cases pass. 203 indexed Native edit cases execute every non-null HTML golden. The other 32 cases have assertion-based expectations: supplementary focused tests pass, without claiming each corpus action record has its own executed driver. Additional evidence includes seven real upstream editor-component captures, a verified Vimkunja→editor round trip, actual TUI-model layouts, and a Linux PTY smoke test. Physical German keyboard/Windows terminal and full manual acceptance remain open. Details are in the [execution ledger](captures/native-execution-2026-10-11.json) and [Ticket 10](../../.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md).
 
 **Contract:** [spec.md](../../.archive/2026-10-19/description-rendering/spec.md). **Ticket:** [02](../../.archive/2026-10-19/description-rendering/issues/02-specify-native-rich-text-description-rendering-and-editing.md). **Examples:** [corpus.json](corpus.json). **Checks:** [verification/boundaries_test.go](verification/boundaries_test.go).
 
@@ -107,7 +107,7 @@ All additions remain hand-authored, unreviewed proposals. No VOA samples, harnes
 
 ## Agent consistency review — decision compression
 
-All 42 records were read against `spec.md`, the ticket, and `docs/keybindings.md`. This is a static specification review, not execution evidence, user approval, or VOA compatibility certification. The table and recommendations below are the pre-feedback review snapshot; subsequent accepted changes are recorded in the user-feedback log. No fixture output or settled policy was changed during the initial preparation. The three-example walkthrough is `vimkunja-corpus-review.html` (historisches lokales HTML-Artefakt, nicht im Repository enthalten); the original 42-card file remains unchanged.
+All 42 records were read against `spec.md`, the ticket, and `docs/keybindings.md`. This is a static specification review, not execution evidence, user approval, or VOA compatibility certification. The table and recommendations below are the pre-feedback review snapshot; subsequent accepted changes are recorded in the user-feedback log. No fixture output or settled policy was changed during the initial preparation. The three-example walkthrough is `vimkunja-corpus-review.html` (historical local HTML artifact, not included in the repository); the original 42-card file remains unchanged.
 
 The user authorized preparing representative decisions and propagating later feedback to equivalent cases. Future acceptance may therefore be recorded by rule/family instead of requiring 42 individual approvals. Record the accepted rule, affected IDs/fields, and exceptions; unresolved safety, provenance, and practical-layout requirements do not inherit approval from unrelated examples.
 
@@ -204,7 +204,7 @@ This narrows where to capture real examples; it supplies neither rendered/getHTM
 
 ### Questions V2 checkpoint — user feedback
 
-**Answered:** L01–L12, Q01–Q04, C01 (17 of 75 cards). **Next:** C02 in `explain-vimkunja-open-questions-v2.html` (historisches lokales HTML-Artefakt, nicht im Repository enthalten) (58 remaining). V1 stays unchanged; V2 uses stable IDs, filters previously answered cards from display/export, and can carry forward matching unanswered browser drafts without changing the V1 store. One copyable aggregate remains available.
+**Answered:** L01–L12, Q01–Q04, C01 (17 of 75 cards). **Next:** C02 in `explain-vimkunja-open-questions-v2.html` (historical local HTML artifact, not included in the repository) (58 remaining). V1 stays unchanged; V2 uses stable IDs, filters previously answered cards from display/export, and can carry forward matching unanswered browser drafts without changing the V1 store. One copyable aggregate remains available.
 
 | Cards | Accepted rule / user amendment |
 | --- | --- |
@@ -222,7 +222,7 @@ This narrows where to capture real examples; it supplies neither rendered/getHTM
 | L12 | Automatic merge only same compatible kind/structural position/attributes; otherwise reject unchanged with hint. |
 | Q01 | Remove only selected quote children, splitting container as necessary; neighbors remain quoted. |
 | Q02 | One shared new quote for selected contiguous siblings. Verified shortcut is **V → motions → Space+w**; reduction is **Space+q** after the same palette, not `V >/<`. |
-| Q03 | **User amendment, rejection recommendation superseded:** allow quote-layer removal with metadata loss only after `Zitat-Metadaten würden gelöscht werden. Bitte Löschung bestätigen.` Interpreted in the card's unwrap context: keep children, discard only removed-layer metadata; cancel unchanged and Undo restores it. Ordinary content deletion retains its existing scope. Retained metadata must not be silently duplicated during split. |
+| Q03 | **User amendment, rejection recommendation superseded:** allow quote-layer removal with metadata loss only after `Quote metadata would be deleted. Please confirm deletion.` Interpreted in the card's unwrap context: keep children, discard only removed-layer metadata; cancel unchanged and Undo restores it. Ordinary content deletion retains its existing scope. Retained metadata must not be silently duplicated during split. |
 | Q04 | If any selected block lacks a reducible quote layer, reject the whole operation unchanged. |
 | C01 | Default four spaces; configurable two or four; explicit indent adds one step without other normalization. Setting name/location, tabs and selection semantics remain open. |
 
@@ -240,7 +240,7 @@ The user explicitly requests the corresponding update after reviewing local `tas
 
 ### Partial remaining-default acceptance — cards 1–7
 
-User explicitly accepts cards 1–7 of `explain-description-restpunkte-2026-10-03.html` (historisches lokales HTML-Artefakt, nicht im Repository enthalten), including their supplementary defaults; cards 8–16 are unreviewed. The spec section **Accepted remaining-default cards 1–7** is the consolidated contract. This approves product rules, not all fixture fields. Native/Opaque/Blocked expectations for active content and duplicate attributes now need targeted synchronization: older blanket-Blocked safety fixtures are historical and must not be treated as current goldens. Prepare independent Tab/outdent, selection, empty-list and literal/Inline-Code examples. No fixture outputs are regenerated or approved in this pass, and no M3 evidence is claimed.
+User explicitly accepts cards 1–7 of `explain-description-restpunkte-2026-10-03.html` (historical local HTML artifact, not included in the repository), including their supplementary defaults; cards 8–16 are unreviewed. The spec section **Accepted remaining-default cards 1–7** is the consolidated contract. This approves product rules, not all fixture fields. Native/Opaque/Blocked expectations for active content and duplicate attributes now need targeted synchronization: older blanket-Blocked safety fixtures are historical and must not be treated as current goldens. Prepare independent Tab/outdent, selection, empty-list and literal/Inline-Code examples. No fixture outputs are regenerated or approved in this pass, and no M3 evidence is claimed.
 
 ### Reduced critical review — noncritical defaults adopted
 

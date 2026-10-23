@@ -24,7 +24,7 @@
 - Images render as `[Bild: Alt-Text]` or `[Bild]`; media URLs are omitted; other unsupported media render as `[Medieninhalt]`.
 - Table rows render as one line with cells separated by ` | `, without borders, alignment, or special header treatment.
 - Checkbox-list entries render as `- [ ] Text` or `- [x] Text`, use normal list indentation, and remain read-only. Their state is distinct from the enclosing Task's Done state.
-- Unknown parseable elements render descendant content recursively. An element without readable content renders as `[Nicht unterstützter Inhalt]`. Malformed HTML renders safely extractable text, or `[Nicht lesbarer Beschreibungsinhalt]` if none is safe. Raw HTML tags never render as fallback.
+- Unknown parseable elements render descendant content recursively. An element without readable content renders as `[Unsupported content]`. Malformed HTML renders safely extractable text, or `[Unreadable description content]` if none is safe. Raw HTML tags never render as fallback.
 - HTML entities are decoded and ordinary Unicode is retained. Source newlines, tabs, and repeated HTML whitespace normalize as normal text. Other C0/C1 controls, including terminal escape sequences, are removed.
 - Empty, whitespace-only, or structurally unreadable content renders as the existing `(no description)` placeholder. Existing non-HTML Plain Text remains Plain Text with user-authored line breaks intact; only dangerous control characters are removed.
 
@@ -91,8 +91,8 @@ Decided so far:
 ### 2026-08-04 — Grilling, question 7: unsupported and malformed HTML
 
 - Unknown but parseable elements render descendant content recursively without their own formatting.
-- An unknown element without readable content renders as `[Nicht unterstützter Inhalt]`.
-- Malformed HTML is parsed tolerantly and exposes any safely extractable text; otherwise it renders as `[Nicht lesbarer Beschreibungsinhalt]`.
+- An unknown element without readable content renders as `[Unsupported content]`.
+- Malformed HTML is parsed tolerantly and exposes any safely extractable text; otherwise it renders as `[Unreadable description content]`.
 - Raw HTML tags are never a rendering fallback.
 
 ### 2026-08-04 — Grilling, question 8: entities and terminal safety

@@ -59,15 +59,15 @@ type prototypeState struct {
 var prototypeProjects = []string{"HOME", "VIM", "ACME", "IDEAS"}
 
 var prototypeTasks = []prototypeTask{
-	{21, "VIM", "All Tasks Overview spezifizieren", due("2026-07-30"), 3, "To Do", false},
-	{22, "VIM", "Kanban View als Tasks Pane rendern", due("2026-07-29"), 3, "Doing", false},
-	{23, "HOME", "Zahnarzt anrufen", due("2026-07-24"), 4, "Inbox", false},
-	{24, "ACME", "Angebot gegenlesen", due("2026-08-01"), 2, "Review", false},
-	{25, "HOME", "Wocheneinkauf planen", due("2026-07-25"), 1, "To Do", false},
-	{26, "IDEAS", "Suche: Labels als Filterziel", time.Time{}, 1, "Backlog", false},
-	{27, "VIM", "Task löschen mit Bestätigung", due("2026-07-28"), 2, "To Do", false},
-	{28, "ACME", "Stundenzettel senden", due("2026-07-23"), 2, "Done", true},
-	{29, "HOME", "Fahrrad zur Inspektion bringen", time.Time{}, 3, "Someday", false},
+	{21, "VIM", "Specify All Tasks Overview", due("2026-07-30"), 3, "To Do", false},
+	{22, "VIM", "Render Kanban View in Tasks Pane", due("2026-07-29"), 3, "Doing", false},
+	{23, "HOME", "Call the dentist", due("2026-07-24"), 4, "Inbox", false},
+	{24, "ACME", "Review quotation", due("2026-08-01"), 2, "Review", false},
+	{25, "HOME", "Plan weekly groceries", due("2026-07-25"), 1, "To Do", false},
+	{26, "IDEAS", "Search: Labels as filter targets", time.Time{}, 1, "Backlog", false},
+	{27, "VIM", "Delete Task with confirmation", due("2026-07-28"), 2, "To Do", false},
+	{28, "ACME", "Send timesheet", due("2026-07-23"), 2, "Done", true},
+	{29, "HOME", "Take bicycle for servicing", time.Time{}, 3, "Someday", false},
 }
 
 func due(value string) time.Time {

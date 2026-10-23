@@ -30,7 +30,7 @@ func (m *model) applyNative(a description.Action, confirmed, insert bool) {
 			e.nativePendingInsert = insert
 			m.toast = sanitizeTerminalText(e.nativeDraft.ConfirmationMessage()) + " · y confirm · n/Esc cancel"
 			if err == description.ErrQuoteMetadataConfirmation {
-				m.toast = "Zitat-Metadaten würden gelöscht werden. Bitte Löschung bestätigen. · y / n/Esc"
+				m.toast = "Quote metadata would be deleted. Please confirm deletion. · y / n/Esc"
 			}
 		} else {
 			e.nativeDraft.EndUndoGroup()

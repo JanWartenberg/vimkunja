@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Vimkunja – Views-Achsen-Prototyp</title>
+  <title>Vimkunja – View axes prototype</title>
   <style>
     /*
       THROWAWAY UI PROTOTYPE — open this file directly in a browser.
@@ -144,11 +144,11 @@
 <body>
   <main class="app" id="app"></main>
   <div class="prototype-switcher" aria-label="Prototype variants">
-    <button id="previous-variant" title="Vorherige Variante">←</button>
+    <button id="previous-variant" title="Previous variant">←</button>
     <span id="variant-label"></span>
-    <button id="next-variant" title="Nächste Variante">→</button>
+    <button id="next-variant" title="Next variant">→</button>
   </div>
-  <span class="prototype-note">THROWAWAY PROTOTYPE · nur In-Memory-State</span>
+  <span class="prototype-note">THROWAWAY PROTOTYPE · in-memory state only</span>
 
   <script>
     const projects = [
@@ -157,18 +157,18 @@
       { id: 'acme', name: 'Acme Client', short: 'ACME' },
     ];
     const tasks = [
-      { id: 1, title: 'Overview View spezifizieren', project: 'vimkunja', bucket: 'To Do', priority: 3, due: 'overdue', dueText: 'überfällig' },
-      { id: 2, title: 'Task-Löschung mit Bestätigung', project: 'vimkunja', bucket: 'Doing', priority: 2, due: 'today', dueText: 'heute' },
-      { id: 3, title: 'Kanban-Navigation festlegen', project: 'vimkunja', bucket: 'To Do', priority: 3, due: 'tomorrow', dueText: 'morgen' },
-      { id: 4, title: 'Zahnarzt anrufen', project: 'home', bucket: 'To Do', priority: 4, due: 'soon', dueText: 'in 4 Tagen' },
-      { id: 5, title: 'Angebot gegenlesen', project: 'acme', bucket: 'Review', priority: 2, due: 'neutral', dueText: 'in 12 Tagen' },
-      { id: 6, title: 'Stundenzettel senden', project: 'acme', bucket: 'Done', priority: 1, due: 'neutral', dueText: 'ohne Due Date', done: true },
+      { id: 1, title: 'Specify Overview View', project: 'vimkunja', bucket: 'To Do', priority: 3, due: 'overdue', dueText: 'overdue' },
+      { id: 2, title: 'Task deletion with confirmation', project: 'vimkunja', bucket: 'Doing', priority: 2, due: 'today', dueText: 'today' },
+      { id: 3, title: 'Kanban-Navigation festlegen', project: 'vimkunja', bucket: 'To Do', priority: 3, due: 'tomorrow', dueText: 'tomorrow' },
+      { id: 4, title: 'Call the dentist', project: 'home', bucket: 'To Do', priority: 4, due: 'soon', dueText: 'in 4 days' },
+      { id: 5, title: 'Review quotation', project: 'acme', bucket: 'Review', priority: 2, due: 'neutral', dueText: 'in 12 days' },
+      { id: 6, title: 'Send timesheet', project: 'acme', bucket: 'Done', priority: 1, due: 'neutral', dueText: 'no Due Date', done: true },
     ];
     const variants = [
-      ['A', 'A — Achsen als Kopfzeile'],
-      ['B', 'B — Scope-Navigation links'],
-      ['C', 'C — Kontext zuerst'],
-      ['D', 'D — Projects links, Views oben'],
+      ['A', 'A — axes in the header'],
+      ['B', 'B — scope navigation on the left'],
+      ['C', 'C — context first'],
+      ['D', 'D — Projects left, Views above'],
     ];
     const params = new URLSearchParams(location.search);
     const state = {
@@ -184,7 +184,7 @@
       filter: 'open',
       viewPickerOpen: false,
       returnContext: null,
-      lastAction: 'Prototype gestartet: Overview ist fokussiert.',
+      lastAction: 'Prototype started: Overview focused.',
     };
 
     function project() { return projects.find(item => item.id === state.projectId); }
@@ -208,11 +208,11 @@
     }
     function toggleOverview() {
       if (state.scope !== 'overview') {
-        openOverview('Space+a: Project-Kontext gemerkt und Overview geöffnet.');
+        openOverview('Space+a: Project context remembered; Overview opened.');
         return;
       }
       if (!state.returnContext) {
-        state.lastAction = 'Space+a: Kein vorheriger Project-Kontext zum Wiederherstellen.';
+        state.lastAction = 'Space+a: No previous Project context to restore.';
         return;
       }
       const context = state.returnContext;
@@ -223,7 +223,7 @@
       state.detailTaskId = null;
       state.projectsVisible = true;
       state.projectsOrigin = 'manual';
-      state.lastAction = 'Space+a: Gemerkten Project-Kontext wiederhergestellt.';
+      state.lastAction = 'Space+a: Remembered Project context restored.';
     }
     function openProject(id) {
       state.scope = 'project';
@@ -233,7 +233,7 @@
       state.projectsOrigin = 'manual';
       state.detailTaskId = null;
       selectFallback();
-      state.lastAction = `Project geöffnet: ${project().name} · zuletzt genutzt: ${state.view === 'list' ? 'List View' : 'Kanban View'}.`;
+      state.lastAction = `Project opened: ${project().name} · last used: ${state.view === 'list' ? 'List View' : 'Kanban View'}.`;
     }
     function openTask(id) {
       const item = task(id);
@@ -243,9 +243,9 @@
         state.projectId = item.project;
         state.projectsVisible = true;
         state.projectsOrigin = 'detail';
-        state.lastAction = `Task Detail geöffnet; Projects Pane zeigt ${project().name}.`;
+        state.lastAction = `Task Detail opened; Projects Pane shows ${project().name}.`;
       } else {
-        state.lastAction = 'Task Detail geöffnet.';
+        state.lastAction = 'Task Detail opened.';
       }
     }
     function closeDetail() {
@@ -253,31 +253,31 @@
       if (state.projectsOrigin === 'detail') {
         state.projectsVisible = false;
         state.projectsOrigin = 'hidden';
-        state.lastAction = 'Detail geschlossen; automatisch eingeblendete Projects Pane verborgen.';
+        state.lastAction = 'Detail closed; automatically shown Projects Pane hidden.';
       } else {
-        state.lastAction = 'Detail geschlossen.';
+        state.lastAction = 'Detail closed.';
       }
     }
     function toggleProjects() {
       state.projectsVisible = !state.projectsVisible;
       state.projectsOrigin = state.projectsVisible ? 'manual' : 'hidden';
-      state.lastAction = state.projectsVisible ? 'Space+o: Projects Pane eingeblendet.' : 'Space+o: Projects Pane verborgen.';
+      state.lastAction = state.projectsVisible ? 'Space+o: Projects Pane shown.' : 'Space+o: Projects Pane hidden.';
     }
     function setView(view) {
       if (state.scope === 'overview' && view === 'kanban') {
-        state.lastAction = 'Kanban ist eine Project View: zuerst ein Project öffnen.';
+        state.lastAction = 'Kanban is a Project View: open a Project first.';
         return;
       }
       state.view = view;
       state.lastViewByProject[state.projectId] = view;
       state.viewPickerOpen = false;
       state.detailTaskId = null;
-      state.lastAction = `View gewechselt: ${view === 'list' ? 'List' : 'Kanban'}.`;
+      state.lastAction = `View changed: ${view === 'list' ? 'List' : 'Kanban'}.`;
     }
     function setFilter(filter) {
       state.filter = filter;
       selectFallback();
-      state.lastAction = `Filter: ${filter === 'open' ? 'offene Tasks' : 'alle Tasks'}.`;
+      state.lastAction = `Filter: ${filter === 'open' ? 'open Tasks' : 'all Tasks'}.`;
     }
     function taskRow(item) {
       const p = projects.find(entry => entry.id === item.project);
@@ -293,58 +293,58 @@
       const scopeName = state.scope === 'overview' ? 'Overview' : project().name;
       return `<section class="pane main-surface">
         <div class="surface-heading"><strong>${scopeName} · List View</strong><span class="muted">${rows.length} Tasks · Due → Priority → Project</span></div>
-        <div class="toolbar"><span class="hint">FILTER</span><button class="filter ${state.filter === 'open' ? 'active' : ''}" data-filter="open">o offen</button><button class="filter ${state.filter === 'all' ? 'active' : ''}" data-filter="all">a alle</button><span class="hint">· s Sort · f Filter (im späteren TUI)</span></div>
+        <div class="toolbar"><span class="hint">FILTER</span><button class="filter ${state.filter === 'open' ? 'active' : ''}" data-filter="open">o open</button><button class="filter ${state.filter === 'all' ? 'active' : ''}" data-filter="all">a all</button><span class="hint">· s Sort · f Filter (in the future TUI)</span></div>
         <div class="list-head"><span></span><span>Task</span><span class="project">Project</span><span>Prio</span><span>Due</span></div>
-        ${rows.map(taskRow).join('') || '<div class="empty-detail">Keine Tasks für diesen Filter.</div>'}
-        <div class="footer"><span class="key">Enter</span> Detail · <span class="key">o</span> neue Task → Project Picker · <span class="key">-</span> Overview</div>
+        ${rows.map(taskRow).join('') || '<div class="empty-detail">No Tasks match this filter.</div>'}
+        <div class="footer"><span class="key">Enter</span> Detail · <span class="key">o</span> new Task → Project Picker · <span class="key">-</span> Overview</div>
       </section>`;
     }
     function kanbanSurface() {
       const buckets = ['To Do', 'Doing', 'Review', 'Done'];
-      return `<section class="pane main-surface"><div class="surface-heading"><strong>${project().name} · Kanban View</strong><span class="muted">Project-spezifisch</span></div>
+      return `<section class="pane main-surface"><div class="surface-heading"><strong>${project().name} · Kanban View</strong><span class="muted">Project-specific</span></div>
         <div class="kanban">${buckets.map(bucket => `<section class="bucket"><h3>${bucket}</h3>${visibleTasks().filter(item => item.bucket === bucket).map(item => `<button class="card" data-task="${item.id}">${item.title}<small>P${item.priority} · ${item.dueText}</small></button>`).join('')}</section>`).join('')}</div>
-        <div class="footer"><span class="key">h/j/k/l</span> Board-Navigation (später) · <span class="key">-</span> Overview</div>
+        <div class="footer"><span class="key">h/j/k/l</span> Board navigation (later) · <span class="key">-</span> Overview</div>
       </section>`;
     }
     function projectsPane() {
       if (!state.projectsVisible) return '';
-      return `<aside class="pane projects-pane"><div class="pane-title">Projects Pane <small>Space+o</small></div><div class="projects">${projects.map(item => `<button class="project-row ${item.id === state.projectId ? 'active' : ''}" data-project="${item.id}">${item.name}<small>${item.short}</small></button>`).join('')}</div><div class="footer">Enter → zuletzt genutzte Project View</div></aside>`;
+      return `<aside class="pane projects-pane"><div class="pane-title">Projects Pane <small>Space+o</small></div><div class="projects">${projects.map(item => `<button class="project-row ${item.id === state.projectId ? 'active' : ''}" data-project="${item.id}">${item.name}<small>${item.short}</small></button>`).join('')}</div><div class="footer">Enter → last used Project View</div></aside>`;
     }
     function detailPane() {
       const item = task(state.detailTaskId);
-      if (!item) return `<aside class="pane side"><div class="pane-title">Task Detail Pane <small>Enter</small></div><div class="empty-detail">Detail bleibt verborgen,<br>bis eine Task explizit geöffnet wird.</div></aside>`;
+      if (!item) return `<aside class="pane side"><div class="pane-title">Task Detail Pane <small>Enter</small></div><div class="empty-detail">Detail stays hidden<br>until a Task is explicitly opened.</div></aside>`;
       const p = projects.find(entry => entry.id === item.project);
-      return `<aside class="pane side"><div class="pane-title">Task Detail Pane <small>Esc</small></div><div class="detail"><div class="hint">#${item.id} · ${p.name}</div><h2>${item.title}</h2><dl><dt>Project</dt><dd>${p.name}</dd><dt>View-Kontext</dt><dd>${state.scope === 'overview' ? 'Overview' : project().name + ' · ' + state.view}</dd><dt>Priority</dt><dd class="p${item.priority}">P${item.priority}</dd><dt>Due Date</dt><dd class="due ${item.due}" style="text-align:left">${item.dueText}</dd></dl><p>Detail ist ein unabhängiger UI-Zustand. Aus der Overview blendet es die zugehörige Projects Pane temporär ein.</p></div><div class="footer"><span class="key">Esc</span> Detail schließen</div></aside>`;
+      return `<aside class="pane side"><div class="pane-title">Task Detail Pane <small>Esc</small></div><div class="detail"><div class="hint">#${item.id} · ${p.name}</div><h2>${item.title}</h2><dl><dt>Project</dt><dd>${p.name}</dd><dt>View context</dt><dd>${state.scope === 'overview' ? 'Overview' : project().name + ' · ' + state.view}</dd><dt>Priority</dt><dd class="p${item.priority}">P${item.priority}</dd><dt>Due Date</dt><dd class="due ${item.due}" style="text-align:left">${item.dueText}</dd></dl><p>Detail is independent UI state. From Overview it temporarily shows the associated Projects Pane.</p></div><div class="footer"><span class="key">Esc</span> close Detail</div></aside>`;
     }
     function axes(horizontal = false) {
       return `<div class="${horizontal ? 'axes-strip' : ''}">
-        <div class="axis"><span class="axis-label">Achse 1 · Scope</span><div class="axis-options"><button class="option ${state.scope === 'overview' ? 'active' : ''}" data-overview>Overview · alle Tasks</button><button class="option ${state.scope === 'project' ? 'active' : ''}" data-project="${state.projectId}">Project · ${project().name}</button></div></div>
-        <div class="axis"><span class="axis-label">Achse 2 · View</span><div class="axis-options"><button class="option ${state.view === 'list' ? 'active' : ''}" data-view="list">List</button><button class="option ${state.view === 'kanban' ? 'active' : ''} ${state.scope === 'overview' ? 'disabled' : ''}" data-view="kanban">Kanban</button><span class="hint">Table/Gantt später</span></div></div>
+        <div class="axis"><span class="axis-label">Axis 1 · Scope</span><div class="axis-options"><button class="option ${state.scope === 'overview' ? 'active' : ''}" data-overview>Overview · all Tasks</button><button class="option ${state.scope === 'project' ? 'active' : ''}" data-project="${state.projectId}">Project · ${project().name}</button></div></div>
+        <div class="axis"><span class="axis-label">Axis 2 · View</span><div class="axis-options"><button class="option ${state.view === 'list' ? 'active' : ''}" data-view="list">List</button><button class="option ${state.view === 'kanban' ? 'active' : ''} ${state.scope === 'overview' ? 'disabled' : ''}" data-view="kanban">Kanban</button><span class="hint">Table/Gantt later</span></div></div>
       </div>`;
     }
     function statePanel() {
       const returnLabel = state.returnContext ? `${projects.find(item => item.id === state.returnContext.projectId).name} · ${state.returnContext.view}` : '—';
-      return `<section class="pane state-panel"><div class="pane-title">Live state <small>nach jeder Aktion</small></div><div class="state"><strong>${state.lastAction}</strong><div class="state-grid"><span>scope</span><span>${state.scope}</span><span>project</span><span>${project().name}</span><span>view</span><span>${state.view}</span><span>detail</span><span>${state.detailTaskId ?? 'geschlossen'}</span><span>projects pane</span><span>${state.projectsVisible ? `sichtbar (${state.projectsOrigin})` : 'verborgen'}</span><span>return context</span><span>${returnLabel}</span></div></div></section>`;
+      return `<section class="pane state-panel"><div class="pane-title">Live state <small>after each action</small></div><div class="state"><strong>${state.lastAction}</strong><div class="state-grid"><span>scope</span><span>${state.scope}</span><span>project</span><span>${project().name}</span><span>view</span><span>${state.view}</span><span>detail</span><span>${state.detailTaskId ?? 'closed'}</span><span>projects pane</span><span>${state.projectsVisible ? `visible (${state.projectsOrigin})` : 'hidden'}</span><span>return context</span><span>${returnLabel}</span></div></div></section>`;
     }
-    function header(question) { return `<header class="topbar"><span class="brand">VIMKUNJA</span><span class="prototype-tag">${question}</span><span class="prototype-tag">synthetische Daten · keine Persistenz</span></header>`; }
+    function header(question) { return `<header class="topbar"><span class="brand">VIMKUNJA</span><span class="prototype-tag">${question}</span><span class="prototype-tag">synthetic data · no persistence</span></header>`; }
     function variantA() {
-      return header('A: Die beiden Achsen liegen kompakt über der Arbeitssurface.') + `<section class="layout variant-a"><section class="pane main">${axes(true)}${state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"')}${projectsPane() ? `<div class="a-projects">${projectsPane().replace('class="pane projects-pane"', 'class="projects-pane"')}</div>` : ''}</section><aside class="side">${detailPane().replace('class="pane side"', '')}${statePanel()}</aside></section>`;
+      return header('A: Both axes sit compactly above the work surface.') + `<section class="layout variant-a"><section class="pane main">${axes(true)}${state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"')}${projectsPane() ? `<div class="a-projects">${projectsPane().replace('class="pane projects-pane"', 'class="projects-pane"')}</div>` : ''}</section><aside class="side">${detailPane().replace('class="pane side"', '')}${statePanel()}</aside></section>`;
     }
     function variantB() {
-      return header('B: Scope ist eine Navigation; View ist eine separate lokale Wahl.') + `<section class="layout variant-b"><aside class="pane scope-pane"><div class="pane-title">Task-Kontext</div><div class="scope-rail">${axes(false)}<div class="callout"><span class="key">Space+a</span> wechselt Overview ↔ gemerkter Project-Kontext.<br><br><span class="key">-</span> geht immer nur zur Overview.</div></div>${projectsPane() ? projectsPane().replace('class="pane projects-pane"', 'class="projects-pane"') : '<div class="footer">Space+o zeigt Projects</div>'}</aside><section class="pane main">${state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"')}</section><aside class="side">${detailPane().replace('class="pane side"', '')}${statePanel()}</aside></section>`;
+      return header('B: Scope is navigation; View is a separate local choice.') + `<section class="layout variant-b"><aside class="pane scope-pane"><div class="pane-title">Task context</div><div class="scope-rail">${axes(false)}<div class="callout"><span class="key">Space+a</span> switches Overview ↔ remembered Project context.<br><br><span class="key">-</span> always opens Overview.</div></div>${projectsPane() ? projectsPane().replace('class="pane projects-pane"', 'class="projects-pane"') : '<div class="footer">Space+o shows Projects</div>'}</aside><section class="pane main">${state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"')}</section><aside class="side">${detailPane().replace('class="pane side"', '')}${statePanel()}</aside></section>`;
     }
     function variantC() {
-      const current = state.scope === 'overview' ? 'Overview · alle Projects' : `Project · ${project().name}`;
-      return header('C: Der aktuelle Kontext und seine Übergänge stehen vor dem Layout.') + `<section class="layout variant-c"><section class="pane"><div class="context-line"><span>SCOPE <b>${current}</b></span><span>VIEW <b>${state.view}</b></span><span>DETAIL <b>${state.detailTaskId ? 'offen' : 'geschlossen'}</b></span><span>PROJECTS <b>${state.projectsVisible ? 'sichtbar' : 'verborgen'}</b></span></div>${axes(true)}<section class="c-content"><div>${state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"')}${projectsPane() ? projectsPane() : ''}</div><div>${detailPane().replace('class="pane side"', '')}${statePanel()}<div class="diagram"><strong>Scope</strong><br>Overview ⇄ Project<br><br><strong>View</strong><br>List | Kanban<br><br><span class="hint">Overview ist Scope, nicht die Schwester von Kanban.</span></div></div></section><div class="command-row"><span>Transition</span><span><span class="key">Space+a</span> Toggle zum gemerkten Project-Kontext · <span class="key">-</span> Overview · <span class="key">Space+o</span> Projects · <span class="key">Esc</span> Detail schließen</span></div></section></section>`;
+      const current = state.scope === 'overview' ? 'Overview · all Projects' : `Project · ${project().name}`;
+      return header('C: Current context and transitions come before layout.') + `<section class="layout variant-c"><section class="pane"><div class="context-line"><span>SCOPE <b>${current}</b></span><span>VIEW <b>${state.view}</b></span><span>DETAIL <b>${state.detailTaskId ? 'open' : 'closed'}</b></span><span>PROJECTS <b>${state.projectsVisible ? 'visible' : 'hidden'}</b></span></div>${axes(true)}<section class="c-content"><div>${state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"')}${projectsPane() ? projectsPane() : ''}</div><div>${detailPane().replace('class="pane side"', '')}${statePanel()}<div class="diagram"><strong>Scope</strong><br>Overview ⇄ Project<br><br><strong>View</strong><br>List | Kanban<br><br><span class="hint">Overview is a scope, not a peer of Kanban.</span></div></div></section><div class="command-row"><span>Transition</span><span><span class="key">Space+a</span> toggle to remembered Project context · <span class="key">-</span> Overview · <span class="key">Space+o</span> Projects · <span class="key">Esc</span> close Detail</span></div></section></section>`;
     }
     function projectViewBar() {
-      if (state.scope === 'overview') return `<div class="overview-bar"><strong>Overview</strong><span class="muted">alle Tasks · keine Project View ausgewählt</span><span class="hint"><span class="key">Space+a</span> zurück zum Project-Kontext · <span class="key">Space+o</span> Projects</span></div>`;
-      return `<div class="view-bar"><strong>${project().name}</strong><span class="hint">VIEWS</span><button class="option ${state.view === 'list' ? 'active' : ''}" data-view="list">List</button><button class="option ${state.view === 'kanban' ? 'active' : ''}" data-view="kanban">Kanban</button><button class="option disabled" disabled>Table</button><button class="option disabled" disabled>Gantt</button><span class="hint"><span class="key">Space+v</span>, dann <span class="key">l</span> / <span class="key">k</span></span>${state.viewPickerOpen ? '<div class="view-picker">VIEW PICKER: [l] List · [k] Kanban · [Esc] abbrechen</div>' : ''}</div>`;
+      if (state.scope === 'overview') return `<div class="overview-bar"><strong>Overview</strong><span class="muted">all Tasks · no Project View selected</span><span class="hint"><span class="key">Space+a</span> back to Project context · <span class="key">Space+o</span> Projects</span></div>`;
+      return `<div class="view-bar"><strong>${project().name}</strong><span class="hint">VIEWS</span><button class="option ${state.view === 'list' ? 'active' : ''}" data-view="list">List</button><button class="option ${state.view === 'kanban' ? 'active' : ''}" data-view="kanban">Kanban</button><button class="option disabled" disabled>Table</button><button class="option disabled" disabled>Gantt</button><span class="hint"><span class="key">Space+v</span>, then <span class="key">l</span> / <span class="key">k</span></span>${state.viewPickerOpen ? '<div class="view-picker">VIEW PICKER: [l] List · [k] Kanban · [Esc] cancel</div>' : ''}</div>`;
     }
     function variantD() {
       const surface = state.scope === 'project' && state.view === 'kanban' ? kanbanSurface().replace('class="pane main-surface"', 'class="main-surface"') : listSurface().replace('class="pane main-surface"', 'class="main-surface"');
       const projects = state.projectsVisible ? projectsPane() : '';
-      return header('D: Bestehende Projects Pane links; View-Leiste nur innerhalb eines Projects.') + `<section class="layout variant-d ${state.projectsVisible ? 'with-projects' : 'projects-hidden'}">${projects}<section class="pane center-column">${projectViewBar()}${surface}</section><aside class="side">${detailPane().replace('class="pane side"', '')}${statePanel()}</aside></section>`;
+      return header('D: Existing Projects Pane on the left; View bar only within a Project.') + `<section class="layout variant-d ${state.projectsVisible ? 'with-projects' : 'projects-hidden'}">${projects}<section class="pane center-column">${projectViewBar()}${surface}</section><aside class="side">${detailPane().replace('class="pane side"', '')}${statePanel()}</aside></section>`;
     }
     function render() {
       const content = state.variant === 'A' ? variantA() : state.variant === 'B' ? variantB() : state.variant === 'C' ? variantC() : variantD();
@@ -354,7 +354,7 @@
       document.querySelectorAll('[data-project]').forEach(button => button.addEventListener('click', () => { openProject(button.dataset.project); render(); }));
       document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => { setView(button.dataset.view); render(); }));
       document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { setFilter(button.dataset.filter); render(); }));
-      document.querySelectorAll('[data-overview]').forEach(button => button.addEventListener('click', () => { openOverview('Overview direkt geöffnet.'); render(); }));
+      document.querySelectorAll('[data-overview]').forEach(button => button.addEventListener('click', () => { openOverview('Overview opened directly.'); render(); }));
     }
     function cycleVariant(direction) {
       const index = variants.findIndex(([key]) => key === state.variant);
@@ -371,7 +371,7 @@
       if (event.key === 'ArrowRight') { event.preventDefault(); cycleVariant(1); return; }
       if (event.key === 'Escape') {
         leaderArmed = false;
-        if (state.viewPickerOpen) { state.viewPickerOpen = false; state.lastAction = 'View Picker geschlossen.'; render(); return; }
+        if (state.viewPickerOpen) { state.viewPickerOpen = false; state.lastAction = 'View Picker closed.'; render(); return; }
         closeDetail(); render(); return;
       }
       if (state.viewPickerOpen) {
@@ -379,16 +379,16 @@
         if (event.key.toLowerCase() === 'k') { setView('kanban'); render(); return; }
         state.viewPickerOpen = false;
       }
-      if (event.key === '-' && !event.repeat) { event.preventDefault(); openOverview('-: Overview geöffnet; kein Toggle.'); render(); return; }
+      if (event.key === '-' && !event.repeat) { event.preventDefault(); openOverview('-: Overview opened; no toggle.'); render(); return; }
       if (leaderArmed) {
         leaderArmed = false;
         if (event.key.toLowerCase() === 'a') { event.preventDefault(); toggleOverview(); render(); return; }
         if (event.key.toLowerCase() === 'o') { event.preventDefault(); toggleProjects(); render(); return; }
         if (event.key.toLowerCase() === 'v') {
           event.preventDefault();
-          if (state.scope === 'overview') { state.lastAction = 'View Picker ist nur innerhalb eines Projects verfügbar.'; render(); return; }
+          if (state.scope === 'overview') { state.lastAction = 'View Picker is only available within a Project.'; render(); return; }
           state.viewPickerOpen = true;
-          state.lastAction = 'View Picker geöffnet: l für List, k für Kanban.';
+          state.lastAction = 'View Picker opened: l for List, k for Kanban.';
           render();
           return;
         }
@@ -396,7 +396,7 @@
       if (event.code === 'Space') {
         event.preventDefault();
         leaderArmed = true;
-        state.lastAction = 'Leader wartet auf a (Overview) oder o (Projects Pane).';
+        state.lastAction = 'Leader awaits a (Overview) or o (Projects Pane).';
         render();
       }
     });

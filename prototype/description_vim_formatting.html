@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -53,60 +53,60 @@
     <header>
       <div>
         <div class="eyebrow">THROWAWAY PROTOTYPE · DESCRIPTION ONLY</div>
-        <h1>Rich-text mit Vim-artiger Tastaturbedienung</h1>
-        <p class="hint">Klicke in den Text. Starte mit <kbd>v</kbd>, wähle per Motion und probiere <kbd>Space</kbd> + Formatierung.</p>
+        <h1>Rich text with Vim-style keyboard controls</h1>
+        <p class="hint">Click the text. Start with <kbd>v</kbd>, select with a motion, and try <kbd>Space</kbd> + formatting.</p>
       </div>
       <div class="mode" id="mode" aria-live="polite">NORMAL</div>
     </header>
 
     <article id="editor" contenteditable="true" spellcheck="false" aria-label="Rich-text Description prototype">
-      <h1>Release vorbereiten</h1>
-      <p>Diese <strong>lange Beispielzeile</strong> soll bei schmalem Fenster umbrechen, damit <em>gj</em> und <em>gk</em> ausprobiert werden können. Wähle einzelne Wörter, Wortgruppen oder Text über mehrere Blöcke hinweg aus.</p>
-      <p>Ein zweiter Absatz ist ein eigener <u>logischer Description-Block</u>. Mit <s>j und k</s> springst du zwischen Blöcken; die Cursorposition wird dabei möglichst beibehalten.</p>
-      <blockquote>Ein Zitat erhält einen linken Marker statt einer anderen Schriftart.</blockquote>
-      <h2>Checkliste</h2>
+      <h1>Prepare release</h1>
+      <p>This <strong>long example line</strong> should wrap in a narrow window so you can try <em>gj</em> and <em>gk</em>. Select individual words, phrases, or text across multiple blocks.</p>
+      <p>A second paragraph is a separate <u>logical Description block</u>. Use <s>j and k</s> to move between blocks while preserving cursor position where possible.</p>
+      <blockquote>A quote uses a left marker rather than a different font.</blockquote>
+      <h2>Checklist</h2>
       <ul class="checkbox-list">
-        <li><label><input type="checkbox" checked> API-Antwort prüfen</label></li>
-        <li><label><input type="checkbox"> Beschreibung veröffentlichen</label></li>
+        <li><label><input type="checkbox" checked> Check API response</label></li>
+        <li><label><input type="checkbox"> Publish Description</label></li>
       </ul>
-      <p class="checkbox-note" contenteditable="false">Die Checkliste gehört zur Description, nicht zum Done-Status des umgebenden Tasks.</p>
-      <ol><li>Ersten Schritt ausführen</li><li>Zweiten Schritt kontrollieren</li></ol>
+      <p class="checkbox-note" contenteditable="false">The checklist belongs to Description, independently of the surrounding Task’s Done state.</p>
+      <ol><li>Perform the first step</li><li>Check the second step</li></ol>
       <pre><code>git status
-# Codeblöcke bleiben monospaced, aber erhalten Fläche und Rand.</code></pre>
-      <p>Ein <a href="https://vikunja.io" target="_blank" rel="noreferrer">sichtbarer Link</a> zeigt nur Text; <kbd>Space</kbd> + <kbd>l</kbd> fragt nach der URL.</p>
+# Code blocks remain monospaced, with a background and border.</code></pre>
+      <p>A <a href="https://vikunja.io" target="_blank" rel="noreferrer">visible Link</a> shows only text; <kbd>Space</kbd> + <kbd>l</kbd> asks for the URL.</p>
       <hr>
-      <div class="opaque-table" contenteditable="false"><table><thead><tr><th>Status</th><th>Besitzer</th><th>Termin</th></tr></thead><tbody><tr><td>Offen</td><td>Mira</td><td>Freitag</td></tr><tr><td>In Arbeit</td><td>Jo</td><td>Montag</td></tr></tbody></table></div>
+      <div class="opaque-table" contenteditable="false"><table><thead><tr><th>Status</th><th>Owner</th><th>Date</th></tr></thead><tbody><tr><td>Open</td><td>Mira</td><td>Friday</td></tr><tr><td>In progress</td><td>Jo</td><td>Monday</td></tr></tbody></table></div>
     </article>
 
     <div class="status" aria-live="polite">
-      <span>Modus: <b id="status-mode">Normal</b></span>
-      <span>Auswahl: <b id="selection-state">keine</b></span>
-      <span id="message">Vim-Motions sind außerhalb des Insert-Modus aktiv.</span>
+      <span>Mode: <b id="status-mode">Normal</b></span>
+      <span>Selection: <b id="selection-state">none</b></span>
+      <span id="message">Vim motions are active outside Insert Mode.</span>
     </div>
 
-    <section class="cheatsheet" aria-label="Tastenkürzel">
+    <section class="cheatsheet" aria-label="Keyboard shortcuts">
       <h2>Cheat Sheet</h2>
       <div class="shortcuts">
         <div class="shortcut-group"><h3>NAVIGATION · NORMAL / VISUAL</h3><dl>
-          <dt><kbd>h</kbd> <kbd>l</kbd></dt><dd>Zeichen links / rechts</dd>
-          <dt><kbd>w</kbd> <kbd>b</kbd> <kbd>e</kbd></dt><dd>Wort-Motions</dd>
-          <dt><kbd>0</kbd> <kbd>$</kbd></dt><dd>Zeilenanfang / -ende</dd>
-          <dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>logischer Block vor / zurück</dd>
-          <dt><kbd>g</kbd><kbd>j</kbd> / <kbd>g</kbd><kbd>k</kbd></dt><dd>sichtbare Zeile vor / zurück</dd>
+          <dt><kbd>h</kbd> <kbd>l</kbd></dt><dd>character left / right</dd>
+          <dt><kbd>w</kbd> <kbd>b</kbd> <kbd>e</kbd></dt><dd>word motions</dd>
+          <dt><kbd>0</kbd> <kbd>$</kbd></dt><dd>line start / end</dd>
+          <dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>logical block forward / backward</dd>
+          <dt><kbd>g</kbd><kbd>j</kbd> / <kbd>g</kbd><kbd>k</kbd></dt><dd>display row forward / backward</dd>
         </dl></div>
-        <div class="shortcut-group"><h3>MODI & AUSWAHL</h3><dl>
-          <dt><kbd>i</kbd></dt><dd>Insert-Modus</dd>
-          <dt><kbd>Esc</kbd></dt><dd>Normal-Modus / Auswahl verlassen</dd>
-          <dt><kbd>v</kbd></dt><dd>Visual: Zeichenauswahl</dd>
-          <dt><kbd>V</kbd></dt><dd>Visual: ganzen Block auswählen</dd>
-          <dt><kbd>i</kbd><kbd>w</kbd></dt><dd>in Visual: inneres Wort</dd>
+        <div class="shortcut-group"><h3>MODES & SELECTION</h3><dl>
+          <dt><kbd>i</kbd></dt><dd>Insert Mode</dd>
+          <dt><kbd>Esc</kbd></dt><dd>Normal Mode / leave selection</dd>
+          <dt><kbd>v</kbd></dt><dd>Visual: character selection</dd>
+          <dt><kbd>V</kbd></dt><dd>Visual: select whole block</dd>
+          <dt><kbd>i</kbd><kbd>w</kbd></dt><dd>in Visual: inner word</dd>
         </dl></div>
-        <div class="shortcut-group"><h3>FORMATIEREN · NUR VISUAL</h3><dl>
-          <dt><kbd>Space</kbd> <kbd>b</kbd></dt><dd>fett umschalten</dd>
-          <dt><kbd>Space</kbd> <kbd>i</kbd></dt><dd>kursiv umschalten</dd>
-          <dt><kbd>Space</kbd> <kbd>u</kbd></dt><dd>unterstreichen umschalten</dd>
-          <dt><kbd>Space</kbd> <kbd>s</kbd></dt><dd>durchstreichen umschalten</dd>
-          <dt><kbd>Space</kbd> <kbd>l</kbd></dt><dd>Link-URL bearbeiten</dd>
+        <div class="shortcut-group"><h3>FORMATTING · VISUAL ONLY</h3><dl>
+          <dt><kbd>Space</kbd> <kbd>b</kbd></dt><dd>toggle bold</dd>
+          <dt><kbd>Space</kbd> <kbd>i</kbd></dt><dd>toggle italic</dd>
+          <dt><kbd>Space</kbd> <kbd>u</kbd></dt><dd>toggle underline</dd>
+          <dt><kbd>Space</kbd> <kbd>s</kbd></dt><dd>toggle strikethrough</dd>
+          <dt><kbd>Space</kbd> <kbd>l</kbd></dt><dd>edit Link URL</dd>
         </dl></div>
       </div>
     </section>
@@ -133,7 +133,7 @@
       modeEl.textContent = labels[mode];
       modeEl.className = 'mode ' + (leaderPending ? 'leader' : mode);
       statusMode.textContent = labels[mode].replace(' · ', ' / ');
-      selectionState.textContent = hasSelection() ? 'aktiv' : mode === 'visual' ? 'Startpunkt gesetzt' : 'keine';
+      selectionState.textContent = hasSelection() ? 'active' : mode === 'visual' ? 'start point set' : 'none';
     }
     function focusEditor() { editor.focus({ preventScroll: true }); }
     function modify(alter, direction, granularity) {
@@ -183,28 +183,28 @@
       const r = document.createRange(); r.setStart(s.focusNode, s.focusOffset); r.collapse(true); s.removeAllRanges(); s.addRange(r);
     }
     function executeFormat(key) {
-      if (!hasSelection()) { setMessage('Erst mit v und einer Motion Text auswählen.'); leaderPending = false; updateUI(); return; }
+      if (!hasSelection()) { setMessage('First select text with v and a motion.'); leaderPending = false; updateUI(); return; }
       const command = { b: 'bold', i: 'italic', u: 'underline', s: 'strikeThrough' }[key];
       if (key === 'l') {
         // A browser prompt may move focus; restore the Visual range before creating the link.
         const selectedRange = selection().getRangeAt(0).cloneRange();
-        const url = window.prompt('URL für den ausgewählten Link:', 'https://');
+        const url = window.prompt('URL for the selected Link:', 'https://');
         if (url && url !== 'https://') {
           const s = selection(); s.removeAllRanges(); s.addRange(selectedRange); focusEditor();
           document.execCommand('createLink', false, url);
-          setMessage('Link gesetzt: ' + url);
-        } else setMessage('Link-Bearbeitung abgebrochen.');
+          setMessage('Link set: ' + url);
+        } else setMessage('Link editing cancelled.');
       } else if (command) {
         document.execCommand('styleWithCSS', false, false);
         document.execCommand(command, false, null);
-        setMessage(({b:'Fett', i:'Kursiv', u:'Unterstrichen', s:'Durchgestrichen'})[key] + ' umgeschaltet.');
+        setMessage(({b:'Bold', i:'Italic', u:'Underlined', s:'Strikethrough'})[key] + ' toggled.');
       }
       leaderPending = false; mode = 'normal'; focusEditor(); collapseToFocus(); updateUI();
     }
     function beginVisual(blockwise) {
       focusEditor(); mode = 'visual'; leaderPending = false; innerPending = false;
       if (blockwise) selectCurrentBlock();
-      setMessage(blockwise ? 'Visual Block: ganzer Description-Block ausgewählt.' : 'Visual: Motion erweitert die Auswahl.');
+      setMessage(blockwise ? 'Visual Block: whole Description block selected.' : 'Visual: a motion extends selection.');
       updateUI();
     }
     function normalMotion(key) {
@@ -219,43 +219,43 @@
       const key = event.key;
       if (key === 'Escape') {
         event.preventDefault(); leaderPending = gPending = innerPending = false;
-        if (mode === 'insert') { mode = 'normal'; setMessage('Normal-Modus.'); }
-        else { mode = 'normal'; collapseToFocus(); setMessage('Normal-Modus.'); }
+        if (mode === 'insert') { mode = 'normal'; setMessage('Normal Mode.'); }
+        else { mode = 'normal'; collapseToFocus(); setMessage('Normal Mode.'); }
         updateUI(); return;
       }
       if (mode === 'insert') return;
       if (leaderPending) {
         event.preventDefault();
         if ('biusl'.includes(key)) executeFormat(key);
-        else { leaderPending = false; setMessage('Kein Leader-Befehl: Space + b/i/u/s/l.'); updateUI(); }
+        else { leaderPending = false; setMessage('Unknown Leader command: Space + b/i/u/s/l.'); updateUI(); }
         return;
       }
       if (gPending) {
         event.preventDefault(); gPending = false;
-        if (key === 'j') { move('forward', 'line'); setMessage('Visual row vor.'); }
-        else if (key === 'k') { move('backward', 'line'); setMessage('Visual row zurück.'); }
-        else setMessage('g erwartet j oder k.');
+        if (key === 'j') { move('forward', 'line'); setMessage('Display row forward.'); }
+        else if (key === 'k') { move('backward', 'line'); setMessage('Display row backward.'); }
+        else setMessage('g expects j or k.');
         updateUI(); return;
       }
       if (innerPending) {
         event.preventDefault(); innerPending = false;
-        if (key === 'w' && mode === 'visual') { innerWord(); setMessage('Inneres Wort ausgewählt.'); }
-        else setMessage('i erwartet in Visual einen Text-Objekt-Key (hier: w).');
+        if (key === 'w' && mode === 'visual') { innerWord(); setMessage('Inner word selected.'); }
+        else setMessage('i expects a text-object key in Visual (here: w).');
         updateUI(); return;
       }
-      if (key === 'i' && mode === 'normal') { event.preventDefault(); mode = 'insert'; setMessage('Insert-Modus: Browser-Textbearbeitung aktiv.'); updateUI(); return; }
+      if (key === 'i' && mode === 'normal') { event.preventDefault(); mode = 'insert'; setMessage('Insert Mode: browser text editing active.'); updateUI(); return; }
       if (key === 'v' && mode === 'normal') { event.preventDefault(); beginVisual(false); return; }
       if (key === 'V' && mode === 'normal') { event.preventDefault(); beginVisual(true); return; }
       // Also accept a mouse-made selection: it is useful for quickly testing the
       // leader vocabulary, even though the intended TUI flow begins with v/V.
       if ((key === ' ' || key === 'Spacebar' || event.code === 'Space') && (mode === 'visual' || hasSelection())) {
         event.preventDefault(); mode = 'visual'; leaderPending = true;
-        setMessage('Leader: b fett · i kursiv · u unterstreichen · s durchstreichen · l Link'); updateUI(); return;
+        setMessage('Leader: b bold · i italic · u underline · s strikethrough · l Link'); updateUI(); return;
       }
       if (key === 'g') { event.preventDefault(); gPending = true; return; }
       if (key === 'i' && mode === 'visual') { event.preventDefault(); innerPending = true; return; }
       if (normalMotion(key)) { event.preventDefault(); return; }
-      if (mode === 'visual' && ['s'].includes(key)) { event.preventDefault(); setMessage('s bleibt in Visual Mode reserviert; formatiere mit Space + s.'); return; }
+      if (mode === 'visual' && ['s'].includes(key)) { event.preventDefault(); setMessage('s remains reserved in Visual Mode; format with Space + s.'); return; }
       // Ignore printable keys in Normal/Visual mode so text changes only in Insert mode.
       if (key.length === 1 || key === 'Enter' || key === 'Backspace' || key === 'Delete') event.preventDefault();
     });

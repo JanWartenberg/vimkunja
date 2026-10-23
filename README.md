@@ -4,15 +4,15 @@ An unofficial Vim-style terminal interface for Vikunja.
 
 Vimkunja is an independent project, not affiliated with or endorsed by Vikunja.
 
-## 1. Was es ist
+## 1. Overview
 
-Vimkunja ist eine tastaturorientierte Terminal-Oberfläche für eine lokale [Vikunja](https://vikunja.io/)-SQLite-Datenbank. Sie richtet sich an Vim-Nutzer und ergänzt Vikunjas Task-Verwaltung um einen schnellen Terminal-Workflow mit Projects, List View, Task-Detail und Workflow-Status.
+Vimkunja is a keyboard-driven terminal interface for a local [Vikunja](https://vikunja.io/) SQLite database. It is designed for Vim users and adds a fast terminal workflow for Projects, List View, Task Detail, and workflow status.
 
-### Installation und erster Start
+### Installation and first run
 
-Voraussetzungen: Git, ein interaktives Terminal und eine aktuelle, gepflegte Go-Version. Das Modul verwendet Go 1.25 als Sprachminimum; zum Bauen eine aktuelle sicherheitsgepatchte Toolchain verwenden (CI nutzt `stable`). Linux amd64 wurde lokal geprüft; Windows amd64 lässt sich bauen, native Windows-Terminaltests stehen noch aus.
+Requirements: Git, an interactive terminal, and a currently maintained Go version. The module requires Go 1.25 or later; use a current, security-patched toolchain to build it (CI uses `stable`). Linux amd64 has been checked locally; Windows amd64 builds successfully, but native Windows terminal tests are still pending.
 
-Die vorgesehene Clone-URL lautet:
+The intended clone URL is:
 
 ```bash
 git clone https://github.com/JanWartenberg/vimkunja.git vimkunja
@@ -22,19 +22,19 @@ git clone https://github.com/JanWartenberg/vimkunja.git vimkunja
 cd vimkunja
 ```
 
-Zum Ausprobieren ohne eigene Datenbank:
+Try it without your own database:
 
 ```bash
 go run ./cmd/vimkunja-tutorial
 ```
 
-Beide Programme bauen (unter Windows erhalten die Binärdateien die Endung `.exe`):
+Build both programs (Windows binaries have the `.exe` extension):
 
 ```bash
 go build -o bin/ ./cmd/vimkunja ./cmd/vimkunja-tutorial
 ```
 
-Die gebauten Programme lassen sich aus dem Repository-Verzeichnis starten:
+Run the built programs from the repository directory:
 
 ```bash
 ./bin/vimkunja-tutorial
@@ -44,33 +44,33 @@ Die gebauten Programme lassen sich aus dem Repository-Verzeichnis starten:
 ./bin/vimkunja --db "/path/to/vikunja.db"
 ```
 
-Unter Windows PowerShell beispielsweise:
+For example, in Windows PowerShell:
 
 ```powershell
 .\bin\vimkunja.exe --db "C:\path\to\vikunja.db"
 ```
 
-Für echte Tasks alternativ direkt aus dem Quellcode eine vorhandene Vikunja-SQLite-Datenbank angeben:
+Alternatively, run directly from source with an existing Vikunja SQLite database for real Tasks:
 
 ```bash
 go run ./cmd/vimkunja --db /path/to/vikunja.db
 ```
 
-`/path/to/vikunja.db` durch den eigenen Pfad ersetzen und bei Leerzeichen in Anführungszeichen setzen. Der Datenbankpfad muss eine vorhandene, lesbare und beschreibbare Datei sein. Vimkunja greift direkt auf SQLite zu; es gibt keinen REST-Modus.
+Replace `/path/to/vikunja.db` with your own path and quote it if it contains spaces. The database must be an existing, readable, writable file. Vimkunja accesses SQLite directly; there is no REST mode.
 
-Ohne `--db` verwendet Vimkunja lokal `internal/db/vikunja.db`. Diese Datei ist nicht Teil des Repositories. Neue Installationen müssen eine eigene 2.7.0-Datenbank mit `--db` angeben. Ältere Datenbanken vor einem Upgrade einschließlich vorhandener WAL-Datei sichern und das Upgrade zuerst auf einer Kopie mit dem offiziellen Vikunja-2.7.0-Programm prüfen; Vimkunja führt keine Migrationen aus.
+Without `--db`, Vimkunja uses the local path `internal/db/vikunja.db`. This file is not part of the repository. New installations must supply their own 2.7.0 database with `--db`. Before upgrading an older database, back it up together with any WAL file and test the upgrade on a copy using the official Vikunja 2.7.0 executable; Vimkunja does not run migrations.
 
-### Datenbank und Kompatibilität
+### Database and compatibility
 
-Eine blanke SQLite-Datei enthält keine Vikunja-Tabellen und reicht für einen produktiven Start nicht aus. Vimkunja erstellt oder migriert kein Vikunja-Schema. Für einen frischen produktiven Datenbestand muss Vikunja selbst die Datenbank initialisieren; User, Project und View müssen für den gewünschten Workflow vorhanden sein. Ein dauerhaftes Start-Template ist noch nicht spezifiziert. Die synthetische Tutorial-Datenbank ist ausschließlich zum Ausprobieren gedacht und wird beim regulären Beenden gelöscht.
+A blank SQLite file has no Vikunja tables and cannot be used for a production start. Vimkunja does not create or migrate the Vikunja schema. To start with fresh production data, Vikunja itself must initialize the database; the required User, Project, and View must exist for your workflow. A persistent starter template has not been specified. The synthetic tutorial database is only for trying the application and is deleted on normal exit.
 
-**VOA** bezeichnet im Folgenden die Vikunja-Original-App bzw. ihren Server. Einziges geprüftes Kompatibilitätsziel ist **Vikunja 2.7.0**. Echte Server-Roundtrips mit frischer Datenbank und einer Kopie der synthetischen Windows-Baseline sind im [Prüfbericht](.archive/2026-10-05/vikunja-db-compatibility/report.md) dokumentiert. Frühere, spätere und Entwicklungsversionen sind nicht unterstützt. Der produktive Start prüft Migrationshistorie und benötigte Schema-Merkmale und lehnt abweichende oder unvollständige DB-Revisionen vor fachlichen Schreibzugriffen ab. Releases mit identischer DB-Revision sind aus der Datei allein nicht unterscheidbar und erhalten keine zusätzliche Freigabe. Die Tutorial-Datenbank ist kein produktives Start-Template.
+**VOA** below means the original Vikunja application or its server. The only verified compatibility target is **Vikunja 2.7.0**. Real server round trips with a fresh database and a copy of the synthetic Windows baseline are documented in the [verification report](.archive/2026-10-05/vikunja-db-compatibility/report.md). Earlier, later, and development versions are unsupported. Production startup checks migration history and required schema features, rejecting different or incomplete database revisions before domain writes. Releases with identical database revisions cannot be distinguished from the file alone and receive no additional compatibility approval. The tutorial database is not a production starter template.
 
-VOA vor dem Start von Vimkunja beenden; Vimkunja vor dem Neustart von VOA beenden. Parallele Bearbeitung ist nicht verifiziert. Tasks im Papierkorb bleiben verborgen und können nicht bearbeitet werden. Archivierte Projects sind schreibgeschützt; Bucket-Limits werden berücksichtigt. Task-Nummern bleiben nach Löschungen reserviert; alte Adressen nach Project-Wechseln und Undo/Redo sind über VOA API v2 auflösbar.
+Stop VOA before starting Vimkunja; stop Vimkunja before restarting VOA. Concurrent editing has not been verified. Tasks in the trash remain hidden and cannot be edited. Archived Projects are read-only; Bucket limits are respected. Task numbers remain reserved after deletion; old addresses after Project moves and Undo/Redo can be resolved through VOA API v2.
 
-Vimkunja löscht Tasks weiterhin **endgültig**, ohne Papierkorb oder Lösch-Undo; Attachment-Dateien bleiben erhalten. Tasks mit Time Entries lassen sich nur in VOA löschen. Wiederkehrende Tasks ebenfalls in VOA abschließen. Das Erstellen von Labels sowie das Schreiben/Löschen von Comments setzt genau einen lokalen User voraus. Direkte SQLite-Schreibzugriffe führen keine Serveraktionen wie Webhooks, Benachrichtigungen oder Reminder-Dienste aus. Native Windows-Terminaltests und ein Live-CalDAV-Test stehen weiterhin aus.
+Vimkunja still deletes Tasks **permanently**, without trash or deletion undo; attachment files remain intact. Tasks with Time Entries can only be deleted in VOA. Complete recurring Tasks in VOA as well. Creating Labels and writing/deleting Comments requires exactly one local User. Direct SQLite writes do not trigger server actions such as webhooks, notifications, or reminder services. Native Windows terminal tests and a live CalDAV test are still pending.
 
-Vor dem Arbeiten mit echten Daten ein Backup erstellen. Native Richtext-Bearbeitung ist implementiert; weitere Views sind geplant; der aktuelle Funktionsstand steht in [STATUS.md](STATUS.md).
+Back up real data before using it. Native rich-text editing is implemented; additional Views are planned. See [STATUS.md](STATUS.md) for the current feature status.
 
 ### Interactive task tutorial
 
@@ -146,52 +146,52 @@ The implemented precedence is CLI flags, then TOML, then built-in defaults. Envi
 
 A missing file is normal. Invalid TOML, unreadable files, unknown sections/settings, and invalid TOML values are recoverable: supported unambiguous settings still apply, invalid fields use their defaults, and Vimkunja starts with warnings. Warnings are printed to stderr, shown briefly in the red startup footer, and retained in `:errors`. Invalid timeout values supplied explicitly on the command line are fatal and prevent startup.
 
-## 2. Bedienung und Details
+## 2. Controls and details
 
-- `hjkl`, `gg` / `G`, `Ctrl+D` / `Ctrl+U` – Navigation
-- `Ctrl+W h/j/k/l` – Pane-Fokus wechseln
-- Im Projects Pane: `h/l` Hierarchie schließen/öffnen bzw. Parent/Child wählen, `zo/zc/za` falten, `zM/zR` alles schließen/öffnen
-- Im Projects Pane: `Shift+J/K` Project unter seinen Geschwistern verschieben
-- `Enter` – Task-Detail öffnen
-- `x` – Task in den Done- bzw. Default-Bucket togglen
-- `u` / `Ctrl+R` – letzte persistierte Task-Aktion rückgängig machen bzw. wiederholen
-- `o` / `:new` – neuen Task anlegen
-- `:w`, `:wq`, `:wqa` – speichern
-- `:e!` / `:edit!` – ungespeicherte Änderungen am bestehenden Task verwerfen, Task geöffnet lassen
-- `:q`, `:q!`, `:qa`, `:qa!` – Pane bzw. Anwendung schließen
-- `:h` – integrierte Hilfe
-- `:errors` – Session-Fehlerlog
-- `Space+o` – Projects-Pane ein- oder ausblenden
-- `:kanban` oder `Space+v`, dann `k` – einzelne manuelle Kanban View öffnen oder nach Bestätigung standardkonform provisionieren
-- Im Kanban Board: `h/l` Buckets, `j/k` Karten, `Shift+H/L` Nachbar-Move, `m` Ziel-Bucket wählen
+- `hjkl`, `gg` / `G`, `Ctrl+D` / `Ctrl+U` – navigation
+- `Ctrl+W h/j/k/l` – change pane focus
+- In the Projects Pane: `h/l` collapse/expand the hierarchy or select the parent/child, `zo/zc/za` fold, `zM/zR` collapse/expand all
+- In the Projects Pane: `Shift+J/K` move a Project among its siblings
+- `Enter` – open Task Detail
+- `x` – toggle a Task into the Done or Default Bucket
+- `u` / `Ctrl+R` – undo or redo the last persisted Task action
+- `o` / `:new` – create a Task
+- `:w`, `:wq`, `:wqa` – save
+- `:e!` / `:edit!` – discard unsaved changes to an existing Task and keep it open
+- `:q`, `:q!`, `:qa`, `:qa!` – close a pane or the application
+- `:h` – built-in help
+- `:errors` – session error log
+- `Space+o` – show or hide the Projects Pane
+- `:kanban` or `Space+v`, then `k` – open a single manual Kanban View or provision a standard one after confirmation
+- In the Kanban Board: `h/l` select Buckets, `j/k` select cards, `Shift+H/L` move to a neighboring Bucket, `m` choose a destination Bucket
 
-Titel, Description und Comment-Entwürfe unterstützen im Normal Mode `v/V` zur Zeichen-/Zeilenauswahl (Description: logische Blöcke), `Space+y` zum Kopieren der Auswahl bzw. aktuellen Zeile/Absatzes in die Systemzwischenablage und `Space+p` zum Einfügen am Cursor bzw. Ersetzen der Auswahl. Copy erhält die Auswahl; Paste bleibt im Normal Mode. `Esc` hebt die Auswahl auf. `Space+e` kopiert die Ziel-URL eines Links. **Descriptions haben einen gemeinsamen Editor:** `gn`, `Enter` aktiviert ihn auch für bisher leeren oder unformatierten Text. Auswahl, Formatierung und Tippen verwenden sofort dieselben Regeln; ein Richtext-Moduswechsel ist nicht erforderlich. Öffnen und Navigation ändern keine gespeicherten Bytes. Erst eine echte Bearbeitung erzeugt Richtext im Entwurf; `:w` speichert, `:e!` verwirft. Einfügen aus der Zwischenablage interpretiert keine Markdown-Formatierung.
+Title, Description, and Comment drafts support `v/V` in Normal Mode for character/line selection (logical blocks in Description), `Space+y` to copy the selection or current line/paragraph to the system clipboard, and `Space+p` to paste at the cursor or replace the selection. Copy preserves the selection; Paste stays in Normal Mode. `Esc` clears the selection. `Space+e` copies a Link's destination URL. **Descriptions use one shared editor:** `gn`, `Enter` activates it even for empty or unformatted text. Selection, formatting, and typing immediately follow the same rules; no rich-text mode switch is needed. Opening and navigation do not change stored bytes. Only an actual edit creates rich text in the draft; `:w` saves and `:e!` discards. Clipboard paste does not interpret Markdown formatting.
 
-Texteingaben verwenden einheitlich einen dünnen, blinkenden Terminalcursor: Title, Description einschließlich Richtext/Code, Comments sowie Such-, Command-, URL- und Label-Prompts. Normal Mode verwendet einen Blockcursor. Die Datumsmaske markiert die zu ersetzende Ziffer als Überschreibcursor; relative Datumseingaben verwenden den dünnen Eingabecursor.
+Text input consistently uses a thin, blinking terminal cursor: Title, Description including rich text/Code, Comments, and search, command, URL, and Label prompts. Normal Mode uses a block cursor. The date mask marks the digit to replace with an overwrite cursor; relative date input uses the thin input cursor.
 
-Im Detail-Pane können Project, Title, Priority, Due Date, Labels, Description und der Workflow-Status bearbeitet werden. `gc` öffnet den Comments-Workspace; `gca` startet dort einen neuen Comment. Im Comment-Thread starten `a`, `i` und `o` einen neuen Comment; ein statischer Blockcursor markiert den ausgewählten Comment. `Space+l` öffnet den Label-Picker; `:labels` verwaltet globale Labels. Der Status verwendet die konfigurierten Buckets der eindeutigen Kanban View des Projects.
+The Detail Pane lets you edit Project, Title, Priority, Due Date, Labels, Description, and workflow status. `gc` opens the Comments workspace; `gca` starts a new Comment there. In the Comment thread, `a`, `i`, and `o` start a new Comment; a static block cursor marks the selected Comment. `Space+l` opens the Label picker; `:labels` manages global Labels. Status uses the configured Buckets of the Project's unique Kanban View.
 
-HTML-Descriptions werden strukturiert angezeigt und als Native Draft bearbeitet. `gn`, dann `Enter` aktiviert die Navigation: `j/k` zwischen logischen Blöcken (in Code zwischen Quellzeilen, in Zitaten zwischen Kindblöcken), `gj/gk` zwischen sichtbaren Zeilen, `{`/`}` oder `ö/ä` zwischen ganzen Absatz-Einheiten. `h/l`, `0/^/_/$`, `w/b/e/ge`, Counts und `gg/G` bewegen den Dokumentcursor; `Ctrl+D/U` bewegt ihn ungefähr eine sichtbare Pane-Höhe. `zh/zl` scrollt Code und Tabellen horizontal, `Ctrl+E/Y` nur den Viewport. `Esc` verlässt die aktive Navigation. Der aktive Block zeigt Formatierungszeichen; Code zeigt geschützte Backtick-Ränder. Lesen und Resize ändern das gespeicherte HTML nicht. `i/a/I/A` startet Insert, `Enter` teilt Absätze, `Shift+Enter` setzt einen Hard Break. `o/O` erzeugt einen Absatz, innerhalb von Code eine Quellzeile. `dd` löscht logische Blöcke bzw. Codezeilen. `v/V`, `viw/vaw` und `o` wählen Text/Blöcke bzw. tauschen das aktive Ende; `Esc` beendet die Auswahl. In beiden Visual-Modi (`v` und `V`) formatiert `Space+b/i/u/s`, `Space+0` entfernt Inline-Formatierung einschließlich Links. `Space+x` wandelt jeden von der Auswahl berührten logischen Absatz/Listeneintrag in eine Checkbox um; bestehende Checkboxen behalten Zustand und Identität. Die Auswahl bleibt bis Esc bestehen. Normal `Space+1/2/3/0` wandelt Absatz/Heading um. Die Palette steht innerhalb des Footer-Rahmens und bleibt nach dem Leader-Timeout bis zur nächsten Taste lesbar: `SPACE ACTIVE` erlaubt direkte Kürzel, `Space again` verlangt erneut Space. Schmale Fenster umbrechen die Kürzel; bei sehr wenig Höhe ersetzt eine kompakte Palette die normale Footer-Zeile. `Space+o` bleibt global. `u/Ctrl+R` gilt hier für den lokalen Description-Draft. Opaque-Löschung, Ersatz und Änderungen am Native Parent benötigen eine Bestätigung (`y/Enter`, `n/Esc`); Undo erhält die ursprünglichen Bytes. `y/p` kopiert sichere sichtbare Inhalte in den lokalen Description-Register und fügt Native Text ein.
+HTML Descriptions are displayed structurally and edited as a Native Draft. `gn`, then `Enter` activates navigation: `j/k` moves between logical blocks (source lines in Code, child blocks in quotes), `gj/gk` between displayed lines, and `{`/`}` or `ö/ä` between whole paragraph units. `h/l`, `0/^/_/$`, `w/b/e/ge`, counts, and `gg/G` move the document cursor; `Ctrl+D/U` moves it by roughly one visible pane height. `zh/zl` scrolls Code and tables horizontally; `Ctrl+E/Y` scrolls only the viewport. `Esc` leaves active navigation. The active block displays formatting markers; Code displays protected backtick boundaries. Reading and resizing do not change stored HTML. `i/a/I/A` enters Insert, `Enter` splits paragraphs, and `Shift+Enter` inserts a Hard Break. `o/O` creates a paragraph, or a source line inside Code. `dd` deletes logical blocks or Code lines. `v/V`, `viw/vaw`, and `o` select text/blocks or swap the active end; `Esc` ends selection. In both Visual modes (`v` and `V`), `Space+b/i/u/s` applies formatting, while `Space+0` removes inline formatting including Links. `Space+x` converts each logical paragraph/list item touched by the selection to a Checkbox; existing Checkboxes retain their state and identity. Selection remains until Esc. Normal `Space+1/2/3/0` converts a paragraph/Heading. The palette sits inside the footer frame and remains readable after the Leader timeout until the next key: `SPACE ACTIVE` allows direct shortcuts, while `Space again` requires another Space. Narrow windows wrap shortcuts; at very low heights a compact palette replaces the normal footer line. `Space+o` remains global. `u/Ctrl+R` operates on the local Description draft here. Opaque deletion, replacement, and changes to its Native parent require confirmation (`y/Enter`, `n/Esc`); Undo preserves the original bytes. `y/p` copies safe visible content to the local Description register and pastes Native text.
 
-Native Inline-Syntax entsteht nur durch bewusstes Tippen: `**fett**`, `*kursiv*`, `***beides***`, `__unterstrichen__`, `~~durchgestrichen~~` und einzelne gepaarte Backticks für Inline-Code. Paste bleibt wörtlicher Text; Backslash schützt das nächste Syntaxzeichen. `Space+l` bearbeitet die URL eines Links oder verlinkt ausgewählten Text, eine leere URL entfernt den Link. Ohne Auswahl und außerhalb eines Links fragt `Space+l` zuerst nach der URL, dann nach dem Linktext. Das Textfeld startet leer; direktes Tippen oder Paste füllt es. `Enter` bei leerem Text übernimmt die URL als Text. `Ctrl+U` leert die Eingabe, `Esc` bricht beide Schritte ohne Änderung ab. Einmal `u` macht das Einfügen rückgängig. `Space+e` kopiert das Ziel in die System-Clipboard. Einfügen am Link-Rand oder außerhalb der sichtbaren Inline-Code-Backticks bleibt außerhalb; zwischen den Backticks wird der Code bearbeitet.
+Native inline syntax is created only by deliberate typing: `**bold**`, `*italic*`, `***both***`, `__underlined__`, `~~strikethrough~~`, and paired single backticks for inline Code. Paste remains literal text; a backslash protects the next syntax character. `Space+l` edits a Link's URL or links selected text; an empty URL removes the Link. With no selection and outside a Link, `Space+l` asks for the URL first, then the Link text. The text field starts empty; typing or Paste fills it. `Enter` on empty text uses the URL as its text. `Ctrl+U` clears the input, and `Esc` cancels both steps without changes. One `u` undoes the insertion. `Space+e` copies the destination to the system clipboard. Insertion at a Link boundary or outside visible inline Code backticks stays outside; insertion between the backticks edits the Code.
 
-`:selectblock` wählt ausdrücklich den ganzen Codeblock; `V` in Code bleibt auf dessen Quellzeilen begrenzt. Für Blocked HTML bieten `:descriptionrecover` und `:descriptionclear` bestätigte, ungespeicherte Recovery-Aktionen. `:e!` verwirft weiterhin den gesamten Task-Draft; `:descriptionreload` lädt den aktuellen Task aus der Datenbank und verwirft den Draft ausdrücklich. Ein Save-Konflikt behält den Draft offen, ohne Merge. Mit `Space+u/n/x` lassen sich Absätze in Listen/Checkbox-Listen umwandeln; `x` toggelt die Description-Checkbox unabhängig von Task-Done. `V` → `Space+k/l` rückt ausgewählte Einträge aus/ein, `Space+q/w` entfernt/ergänzt die Zitatebene. Normal `Space+q` toggelt lokal. Metadaten und Reihenfolge bleiben erhalten; nicht verlustfrei darstellbare Aktionen werden unverändert abgelehnt. Code wird mit Normal `Space+c` oder genau drei/vier direkt getippten Backticks plus Enter in einem leeren Absatz erstellt; bei sechs direkt getippten Backticks erzeugt Enter zwischen dem dritten und vierten einen leeren Codeblock. `ü/Ü` erzeugt danach/davor einen Absatz in Insert; `]Space/[Space` dasselbe in Normal. Code-`Tab` fügt Spaces bis zum nächsten Tabstop ein, `Ctrl+V Tab` (alternativ `Ctrl+Q Tab`, konfigurierbar) einen echten Tab; Paste erhält Tabs und CRLF. `V` → `Space+x/c` rückt Quellzeilen aus/ein; `:retab` wandelt Tabs im aktuellen Code bzw. ausgewählten Codezeilen um, `:retaball` in allen Native-Texten und überspringt Opaque. Beide ohne Argumente/Bang, jeweils ein Undo-Schritt. Leere, unformatierte und HTML-Descriptions verwenden denselben Dokumenteditor; Title und Comment Composer teilen ihre Textauswahl- und Zwischenablagebedienung.
+`:selectblock` explicitly selects the entire Code block; `V` in Code remains limited to its source lines. For Blocked HTML, `:descriptionrecover` and `:descriptionclear` offer confirmed, unsaved recovery actions. `:e!` still discards the entire Task draft; `:descriptionreload` reloads the current Task from the database and explicitly discards the draft. A save conflict keeps the draft open without merging. `Space+u/n/x` converts paragraphs into lists/Checkbox lists; `x` toggles a Description Checkbox independently of Task Done. `V` → `Space+k/l` outdents/indents selected items, while `Space+q/w` removes/adds a quote level. Normal `Space+q` toggles locally. Metadata and ordering are preserved; operations that cannot be lossless are rejected without changes. Create Code with Normal `Space+c` or exactly three/four directly typed backticks plus Enter in an empty paragraph; with six directly typed backticks, Enter between the third and fourth creates an empty Code block. `ü/Ü` creates a paragraph after/before Code in Insert; `]Space/[Space` does the same in Normal. Code `Tab` inserts spaces to the next tabstop; `Ctrl+V Tab` (alternatively the configurable `Ctrl+Q Tab`) inserts a real Tab. Paste preserves Tabs and CRLF. `V` → `Space+x/c` outdents/indents source lines; `:retab` converts Tabs in the current Code or selected Code lines, while `:retaball` does so in all Native text and skips Opaque content. Both take no arguments or bang and each creates one Undo step. Empty, unformatted, and HTML Descriptions use the same document editor; Title and Comment Composer share their text-selection and clipboard behavior.
 
-In den Command-Prompts von Comments, Labels und Global Search gelten ebenfalls `:qa`, `:qa!` und `:wqa`. `:qa` schützt ungespeicherte Task-/Comment-Entwürfe; `:wqa` speichert einen vorhandenen Comment-Entwurf zusammen mit dem Task atomar und beendet erst nach erfolgreichem Speichern. Bei Fehlern bleibt der Entwurf offen. Im Insert Mode zuerst `Esc` drücken.
+Comment, Label, and Global Search command prompts also accept `:qa`, `:qa!`, and `:wqa`. `:qa` protects unsaved Task/Comment drafts; `:wqa` atomically saves an existing Comment draft with the Task and exits only after a successful save. On failure the draft stays open. In Insert Mode, press `Esc` first.
 
-Ein geladener, unveränderter Workflow-Status wird beim Task- oder Comment-Save nicht erneut angewendet. Dadurch bleiben `Done` und der vorhandene Abschlusszeitstempel bei anderen Änderungen erhalten. Ein tatsächlicher Bucket-Wechsel synchronisiert den Status weiterhin wie bisher. Bei unverändertem `Done` bleibt der gespeicherte Abschlusszeitstempel auch bei Done-/Bucket-Schreibvorgängen und Undo/Redo exakt erhalten. Ein echter Wechsel zu erledigt setzt einen aktuellen Zeitstempel, Wiederöffnen löscht ihn. Abschlusszeitstempel bleiben außerhalb der Undo-Historie.
+A loaded, unchanged workflow status is not reapplied when saving a Task or Comment. This preserves `Done` and the existing completion timestamp during unrelated edits. An actual Bucket change still synchronizes status as before. When `Done` is unchanged, the stored completion timestamp remains exactly intact even during Done/Bucket writes and Undo/Redo. A real transition to done sets the current timestamp; reopening clears it. Completion timestamps remain outside Undo history.
 
-Bucket-Konfigurationen mit `0` oder NULL gelten als nicht gesetzt. Ohne Default-Bucket wird der erste gültige Bucket nach Position verwendet; bei gleicher Position entscheidet die ID. Das gilt für neue Tasks, Project-Wechsel und das Wiederöffnen. Ohne Done-Bucket bleibt beim Abschließen die aktuelle Zuordnung erhalten. Gibt es keinen gültigen Bucket, wird keine Zuordnung erfunden. Ungültige konfigurierte Bucket-Verweise brechen den Schreibvorgang atomar ab.
+Bucket configurations of `0` or NULL are treated as unset. Without a Default Bucket, the first valid Bucket by position is used, with ID breaking ties. This applies to new Tasks, Project moves, and reopening. Without a Done Bucket, completing a Task preserves its current assignment. If no valid Bucket exists, no assignment is invented. Invalid configured Bucket references abort the write atomically.
 
-Beim Verschieben eines erledigten Tasks in ein anderes Project wird je Ziel-View der konfigurierte Done-Bucket verwendet. Fehlt dieser, bleibt die Default-Zuordnung. Ein reiner Project-Wechsel erhält `Done` und den Abschlusszeitstempel.
+Moving a completed Task to another Project uses the configured Done Bucket in each destination View. If none exists, the default assignment remains. A Project-only move preserves `Done` and the completion timestamp.
 
-Neue Tasks erhalten eine stabile UUID für CalDAV, sofern die Datenbank eine `uid`-Spalte enthält. Änderungen, Project-Wechsel und Undo/Redo erhalten diese Identität. Bestehende Tasks werden nicht nachträglich geändert; ein Live-CalDAV-Test steht weiterhin aus.
+New Tasks receive a stable CalDAV UUID if the database has a `uid` column. Edits, Project moves, and Undo/Redo preserve this identity. Existing Tasks are not retroactively changed; a live CalDAV test is still pending.
 
-Die permanente Task-Löschung entfernt auch zugehörige Favoriten, Subscriptions sowie Task- und Comment-Reaktionen. Andere Objekttypen und Attachment-Dateien bleiben erhalten; die DB-Löschung erfolgt atomar.
+Permanent Task deletion also removes related favorites, subscriptions, and Task/Comment reactions. Other object types and attachment files remain intact; database deletion is atomic.
 
-Wiederkehrende Tasks können in Vimkunja bearbeitet und wieder geöffnet werden. Der Wechsel zu erledigt wird abgelehnt: Den Abschluss in Vikunja durchführen, damit Termine, Reminder und Checklisten für die nächste Wiederholung aktualisiert werden.
+Recurring Tasks can be edited and reopened in Vimkunja. Completing them is rejected: complete them in Vikunja so dates, reminders, and checklists are updated for the next recurrence.
 
-Fälligkeitsdaten werden weiterhin als `YYYY-MM-DD` bearbeitet. Solange das Datum unverändert bleibt, erhalten Task-Saves und Undo/Redo die vorhandene Uhrzeit exakt. Ein geändertes Datum speichert Mitternacht UTC; das Löschen des Datums speichert NULL. Undo/Redo weist externe Änderungen am vollständigen Fälligkeitszeitstempel zurück.
+Due dates are still edited as `YYYY-MM-DD`. As long as the date is unchanged, Task saves and Undo/Redo preserve the existing time exactly. Changing the date stores midnight UTC; clearing it stores NULL. Undo/Redo rejects external changes to the full due timestamp.
 
 While a Task Detail save is running, keyboard input pauses and the footer shows
 `Saving Task…`; `Ctrl+C` remains available for an emergency exit. Input resumes
@@ -205,16 +205,16 @@ Tests:
 go test ./...
 ```
 
-## 3. Ausblick / Vision
+## 3. Roadmap and vision
 
-Das Fundament ist abgeschlossen: List View, Editor, Workflow-Status, Fehleranzeige, Vim-artige Pane-Navigation, die einzelne manuelle Kanban View und die hierarchische Projects Pane sind verifiziert. Weitere Views sowie Bucket-Verwaltung bleiben im Backlog.
+The foundation is complete: List View, editor, workflow status, error display, Vim-style pane navigation, the single manual Kanban View, and the hierarchical Projects Pane are verified. Additional Views and Bucket management remain in the backlog.
 
-Der aktuelle, priorisierbare Backlog liegt in `.scratch/`; der Kurzstatus mit Verweisen steht in [STATUS.md](STATUS.md). Abgeschlossene Anforderungen und Implementierungsdetails liegen im [Archiv](.archive/).
+The current backlog is in `.scratch/`; [STATUS.md](STATUS.md) provides a short index with links. Completed requirements and implementation details are in the [archive](.archive/).
 
-## Lizenz
+## License
 
-Der eigene Vimkunja-Code steht unter der [MIT-Lizenz](LICENSE). Abhängigkeiten behalten ihre jeweiligen Lizenzen; versionierte Zuordnung, Lizenztexte und ergänzende Hinweise stehen in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). Beide Dateien bei Binary-Distributionen mitliefern und die dort dokumentierten komponentenspezifischen Bedingungen erfüllen.
+Vimkunja's own code is licensed under the [MIT License](LICENSE). Dependencies retain their respective licenses; versioned attribution, license texts, and additional notices are in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt). Include both files with binary distributions and meet the component-specific conditions documented there.
 
-Vikunja ist ein separates [AGPL-3.0-Projekt](https://github.com/go-vikunja/vikunja/blob/v2.7.0/LICENSE); seine Lizenz wird durch Vimkunjas MIT-Lizenz nicht ersetzt. Eine spätere Übernahme von Upstream-Code muss gesondert geprüft werden.
+Vikunja is a separate [AGPL-3.0 project](https://github.com/go-vikunja/vikunja/blob/v2.7.0/LICENSE); Vimkunja's MIT license does not replace its license. Any future inclusion of upstream code requires a separate review.
 
-Die generierten Darwin-Dateien der SQLite-Abhängigkeiten enthalten zusätzliche APSL-1.1-/2.0-Hinweise. Die besonderen Bedingungen eines **macOS-Binary-Releases sind noch nicht abschließend erfüllt**; Cross-Kompilation und die Notice-Datei allein sind keine Release-Abnahme. Die betreffenden Lizenztexte und Quellcode-Bezugsquellen sind in der Notice-Datei dokumentiert.
+The SQLite dependencies' generated Darwin files contain additional APSL 1.1/2.0 notices. The specific conditions for a **macOS binary release have not yet been fully met**; cross-compilation and the notices file alone do not constitute release acceptance. The relevant license texts and source-code locations are documented in the notices file.

@@ -1,83 +1,84 @@
 # AGENTS.md – Vimkunja
 
-**Für:** AI Coding Agents  
-**Projekt:** Vimkunja – Terminal UI für Vikunja (OpenSource Todo/Kanban-System)
+**For:** AI coding agents
+**Project:** Vimkunja – terminal UI for Vikunja (open-source todo/Kanban system)
 
 ---
 
 ## 🎯 Vision
 
-Es soll ein TUI für eine Todo-Liste (mit Projekten, Tickets, Kanban-Board) werden.
-Im Wesentlichen soll das OpenSource-Projekt Vikunja mit seiner bestehenden Funktionalität in ein TUI überführt werden.
+Build a TUI for a todo list with Projects, Tasks, and a Kanban Board.
+The aim is to bring the existing functionality of the open-source Vikunja project to a terminal UI.
 
-**Zielgruppe:** Vim-Nutzer, Tastatur-affin, Kommandozeilen-Workflow
-
----
-
-## ⌨️ UX-Guidelines
-
-- **Nur Tastatur:** Wer Vim kennt, soll nicht überrascht werden
-- **Vim-Navigation:** `hjkl`, `gg/G`, `Ctrl+D/U`, `Ctrl+W` (Panes)
-- **Commands:** `:q`, `:qa`, `:h` (analog Vim)
-- **Leader-Key:** `Space` + Action
-- **Einheitliche Textauswahl/Clipboard:** Normal-/Visual-Texteditoren nutzen die gemeinsame Auswahl- und Clipboard-Logik (`text_normal.go`, `text_selection.go`, `text_clipboard.go`): `v/V`, `Space+y/p`; Richtext-Links kopieren ihre URL mit `Space+e` (`Space+Y` bleibt Alias). Insert-only-Prompts behalten ihre Eingaberegeln.
-- **Einheitliche Eingabecursor:** Jede neue Texteingabe nutzt `insertCursorText` aus `internal/tui/input_cursor.go`; keine eigenen Block-/Unterstrich-Cursor oder feldspezifischen Cursor-Shapes für Insert. Die gemeinsame Render-Auflösung positioniert den blinkenden Terminal-Barcursor nach dem Layout. Normal-/explizite Überschreibcursor bleiben getrennt.
+**Audience:** Vim users who prefer keyboard-driven command-line workflows.
 
 ---
 
-## 🚦 Workflow für Agents
+## ⌨️ UX guidelines
 
-### ⚠️ WICHTIG: Änderungen nur auf explizite Anweisung!
-
-**Vikunja API erhalten:** Die API zur OriginalApp aufrechthalten, TUI muss kompatibel zur Original App bleiben
-**DB-Schema nicht ändern:** bestehendes SQLite-Schema darf nicht geändert werden
-**Windows-Host:** `/workspace` wird auf Windows gehostet. Zeilenenden vor Commits auf LF normalisieren; reine CRLF/LF-Umstellungen nicht als fachliche Änderungen committen.
-**Markdown-Hygiene:** Keine Markdown-Dateien inflationär anlegen. `README.md` enthält Einführung, Bedienung und Vision; `STATUS.md` ist der kurze Ticket-Index. Offene Arbeit gehört ausschließlich in `.scratch/<feature>/`; abgeschlossene Specs und Tickets nach `.archive/YYYY-MM-DD/`. Temporäre Notizen nach Übernahme löschen.
-**Default-Modus:** Vorschläge machen, **NICHT** umsetzen!  
-**Umsetzung nur bei:** "setze um", "implementiere", "mach das", etc.
-
-### Antwortformat
-
-- **Kompakt:** ~1 Bildschirm (kein Scroll-Marathon)
-- **Struktur:** Bullets, kurze Absätze
-- **Fokus:** Was der User wissen muss, nicht alles
-
-### Arbeitsschritte
-
-1. Lies **README.md** und **STATUS.md**
-2. Lies das angeforderte oder aktuelle `.scratch`-Ticket samt zugehöriger Spec
-3. Implementiere gemäß Ousterhout
-4. Teste Store-Logik
-5. Aktualisiere Ticket und STATUS-Index, falls sich die Priorität ändert
+- **Keyboard only:** Behavior should feel familiar to Vim users.
+- **Vim navigation:** `hjkl`, `gg/G`, `Ctrl+D/U`, `Ctrl+W` (panes).
+- **Commands:** `:q`, `:qa`, `:h` (as in Vim).
+- **Leader key:** `Space` + action.
+- **Consistent selection/clipboard:** Normal/Visual text editors use the shared selection and clipboard logic (`text_normal.go`, `text_selection.go`, `text_clipboard.go`): `v/V`, `Space+y/p`; rich-text Links copy their URL with `Space+e` (`Space+Y` remains an alias). Insert-only prompts retain their input rules.
+- **Consistent input cursor:** Every new text input uses `insertCursorText` from `internal/tui/input_cursor.go`; do not add custom block/underscore cursors or field-specific cursor shapes for Insert. Shared rendering positions the blinking terminal bar cursor after layout. Normal/explicit overwrite cursors remain separate.
 
 ---
 
-## Go, Build und lokale Daten
+## 🚦 Agent workflow
 
-- Stack: Go 1.25, Bubble Tea v2 und SQLite (`modernc.org/sqlite`). Entrypoints: `cmd/vimkunja` und `cmd/vimkunja-tutorial`; Kernlogik liegt in `internal/vimkunja`, UI in `internal/tui`.
-- Nach Go-Änderungen: mindestens die betroffenen Tests ausführen; vor einem Commit zusätzlich `go test ./...` und `go build ./cmd/vimkunja ./cmd/vimkunja-tutorial`.
-- Vor dem Löschen oder Umbenennen von Go-Dateien, exportierten Typen oder Funktionen: Aufrufer mit `rg` prüfen. Gemeinsam verwendete Typen zuerst auslagern oder alle Aufrufer anpassen.
-- `internal/db/vikunja.db` ist lokale Nutzerdaten: nicht ändern oder löschen. `go.mod` und `go.sum` nur bei ausdrücklich beauftragten Dependency-Änderungen anfassen.
+### ⚠️ IMPORTANT: Change files only when explicitly instructed!
+
+**Preserve Vikunja compatibility:** Maintain compatibility with the original application's API.
+**Do not change the database schema:** The existing SQLite schema must remain unchanged.
+**Windows host:** `/workspace` is hosted on Windows. Normalize line endings to LF before commits; do not commit line-ending-only changes as functional changes.
+**Markdown hygiene:** Avoid unnecessary Markdown files. `README.md` contains the introduction, controls, and vision; `STATUS.md` is the short ticket index. Open work belongs only in `.scratch/<feature>/`; move completed specs and tickets to `.archive/YYYY-MM-DD/`. Delete temporary notes once their content has been incorporated.
+**Default mode:** Propose changes; **do not implement them**.
+**Implement only when requested:** For example, “implement this,” “make the change,” or “do it.”
+
+### Response format
+
+- **Compact:** About one screen; avoid long scrolling responses.
+- **Structure:** Bullets and short paragraphs.
+- **Focus:** What the user needs to know, not every detail.
+
+### Steps
+
+1. Read **README.md** and **STATUS.md**.
+2. Read the requested or current `.scratch` ticket and its spec.
+3. Implement according to Ousterhout's principles.
+4. Test Store logic.
+5. Update the ticket and STATUS index if priorities change.
 
 ---
 
-## 🧭 Design-Philosophie (Ousterhout)
+## Go, builds, and local data
 
-- **Deep Modules:** Einfache Interfaces, komplexe Implementation (z.B. `store`)
-- **Information Hiding:** Verstecke HTTP/JSON/State-Details
-- **Pull Complexity Downward:** UI bleibt einfach, Logik im Store
-- **Define Errors Out of Existence:** Validierung beim Schreiben, nicht beim Lesen
-- **General-Purpose:** Wiederverwendbare Komponenten (kein Copy-Paste)
-- **Consistency:** Einheitliche Patterns (Keybindings, Datenstrukturen, Error-Handling)
+- Language: write documentation, source comments, docstrings, and user-facing messages in English. Preserve technical Unicode fixtures, keybindings, and authoritative third-party notices.
+- Stack: Go 1.25, Bubble Tea v2, and SQLite (`modernc.org/sqlite`). Entrypoints: `cmd/vimkunja` and `cmd/vimkunja-tutorial`; core logic is in `internal/vimkunja`, UI in `internal/tui`.
+- After Go changes, run at least the affected tests; before a commit, also run `go test ./...` and `go build ./cmd/vimkunja ./cmd/vimkunja-tutorial`.
+- Before deleting or renaming Go files, exported types, or functions, check callers with `rg`. Extract shared types first or update every caller.
+- `internal/db/vikunja.db` contains local user data: do not change or delete it. Change `go.mod` and `go.sum` only when dependency changes are explicitly requested.
 
 ---
 
-## 📚 Referenzen
+## 🧭 Design philosophy (Ousterhout)
 
-- **README.md** – Einführung, Bedienung und Vision
-- **STATUS.md** – Aktueller Ticket-Index
-- `.scratch/` – offene Specs und Tickets
-- `.archive/` – abgeschlossene Specs, Tickets und historische Berichte
+- **Deep modules:** Simple interfaces, complex implementations (e.g. `store`).
+- **Information hiding:** Hide HTTP/JSON/state details.
+- **Pull complexity downward:** Keep the UI simple; put logic in the Store.
+- **Define errors out of existence:** Validate on write, not on read.
+- **General purpose:** Reusable components; avoid copy/paste.
+- **Consistency:** Uniform keybindings, data structures, and error handling.
+
+---
+
+## 📚 References
+
+- **README.md** – introduction, controls, and vision.
+- **STATUS.md** – current ticket index.
+- `.scratch/` – open specs and tickets.
+- `.archive/` – completed specs, tickets, and historical reports.
 
 ---
 
@@ -97,4 +98,4 @@ This is a single-context repository. See `docs/agents/domain.md`.
 
 ---
 
-**Letzte Änderung:** 2026-07-12
+**Last updated:** 2026-07-12

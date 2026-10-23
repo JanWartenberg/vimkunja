@@ -18,7 +18,7 @@ func descriptionTerminalText(source string) string {
 func projectDescription(source string, summaries map[int]bool) string {
 	if !descriptionHasHTML(source) {
 		if descriptionHasUnterminatedMarkup(source) {
-			return "[Nicht lesbarer Beschreibungsinhalt]"
+			return "[Unreadable description content]"
 		}
 		return plainDescriptionText(source)
 	}
@@ -29,7 +29,7 @@ func projectDescription(source string, summaries map[int]bool) string {
 
 	text := projectDescriptionNode(document, summaries)
 	if text == "" && descriptionHasUnterminatedMarkup(source) {
-		return "[Nicht lesbarer Beschreibungsinhalt]"
+		return "[Unreadable description content]"
 	}
 	return text
 }
@@ -79,7 +79,7 @@ func projectDescriptionNode(document *html.Node, summaries map[int]bool) string 
 					if text := descriptionNodeText(node); text != "" {
 						paragraphs = append(paragraphs, text)
 					} else {
-						paragraphs = append(paragraphs, "[Nicht unterstützter Inhalt]")
+						paragraphs = append(paragraphs, "[Unsupported content]")
 					}
 					return
 				}

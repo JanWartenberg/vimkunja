@@ -17,7 +17,7 @@
 
 In Insertmode: Ctrl+V -> paste contents of Systemclipboard at cursor position
 
-(selections für etwaiges Kopieren fehlt auch noch, aber das ist mehr für die Zukunft)
+(Selection for copying is also still missing, but that is a future concern.)
 
 In Descriptionfield:
 (and in future for any more-line edit fields)

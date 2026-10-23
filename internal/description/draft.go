@@ -63,7 +63,7 @@ type Action struct {
 }
 
 var ErrConfirmation = errors.New("Preserved content would change; confirm this operation")
-var ErrQuoteMetadataConfirmation = fmt.Errorf("Zitat-Metadaten würden gelöscht werden. Bitte Löschung bestätigen.: %w", ErrConfirmation)
+var ErrQuoteMetadataConfirmation = fmt.Errorf("Quote metadata would be deleted. Please confirm deletion: %w", ErrConfirmation)
 
 type Selection struct {
 	Start, End             Anchor

@@ -17,7 +17,7 @@
 
 ## Further context
 
-Archived sources: `SPEC_FUNDAMENT.md`, “Globale Suche/Filter”, and `TUI_IDEA.md`, “Suche/Filter”.
+Archived sources: `SPEC_FUNDAMENT.md`, “Global Search/filter”, and `TUI_IDEA.md`, “Search/filter”.
 
 ## Related follow-ups
 

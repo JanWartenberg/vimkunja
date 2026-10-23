@@ -1,20 +1,20 @@
-# Workflow-Status im Task-Detail
+# Workflow status in Task Detail
 
 **Status:** completed — manual smoke test verified
 
 ## Problem Statement
 
-Vimkunja zeigt in der List View derzeit nur den globalen Erledigt-Zustand eines Tasks als offen oder erledigt. Wenn ein Benutzer einen Task im Detail-pane öffnet, kann er den in Vikunja üblichen Workflow-Status wie To-Do, Doing oder Done weder sehen noch bearbeiten. Dadurch fehlt eine wesentliche Funktion der Original-App, obwohl die zugehörigen Kanban-Buckets und Task-Bucket-Zuordnungen bereits in der bestehenden Vikunja-Datenbank vorhanden sind.
+Vimkunja currently shows only a Task's global open/done state in List View. Opening Task Detail does not show or allow editing workflow states such as To-Do, Doing, or Done used by Vikunja. This omits an essential original-application feature even though Kanban Buckets and Task/Bucket assignments already exist in the database.
 
-Das binäre Done-Toggle und die Bucket-Zuordnung können außerdem auseinanderlaufen: Beim Erledigen wird ein Task in konfigurierte Done-Buckets verschoben, beim Wiederöffnen bleibt er derzeit dort. Ein späteres Kanbanboard müsste diese Semantik erneut korrigieren, wenn Workflow-Status und Done-Zustand nicht vorher gemeinsam modelliert werden.
+The binary Done toggle and Bucket assignment can also diverge: completing a Task moves it to configured Done Buckets, but reopening currently leaves it there. A later Kanban board would need to fix this again unless workflow status and Done are modeled together first.
 
 ## Solution
 
-Das Task-Detail zeigt einen editierbaren Workflow-Status an. Der Status entspricht dem aktuellen Bucket des Tasks in der manuellen Kanban View seines Projekts und wird über einen Picker aus den dort vorhandenen Buckets gewählt. Die Änderung nimmt wie andere Detail-Felder am bestehenden Entwurfs-, Dirty-, Save- und Discard-Verhalten teil.
+Task Detail displays an editable workflow status. Status corresponds to the Task's current Bucket in its Project's manual Kanban View and is selected through a picker of existing Buckets. Like other Detail fields, changes participate in existing draft, dirty, save, and discard behavior.
 
-Die Statuslogik hält Bucket-Zuordnung und globalen Done-Zustand konsistent: Der konfigurierte Done-Bucket bedeutet erledigt; alle anderen Buckets bedeuten offen. Das bestehende `x`-Toggle verwendet dieselbe zentrale Workflow-Operation. So entsteht vor dem Kanbanboard eine gemeinsame fachliche Grundlage, ohne bereits Board-Rendering oder Board-Navigation zu implementieren.
+Status logic keeps Bucket assignment and global Done consistent: the configured Done Bucket means completed; other Buckets mean open. Existing `x` toggle uses the same central workflow operation. This establishes a shared domain foundation before Kanban without implementing board rendering/navigation yet.
 
-In der üblichen und aktuell vorhandenen Konfiguration mit genau einer manuellen Kanban View pro Projekt ist der Status vollständig nutzbar. Bei keiner oder mehreren manuellen Kanban Views trifft Vimkunja keine stillschweigende, möglicherweise falsche Auswahl, sondern zeigt eine verständliche nicht editierbare Rückmeldung. Die Mehrfach-View-Semantik wird separat mit dem Kanbanboard entschieden.
+Status is fully usable in the usual current configuration of exactly one manual Kanban View per Project. With none or multiple, Vimkunja makes no silent, potentially incorrect choice; it shows clear read-only feedback. Multiple-View semantics will be decided separately with Kanban.
 
 ## User Stories
 

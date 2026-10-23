@@ -69,7 +69,7 @@ func TestDescriptionTerminalTextRendersCheckboxListsReadOnly(t *testing.T) {
 
 func TestDescriptionTerminalTextRendersUnknownElementsOrExplainsEmptyOnes(t *testing.T) {
 	got := descriptionTerminalText(`<p>Known</p><custom-node>Readable</custom-node><empty-node></empty-node>`)
-	if want := "Known\nReadable\n[Nicht unterstützter Inhalt]"; got != want {
+	if want := "Known\nReadable\n[Unsupported content]"; got != want {
 		t.Fatalf("descriptionTerminalText() = %q, want %q", got, want)
 	}
 }
@@ -90,7 +90,7 @@ func TestDescriptionTerminalTextToleratesMalformedHTML(t *testing.T) {
 
 func TestDescriptionTerminalTextDoesNotExposeUnreadableMarkup(t *testing.T) {
 	got := descriptionTerminalText("<p")
-	if want := "[Nicht lesbarer Beschreibungsinhalt]"; got != want {
+	if want := "[Unreadable description content]"; got != want {
 		t.Fatalf("descriptionTerminalText() = %q, want %q", got, want)
 	}
 }

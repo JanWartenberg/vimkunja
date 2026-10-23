@@ -359,8 +359,8 @@ This spec focuses on **Fundament only** (Decisions #1-11). The following are exp
 ### Deferred to Later Features
 - **Task deletion (future feature):** Delete a selected task only after explicit confirmation. It must preserve Vikunja-compatible persistence semantics, surface failures through the existing error feedback and session log, and refresh the affected view after success. The Store interface is the primary test seam; Store tests verify persisted outcomes and TUI model tests verify the confirmation, failure, and refresh behaviour.
 - **Project deletion (separate future feature):** Specify independently of task deletion. Before implementation, decide whether contained tasks are deleted, archived, or moved, and how the operation is confirmed and reflected in the current pane.
-- **Labels (später):** Die bestehende Vikunja-Label-Datenhaltung wird ohne Schemaänderung genutzt. Task-Details sollen vorhandene Labels anzeigen und setzen können; Anlage, Bearbeitung und Löschung von Labels werden später entschieden. Globale Suche und Filter sollen Labels als Suchziel und Filterkriterium unterstützen.
-- **Globale Suche/Filter (`/`, später):** Durchsucht Tasks, Projekte und Vikunja-Labels; genaue Ergebnisansicht, Navigation und Filtersemantik werden in einer späteren Grilling-Session entschieden.
+- **Labels (later):** Reuse existing Vikunja Label storage without schema changes. Task Detail should display and assign existing Labels; creation, editing, and deletion of Labels will be decided later. Global Search and filters should support Labels as search targets and filter criteria.
+- **Global Search/filter (`/`, later):** Search Tasks, Projects, and Vikunja Labels; decide exact result display, navigation, and filter semantics in a later design review.
 - Comments (`a` to append comment) (Prio 5)
 - Undo (`u` keybinding)
 - Table/Gantt views

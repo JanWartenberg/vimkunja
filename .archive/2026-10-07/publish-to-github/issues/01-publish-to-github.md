@@ -1,6 +1,6 @@
-# 01 — Lizenz und Dokumentation für GitHub vorbereiten
+# 01 — Prepare license and documentation for GitHub
 
-**What to deliver:** Lizenz und Nutzerdokumentation für den aktuellen Vimkunja-Stand so vorbereiten, dass Code und Doku anschließend auf GitHub veröffentlicht werden können.
+**What to deliver:** Prepare license and user documentation for the current Vimkunja state so code and documentation can subsequently be published on GitHub.
 
 **Category:** maintenance
 
@@ -8,197 +8,197 @@
 
 **Status:** completed
 
-**Nachfolger:** [02 — Veröffentlichung nach dem Richtext-Merge vorbereiten](../../../../.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md)
+**Successor:** [02 — Prepare publication after the rich-text merge](../../../../.scratch/publish-to-github/issues/02-prepare-publication-after-richtext-merge.md)
 
-**Erfüllte Grundlage:** [Vikunja-DB-Kompatibilität ausschließlich 2.7.0](../../../2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md)
+**Prerequisite met:** [Vikunja database compatibility: 2.7.0 only](../../../2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md)
 
-## Verbindlicher Umfang — 2026-10-07
+## Required scope — 2026-10-07
 
-Dieses bestehende Ticket übernimmt jetzt ausschließlich **Lizenz und Dokumentation**. Es kann vor dem Richtext-Merge abgeschlossen werden. Historienbereinigung, CI-Abnahme, Veröffentlichungskopie und Push-Prüfung gehören in Ticket 02 und starten erst nach dem vereinbarten Richtext-Merge.
+This existing ticket now covers only **license and documentation**. It can be completed before the rich-text merge. History cleanup, CI acceptance, publication copy, and push verification belong to Ticket 02 and start only after the agreed rich-text merge.
 
-- MIT für den eigenen Code beibehalten; `LICENSE`, README-Lizenzabschnitt und `THIRD_PARTY_NOTICES.txt` auf Konsistenz, Quellenzuordnung und Vollständigkeit für die vorhandenen Abhängigkeiten prüfen.
-- Vorhandene technische Herkunftsbefunde und Grenzen der Prüfung nachvollziehbar erhalten. Eigenen MIT-Code, fremde Lizenzbedingungen und offene Anforderungen späterer Binary-Releases klar beschreiben.
-- README-Einstieg, Build-/Startbefehle, Tutorial, Konfiguration und Bedienung gegen den aktuellen `main`-Stand prüfen. Keine geplante Richtext-Funktion als implementiert ausgeben.
-- Vikunja 2.7.0, sequenziellen Betrieb, DB-Voraussetzungen, bekannte Workflow-Abweichungen und Plattformgrenzen konsistent dokumentieren; veraltete Aussagen als historische Befunde kennzeichnen.
-- Lokale Dateilinks, Fragment-Anker und externe Quellenlinks prüfen; nicht mitgelieferte lokale Artefakte entsprechend kennzeichnen.
-- Änderungen auf Lizenz-/Dokumentationskorrekturen begrenzen. Keine Dependency-/Schema-Änderungen, keine CI-Änderungen, keine Änderung von Git-Identitäten oder Historie, keine Veröffentlichung.
+- Keep MIT for our own code; check `LICENSE`, README license section, and `THIRD_PARTY_NOTICES.txt` for consistency, attribution, and completeness for existing dependencies.
+- Preserve technical provenance findings and limitations clearly. Describe our MIT code, third-party license conditions, and outstanding requirements of later binary releases.
+- Check README introduction, build/start commands, tutorial, configuration, and controls against current `main`. Do not present planned rich-text features as implemented.
+- Consistently document Vikunja 2.7.0, sequential operation, database prerequisites, known workflow differences, and platform limitations; mark outdated statements as historical findings.
+- Check local file links, fragment anchors, and external sources; identify local artifacts that are not included.
+- Limit changes to license/documentation corrections. No dependency/schema changes, CI changes, Git identity/history changes, or publication.
 
-## Bereits festgelegt / Vorabstatus
+## Already decided / preliminary state
 
-- Jan hat MIT und das Ziel `JanWartenberg/vimkunja` festgelegt. Code und Dokumentation haben höchste Priorität; Tickets, Prototypen und sichere Historie sollen möglichst transparent mitgenommen werden.
-- README beschreibt bereits den Start über eine von Vikunja initialisierte DB und das synthetische Tutorial. Eine blanke DB ist kein produktiver Start. Ein zusätzliches versioniertes Start-Template bleibt eine optionale Produktentscheidung; dessen Umsetzung ist keine Abnahmebedingung dieses Dokumentationstickets.
-- Native Windows-/CalDAV-Abnahme und besondere Lizenzbedingungen etwaiger macOS-Binaries bleiben ausdrücklich offen. Dieses Ticket muss die Grenzen dokumentieren, keinen Binary-Release bauen oder freigeben.
-- **Vorabstatus 2026-10-07: keine blockierenden Rückfragen für Ticket 01.** Die Lizenzentscheidung, das Repositoryziel und der aktuelle Funktions-/DB-Contract reichen für die Arbeit aus. Bestehende Sprachmischung ohne beauftragte Komplettübersetzung beibehalten; Dokumentation des vorhandenen Startwegs genügt zunächst.
-- Der Vorabstatus wurde berichtet; anschließend hat Jan die Umsetzung von Ticket 01 beauftragt. Die unten dokumentierte Abnahme ist abgeschlossen.
+- Jan selected MIT and target `JanWartenberg/vimkunja`. Code and documentation have highest priority; include tickets, prototypes, and safe history as transparently as possible.
+- README already describes startup with a database initialized by Vikunja and the synthetic tutorial. A blank database is not a production starting point. An additional versioned starter template remains an optional product decision; implementation is not an acceptance condition of this documentation ticket.
+- Native Windows/CalDAV acceptance and specific license conditions of potential macOS binaries remain explicitly open. Document those boundaries; do not build or approve a binary release.
+- **Preliminary state 2026-10-07: no blocking questions for Ticket 01.** License decision, repository target, and current feature/database contract are sufficient. Keep the existing language mix without a requested complete translation; documenting the existing startup path is sufficient for now.
+- The preliminary state was reported; Jan then requested implementation of Ticket 01. Acceptance below is complete.
 
-## Abnahme für Ticket 01
+## Acceptance for Ticket 01
 
-- [x] MIT-Datei, README-Lizenzabschnitt und Drittanbieter-Hinweise abschließend gegen den aktuellen Stand geprüft; konkrete Korrekturen umgesetzt und Ergebnis dokumentiert.
-- [x] README beschreibt einen nachvollziehbaren Build, einen sicheren Tutorial-Einstieg und den produktiven Start mit bestehender 2.7.0-DB; Konfiguration und Bedienung entsprechen dem implementierten Stand.
-- [x] Kompatibilitäts-, Plattform- und Workflow-Grenzen sowie zusätzliche Binary-Lizenzanforderungen sind ohne unbelegte Freigaben dokumentiert.
-- [x] Dokumentationslinks und Beispiele geprüft; historische Befunde von aktuellen Aussagen getrennt.
-- [x] Ticket 02 übernimmt alle operativen Veröffentlichungsschritte; Ticket 01 kann unabhängig vom Richtext-Merge abgeschlossen werden. Bei späteren Feature-/Dependency-Änderungen wird die betroffene Doku/Lizenzzuordnung vor Veröffentlichung erneut abgeglichen.
+- [x] MIT file, README license section, and third-party notices finally checked against current state; concrete corrections implemented and results recorded.
+- [x] README describes a reproducible build, safe tutorial introduction, and production startup with an existing 2.7.0 database; configuration and controls match implementation.
+- [x] Compatibility, platform, workflow, and additional binary-license limits documented without unsupported approvals.
+- [x] Documentation links/examples checked; historical findings separated from current claims.
+- [x] Ticket 02 owns all operational publication steps; Ticket 01 can close independently of the rich-text merge. Reconcile affected documentation/license attribution again before publication after later feature/dependency changes.
 
-## Abschluss und Prüfergebnisse — 2026-10-07
+## Completion and results — 2026-10-07
 
-**Ticket 01 ist für den aktuellen `main`-Stand abgeschlossen.** Geprüfte Codebasis: `e77f00c69fba7f8cb69a56eb8b64732c896c1e17`; Die Dokumentationskorrekturen sind diesem abgeschlossenen Ticket zugeordnet. Die operative Veröffentlichung bleibt in Ticket 02 nach dem Richtext-Merge.
+**Ticket 01 is complete for the current `main` state.** Verified codebase: `e77f00c69fba7f8cb69a56eb8b64732c896c1e17`; documentation corrections belong to this completed ticket. Operational publication remains in Ticket 02 after the rich-text merge.
 
-### Umgesetzt
+### Implemented
 
-- README beschreibt jetzt ausdrücklich die schreibgeschützte HTML-Description-Projektion und grenzt sie von editierbarem Plain Text und der noch geplanten nativen Richtext-Bearbeitung ab.
-- Konfigurationspriorität entspricht `LoadUserConfig`: CLI, TOML, Defaults. Environment-Overrides sind nicht implementiert. Das CLI-Konfigurationsbeispiel nennt einen expliziten DB-Pfad.
-- Starts der gebauten Programme für Linux und Windows PowerShell ergänzt; relative Pfade setzen das Repository-Verzeichnis voraus. Go-Sprachminimum und gepflegte Build-Toolchain unterschieden; VOA-Begriff erläutert und reguläre Tutorial-Bereinigung präzisiert.
-- Lizenzabschnitt trennt eigenen MIT-Code und fremde Bedingungen, verlinkt Vikunjas eigene Lizenz und benennt die noch offene macOS-Binary-Abnahme einschließlich APSL 1.1/2.0. Die bestehende MIT-Datei ist konsistent und benötigt keine Änderung.
-- Notice-Inventarkopf auf die tatsächlich geprüften Zielarchitekturen und das neue Prüfdatum korrigiert; APSL-1.1-/2.0-Zuordnung präzisiert. Vollständige fremde Lizenztexte und Copyright-Hinweise bleiben erhalten.
+- README now explicitly describes read-only HTML Description projection, distinguishing it from editable plain text and planned native rich-text editing.
+- Configuration precedence matches `LoadUserConfig`: CLI, TOML, defaults. Environment overrides are not implemented. CLI configuration example includes an explicit database path.
+- Added startup commands for built programs on Linux and Windows PowerShell; relative paths assume the repository directory. Distinguished Go language minimum from maintained build toolchain; explained VOA and clarified normal tutorial cleanup.
+- License section separates our MIT code from third-party conditions, links Vikunja's license, and identifies pending macOS binary acceptance including APSL 1.1/2.0. Existing MIT file is consistent and needs no change.
+- Corrected notices inventory header to actual verified target architectures and new review date; clarified APSL 1.1/2.0 attribution. Full third-party license texts and copyright notices preserved.
 
-### Validierung
+### Validation
 
-- Dependency-Closure beider Entrypoints für Linux amd64, Windows amd64 sowie Darwin amd64/arm64 mit `CGO_ENABLED=0` erneut bestimmt: **30 Drittmodule**, alle Versionszuordnungen und Root-Lizenztexte in `THIRD_PARTY_NOTICES.txt` enthalten. **128 zusätzliche Lizenz-Kommentarblöcke** aus den kompilierten Dependency-Quelldateien ebenfalls vollständig vorhanden. Keine Dependency-Änderung.
-- Lizenztexte und Herkunftsnachweise gegen die lokalen, versionierten Module sowie die verlinkten MIT-/APSL-Quellen abgeglichen. Diese technische Bestandsprüfung ist keine lückenlose Herkunftsbeweisführung oder pauschale Binary-Freigabe; frühere Herkunftsbefunde und ihre Grenzen bleiben unten erhalten.
-- Vor der Archivierung: **102 veröffentlichbare Markdown-Dateien**, alle erkannten lokalen Dateilinks und Markdown-Fragmente ohne defekte Ziele; **70 unterschiedliche externe Markdown-/Modularchiv-Quellen** HTTP 200, GitHub-Zeilenanker im Bereich der jeweiligen Rohdatei. Archivierungslinks anschließend erneut geprüft.
-- Frischer isolierter Clone des geprüften Codes, Go 1.27.1: exakt der dokumentierte Build `go build -o bin/ ./cmd/vimkunja ./cmd/vimkunja-tutorial` erfolgreich. Beide Help-Aufrufe erfolgreich; dokumentierte Timeout-Flags werden akzeptiert. Fehlender DB-Pfad liefert den Tutorial-Hinweis und legt keine DB an.
-- README-TOML-Beispiel in separatem temporärem Konfigurationsverzeichnis verwendet; Tutorial mit CLI-Override in einem Linux-PTY gestartet und sichtbare erste Lektion geprüft. `Ctrl+C` beendet sauber und entfernt die temporäre Demo-DB. Kein vollständiger manueller Tutorial-Durchlauf und kein nativer Windows-Test behauptet.
-- Bestehende gezielte Konfigurations-/HTML-Schreibschutztests (`TestLoadUserConfig*`, `TestHTMLDescriptionRemainsReadOnlyDuringReaderPhase`) erfolgreich. Änderungen betreffen ausschließlich Dokumentation und deren Tracking; keine neuen Implementierungstests erforderlich.
+- Recomputed dependency closure of both entrypoints for Linux amd64, Windows amd64, and Darwin amd64/arm64 with `CGO_ENABLED=0`: **30 third-party modules**, all versions and root license texts included in `THIRD_PARTY_NOTICES.txt`. **128 additional license comment blocks** from compiled dependency sources also fully present. No dependency change.
+- Checked license texts/provenance evidence against local versioned modules and linked MIT/APSL sources. This technical inventory is not complete provenance proof or blanket binary approval; earlier provenance findings and limitations are preserved below.
+- Before archiving: **102 publishable Markdown files**, all detected local file links and Markdown fragments without broken targets; **70 distinct external Markdown/module-archive sources** HTTP 200, GitHub line anchors within each raw file. Rechecked archive links afterward.
+- Fresh isolated clone of verified code, Go 1.27.1: exact documented build `go build -o bin/ ./cmd/vimkunja ./cmd/vimkunja-tutorial` succeeds. Both help calls succeed; documented timeout flags accepted. Missing database path provides tutorial guidance and creates no database.
+- Used README TOML example in a separate temporary configuration directory; started tutorial with CLI override in Linux PTY and checked visible first lesson. `Ctrl+C` exits cleanly and removes the temporary demo database. No full manual tutorial run or native Windows test claimed.
+- Existing targeted configuration/HTML write-protection tests (`TestLoadUserConfig*`, `TestHTMLDescriptionRemainsReadOnlyDuringReaderPhase`) pass. Changes affect documentation/tracking only; no new implementation tests needed.
 
-### Verbleibende Grenzen und Übergabe
+### Remaining limits and handover
 
-- Produktiver frischer Start weiterhin über eine von Vikunja 2.7.0 initialisierte DB; ein zusätzliches Start-Template ist eine optionale spätere Produktentscheidung. Keine Nutzerdaten oder echten Datenbanken über die Anwendung geöffnet.
-- Native Windows-/CalDAV-Abnahme und Lizenz-/Packaging-Bedingungen eines späteren macOS-Binary-Releases bleiben offen und sind in der README gekennzeichnet. Sie verhindern den Abschluss dieses Dokumentationsumfangs nicht.
-- Nach dem Richtext-Merge gleicht Ticket 02 nur die betroffenen Funktions-/Dependency-Änderungen gegen README, STATUS und Lizenzinventar ab, bevor der endgültige Stand geprüft wird.
-- Keine CI-, Code-, Schema-, Git-Identitäts- oder Historienänderung; kein Commit, Merge, Remote-Anlegen oder Push mit dieser Umsetzung.
+- Fresh production startup still uses a database initialized by Vikunja 2.7.0; an additional starter template is an optional later product decision. No user data or real databases opened through the application.
+- Native Windows/CalDAV acceptance and license/packaging conditions of later macOS binary releases remain open and identified in README. They do not prevent closing this documentation scope.
+- After the rich-text merge, Ticket 02 reconciles only affected feature/dependency changes against README, STATUS, and license inventory before checking the final state.
+- No CI, code, schema, Git identity, or history changes; no commit, merge, remote creation, or push with this implementation.
 
-## Historische Befunde des bisherigen Gesamttickets
+## Historical findings from the former overall ticket
 
-Die folgenden datierten Prüfberichte und Kommentare bleiben als Evidenz erhalten. Sie dokumentieren frühere Stände einschließlich inzwischen behobener Findings und früher hier geführter CI-/Datenschutzarbeit. **Sie erweitern den aktuellen Umfang von Ticket 01 nicht; operative Folgearbeit liegt jetzt in Ticket 02.**
+The following dated reports/comments remain as evidence. They document earlier states including resolved findings and CI/privacy work previously tracked here. **They do not expand Ticket 01's current scope; operational follow-up now belongs to Ticket 02.**
 
-## Prüfbefund vom 2026-10-04
+## Findings from 2026-10-04
 
-### Datenbankhistorie
+### Database history
 
-- Alter Commit `35b34220934d21c3bbd8e26bfe537098f28da966` (`MVP Vimkunja`, 2026-07-08) enthält `internal/db/vikunja.db` (569344 Byte), `internal/db/vikunja.db-shm` (32768 Byte) und `internal/db/vikunja.db-wal` (0 Byte).
-- Alter Folgecommit `42f6029` entfernt diese Dateien, entfernt sie aber nicht aus seiner Vorgeschichte.
-- Diese alte Historie ist über `refs/original/refs/heads/main` erreichbar.
-- Die vollständigen Historien von `main`, `MVP` und `Milestone1` enthalten keine DB-Dateien. Der aktuelle MVP-Root-Commit ist `23cd558`.
-- WAL-Dateien können Daten enthalten; SHM-Dateien gehören ebenfalls nicht in die Veröffentlichung. Die aktuell leere historische WAL-Datei wird nicht als Sample übernommen.
+- Old commit `35b34220934d21c3bbd8e26bfe537098f28da966` (`MVP Vimkunja`, 2026-07-08) contains `internal/db/vikunja.db` (569344 bytes), `internal/db/vikunja.db-shm` (32768 bytes), and `internal/db/vikunja.db-wal` (0 bytes).
+- Old subsequent commit `42f6029` removes those files but not their history.
+- That old history is reachable through `refs/original/refs/heads/main`.
+- Complete histories of `main`, `MVP`, and `Milestone1` contain no database files. Current MVP root commit is `23cd558`.
+- WAL files can contain data; SHM files must not be published either. The currently empty historical WAL file is not included as a sample.
 
-### Secret-Scan
+### Secret scan
 
-- Gitleaks 8.30.1: aktueller Dateibestand einschließlich ungetrackter/ignorierter Dateien; Git-Historie mit allen Referenzen und Reflogs; zusätzlich alle lokal gespeicherten Blob-, Commit- und Tag-Objekte einschließlich unerreichbarer Altstände.
-- Historienlauf: 144 Commits, keine Treffer. Zusätzlicher Objektlauf umfasste 1009 Blobs, 155 Commits und 2 Tag-Objekte.
-- Dateibestand: ein Fehlalarm für den `localStorage`-Schlüssel in `.scratch/editor-motion-polish/acceptance_test_V1.html:101`.
-- Objektlauf: vier Fehlalarme für historische `go.sum`-Prüfsummen des Moduls `modernc.org/token`.
-- Keine echten Secrets gefunden. Automatische Erkennung ist keine Garantie; vor Veröffentlichung erneut scannen und persönliche Inhalte manuell prüfen.
-- Redigierte JSON-Berichte liegen temporär außerhalb des Repositorys unter `/tmp/vimkunja-secret-audit-6nnrkfsc/`; diese Dateien sind keine dauerhaft verfügbare Ticket-Evidenz.
+- Gitleaks 8.30.1: current files including untracked/ignored files; Git history with all refs/reflogs; additionally all locally stored blob, commit, and tag objects including unreachable older states.
+- History run: 144 commits, no findings. Additional object run included 1009 blobs, 155 commits, and 2 tag objects.
+- Current files: one false positive for the `localStorage` key in `.scratch/editor-motion-polish/acceptance_test_V1.html:101`.
+- Object run: four false positives for historical `go.sum` checksums of `modernc.org/token`.
+- No real secrets found. Automated detection is not a guarantee; rescan and manually review personal contents before publication.
+- Redacted JSON reports temporarily outside the repository at `/tmp/vimkunja-secret-audit-6nnrkfsc/`; these are not permanently available ticket evidence.
 
-## Vorabprüfung vom 2026-10-04: frischer Clone und Dokumentation
+## Preliminary check on 2026-10-04: fresh clone and documentation
 
-**Geprüfter Stand:** committed `main` (`761774b`), als frischer `--no-local --single-branch`-Clone außerhalb des Workspace. Laufende uncommitted Änderungen sind nicht Teil dieses Ergebnisses. Temporäre Prüfdateien liegen unter `/tmp/vimkunja-publication-check-jqyy8_9u/`; sie sind nicht dauerhaft verfügbar.
+**Verified state:** committed `main` (`761774b`), fresh `--no-local --single-branch` clone outside the workspace. Ongoing uncommitted changes are excluded. Temporary files at `/tmp/vimkunja-publication-check-jqyy8_9u/`; not permanently available.
 
-### Erfolgreich geprüft
+### Successfully checked
 
-- Clone enthält `main`, die dazugehörigen Remote-Tracking-Referenzen und die Tags `MVP`/`Milestone1`; keine `refs/original/`-Referenz und keine erreichbaren historischen DB-Dateien.
-- Go 1.25.0, Linux amd64: `go test ./...`, beide Entrypoint-Builds und `go vet ./...` erfolgreich. Tests liefen mit einem leeren separaten Benutzerkonfigurationsverzeichnis.
-- Beide Entrypoints erfolgreich für Windows amd64 mit `CGO_ENABLED=0` cross-kompiliert. Dies belegt keine Windows-Terminal-, Tastatur- oder Clipboard-Funktion.
-- Beide `--help`-Aufrufe erfolgreich. Tutorial in einem Linux-PTY gestartet: sichtbare erste Lektion mit synthetischen Tasks; sauberer Exit mit `Ctrl+C`. Kein vollständiger Durchlauf aller Lektionen.
-- Nach Tests, Builds und Tutorial ist der Clone-Dateibaum unverändert. Die echte Nutzerdatenbank wurde nicht geöffnet.
-- Lokale Lizenzdateien für die in den Linux-Binaries verwendeten Drittmodule vorhanden. Das ist nur eine Bestandsaufnahme, keine abgeschlossene Prüfung der Lizenzbedingungen oder Code-Herkunft. Die eigene Projektlizenz fehlt weiterhin.
+- Clone contains `main`, its remote-tracking references, and tags `MVP`/`Milestone1`; no `refs/original/` or reachable historical database files.
+- Go 1.25.0, Linux amd64: `go test ./...`, both entrypoint builds, and `go vet ./...` pass. Tests used an empty separate user configuration directory.
+- Both entrypoints cross-compiled for Windows amd64 with `CGO_ENABLED=0`. This does not establish Windows terminal, keyboard, or clipboard functionality.
+- Both `--help` calls succeed. Tutorial started in Linux PTY: visible first lesson with synthetic Tasks; clean `Ctrl+C` exit. No complete run of every lesson.
+- Clone working tree unchanged after tests, builds, and tutorial. Real user database not opened.
+- Local license files exist for third-party modules used by Linux binaries. This is only an inventory, not a completed license-terms or code-provenance review. Our project license is still missing at this point.
 
-### Vor Veröffentlichung zu klären
+### Clarify before publication
 
-- **README-Einstieg:** `cd /workspace/vimkunja` ist ein lokaler Entwicklungspfad; Clone-/Installationsanleitung und Go-Voraussetzung fehlen. Der normale Start benötigt eine separat bereitgestellte Vikunja-Datenbank. Das Tutorial ist der funktionierende Einstieg ohne Nutzerdatenbank.
-- **Fehlender DB-Pfad:** Ein Start mit `--db` auf eine nicht vorhandene Datei erzeugt eine leere SQLite-Datei. Im nichtinteraktiven Prüfprozess folgt ein TTY-Fehler; ein hilfreicher Fehler für eine fehlende Vikunja-Datenbank ist damit nicht belegt. Das widerspricht der README-Aussage, dass der Pfad existieren muss. Nur mit einem temporären Prüfpfad reproduziert; keine Korrektur vorgenommen.
-- **Kompatibilität:** Keine belegte Liste unterstützter Vikunja-Releases gefunden. Store-Tests und Tutorial verwenden selbst angelegte Schemas; vorhandene Recherche verweist auf einen Upstream-Commit, ersetzt aber keinen versionierten Integrationstest mit der Original-App. Ein solcher Roundtrip wurde hier nicht durchgeführt. Die Einschränkung auf genau einen lokalen User bei bestimmten Schreiboperationen muss dokumentiert werden.
-- **Vier kaputte relative Markdown-Dateilinks im getrackten Archiv:** `.archive/2026-07-17/fundament-mvp/SPEC_FUNDAMENT.md` verweist auf `.archive/TUI_IDEA.md`; `.archive/2026-07-27/all-tasks-overview/issues/01-add-cross-project-all-tasks-view.md` auf `../../../prototype/overview_tui/`; `.archive/2026-08-02/global-search-filter/issues/01-specify-global-search-and-filter.md` auf `../../local-search/issues/01-search-within-focused-pane.md` und `02-add-advanced-global-search-query-and-ranking.md`. Ziele fehlen relativ zum jeweiligen Dokument. Externe Links und Fragment-Anker sind noch nicht vollständig geprüft.
-- **Lokale Pfade:** README sowie Richtext-Spec, Corpus-Dokumentation und Richtext-Ticket enthalten `/workspace`-Verweise. Bei Veröffentlichung durch portable Links ersetzen oder ausdrücklich als historische lokale Artefakte kennzeichnen.
-- Persönliche Inhalte/Commit-Metadaten und Herkunft übernommener Bestandteile bleiben manuelle Prüfaufgaben; kein pauschales Freigabeurteil aus diesem technischen Check.
+- **README introduction:** `cd /workspace/vimkunja` is a local development path; clone/install instructions and Go prerequisites missing. Normal startup needs a separately supplied Vikunja database. Tutorial is the working entry without user data.
+- **Missing database path:** Starting with `--db` pointing to a nonexistent file creates an empty SQLite file. A TTY error follows in the noninteractive check; no helpful missing-Vikunja-database error is established. This contradicts README's requirement that the path exist. Reproduced only with a temporary path; no correction made.
+- **Compatibility:** No evidenced list of supported Vikunja releases found. Store tests/tutorial use custom schemas; research references an upstream commit but does not replace versioned integration testing with the original application. No such round trip performed here. Document the exactly-one-local-User restriction for certain writes.
+- **Four broken relative Markdown file links in tracked archive:** `.archive/2026-07-17/fundament-mvp/SPEC_FUNDAMENT.md` links to `.archive/TUI_IDEA.md`; `.archive/2026-07-27/all-tasks-overview/issues/01-add-cross-project-all-tasks-view.md` to `../../../prototype/overview_tui/`; `.archive/2026-08-02/global-search-filter/issues/01-specify-global-search-and-filter.md` to `../../local-search/issues/01-search-within-focused-pane.md` and `02-add-advanced-global-search-query-and-ranking.md`. Targets missing relative to each document. External links/fragment anchors not yet fully checked.
+- **Local paths:** README, rich-text spec, corpus documentation, and rich-text ticket contain `/workspace` references. Replace with portable links or explicitly identify historical local artifacts for publication.
+- Personal contents/commit metadata and provenance of included components remain manual checks; no blanket approval from this technical check.
 
-## Umsetzung der Vorab-Findings — 2026-10-04
+## Preliminary findings implemented — 2026-10-04
 
-- **MIT beschlossen und ergänzt:** `LICENSE` enthält MIT mit Copyright 2026 Jan Wartenberg; README verlinkt die Lizenz. Die Herkunft übernommener Bestandteile und Drittanbieter-Lizenzbedingungen bleiben separat zu prüfen.
-- **README:** portable Clone-/Build-Anleitung mit vorläufigem `<repository-url>`-Platzhalter, Go 1.25+, Tutorial-Einstieg ohne Nutzerdaten, SQLite-Betrieb und derzeitige Plattform-/Versionsgrenzen dokumentiert. Keine unbelegte Vikunja-Versionsfreigabe.
-- **Links:** vier Archivlinks korrigiert. `.archive/TUI_IDEA.md` wird als benötigte historische Designquelle ausdrücklich aus der Archive-Ignore-Regel ausgenommen; Gitleaks findet darin keine Secrets. Alle lokalen Markdown-Dateilinks im aktuellen veröffentlichbaren Dateibestand lösen auf; externe Links und Fragment-Anker sind nicht vollständig geprüft.
-- **Lokale Pfade:** README verwendet keine Workspace-Adresse mehr. Richtext-Dokumente nennen historische temporäre HTML-Artefakte ausdrücklich als nicht mitgelieferte Dateien; die frühere externe Upstream-Checkout-Adresse ist durch eine portable Beschreibung ersetzt. Inhaltliche Richtext-Entscheidungen bleiben erhalten.
-- **Fehlende DB:** Store öffnet ausschließlich vorhandene reguläre Dateien; SQLite `mode=rw` verhindert auch versehentliches Neuanlegen nach dem Dateicheck. CLI liefert einen Hinweis auf `--db` und das Tutorial. Regressionstests decken fehlende Dateien, Verzeichnisse und Dateinamen mit Leerzeichen, `#` und `%` ab.
-- **CI vorbereitet:** `.github/workflows/ci.yml` führt Tests, beide Builds und Vet auf Linux und Windows aus, bei Push auf `main`, Pull Requests und manuell. Workflow lokal mit actionlint v1.7.12 geprüft. Ein tatsächlicher GitHub-Actions-Lauf steht vor Veröffentlichung noch aus.
-- **Validierung:** aktueller Workspace besteht `go test ./...`, beide Linux-Builds, `go vet ./...` und beide Windows-amd64-Cross-Builds. Die realen Windows-Terminaltests bleiben offen. Keine Nutzerdaten geöffnet, keine Schema-/Dependency-Änderungen, kein Commit oder Push.
+- **MIT selected and added:** `LICENSE` contains MIT with Copyright 2026 Jan Wartenberg; README links the license. Provenance of included components and third-party conditions remain separate checks.
+- **README:** Portable clone/build instructions with preliminary `<repository-url>` placeholder, Go 1.25+, tutorial without user data, SQLite operation, and current platform/version limits documented. No unsupported Vikunja version approval.
+- **Links:** Four archive links corrected. `.archive/TUI_IDEA.md` explicitly exempted from archive ignore rules as a required historical design source; Gitleaks finds no secrets there. All local Markdown file links in current publishable files resolve; external links/fragment anchors not fully checked.
+- **Local paths:** README no longer uses a workspace address. Rich-text docs explicitly identify historical temporary HTML artifacts as files not included; former external upstream-checkout path replaced with portable wording. Rich-text product decisions preserved.
+- **Missing database:** Store opens only existing regular files; SQLite `mode=rw` prevents accidental creation even after file validation. CLI points to `--db` and tutorial. Regressions cover missing files, directories, and filenames with spaces, `#`, and `%`.
+- **CI prepared:** `.github/workflows/ci.yml` runs tests, both builds, and vet on Linux/Windows for pushes to `main`, pull requests, and manual dispatch. Workflow checked locally with actionlint v1.7.12. A real GitHub Actions run remains pending before publication.
+- **Validation:** Current workspace passes `go test ./...`, both Linux builds, `go vet ./...`, and both Windows amd64 cross-builds. Real Windows terminal tests remain open. No user data opened, schema/dependency changes, commit, or push.
 
-### Blanke DB oder Start-Template: geprüft, Produktentscheidung offen
+### Blank database or starter template: checked, product decision open
 
-Eine blanke SQLite-Datei hat kein Vikunja-Schema und bietet keinen nutzbaren frischen Start. Der Store bleibt für bestehende Test-/Bootstrap-Flows in der Lage, eine vorhandene leere Datei zu öffnen; die produktive Anwendung initialisiert sie nicht. Eine vollständige Schema-Prüfung mit eigener Fehlermeldung ist damit noch nicht implementiert.
+A blank SQLite file has no Vikunja schema and cannot provide a usable fresh start. Store remains able to open an existing empty file for test/bootstrap flows; the production application does not initialize it. Full schema validation with a dedicated error is not yet implemented at this historical point.
 
-Für einen produktiven frischen Start sollte die gewählte Vikunja-Version selbst Schema und Migrationshistorie initialisieren; anschließend sind mindestens die für den Workflow nötigen User-/Project-/View-Daten erforderlich. Ein Template müsste aus genau dieser geprüften Version erzeugt werden, ausschließlich synthetische Daten enthalten und durch einen Roundtrip in der Original-App belegt werden. Die reduzierte Tutorial-Datenbank ist kein produktives Vikunja-Template.
+For fresh production startup, the selected Vikunja version should initialize schema/migration history; at least the User/Project/View data needed for the workflow must then exist. A template would need to come from exactly that verified version, contain only synthetic data, and be evidenced by a round trip through the original application. Reduced tutorial database is not a production Vikunja template.
 
-**Noch festzulegen:** zunächst den von Vikunja initialisierten Start dokumentieren oder zusätzlich ein versioniertes, synthetisches Template anbieten. Kein produktives Template und keine eigenständige Vimkunja-Schemaerstellung wurden ohne diesen Contract eingeführt.
+**Still to decide:** Initially document Vikunja-initialized startup, or additionally provide a versioned synthetic template. No production template or independent Vimkunja schema creation introduced without that contract.
 
-## Weitere Veröffentlichungsprüfung — 2026-10-05
+## Further publication review — 2026-10-05
 
-### Ziel, Modulpfad und direkt behobene Findings
+### Target, module path, and directly corrected findings
 
-- Jan bestätigt `https://github.com/JanWartenberg/vimkunja` als öffentliches Ziel, analog zu Tagger. `go.mod`, alle bisherigen Go-Imports einschließlich Tests und README-Clone-URL sind angepasst. Dependency-Versionen und `go.sum` bleiben unverändert.
-- Der öffentliche GitHub-API-Aufruf für das Ziel liefert derzeit HTTP 404; das beweist nicht, ob das Repository fehlt oder privat ist. Es wurden kein Repository und kein externer Remote angelegt und nichts auf GitHub gepusht.
-- `/bin/` ist für die in der README beschriebenen lokalen Builds ignoriert. Globale DB-/WAL-/SHM-/SQLite-Ignore-Regeln schützen zusätzlich vor versehentlichem Staging temporärer Kompatibilitätsdatenbanken außerhalb von `internal/db`; vorhandene lokale DB-Dateien bleiben unverändert. Künftige bewusst veröffentlichte synthetische Fixtures brauchen eine ausdrückliche Ausnahme.
+- Jan confirms `https://github.com/JanWartenberg/vimkunja` as public target, analogous to Tagger. `go.mod`, all previous Go imports including tests, and README clone URL updated. Dependency versions and `go.sum` unchanged.
+- Public GitHub API call for the target currently returns HTTP 404; this does not prove whether the repository is missing or private. No repository/external remote created or GitHub push performed.
+- `/bin/` ignored for README local builds. Global database/WAL/SHM/SQLite ignore rules additionally protect against accidental staging of temporary compatibility databases outside `internal/db`; existing local databases unchanged. Future intentionally published synthetic fixtures require an explicit exception.
 
-### Lizenzprüfung
+### License review
 
-- Die tatsächliche Dependency-Closure beider Entrypoints für Linux, Windows und macOS amd64 umfasst insgesamt **30 Drittmodule**. Die Modul-Root-Lizenzen sind MIT bzw. BSD. Die vertiefte Prüfung tatsächlich kompilierter Dependency-Dateien findet zusätzlich MIT-/BSD-2-/BSD-4-Texte und **APSL-2.0-Hinweise in generierten Darwin-Headerdateien von `modernc.org/libc`**; außerdem gelten Musl-/Netdb-/Unicode-Hinweise. Eine reine Root-LICENSE-Prüfung hätte diese zusätzlichen Bedingungen übersehen. Das SQLite-Original ist [Public Domain](https://www.sqlite.org/copyright.html), die `modernc`-Bindings haben eigene BSD-Bedingungen.
-- [THIRD_PARTY_NOTICES.txt](../../../../THIRD_PARTY_NOTICES.txt) enthält versionierte Modulzuordnung, vollständige Root-Lizenztexte, zusätzliche Lizenz-Kommentarblöcke aus tatsächlich kompilierten Dependency-Dateien (einschließlich Darwin arm64), ergänzende Musl-/Netdb-/Unicode-Hinweise, APSL-1.1-/2.0-Texte samt Source-URLs und die Go-Lizenz. Die Datei und `LICENSE` müssen später bei Binary-Distributionen mitgeliefert werden; README dokumentiert dies. Unbenutzte Logos und ausschließlich in Dependency-Testdaten enthaltene Komponenten werden nicht als ausgelieferte Bestandteile behandelt.
-- [Vikunja 2.7.0 ist AGPL-3.0](https://raw.githubusercontent.com/go-vikunja/vikunja/v2.7.0/LICENSE). Vimkunjas Modulgraph bindet keinen Vikunja-Code ein. In den eigenen Go-Dateien wurden keine Übernahme-/Copyright-Vermerke Dritter gefunden. **561 historische Go-Blobs** der vorgesehenen Referenzen wurden mit den Backend-Go-Quellen des lokalen Upstream-Checkouts (`82ee780161c6ed250cdb1fc4d2952b72464cb724`) verglichen: keine identische Folge von acht nichttrivialen Codezeilen nach Entfernen von Leerraum/Kommentarzeilen.
-- **Ergebnis für den eigenen Code und die geplante Quellcode-Veröffentlichung:** kein konkreter Lizenzkonflikt gefunden; MIT bleibt bestehen. **Vor einem macOS-Binary-Release ist die APSL-Prüfung offen:** [APSL 2.0](https://opensource.apple.com/apsl/) Abschnitt 2.3 verlangt einen prominenten Hinweis im ausführbaren Code und in der Dokumentation zur Bezugsquelle des betroffenen Quellcodes. Die Notice-Datei allein belegt diese ausführbare Release-Bedingung nicht. Ein macOS-Binary-Release wird hier nicht freigegeben. Der technische Vergleich beweist keine lückenlose unabhängige Herkunft und erkennt insbesondere umgeschriebene oder kurze Übernahmen nicht. Künftige tatsächliche Upstream-Codeübernahmen brauchen eine erneute Herkunfts-/Lizenzprüfung; eine DB-Schnittstelle allein ist kein Nachweis einer Codeübernahme.
+- Actual dependency closure of both entrypoints on Linux, Windows, and macOS amd64 totals **30 third-party modules**. Module root licenses are MIT/BSD. Deeper review of compiled dependency files additionally finds MIT/BSD-2/BSD-4 texts and **APSL 2.0 notices in generated Darwin headers from `modernc.org/libc`**; Musl/Netdb/Unicode notices also apply. Root-LICENSE-only review would miss those extra conditions. Original SQLite is [public domain](https://www.sqlite.org/copyright.html); `modernc` bindings have their own BSD terms.
+- [THIRD_PARTY_NOTICES.txt](../../../../THIRD_PARTY_NOTICES.txt) contains versioned module attribution, full root license texts, additional license comment blocks from compiled dependency files (including Darwin arm64), supplementary Musl/Netdb/Unicode notices, APSL 1.1/2.0 texts with source URLs, and Go license. Include it and `LICENSE` with later binary distributions; README documents this. Unused logos and components present only in dependency test data are not treated as distributed components.
+- [Vikunja 2.7.0 is AGPL-3.0](https://raw.githubusercontent.com/go-vikunja/vikunja/v2.7.0/LICENSE). Vimkunja's module graph includes no Vikunja code. No third-party inclusion/copyright notices found in our Go files. **561 historical Go blobs** of intended references compared with backend Go sources of local upstream checkout (`82ee780161c6ed250cdb1fc4d2952b72464cb724`): no identical sequence of eight nontrivial code lines after removing whitespace/comment lines.
+- **Result for our code and planned source publication:** No concrete license conflict found; retain MIT. **APSL review remains open before a macOS binary release:** [APSL 2.0](https://opensource.apple.com/apsl/) section 2.3 requires a prominent notice in executable code and documentation identifying the source-code location. The notices file alone does not establish that executable-release condition. No macOS binary release approved here. Technical comparison does not prove complete independent provenance, especially for rewritten/short copies. Future actual upstream code inclusion requires renewed provenance/license review; a database interface alone is not evidence of code copying.
 
-### Links und persönliche Inhalte
+### Links and personal contents
 
-- **100 veröffentlichbare Markdown-Dateien im abschließenden Lauf:** lokale Dateilinks und sechs Markdown-Fragmente geprüft; nach der Korrektur kein defekter Link gefunden. Nicht getrackte, ignorierte lokale Artefakte wurden nicht als veröffentlichter Inhalt vorausgesetzt.
-- **34 externe Dokumentationslinks einschließlich der während des Audits ergänzten Lizenz-/Security-Quellen:** HTTP 200, einschließlich Prüfung der vorhandenen GitHub-Zeilenanker gegen die referenzierten Rohdateien. Externe Linkziele können sich später ändern.
-- Suche in veröffentlichbaren Textdateien nach persönlichen Home-Verzeichnissen und E-Mail-Adressen: keine zusätzlichen Kandidaten außerhalb der Drittanbieter-Lizenzhinweise und des hier dokumentierten Commit-Metadatenbefunds. Keine konkrete unangemessene persönliche Passage identifiziert; subjektive Inhaltsfreigabe bleibt bei Jan.
-- **Veröffentlichte Commit-Metadaten würden `Jan Wartenberg <5298128+JanWartenberg@users.noreply.github.com>` sowie die lokalen Agent-Identitäten enthalten.** Die persönliche E-Mail-Adresse ist damit öffentlich sichtbar, auch ohne Angabe in der README. Keine Historienumschreibung und keine Änderung der Git-Identität vorgenommen. Vor dem tatsächlichen Push diese Sichtbarkeit bewusst bestätigen oder eine gesonderte Bereinigung beauftragen.
+- **100 publishable Markdown files in final run:** Local file links and six Markdown fragments checked; no broken links after correction. Untracked ignored local artifacts not assumed to be published.
+- **34 external documentation links including license/security sources added during audit:** HTTP 200, including verification of GitHub line anchors against raw files. External targets can change later.
+- Search of publishable text for personal home paths/email: no additional candidates outside third-party notices and commit metadata findings recorded here. No concrete inappropriate personal passage identified; subjective content approval remains Jan's.
+- **Published commit metadata would contain `Jan Wartenberg <5298128+JanWartenberg@users.noreply.github.com>` and local agent identities.** At this historical stage the note warns that a personal email would be public even without README inclusion; its address was subsequently replaced during the separate cleanup, so the displayed noreply address is the sanitized form. No history rewrite or Git identity change performed during this check. Confirm intended visibility or request separate cleanup before actual push.
 
-### Referenzen und erneute Secret-Prüfung
+### References and renewed secret checks
 
-- Frischer `--no-local --single-branch`-Clone von committed `main` (`b6aa06061cc0df1a4c78643c8ab06fb3fac14210`), anschließend Dry Run und tatsächlicher Push **ausschließlich in ein temporäres lokales Bare-Repository** mit expliziten Referenzen. Ziel enthält exakt `refs/heads/main`, `refs/tags/MVP` und `refs/tags/Milestone1`. Kein `refs/original/`, keine erreichbaren `.db`-/WAL-/SHM-/SQLite-/SQL-Dump-Dateien. Uncommitted Vorbereitungen sind nicht Teil dieser Historienprobe.
-- Workspace hat aktuell keine konfigurierten Remotes und somit keinen Mirror-Modus oder zusätzlichen Remote-Push-Refspec. Die Zielkonfiguration muss nach dem späteren Anlegen von `origin` erneut geprüft werden.
-- Gitleaks 8.30.1 erneut über alle Referenzen/Reflogs (**157 Commits**), den gesamten aktuellen Dateibestand und **alle lokalen Git-Objekte** einschließlich unerreichbarer Altstände (**1139 Blobs, 168 Commits, 2 Tags**). Keine echten Secrets gefunden. Ein `localStorage`-Schlüssel und vier alte `modernc.org/token`-Prüfsummen bleiben bestätigte Fehlalarme. Rohberichte sind temporär; diese Zahlen und Ergebnisse sind die dauerhafte Ticket-Evidenz.
+- Fresh `--no-local --single-branch` clone of committed `main` (`b6aa06061cc0df1a4c78643c8ab06fb3fac14210`), then dry run and actual push **only to a temporary local bare repository** with explicit references. Target contains exactly `refs/heads/main`, `refs/tags/MVP`, and `refs/tags/Milestone1`. No `refs/original/` or reachable database/WAL/SHM/SQLite/SQL dump files. Uncommitted preparation excluded from this history rehearsal.
+- Workspace currently has no remotes, mirror mode, or extra remote push refspec. Recheck target configuration after later creating `origin`.
+- Gitleaks 8.30.1 repeated over all refs/reflogs (**157 commits**), current files, and **all local Git objects** including unreachable older states (**1139 blobs, 168 commits, 2 tags**). No real secrets found. One `localStorage` key and four old `modernc.org/token` checksums remain confirmed false positives. Raw reports temporary; these figures/results are durable ticket evidence.
 
-### Toolchain und Plattformen
+### Toolchain and platforms
 
-- Mit Go 1.27.1 zusätzlich beide CLI-Help-Aufrufe geprüft, fehlenden DB-Pfad mit hilfreichem Fehler ohne Dateineuanlage bestätigt und Tutorial in einem Linux-PTY mit sichtbarer Ausgabe und sauberem `Ctrl+C`-Exit gestartet. Separates temporäres Benutzerkonfigurationsverzeichnis; keine produktive DB über die Anwendung geöffnet.
-- Mit Go 1.25.0 und Go 1.27.1: `go test ./...`, beide Entrypoint-Builds und `go vet ./...` erfolgreich. `go mod verify` erfolgreich; CI nach Änderung erneut mit actionlint 1.7.12 geprüft.
-- Beide Entrypoints mit `CGO_ENABLED=0` für Windows amd64 und macOS arm64 cross-kompiliert. Das ist keine native Terminal-, Tastatur-, Clipboard- oder Betriebssystemabnahme. Native Windows-Tests und ein echter GitHub-Actions-Lauf bleiben offen.
-- **Neues konkretes Security-Finding:** govulncheck 1.8.0 erkennt mit lokalem Go 1.25.0 [GO-2026-4341](https://pkg.go.dev/vuln/GO-2026-4341) als erreichbaren `net/url.ParseQuery`-Aufruf über den SQLite-Treiber. Die produktive DSN hat nur den festen Queryparameter `mode=rw`; der Aufrufnachweis beweist keine praktische Ausnutzbarkeit durch Vimkunja. Trotzdem ist die ungepatchte Toolchain kein geeigneter Release-Stand.
-- **Behoben für CI/Build-Anleitung:** CI nutzt die aktuelle stabile Go-Version statt des festen, ungepatchten Go 1.25.0 aus `go.mod`. README empfiehlt eine aktuelle sicherheitsgepatchte Toolchain. Die Sprach-/Modul-Mindestversion und Dependency-Versionen werden dadurch nicht angehoben; die lokale Systeminstallation bleibt unverändert.
-- **Security-Nachprüfung:** govulncheck 1.8.0, mit Go 1.27.1 gebaut und auf Go 1.27.1 ausgeführt, endet erfolgreich ohne Findings (Go-Vulnerability-Datenbankstand 2026-10-01). Die erste Nachprüfung mit dem unter Go 1.26 gebauten Scanner konnte neue Go-1.27-Syntax nicht laden und war daher kein gültiger Scan; nach Neubau des Scanners erfolgreich wiederholt. Keine Dependency-Upgrades erforderlich.
+- With Go 1.27.1, additionally checked both CLI help calls, missing database path with helpful error/no file creation, and tutorial in Linux PTY with visible output/clean `Ctrl+C` exit. Separate temporary user configuration directory; no production database opened through the application.
+- Go 1.25.0 and Go 1.27.1: `go test ./...`, both entrypoint builds, and `go vet ./...` pass. `go mod verify` passes; CI rechecked after changes with actionlint 1.7.12.
+- Both entrypoints cross-compiled with `CGO_ENABLED=0` for Windows amd64 and macOS arm64. This is not native terminal/keyboard/clipboard/OS acceptance. Native Windows tests and real GitHub Actions run remain open.
+- **New concrete security finding:** govulncheck 1.8.0 with local Go 1.25.0 identifies [GO-2026-4341](https://pkg.go.dev/vuln/GO-2026-4341) as reachable `net/url.ParseQuery` through SQLite driver. Production DSN has only fixed query parameter `mode=rw`; reachability does not prove practical exploitation through Vimkunja. Nevertheless, the unpatched toolchain is unsuitable for release.
+- **Fixed for CI/build guidance:** CI uses current stable Go rather than fixed unpatched Go 1.25.0 from `go.mod`. README recommends a current security-patched toolchain. Language/module minimum and dependency versions not raised; local system installation unchanged.
+- **Security recheck:** govulncheck 1.8.0 built/run with Go 1.27.1 succeeds without findings (Go vulnerability database as of 2026-10-01). The first recheck with the scanner built under Go 1.26 could not load new Go 1.27 syntax and was invalid; repeated successfully after rebuilding. No dependency upgrades needed.
 
-### Review der Veröffentlichungseinheit — 2026-10-06
+### Publication-unit review — 2026-10-06
 
-- Ignore-Regeln decken nun WAL-/SHM-/Rollback-Journal-Dateien für `.db`, `.sqlite` und `.sqlite3` ab; vorher waren nur `.db`-WAL-/SHM-Dateien geschützt.
-- Die erhaltenen Darwin-Header nennen APSL 1.1 und 2.0. Notices enthalten jetzt beide Lizenztexte mit Bezugsquellen; die spätere macOS-Binary-Abnahme bleibt offen.
-- Die Veröffentlichungseinheit wurde getrennt von uncommitted DB-/Richtext-Arbeit geprüft. Tests, beide Builds, Vet und Workflow-Lint bestehen auf einer isolierten Kopie des gestagten Codes mit Go 1.27.1. Kein Push oder Release beauftragt.
+- Ignore rules now cover WAL/SHM/rollback journals for `.db`, `.sqlite`, and `.sqlite3`; previously only `.db` WAL/SHM protected.
+- Preserved Darwin headers name APSL 1.1 and 2.0. Notices now include both license texts/source locations; later macOS binary acceptance remains open.
+- Publication unit verified separately from uncommitted database/rich-text work. Tests, both builds, vet, and workflow lint pass on an isolated staged-code copy with Go 1.27.1. No push/release requested.
 
 ## Comments
 
-### 2026-10-04 — Entscheidung mit Jan
+### 2026-10-04 — Decision with Jan
 
-Möglichst alles transparent veröffentlichen, mit höchster Priorität für Code und Dokumentation. Die Backup-Referenz lokal behalten und durch explizite Auswahl der Push-Referenzen von der Veröffentlichung ausschließen. Keine erneute Historienumschreibung erforderlich, solange die geprüfte DB-freie Historie veröffentlicht wird. Entscheidung ausdrücklich im Veröffentlichungsticket festhalten.
+Publish as transparently as possible, prioritizing code/documentation. Keep backup reference local and exclude it using explicit push references. No further history rewrite required while publishing verified database-free history. Record this decision explicitly in the publication ticket.
 
-### 2026-10-04 — MIT und direkte Umsetzung
+### 2026-10-04 — MIT and direct implementation
 
-Jan wählt MIT, beauftragt die direkte Umsetzung der übrigen behebbaren Findings und möchte einen frischen Start mit blanker DB oder Template prüfen. Die oben dokumentierten Vorbereitungen sind umgesetzt; ein produktives Start-Template bleibt eine offene Entscheidung.
+Jan chooses MIT, requests direct implementation of remaining fixable findings, and wants to investigate a fresh start with blank database/template. Preparation above implemented; production starter template remains undecided.
 
-### 2026-10-05 — Kompatibilität ist Veröffentlichungsvoraussetzung
+### 2026-10-05 — Compatibility is a publication prerequisite
 
-Jan verlangt ein separates Ticket für die DB-Änderungen von Vikunja 2.3.0 bis 2.7.0 und macht die GitHub-Veröffentlichung von dessen Abschluss abhängig. Die Blocker-Verknüpfung und Abnahmebedingung sind oben verbindlich festgehalten.
+Jan requests a separate ticket for database changes from Vikunja 2.3.0 to 2.7.0 and makes GitHub publication dependent on completion. Blocker link and acceptance condition recorded above as mandatory.
 
-### 2026-10-05 — Einziges Kompatibilitätsziel: 2.7.0
+### 2026-10-05 — Only compatibility target: 2.7.0
 
-Jan begrenzt den Prüf- und Unterstützungsumfang auf genau Vikunja 2.7.0. Die bisherige Mehrversions-/Upgrade-Matrix entfällt; der belegte 2.7.0-Roundtrip und die Ablehnung ungetesteter DB-Revisionen bleiben Veröffentlichungsvoraussetzungen. Keine Kompatibilitätsfreigabe und kein Push wurden ausgeführt.
+Jan limits verification/support to exactly Vikunja 2.7.0. Former multi-version/upgrade matrix removed; evidenced 2.7.0 round trip and rejection of untested database revisions remain publication prerequisites. No compatibility approval or push performed.
 
-### 2026-10-05 — Kompatibilitätsvoraussetzung erfüllt
+### 2026-10-05 — Compatibility prerequisite met
 
-Das verlinkte 2.7.0-Ticket ist abgeschlossen und archiviert. Produktive Schema-Prüfung, Store-Fixes, Regressionen und echte Server-Roundtrips auf frischer DB und Kopie der synthetischen Windows-Baseline bestehen. Tests, Vet und beide Builds grün; [Prüfbericht](../../../2026-10-05/vikunja-db-compatibility/report.md) dokumentiert Contract und Grenzen. Dieser DB-Blocker ist erfüllt; andere Veröffentlichungspunkte bleiben offen. Kein Commit oder Push beauftragt.
+Linked 2.7.0 ticket completed/archived. Production schema validation, Store fixes, regressions, and real server round trips on fresh database/copy of synthetic Windows baseline pass. Tests, vet, and both builds pass; [report](../../../2026-10-05/vikunja-db-compatibility/report.md) documents contract/limits. Database blocker resolved; other publication items remain open. No commit/push requested.
 
-### 2026-10-07 — Veröffentlichung in zwei Tickets aufgeteilt
+### 2026-10-07 — Publication split into two tickets
 
-Jan trennt die Arbeit: Lizenz und Dokumentation jetzt in Ticket 01; E-Mail-/Historienbereinigung, CI und Push-Prüfung in Ticket 02 nach dem Richtext-Worktree-Merge. Die bestehenden Befunde bleiben erhalten. Der tatsächliche öffentliche Push braucht einen ausdrücklichen Auftrag. Keine Historienbereinigung oder Umsetzung der weiteren Lizenz-/Dokumentationskorrekturen mit dieser Ticketänderung gestartet.
+Jan separates work: license/documentation in Ticket 01 now; email/history cleanup, CI, and push checks in Ticket 02 after rich-text worktree merge. Existing findings preserved. Actual public push needs an explicit instruction. This ticket change starts neither history cleanup nor further license/documentation implementation.
 
-### 2026-10-07 — Lizenz-/Dokumentationsumfang abgeschlossen
+### 2026-10-07 — License/documentation scope completed
 
-Jan beauftragt die Umsetzung. Die oben dokumentierten Korrekturen und Prüfungen erfüllen alle Abnahmepunkte von Ticket 01. Ticket abgeschlossen und gemäß Projektworkflow archiviert; Ticket 02 bleibt bis zum vereinbarten Richtext-Merge offen.
+Jan requests implementation. Corrections/checks above meet all Ticket 01 acceptance points. Ticket completed/archived under project workflow; Ticket 02 remains open pending agreed rich-text merge.

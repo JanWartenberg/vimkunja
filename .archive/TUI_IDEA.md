@@ -1,418 +1,418 @@
-# Vikunja TUI (MVP) — Vim-Motions & Pane Layout
+# Vikunja TUI (MVP) — Vim motions and pane layout
 
-## Ziel
-Ein Terminal-Interface für Vikunja, das sich **wie vi/vim** bedienen lässt:
-- Navigation primär via **Vim-Motions** (`j/k`, `gg/G`, `enter`, …)
-- **Multi-Pane Handling** wie Vim-Splits
-- MVP bildet erstmal **nur eine Task-Ansicht** ab: `ProjectViewKind = list`
+## Goal
+A terminal interface for Vikunja that feels **like vi/vim**:
+- Navigate primarily with **Vim motions** (`j/k`, `gg/G`, `enter`, …)
+- **Multiple panes** like Vim splits
+- MVP initially implements **one Task view only**: `ProjectViewKind = list`
 
-## Daten-/Feature-Scope (MVP)
-- **Links:** Projekte auswählen
-- **Rechts:** Tasks für die ausgewählte Projekt-View anzeigen
-- View-Auswahl: Für ein Projekt wird automatisch die **erste** View mit `view_kind == "list"` genommen.
-- Task-CRUD/Comments/Edit sind später — MVP ist “read + navigation”, plus optional “Refresh”.
+## Data/feature scope (MVP)
+- **Left:** Select Projects
+- **Right:** Show Tasks for the selected Project View
+- View selection: Automatically use the **first** View with `view_kind == "list"` for a Project.
+- Task CRUD/Comments/editing come later — MVP is “read + navigation,” with optional Refresh.
 
-## Pane-Konzept (Vim-Splits)
-Es gibt 3 Panes:
-- `projects` (links oben)
-- `tasks` (rechts oben)
-- `detail` (unten, schließbar)
+## Pane concept (Vim splits)
+There are three panes:
+- `projects` (top left)
+- `tasks` (top right)
+- `detail` (bottom, closable)
 
-**Pane-Lifecycle (Decision #4):**
-- Detail ist ein vollwertiger Pane im Fokus-Graph, kein Modal.
-- `Enter` in Tasks öffnet Detail; `Ctrl+W` navigiert zwischen allen 3 Panes.
-- Detail kann geschlossen werden (Keybinding siehe unten).
-- Wenn Detail geschlossen wird, Fokus zurück auf Tasks.
+**Pane lifecycle (Decision #4):**
+- Detail is a full pane in the focus graph, not a modal.
+- `Enter` in Tasks opens Detail; `Ctrl+W` navigates between all three panes.
+- Detail can be closed (keybinding below).
+- Closing Detail returns focus to Tasks.
 
-### Fokus-Commands
-Wie in Vim:
-- `Ctrl+W` (als Leader) + `Ctrl+W`  → Fokus togglen/cycle
-- `Ctrl+W` + `h/j/k/l`              → Fokus auf das Nachbar-Pane in diese Richtung
-- `Ctrl+W k` von Detail → zurück zu Tasks
-- `Ctrl+W j` von Tasks/Projects → zu Detail (falls offen)
+### Focus commands
+As in Vim:
+- `Ctrl+W` (as Leader) + `Ctrl+W` → toggle/cycle focus
+- `Ctrl+W` + `h/j/k/l` → focus the neighboring pane in that direction
+- `Ctrl+W k` from Detail → return to Tasks
+- `Ctrl+W j` from Tasks/Projects → Detail (if open)
 
-### Beispiel-Flow
-- `Ctrl+W h` → Fokus auf Projekte
-- `j/k` → Projekt wechseln
-- `Ctrl+W l` → Fokus auf Tasks
-- `j/k` → Tasks scrollen
-- `r` → Refresh (projekte+tasks reload)
+### Example flow
+- `Ctrl+W h` → focus Projects
+- `j/k` → change Project
+- `Ctrl+W l` → focus Tasks
+- `j/k` → scroll Tasks
+- `r` → Refresh (reload Projects and Tasks)
 
-## Erweiterbarkeit (Design)
-Obwohl MVP nur `list`-View rendert, wird die Struktur so gebaut, dass später leicht hinzugefügt werden kann:
-- Weitere `ProjectViewKind`-Handler (`kanban`, `table`, …)
-- Task-Details-Pane (z.B. “Enter öffnet Detail unter dem aktuellen Pane Layout”)
-- Compose von mehreren Panes in einer Art “Pane-Grid” (Nachbarn via Koordinaten oder Graph)
+## Extensibility (design)
+Although MVP renders only the `list` View, structure it for later additions:
+- More `ProjectViewKind` handlers (`kanban`, `table`, …)
+- Task Detail Pane (e.g. “Enter opens Detail below the current pane layout”)
+- Compose multiple panes into a pane grid (neighbors by coordinates or graph)
 
-## Technische Entscheidung
-- **Sprache:** Go
-- **UI Framework:** `bubbletea` + `lipgloss`
-- **Backend:** Direkter SQLite-Zugriff (keine REST API)
+## Technical decision
+- **Language:** Go
+- **UI framework:** `bubbletea` + `lipgloss`
+- **Backend:** Direct SQLite access (no REST API)
 
-## Architektur-Decisions (Grilling Session 2026-07-09)
+## Architecture decisions (review session 2026-07-09)
 
-### 1. Store-Abstraktion: SQLite-only, kein REST
-**Decision:** REST-Client (`client.go`) wird entfernt. Die App greift ausschließlich direkt auf die `vikunja.db`-Datei zu. Begründung: 1-User-Setup, immer Dateizugriff vorhanden, keine Asymmetrie ("not implemented" im REST-Mode), weniger Komplexität.
+### 1. Store abstraction: SQLite only, no REST
+**Decision:** Remove REST client (`client.go`). The application accesses only the `vikunja.db` file directly. Reasons: single-user setup, file access always available, no asymmetry (“not implemented” in REST mode), less complexity.
 
-### 2. Write-Semantik: Treue zu Server-Logik (B)
-**Decision:** Beim Schreiben (z.B. `ToggleTaskDone`) replizieren wir die wichtigsten Side-Effects des Vikunja-Servers:
-- `updated`-Timestamp bei jedem Write bumpen
-- Done-Tasks in den `done_bucket_id` verschieben (falls vorhanden in der View)
-- Später bei Edit: entsprechend alle relevanten Felder + `updated` pflegen
+### 2. Write semantics: follow server logic (B)
+**Decision:** On writes (e.g. `ToggleTaskDone`), replicate the main Vikunja server side effects:
+- Update `updated` timestamp on every write
+- Move completed Tasks to `done_bucket_id` (if configured in the View)
+- Later editing: maintain all relevant fields and `updated`
 
-**Begründung:** Core Law #1 (Schema-Kompatibilität) — die DB soll in einem Zustand bleiben, den der echte Server auch produzieren würde. `updated` ist kritisch für Server-Features (Webhooks, Sync, "zuletzt geändert"). Bucket-Move verhindert Drift in Kanban-Views.
+**Rationale:** Core Law #1 (schema compatibility) — leave the database in a state the real server could produce. `updated` matters to server features (webhooks, sync, “last modified”). Bucket moves prevent Kanban drift.
 
-### 3. Concurrency: Fire-and-forget + Auto-Refresh (D)
-**Decision:** Bei Write-Operationen:
-- Kein Optimistic Locking (keine `updated`-Check vor Write)
-- SQLite regelt Locking (WAL-Modus aktiv)
-- Nach jedem erfolgreichen Write: automatischer Reload der aktuellen View
-- Bei Write-Fehler: visuelles Feedback (Flash der UI oder roter Footer)
+### 3. Concurrency: fire-and-forget and auto-refresh (D)
+**Decision:** For writes:
+- No optimistic locking (no `updated` check before write)
+- SQLite handles locking (WAL mode enabled)
+- Automatically reload the current View after every successful write
+- On write error: visual feedback (UI flash or red footer)
 
-**Begründung:** 1-User-Setup → Write-Write-Races unwahrscheinlich. Auto-Refresh verhindert veraltete Ansicht. Fehler-Feedback macht Probleme (DB-Lock, Server hat Task gelöscht, etc.) sofort sichtbar. Pragmatisch, einfach zu implementieren, später auf Optimistic Locking aufrüstbar falls nötig.
+**Rationale:** Single-user setup makes write/write races unlikely. Auto-refresh prevents stale views. Error feedback immediately exposes database locks, Tasks deleted by the server, etc. Pragmatic, simple, and upgradeable to optimistic locking later if needed.
 
-### 4. Detail-Pane: Gleichwertiger Pane (B)
-**Decision:** Detail ist kein Modal/Overlay, sondern ein vollwertiger 3. Pane im Fokus-Graph. `Enter` in Tasks öffnet ihn; `Ctrl+W k` navigiert zurück; er kann geschlossen werden.
+### 4. Detail Pane: equal pane (B)
+**Decision:** Detail is a full third pane in the focus graph, not a modal/overlay. `Enter` in Tasks opens it; `Ctrl+W k` returns; it can be closed.
 
-**Begründung:** Zukunftssicher für Edit-Features. Sobald Detail editierbar wird, muss der User zwischen Detail-Edit und Task-Auswahl wechseln können. Modal würde das blockieren. Konsistent mit Vim-Split-Philosophie.
+**Rationale:** Supports future editing. Once Detail is editable, users need to switch between Detail editing and Task selection. A modal would block this. Consistent with Vim splits.
 
-### 5. Edit-Mode Commit-Policy (revidiert in Decision #19)
-**Überschrieben:** Ursprünglich war geplant, Änderungen zu verwerfen ("einfachste Variante"). Nach Edit-Mode-Grilling (Decision #19) wurde auf **Auto-Commit** geändert. Siehe Decision #19.
+### 5. Edit-mode commit policy (revised by Decision #19)
+**Superseded:** Initially planned to discard changes (“simplest option”). After edit-mode review (Decision #19), changed to **auto-commit**. See Decision #19.
 
-### 6. Command-Line: Ins Fundament (A)
-**Decision:** Command-Line (`:` öffnet Input-Modus im Footer) wird *jetzt* gebaut, als Teil des Fundaments.
+### 6. Command line: part of the foundation (A)
+**Decision:** Build the command line (`:` opens footer input mode) *now*, as part of the foundation.
 
-**Begründung:** Vim-motion-style Tool braucht Ex-Commands als kanonische Schnittstelle. 26 Buchstaben + 10 Ziffern + Ctrl-Leader reichen für ein umfangreiches Kanban/Backlog-Board nicht aus. Commands geben Flexibilität. `:q` / `:qa` sind ikonisch Vim — sie von Anfang an zu haben verhindert spätere Breaking-Changes.
+**Rationale:** A Vim-motion tool needs Ex commands as its canonical interface. Twenty-six letters, ten digits, and Ctrl Leaders are insufficient for a substantial Kanban/backlog board. Commands provide flexibility. `:q` / `:qa` are iconic Vim behavior — including them from the start avoids later breaking changes.
 
-**Minimal-Scope fürs Fundament:**
-- `:q` — Pane schließen (oder App beenden, falls letztes Pane)
-- `:qa` / `:quitall` — App beenden (alle Panes schließen)
-- `:h` / `:help` — Hilfe anzeigen (statisch: Keybindings + Commands)
-- `:errors` — Error-Log anzeigen (Platzhalter: "Not implemented" fürs Fundament)
+**Minimum foundation scope:**
+- `:q` — close pane (or application if it is the last pane)
+- `:qa` / `:quitall` — quit application (close all panes)
+- `:h` / `:help` — show help (static keybindings/commands)
+- `:errors` — show error log (foundation placeholder: “Not implemented”)
 
-**Erweiterbarkeit:** Command-Dispatcher muss erweiterbar sein (Plugin-Pattern oder Command-Registry). Weitere Commands (`:goto`, `/`-Suche, etc.) kommen in späteren Features.
+**Extensibility:** Command dispatcher must be extensible (plugin pattern or command registry). More commands (`:goto`, `/` search, etc.) come in later features.
 
-**Autocomplete:** Erst in späteren Iterationen, wenn dynamische Commands (`:goto <project>`) relevant werden.
+**Autocomplete:** Later iterations, when dynamic commands (`:goto <project>`) matter.
 
-**Suche/Filter:** Nicht als Command (`:filter`), sondern via **`/`** wie in Neovim. `/<query>` durchsucht alles (Projekte, Tasks, Labels). Separate Befehle für fokussierte Suche ("nur Tasks", "nur Projekte") sind möglich, aber das Design ist noch offen → Feature-Grilling später.
+**Search/filter:** Use **`/`** as in Neovim, not a command such as `:filter`. `/<query>` searches everything (Projects, Tasks, Labels). Separate focused-search commands (“Tasks only,” “Projects only”) are possible, but design remains open → later feature review.
 
-### 7. Keybindings vs Commands: Strategie
-**Decision:** Dopplungen vermeiden. Für jede Aktion entweder Keybinding ODER Command, nicht beides (außer wo Vim historisch auch doppelt).
+### 7. Keybindings versus commands: strategy
+**Decision:** Avoid duplication. Give each action either a keybinding OR a command, except where Vim historically provides both.
 
-**Prinzipien:**
-- **Normal Mode vs Insert Mode** unterscheiden (wie Vim). Navigation/Toggle/Domain-Aktionen im Normal Mode via Keybindings. Edit-Felder via Insert Mode (Character-Eingabe).
-- **Keybindings bevorzugen** für häufige, argumentlose Aktionen (Navigation, Toggle, Refresh). 26 Buchstaben + 10 Zahlen + Leader-Kombinationen (z.B. `Space+X`) ausnutzen.
-- **Commands** für seltene, Meta-Aktionen oder solche mit Argumenten (`:qa`, `:h`, später `:goto <name>`).
-- **Vim-Konsistenz** wichtiger als strikte Regeln. Wenn Vim Dopplungen hat (z.B. `?` und `:help`), dürfen wir auch.
-- **Ergonomie** zählt: deutsche Tastatur, wenig Keystrokes, leicht zu merken, eindeutig.
+**Principles:**
+- Distinguish **Normal Mode and Insert Mode**, as in Vim. Navigation/toggle/domain actions use Normal Mode keybindings. Edit fields use Insert Mode for character input.
+- **Prefer keybindings** for frequent actions without arguments (navigation, toggle, refresh). Use 26 letters, ten digits, and Leader combinations (e.g. `Space+X`).
+- **Commands** for rare/meta actions or actions with arguments (`:qa`, `:h`, later `:goto <name>`).
+- **Vim consistency** matters more than rigid rules. Where Vim duplicates (`?` and `:help`), we may too.
+- **Ergonomics:** German keyboard layout, few keystrokes, memorable, unambiguous.
 
-**Konkrete Zuordnung (Fundament):**
-- Navigation (`hjkl`, `gg/G`, `Ctrl+D/U`, `öä` als Alias zu `{}`?) → **Keybindings only**
-- Refresh → **`r` Keybinding** (häufig, Domain) — **kein** `:r` Command
-- Toggle Done → **`x` Keybinding** (häufig) — kein `:toggle` Command (noch)
-- Help → **`:h`/`:help` Command** + **`?` Keybinding** (Vim-Standard-Dopplung)
-- Quit → **`:q`/`:qa` Commands only** (kein `q` Keybinding). `Ctrl+C` bleibt als Notaus (App sofort beenden).
+**Concrete foundation assignments:**
+- Navigation (`hjkl`, `gg/G`, `Ctrl+D/U`, `öä` as aliases for `{}`?) → **keybindings only**
+- Refresh → **`r` keybinding** (frequent domain action) — **no** `:r` command
+- Toggle Done → **`x` keybinding** (frequent) — no `:toggle` command yet
+- Help → **`:h`/`:help` commands** + **`?` keybinding** (standard Vim duplication)
+- Quit → **`:q`/`:qa` commands only** (no `q` keybinding). `Ctrl+C` remains emergency exit (quit immediately).
 
-**Begründung (Decision #8):** Vim-konsistent — `q` ist in Vim nicht Quit, sondern Makro-Recording. Wir halten `q` frei für spätere Features. `:q` schließt Pane (oder App, falls letztes Pane). `:qa` beendet App sofort. `Ctrl+C` als universal-TUI-Panik-Button. 3 Tasten für `:q` sind okay, weil Pane-Close selten ist.
+**Rationale (Decision #8):** Vim-consistent — Vim `q` records macros rather than quitting. Reserve `q` for future features. `:q` closes a pane (or application if last pane). `:qa` quits immediately. `Ctrl+C` is the universal TUI panic button. Three keystrokes for `:q` are acceptable because pane closing is infrequent.
 
-### 8. Quit-Keybinding: Command-only (D)
-**Decision:** `q` wird kein Keybinding. Quit nur via `:q`/`:qa`. `Ctrl+C` bleibt als Notaus.
+### 8. Quit keybinding: command only (D)
+**Decision:** No `q` keybinding. Quit only through `:q`/`:qa`. Keep `Ctrl+C` for emergencies.
 
-**Begründung:** Siehe oben (Decision #7 Konkrete Zuordnung).
+**Rationale:** See Decision #7 concrete assignments above.
 
-### 9. Error-Handling: Hybrid (roter Footer + Error-Log + Retry-Intelligence)
-**Decision:** Dreistufiges Error-Handling:
+### 9. Error handling: hybrid (red footer, error log, retry awareness)
+**Decision:** Three levels:
 
-1. **Error-Log (`:errors` Command):**
-   - Alle Fehler werden in einem Session-Log gespeichert.
-   - `:errors` öffnet ein Pane (oder zeigt Liste im Footer), das alle Fehler der Session auflistet.
-   - Fehler gehen nie verloren, User kann später nachschlagen.
-   - **Implementierung:** Erstmal als Platzhalter (`:errors` zeigt "Not implemented"), Log-Infrastruktur später.
+1. **Error log (`:errors`):**
+   - Store every error in a session log.
+   - `:errors` opens a pane (or footer list) with all session errors.
+   - Errors are never lost; users can consult them later.
+   - **Implementation:** Initially a placeholder (`:errors` shows “Not implemented”); log infrastructure later.
 
-2. **Direktes Feedback mit Fallunterscheidung:**
-   - **Triviale Fehler (z.B. DB-Lock, aber Retry erfolgreich):** Footer zeigt rechts unten "write success" (grün) für 2-3 Sekunden, verschwindet dann.
-   - **Echte Fehler (nicht behoben):** Footer wird rot, zeigt Fehlertext. Bleibt rot, bis User eine Aktion macht (inkl. Cursor-Bewegung `j/k`).
+2. **Immediate feedback by outcome:**
+   - **Transient errors resolved by retry (e.g. database lock):** Bottom-right footer shows green “write success” for 2–3 seconds, then disappears.
+   - **Unresolved errors:** Red footer with error text. Remains red until any user action, including `j/k` cursor movement.
 
-3. **Auto-Refresh nach erfolgreichem Write:**
-   - Nach jedem erfolgreichen Write (inkl. Retry-Success) wird die aktuelle View automatisch neu geladen (siehe Decision #3).
+3. **Auto-refresh after successful write:**
+   - Reload current View after each successful write, including retry success (Decision #3).
 
-**Begründung:** Balance zwischen sofortigem Feedback (Footer) und Nachschlagbarkeit (Error-Log). Triviale Fehler nerven nicht (auto-dismiss). Echte Fehler sind klar sichtbar, verschwinden erst bei User-Aktion (= User hat es gesehen). Error-Log ermöglicht späteres Debugging.
+**Rationale:** Balance immediate footer feedback with an inspectable log. Transient errors auto-dismiss; real errors remain visible until user action indicates they were seen. Log supports later debugging.
 
-### 10. Help-Content: Help-Pane (B)
-**Decision:** `:h` / `:help` öffnet ein Help-Pane (wie Detail-Pane, schließbar mit `:q` oder `Esc`).
+### 10. Help content: Help Pane (B)
+**Decision:** `:h` / `:help` opens a Help Pane (like Detail, closable with `:q` or `Esc`).
 
-**Content-Struktur:**
-- **Erste 10-20 Zeilen:** Häufigste Commands (Movement `hjkl/gg/G`, `:q`, `x`, `Enter`, `Ctrl+W`, etc.) — ohne Scrollen sichtbar (90% der Use-Cases).
-- **Danach scrollbar:** Vollständige Keybinding-Liste, alle Commands, Erklärungen.
+**Content structure:**
+- **First 10–20 lines:** Most frequent commands (`hjkl/gg/G`, `:q`, `x`, `Enter`, `Ctrl+W`, etc.) visible without scrolling (90% of uses).
+- **Scrollable remainder:** Complete keybinding list, commands, and explanations.
 
-**Begründung:** Statischer Footer-Text zu kurz. Help-Pane zeigt alles, ist scrollbar. Wichtigste Commands auf ersten Blick → schneller Einstieg.
+**Rationale:** Static footer text is too short. A scrollable Help Pane shows everything, with common commands immediately visible for a quick start.
 
-### 11. Schema-Validation: Nein (B)
-**Decision:** Keine Schema-Prüfung beim Start. Wir vertrauen darauf, dass die DB-Datei eine valide Vikunja-DB ist.
+### 11. Schema validation: no (B)
+**Decision:** No startup schema check. Trust that the file is a valid Vikunja database.
 
-**Begründung:** SQL-Fehler bei falscher DB sind klar genug (landen im Error-Log). Schema-Check wäre Mehraufwand und Maintenance-Last (bei Vikunja-Schema-Änderungen). Falls in der Praxis zum Problem wird, später nachrüstbar.
+**Rationale:** SQL errors from the wrong database are clear enough and enter the error log. Schema checks add work/maintenance when Vikunja changes. Add later if practical problems arise.
 
-## Feature-Decisions (Grilling Kanban-View)
+## Feature decisions (Kanban View review)
 
-### 12. Kanban im Pane-Graph: Tasks-Pane rendert view_kind-abhängig (A)
-**Decision:** Tasks-Pane (rechts) zeigt entweder List-View oder Kanban-View, je nach `view_kind` des ausgewählten Projekts. Pane-Graph bleibt gleich (Projects ↔ Tasks ↔ Detail).
+### 12. Kanban in the pane graph: Tasks Pane renders by view_kind (A)
+**Decision:** Tasks Pane (right) displays List or Kanban according to the selected Project's `view_kind`. Pane graph unchanged (Projects ↔ Tasks ↔ Detail).
 
-**Begründung:** Konsistent mit aktuellem Layout. User wählt Projekt links → rechts zeigt die View (egal ob List oder Kanban). Kein separater "Kanban-Modus", nur unterschiedliches Rendering.
+**Rationale:** Consistent with current layout. User selects Project on the left; right displays its View, whether List or Kanban. Different rendering, no separate Kanban mode.
 
-### 13. Projects-Pane: Collapsable via Leader+o (C-Idee)
-**Decision:** Projects-Pane (links) kann ein/ausgeblendet werden (toggle) via:
-- **`Leader+o`** (Space, dann `o` innerhalb 500ms)
-- **`Ctrl+W o`** als Synonym (Vim-Standard für "maximize/only")
+### 13. Projects Pane: collapsible with Leader+o (idea C)
+**Decision:** Toggle the left Projects Pane with:
+- **`Leader+o`** (Space, then `o` within 500ms)
+- **`Ctrl+W o`** as a synonym (Vim standard for maximize/only)
 
-**Begründung:** Kanban braucht Breite für Buckets side-by-side. Collapsable Projects-Pane gibt maximalen Platz bei Bedarf, ohne Pane-Graph umzubauen. `Leader+o` ist aus Neovim-Plugin "Aerial" vertraut. `Ctrl+W o` ist Vim-konsistent.
+**Rationale:** Kanban needs width for adjacent Buckets. Collapsing Projects maximizes space without changing the pane graph. `Leader+o` is familiar from Neovim's Aerial plugin; `Ctrl+W o` follows Vim.
 
-**Leader-Key-Config:**
+**Leader configuration:**
 - Leader = **Space**
-- Timeout = **500ms** (default, konfigurierbar)
-- Leader-Sequenzen: `Leader+o` (collapse), später evtl. weitere (`Leader+f` für Filter, etc.)
+- Timeout = **500ms** (default, configurable)
+- Sequences: `Leader+o` (collapse), possibly others later (`Leader+f` for filters, etc.)
 
-**Langfristig:** Projects-Pane könnte durch andere Navigations-Panes ersetzt werden (z.B. nach Tags, Labels, Due-Date gruppiert) — dann ist der collapse-Mechanismus wiederverwendbar.
+**Long term:** Projects Pane could be replaced with other navigation panes (grouped by tags, Labels, Due Date, etc.); collapse behavior is reusable.
 
-### 14. Kanban-Buckets: Dynamische Spalten + horizontaler Scroll (A, adaptive)
-**Decision:** Buckets werden horizontal side-by-side gerendert. Anzahl sichtbarer Buckets ist dynamisch, basierend auf Screen-Breite.
+### 14. Kanban Buckets: dynamic columns and horizontal scrolling (A, adaptive)
+**Decision:** Render Buckets side by side. Visible count depends on screen width.
 
-**Layout-Logik:**
-- **Mindest-Bucket-Breite:** 25 cols (damit Task-Titel lesbar bleiben)
-- **Sichtbare Buckets:** `min(totalBuckets, floor(availableWidth / 25))`
-  - Beispiel: 80 cols Screen, Projects-Pane collapsed → 3 Buckets sichtbar (3×25=75, Rest für Borders)
-  - Beispiel: 120 cols Screen → 4-5 Buckets sichtbar
-- **Horizontal Scroll:** Falls `totalBuckets > sichtbareBuckets` → User scrollt mit `h/l` (Bucket-Focus shiftet)
-- **Visuelle Indikatoren:** Pfeile `<` (links) und `>` (rechts) in der Header-Zeile, wenn weitere Buckets in die jeweilige Richtung existieren.
+**Layout:**
+- **Minimum Bucket width:** 25 columns (readable Task titles)
+- **Visible Buckets:** `min(totalBuckets, floor(availableWidth / 25))`
+  - Example: 80-column screen, Projects collapsed → three Buckets (3×25=75, remainder for borders)
+  - Example: 120-column screen → four or five Buckets
+- **Horizontal scrolling:** If `totalBuckets > visibleBuckets`, scroll with `h/l` (Bucket focus shifts).
+- **Indicators:** Header arrows `<` (left) and `>` (right) when further Buckets exist in that direction.
 
-**Typische Bucket-Anzahl:** 3-6 (Todo, Doing, Done, evtl. Review, Backlog, Blocked). Bei Standard-Terminal (80-100 cols) passen 3 Buckets ohne Scroll.
+**Typical Bucket count:** 3–6 (Todo, Doing, Done, possibly Review, Backlog, Blocked). Three fit without scrolling in a standard 80–100-column terminal.
 
-**Begründung:** Board-Gefühl erfordert mehrere sichtbare Buckets. Feste Mindest-Breite hält Tasks lesbar. Dynamische Anpassung nutzt verfügbare Breite optimal. Scroll nur wenn nötig.
+**Rationale:** A board needs multiple visible Buckets. Fixed minimum width keeps Tasks readable; adaptive layout uses available width and scrolls only when needed.
 
-### 15. Kanban-Navigation: 2D-Grid via `hjkl` (A)
-**Decision:** Fokus-Modell = **ein** Bucket + **eine** Task darin.
-- `h/l` — Bucket-Wechsel (horizontal, Fokus geht zur aktuellen Task-Position im neuen Bucket, oder zur ersten/letzten falls Position nicht existiert)
-- `j/k` — Task-Auswahl innerhalb des aktuell fokussierten Buckets (vertikal)
-- Exakt **eine** Task ist highlighted (über alle Buckets hinweg).
+### 15. Kanban navigation: 2D grid with hjkl (A)
+**Decision:** Focus model = **one** Bucket and **one** Task inside it.
+- `h/l` — change Bucket horizontally, retaining Task position where possible, otherwise using first/last Task
+- `j/k` — select a Task vertically within focused Bucket
+- Exactly **one** Task highlighted across all Buckets.
 
-**Edge-Cases:**
-- `h` im ersten Bucket oder `l` im letzten Bucket → **No-op**. Fokus bleibt. Visuelles Feedback: Aktueller Bucket blinkt kurz auf (sanftes Flash, z.B. Border-Highlight 200ms).
-- `j` in leerem Bucket oder `k` bei erster Task → No-op (kein Wrap zu anderem Bucket).
+**Edge cases:**
+- `h` in first or `l` in last Bucket → **no-op**; focus stays. Brief gentle Bucket flash (e.g. 200ms border highlight).
+- `j` in empty Bucket or `k` at first Task → no-op (no wrap to another Bucket).
 
-**Begründung:** Intuitiv, schnell (kein `Ctrl+W`, keine Modi). 2D-Grid → 2D-Navigation via `hjkl`. Buckets wie Panes zu behandeln wäre zu sperrig (3 Keystrokes). Keine Verwirrung durch Wrap-around oder Modi-Switches.
+**Rationale:** Intuitive, fast, no `Ctrl+W` or modes. A 2D grid maps to `hjkl`. Treating Buckets as panes is cumbersome (three keystrokes). No confusing wrap-around or mode switches.
 
-**"Kanban-global" Keybindings:** Für Meta-Aktionen (z.B. Bucket umbenennen, Bucket-Reihenfolge ändern) später separate Keybinds definieren. Fokus hier: Task-Navigation + Move.
+**Kanban-global keybindings:** Define meta actions such as Bucket renaming/reordering later. Focus here is Task navigation and movement.
 
-### 16. Move Tasks zwischen Buckets: Shift+H/L + m+Ziffer (C+A)
-**Decision:** Zwei Move-Mechanismen:
+### 16. Move Tasks between Buckets: Shift+H/L and m+digit (C+A)
+**Decision:** Two mechanisms:
 
-1. **Shift+H / Shift+L — Move zu Nachbar-Bucket**
-   - `Shift+H` → Task einen Bucket nach links verschieben
-   - `Shift+L` → Task einen Bucket nach rechts verschieben
-   - **Fokus bleibt auf der verschobenen Task** (Task "wandert mit" in den neuen Bucket)
-   - **Direkt committed** (kein Confirm-Schritt)
-   - **Edge-Case:** `Shift+H` im ersten Bucket oder `Shift+L` im letzten Bucket → No-op. Task blinkt kurz auf (dezentes Visual-Feedback, 200ms).
+1. **Shift+H / Shift+L — neighboring Bucket**
+   - `Shift+H` → move Task one Bucket left
+   - `Shift+L` → move Task one Bucket right
+   - **Focus follows the moved Task** into its new Bucket
+   - **Commit immediately**, no confirmation
+   - **Edge case:** `Shift+H` in first or `Shift+L` in last Bucket → no-op; brief subtle Task flash (200ms).
 
-2. **m + Ziffer — Move zu beliebigem Bucket**
-   - User drückt `m` (move)
-   - Footer zeigt: "Move to: 1=Todo 2=Doing 3=Done 4=Review" (Bucket-Namen + Nummern)
-   - User drückt Ziffer (1-9, evtl. 0 für Bucket 10)
-   - Task wird verschoben, Fokus bleibt auf Task im neuen Bucket
-   - `Esc` bricht ab (kein Move)
+2. **m + digit — any Bucket**
+   - User presses `m` (move)
+   - Footer shows “Move to: 1=Todo 2=Doing 3=Done 4=Review” (Bucket names/numbers)
+   - User presses digit (1–9, possibly 0 for Bucket 10)
+   - Task moves; focus follows into new Bucket
+   - `Esc` cancels without moving
 
-**DB-Update beim Move:**
-- `task_buckets`-Tabelle: `DELETE` alten Eintrag (task_id, alte project_view_id, alter bucket_id), `INSERT` neuen Eintrag (task_id, project_view_id, neuer bucket_id)
-- `tasks.updated` → bumpen (gemäß Decision #2)
-- Auto-Refresh nach erfolgreichem Move (Decision #3)
+**Database update:**
+- `task_buckets`: `DELETE` old entry (task_id, old project_view_id, old bucket_id), `INSERT` new entry (task_id, project_view_id, new bucket_id)
+- Update `tasks.updated` (Decision #2)
+- Auto-refresh after success (Decision #3)
 
-**Begründung:** Die meisten Moves sind "einen Schritt weiter im Flow" (Todo→Doing→Done) → `Shift+H/L` ist dafür optimal (1 Keystroke, intuitiv). Sprünge oder viele Buckets → `m`+Ziffer (2 Keystrokes, funktioniert immer). Kombination gibt Geschwindigkeit + Flexibilität.
+**Rationale:** Most moves advance one workflow step (Todo→Doing→Done); `Shift+H/L` provides one intuitive keystroke. Jumps/many Buckets use `m`+digit (two keystrokes, always works). Together they provide speed/flexibility.
 
-**Vim-Konflikt:** `m` ist in Vim "mark" (Marker setzen). Im Task-Kontext weniger relevant, daher akzeptabel. Keine bessere Vim-Motion gefunden, die semantisch passt.
+**Vim conflict:** Vim `m` sets a mark; less relevant for Tasks, so acceptable. No better semantically fitting Vim motion found.
 
-### 17. Toggle Done (`x`) im Kanban-View: Auto-Move + Feedback (D)
-**Decision:** Im Kanban-View funktioniert `x` wie im List-View (konsistent mit Decision #2), aber mit visueller Bestätigung.
+### 17. Toggle Done (x) in Kanban: automatic move and feedback (D)
+**Decision:** Kanban `x` works like List `x` (Decision #2), with visual confirmation.
 
-**Verhalten:**
-1. User drückt `x` auf einer Task im Bucket "Doing" (oder einem anderen Nicht-Done-Bucket).
-2. Task wird auf `done=1` gesetzt.
-3. Task wird **automatisch in den `done_bucket_id` verschoben** (falls die View einen hat).
-4. **Fokus bleibt auf der Task** (die jetzt im "Done"-Bucket ist) — User "wandert mit" der Task.
-5. **Visuelles Feedback:**
-   - Footer zeigt 2 Sekunden: "Task marked done & moved to 'Done'"
-   - Task im "Done"-Bucket blinkt kurz auf (200ms, falls sichtbar)
-6. `tasks.updated` wird gebumpt, Auto-Refresh (Decision #3).
+**Behavior:**
+1. User presses `x` on a Task in Doing or another non-Done Bucket.
+2. Set `done=1`.
+3. **Automatically move to `done_bucket_id`** if the View has one.
+4. **Focus follows the Task**, now in Done.
+5. **Visual feedback:**
+   - Footer for two seconds: “Task marked done & moved to 'Done'”
+   - Brief Task flash in Done (200ms, if visible)
+6. Update `tasks.updated` and auto-refresh (Decision #3).
 
-**Begründung:** Konsistent mit List-View und Decision #2 (done→done_bucket). Vikunja's Semantik respektiert. Fokus bleibt auf Task → konsequent, User weiß immer, wo er ist. Visuelles Feedback verhindert Verwirrung ("wo ist meine Task?").
+**Rationale:** Consistent with List and Decision #2 (done→done_bucket), respecting Vikunja semantics. Following the Task maintains orientation; feedback prevents “where did my Task go?” confusion.
 
-**Alternative erwägt:** `x` nur in Listen-View erlauben, im Kanban deaktivieren. Verworfen, weil inkonsistent und umständlich (User müsste erst manuell in Done-Bucket moven).
+**Rejected alternative:** Allow `x` only in List, disable it in Kanban. Inconsistent and cumbersome because users would need to move manually to Done.
 
-**TODO (später):** Undo-Feature für letzten Move/Toggle im Kanban (z.B. `u` wie Vim). Hilfreich, falls User versehentlich `x` drückt.
+**TODO (later):** Undo last Kanban move/toggle (`u` like Vim), useful for accidental `x`.
 
 ---
 
-## Edit-Mode Grilling (Prio 2)
+## Edit-mode review (priority 2)
 
-### 18. Edit-Mode: Hybrid — Title inline + Detail-Pane für Rest (C)
-**Decision:** Zwei Edit-Modi, je nach Kontext:
+### 18. Edit mode: hybrid — inline Title, Detail Pane for everything else (C)
+**Decision:** Two editing modes by context:
 
-**1. Title-Edit inline (in List/Kanban-Pane):**
-- User fokussiert Task in List- oder Kanban-View
-- **`i` (insert)** → wechselt in Insert-Mode für Task-Title (inline)
-- Textfeld erscheint direkt in der Liste (Task-Zeile wird zu Edit-Widget)
-- **`Esc`** → zurück zu Normal-Mode (Title-Edit verwerfen, siehe Decision #5)
-- **`Enter`** oder **Fokus-Verlust** → Commit (Title speichern, DB-Update)
+**1. Inline Title (List/Kanban Pane):**
+- Focus Task in List or Kanban
+- **`i` (insert)** → inline Task Title Insert Mode
+- Text field appears in the list (Task row becomes editing widget)
+- **`Esc`** → Normal Mode, discard Title edit (Decision #5)
+- **`Enter`** or **focus loss** → commit Title to database
 
-**2. Multi-Field-Edit im Detail-Pane:**
-- **`Enter`** auf Task in List/Kanban → Detail-Pane öffnet (wie bisher)
-- `Ctrl+W j` (oder entsprechender Pane-Wechsel) → Fokus zu Detail-Pane
-- Im Detail-Pane:
-  - **Normal-Mode (default):** `hjkl` navigiert zwischen Feldern (Title, Description, Priority, Due, Done, etc.)
-  - **`i` bei fokussiertem Feld** → wechselt in Insert-Mode für dieses Feld
-  - **`Esc` im Insert-Mode** → zurück zu Normal-Mode (Feld-Navigation), Änderungen verwerfen (Decision #5)
-  - **Commit:** Bei Feld-Wechsel (`jk` im Normal-Mode) oder Pane-Wechsel (`Ctrl+W`) → geänderte Felder werden gespeichert? (TODO: Commit-Logik klären)
+**2. Multiple fields in Detail Pane:**
+- **`Enter`** on List/Kanban Task → open Detail as before
+- `Ctrl+W j` or corresponding pane switch → focus Detail
+- In Detail:
+  - **Normal Mode (default):** `hjkl` navigates Title, Description, Priority, Due, Done, etc.
+  - **`i` on focused field** → Insert Mode for that field
+  - **`Esc` in Insert** → Normal field navigation, discard changes (Decision #5)
+  - **Commit:** Field change (`jk` in Normal) or pane switch (`Ctrl+W`) saves changed fields? (TODO: clarify commit logic)
 
-**Sonderbehandlung pro Feld (TODO Prio2):**
-- **Due-Date:** Date-Picker oder ISO-Format-Eingabe (`YYYY-MM-DD`)?
-- **Priority:** Nummer-Eingabe (0-5) oder `+`/`-` zum Inkrementieren?
-- **Done:** Toggle via `x` (wie bisher), oder editierbares Checkbox-Feld?
-- **Description:** Multi-Line-Textfeld (Vim-Motion `j/k` zum Scrollen, `i` zum Editieren)
+**Field-specific handling (TODO priority 2):**
+- **Due Date:** Date picker or ISO input (`YYYY-MM-DD`)?
+- **Priority:** Numeric input (0–5) or `+`/`-` increments?
+- **Done:** Existing `x` toggle or editable Checkbox field?
+- **Description:** Multiline text field (`j/k` scrolls, `i` edits)
 
-**Begründung:** Title-Ändern ist die häufigste Edit-Aktion → inline schnell (1 Keystroke: `i`). Komplexe Edits (Multi-Field, Description) brauchen mehr Platz → Detail-Pane. Konsistent mit Vim's Normal/Insert-Trennung: Normal-Mode = Navigation (zwischen Tasks, zwischen Feldern), Insert-Mode = Editing.
+**Rationale:** Title changes are most frequent; inline is fast (`i`). Complex/multifield Description edits need Detail's space. Vim separation: Normal navigates Tasks/fields, Insert edits.
 
-### 19. Detail-Pane Edit: Auto-Commit bei Pane-Wechsel (C, revidiert Decision #5)
-**Decision:** Änderungen werden automatisch committed, wenn User den Kontext verlässt.
+### 19. Detail editing: auto-commit on pane switch (C, revises #5)
+**Decision:** Automatically commit changes when users leave the context.
 
-**Commit-Trigger:**
-- **Pane-Wechsel** (`Ctrl+W` aus Detail-Pane raus) → alle pending changes werden committed (ein DB-Write für alle geänderten Felder)
-- **Item-Wechsel** (User geht zurück zu List/Kanban, wählt andere Task mit `Enter`) → Commit
-- **Feld-Wechsel** (`Esc` im Insert-Mode, dann `jk` zu anderem Feld) → pending (noch nicht committed), erst bei Pane-Wechsel
+**Triggers:**
+- **Pane switch** (`Ctrl+W` out of Detail) → commit all pending changes in one database write
+- **Item switch** (return to List/Kanban, choose another Task with `Enter`) → commit
+- **Field switch** (`Esc` from Insert, then `jk`) → changes remain pending until pane switch
 
-**Title-Edit inline (extra):**
-- **`Enter`** im Title-Insert-Mode → sofort committed (DB-Write)
-- **Fokus-Verlust** (User navigiert weg, z.B. `jk` zu anderer Task) → sofort committed
+**Inline Title separately:**
+- **`Enter`** in Title Insert Mode → immediate database commit
+- **Focus loss** (navigate away, e.g. `jk` to another Task) → immediate commit
 
-**DB-Update beim Commit:**
-- Alle geänderten Felder in einem `UPDATE tasks SET ... WHERE id=?`
-- `updated` → bumpen (Decision #2)
-- Auto-Refresh nach erfolgreichem Write (Decision #3)
-- Bei Fehler → roter Footer + Error-Log (Decision #9)
+**Database commit:**
+- All changed fields in one `UPDATE tasks SET ... WHERE id=?`
+- Update `updated` (Decision #2)
+- Auto-refresh after success (Decision #3)
+- Failure → red footer and error log (Decision #9)
 
-**Begründung:** Auto-Commit ist "modern" (wie Jira, Notion), User verliert nie Arbeit. Einfacher als explizites `:w`/`:q!` (weniger Verwirrung: "Wann verwerfen? Wann informieren?"). Revidiert Decision #5 ("verwerfen"), weil Auto-Commit bei gleichem Implementierungsaufwand bessere UX bietet.
+**Rationale:** Auto-commit is modern (like Jira/Notion); users never lose work. Simpler than explicit `:w`/`:q!` (“when discard/notify?”). Revises #5 discard policy: same implementation effort, better UX.
 
-**Kein explizites Verwerfen:** Falls User Änderungen rückgängig machen will → späteres Feature (Undo, `u`-Keybinding). Fürs Fundament: Auto-Commit ohne Escape-Hatch.
+**No explicit discard:** Reverting changes is a later Undo/`u` feature. Foundation uses auto-commit without an escape hatch.
 
-**Offene Entscheidungen (für Edit-Features später):**
-- Welche Keybindings für häufige Task-Attribute? (Prio setzen, Datum setzen, Status ändern)
-- `i` für Insert Mode in Edit-Feldern? (naheliegend)
-- Leader-Key: `Space` oder etwas anderes?
-- `öä` als Block-Scroll-Alias — sinnvoll auf dt. Tastatur? (zu testen)
+**Open later editing decisions:**
+- Keybindings for frequent attributes (Priority, date, status)?
+- `i` for field Insert Mode? (natural choice)
+- Leader: `Space` or another key?
+- `öä` as block-scroll aliases on German keyboards? (test)
 
 ## Rendering (MVP)
-- Linke Spalte:
-  - Überschrift: `Projects`
-  - Liste: `> <identifier or title>`
-- Rechte Spalte:
-  - Überschrift: `Tasks (list)`
-  - Liste: `[%] <priority> <title> (due)`
-  - Done: Checkbox / Marker
+- Left column:
+  - Heading: `Projects`
+  - List: `> <identifier or title>`
+- Right column:
+  - Heading: `Tasks (list)`
+  - List: `[%] <priority> <title> (due)`
+  - Done: Checkbox/marker
 
 ## Status
 
-**Aktuell (2026-07-09):**
-- PoC (Proof of Concept) läuft — TUI zeigt DB-Inhalt, erste Struktur sichtbar, Navigation funktioniert, `x` togglet Done.
-- **Grilling Session abgeschlossen** — Fundament komplett geklärt (Decisions #1-11), Kanban (Prio 1, #12-17) und Edit-Mode (Prio 2, #18-19) durchdesigned.
+**Current (2026-07-09):**
+- Proof of concept runs: database contents visible, initial structure/navigation working, `x` toggles Done.
+- **Review session complete:** Foundation settled (#1–11), Kanban (priority 1, #12–17), and edit mode (priority 2, #18–19) designed.
 
-**Nächstes Ziel:** Implementierung beginnen
-1. **Fundament aufräumen:**
-   - REST-Client (`client.go`) entfernen
-   - Command-Line-Infrastruktur bauen (`:q`, `:qa`, `:h`, `:errors` als Platzhalter)
-   - Error-Handling + Error-Log (roter Footer, Auto-Refresh, Retry-Intelligence)
-   - Help-Pane (`?` / `:h`)
-   - Leader-Key-Support (`Space` + 500ms Timeout)
-   - Projects-Pane collapsable (`Leader+o` / `Ctrl+W o`)
+**Next goal:** Start implementation
+1. **Clean up foundation:**
+   - Remove REST client (`client.go`)
+   - Build command-line infrastructure (`:q`, `:qa`, `:h`, placeholder `:errors`)
+   - Error handling/log (red footer, auto-refresh, retry awareness)
+   - Help Pane (`?` / `:h`)
+   - Leader support (`Space`, 500ms timeout)
+   - Collapsible Projects (`Leader+o` / `Ctrl+W o`)
 
-2. **Feature Prio 1: Kanban-View**
-   - Tasks-Pane rendert `view_kind=kanban` (Buckets horizontal, dynamische Breite)
-   - Navigation `hjkl` (2D-Grid)
-   - Move via `Shift+H/L` + `m+Ziffer`
-   - Toggle Done (`x`) mit Auto-Move + Feedback
+2. **Priority 1: Kanban View**
+   - Tasks Pane renders `view_kind=kanban` (horizontal Buckets, adaptive width)
+   - `hjkl` 2D navigation
+   - Move using `Shift+H/L` and `m+digit`
+   - Toggle Done (`x`) with automatic move/feedback
 
-3. **Feature Prio 2: Edit-Mode**
-   - Title inline via `i`
-   - Detail-Pane Multi-Field-Edit (`hjkl` Feld-Navigation, `i` Insert-Mode)
-   - Auto-Commit bei Pane-Wechsel
+3. **Priority 2: edit mode**
+   - Inline Title with `i`
+   - Multifield Detail editing (`hjkl` field navigation, `i` Insert)
+   - Auto-commit on pane switch
 
-**Offene TODOs (spätere Increments):**
-- Prio 3: Gesamtsicht (`-` Keybinding, alle Tasks, Filter/Sort)
-- Prio 4: Suche/Filter (`/`)
-- Prio 5: Kommentare
-- Undo-Feature (`u`)
-- Neue Tasks erstellen (`o`)
-- Sonderbehandlung (Date-Picker, Priority-Eingabe)
+**Open TODOs (later increments):**
+- Priority 3: Overview (`-`, all Tasks, filters/sorting)
+- Priority 4: search/filter (`/`)
+- Priority 5: Comments
+- Undo (`u`)
+- Create Tasks (`o`)
+- Field-specific date picker/Priority input
 
-## Roadmap / Backlog
+## Roadmap / backlog
 
-### Fundament (in diesem Grilling geklärt)
-- [x] Store: SQLite-only, kein REST
-- [x] Write-Semantik: Treue Side-Effects (`updated` + Bucket-Move)
-- [x] Concurrency: Fire-and-forget + Auto-Refresh
-- [x] Detail-Pane: Gleichwertiger Pane (3. im Graph)
-- [x] Command-Line: `:q`, `:qa`, `:h` ins Fundament
-- [x] Command-Line Scope: `:q`, `:qa`, `:h`, `:r` (mit Aliassen)
-- [x] Keybindings vs Commands: Strategie geklärt (Decision #7)
-- [x] Error-Handling: Strategie geklärt (Decision #9)
-- [x] Help-Content: Help-Pane (Decision #10)
-- [x] Schema-Validation: Nein, vertrauen (Decision #11)
+### Foundation (settled in this review)
+- [x] Store: SQLite only, no REST
+- [x] Write semantics: faithful side effects (`updated`, Bucket move)
+- [x] Concurrency: fire-and-forget and auto-refresh
+- [x] Detail: equal third pane in graph
+- [x] Command line: `:q`, `:qa`, `:h` in foundation
+- [x] Command scope: `:q`, `:qa`, `:h`, `:r` with aliases
+- [x] Keybindings versus commands: strategy settled (#7)
+- [x] Error handling strategy settled (#9)
+- [x] Help content: Help Pane (#10)
+- [x] Schema validation: no, trust the database (#11)
 
-### Features (Priorisierung geklärt)
+### Features (priorities settled)
 
-**Prio 1: Kanban-View** (`view_kind=kanban`)
-- [x] Pane-Graph: Tasks-Pane rendert Kanban je nach `view_kind` (Decision #12)
-- [x] Projects-Pane: Collapsable via `Leader+o` / `Ctrl+W o` (Decision #13)
-- [x] Buckets: Dynamische Spalten, horizontal scroll (Decision #14)
-- [x] Navigation: `h/l` = Bucket-Wechsel, `j/k` = Task innerhalb Bucket (Decision #15)
-- [x] Move Tasks: Shift+H/L (Nachbar) + m+Ziffer (Sprünge) (Decision #16)
-- [x] Toggle Done (`x`) im Kanban: Auto-Move + Feedback (Decision #17)
-- [ ] Move Tasks zwischen Buckets (`m` + Target-Auswahl?)
-- [ ] Horizontal Scroll bei vielen Buckets?
-- [ ] Detail-Pane bei Kanban-Ansicht? (unverändert: Enter öffnet Detail unten)
+**Priority 1: Kanban View** (`view_kind=kanban`)
+- [x] Pane graph: Tasks renders Kanban by `view_kind` (#12)
+- [x] Projects collapsible with `Leader+o` / `Ctrl+W o` (#13)
+- [x] Buckets: dynamic columns, horizontal scroll (#14)
+- [x] Navigation: `h/l` Buckets, `j/k` Tasks within Bucket (#15)
+- [x] Task movement: Shift+H/L neighbors, m+digit jumps (#16)
+- [x] Kanban Done toggle (`x`): automatic move and feedback (#17)
+- [ ] Move Tasks between Buckets (`m` + destination selection?)
+- [ ] Horizontal scrolling with many Buckets?
+- [ ] Detail in Kanban? (unchanged: Enter opens Detail below)
 
-**Weitere Kanban-TODOs (Implementierungs-Details, Prio 2):**
-- [ ] **Sort-Order innerhalb Bucket:** Nach `task_positions.position` (wie List-View). Tasks vertikal in der Position, die Vikunja speichert.
-  - **TODO später:** Vertikales Movement/Reordering ermöglichen (Task innerhalb Bucket via `Ctrl+J/K` verschieben? Vikunja unterstützt das, wäre konsistent).
-- [ ] **Leere Buckets:** Bucket-Name als Header zeigen, darunter einfach leer (kein "(no tasks)"-Text).
-- [ ] **Bucket-Header:** Nur Bucket-Name zeigen (kein Task-Count). Design: Name zentriert oder linksbündig?
-- [ ] **Horizontal Scroll Indikator:** Pfeile `<` (links) und `>` (rechts) im Header-Bereich, wenn weitere Buckets existieren.
+**Further Kanban TODOs (implementation details, priority 2):**
+- [ ] **Order within Bucket:** `task_positions.position`, like List; vertical order persisted by Vikunja.
+  - **Later:** Vertical reordering (`Ctrl+J/K` within Bucket? Vikunja supports it; consistent).
+- [ ] **Empty Buckets:** Header name, empty below; no “(no tasks)” text.
+- [ ] **Bucket header:** Name only, no Task count. Centered or left-aligned?
+- [ ] **Horizontal scroll indicators:** Header `<` and `>` when more Buckets exist.
 
-**Prio 2: Edit-Mode** für Task-Details
-- [x] Wo findet Edit statt? Hybrid: Title inline, Rest im Detail-Pane (Decision #18)
-- [x] Title-Edit inline: Commit bei `Enter` oder Fokus-Verlust (Decision #18)
-- [x] Detail-Pane Edit: Feldauswahl via `hjkl`, Insert-Mode via `i` (Decision #18)
-- [x] Commit-Logik: Auto-Commit bei Pane-Wechsel/Item-Wechsel (Decision #19, revidiert #5)
-- [ ] Date-Picker für Due-Date (Sonderbehandlung, TODO Prio2)
-- [ ] Priority: Nummer-Eingabe oder `+`/`-`? (Sonderbehandlung, TODO Prio2)
-- [ ] Neue Tasks erstellen: Keybinding `o` (wie Vim "open line below")? (später)
+**Priority 2: editing Task Detail**
+- [x] Location: hybrid inline Title, rest in Detail (#18)
+- [x] Inline Title commit on Enter/focus loss (#18)
+- [x] Detail field selection `hjkl`, Insert `i` (#18)
+- [x] Auto-commit on pane/item switch (#19, revises #5)
+- [ ] Due Date picker (field-specific, priority 2)
+- [ ] Priority numeric input or `+`/`-`? (field-specific, priority 2)
+- [ ] New Tasks with `o` (Vim “open line below”)? (later)
 
-**Prio 3: Gesamtsicht** ("All Tasks"-View)
-- [ ] Neue Ansicht: ALLE Tasks aus allen Projekten, flache Liste
-- [ ] Erreichbar via `-` Keybinding (wie `:Explore` in Vim)
-- [ ] Filter: Erledigte Tasks ausblenden (Toggle-Keybinding?)
-- [ ] Sortierung: Nach Due-Date, Prio, Project, etc. (Keybindings für schnelles Umschalten?)
-- [ ] Pane-Graph: Eigene Pane, oder ersetzt Projects+Tasks?
+**Priority 3: Overview** (“All Tasks”)
+- [ ] Flat list of ALL Tasks from all Projects
+- [ ] Access with `-` (like Vim `:Explore`)
+- [ ] Hide completed Tasks (toggle binding?)
+- [ ] Sort by Due Date, Priority, Project, etc. (quick-switch bindings?)
+- [ ] Separate pane or replace Projects+Tasks?
 
-**Prio 4: Suche/Filter** (`/` wie Neovim)
-- [ ] `/` öffnet Search-Input im Footer
-- [ ] Client-side Filter (nur aktuelle Page) oder Server-side?
-- [ ] Match-Highlighting in Projects/Tasks/Labels
-- [ ] `n` / `N` für next/prev Match (wie Vim)
+**Priority 4: search/filter** (`/` like Neovim)
+- [ ] `/` opens footer search input
+- [ ] Client-side current-page filter or server-side?
+- [ ] Highlight matches in Projects/Tasks/Labels
+- [ ] `n` / `N` next/previous match, like Vim
 
-**Prio 5: Kommentare** posten
-- [ ] Detail-Pane zeigt Comments-Liste
-- [ ] `a` (append) öffnet Insert-Mode für neuen Comment
-- [ ] Store-Methode: `CreateComment(ctx, taskID, text)`
-- [ ] Comment-Edit/Delete später
+**Priority 5: post Comments**
+- [ ] Detail displays Comment list
+- [ ] `a` (append) opens Insert for new Comment
+- [ ] Store method: `CreateComment(ctx, taskID, text)`
+- [ ] Comment editing/deletion later
 
-**Später:**
-- [ ] Table-View (`view_kind=table`)
-- [ ] Gantt-View (`view_kind=gantt`)
-- [ ] Weitere Ex-Commands (`:goto <project>`)
-- [ ] Autocomplete für Commands mit dynamischen Argumenten
+**Later:**
+- [ ] Table View (`view_kind=table`)
+- [ ] Gantt View (`view_kind=gantt`)
+- [ ] More Ex commands (`:goto <project>`)
+- [ ] Autocomplete for commands with dynamic arguments

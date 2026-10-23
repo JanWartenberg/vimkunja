@@ -1,115 +1,97 @@
-# 02 — GitHub-Veröffentlichung nach dem Richtext-Merge vorbereiten
+# 02 — Prepare GitHub publication after the rich-text merge
 
-**What to deliver:** Den zusammengeführten Stand für `JanWartenberg/vimkunja` technisch prüfen, eine Veröffentlichungskopie ohne private E-Mail-/DB-Historie vorbereiten und den konkreten Push prüfbar machen. Tatsächliche Veröffentlichung erst auf ausdrücklichen Auftrag.
+**What to deliver:** Technically verify the merged state for `JanWartenberg/vimkunja`, prepare a publication copy without private email/database history, and make the exact push reviewable. Actual publication requires an explicit instruction.
 
 **Category:** maintenance
 
-**Priority:** High nach dem Richtext-Merge
+**Priority:** High after the rich-text merge
 
 **Status:** in-progress
 
-**Startbedingung erfüllt:** Richtext und aufgabenbasierte Tutorials von `feature/tutorial-task-workflow` nach `main` übernommen.
+**Start condition met:** Rich text and task-based tutorials from `feature/tutorial-task-workflow` integrated into `main`.
 
-**Reihenfolge:** Vor Abschluss der Veröffentlichung zuerst [URL-Copy-Komfort](../../../.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), dann [Subtask-Abgleich](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md). Andere M3-Features sind keine pauschale Voraussetzung.
+**Order:** Before finishing publication, complete [URL-copy convenience](../../../.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md), then [subtask reconciliation](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md). Other M3 features are not blanket prerequisites.
 
-**Erfüllte Dokumentationsvoraussetzung:** [Ticket 01 — Lizenz und Dokumentation](../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) ist abgeschlossen und archiviert.
+**Documentation prerequisite met:** [Ticket 01 — License and documentation](../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md) is completed and archived.
 
-**Erfüllte Voraussetzung:** [Vikunja-DB-Kompatibilität ausschließlich 2.7.0](../../../.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md)
+**Prerequisite met:** [Vikunja database compatibility: 2.7.0 only](../../../.archive/2026-10-05/vikunja-db-compatibility/issues/01-verify-vikunja-2-3-to-2-7-compatibility.md)
 
-## Startbedingung und Reihenfolge
+## Start condition and order
 
-**Dieses Ticket folgt auf den vereinbarten Richtext-Merge.** Original-Repository und bestehende Worktrees behalten ihre Historie; die spätere Bereinigung findet ausschließlich in der Veröffentlichungskopie statt. Die Startbedingung verlangt den vereinbarten Worktree-Merge, keinen pauschalen Abschluss aller Richtext-Backlogtickets oder des gesamten Meilensteins 3.
+**This ticket follows the agreed rich-text merge.** The original repository and existing worktrees retain their history; later cleanup happens only in the publication copy. The start condition requires the agreed worktree merge, not completion of every rich-text backlog ticket or all of Milestone 3.
 
-1. Den zusammengeführten `main`-Commit festhalten; README/STATUS und Lizenzinventar auf Änderungen aus dem Merge abgleichen. Neue Funktionalität oder Abhängigkeiten erfordern nur die betroffenen Ergänzungen.
-2. Tests, beide Builds, Vet, Schwachstellenprüfung und CI-Konfiguration auf diesem Stand prüfen. Vorhandene CI weiterverwenden; einen echten Actions-Lauf prüfen, sobald ein geeigneter GitHub-Prüfstand verfügbar ist. Native Windows-Abnahme getrennt von Cross-Builds ausweisen.
-3. Eine separate Veröffentlichungskopie aus `main` und ausdrücklich ausgewählten Tags erstellen. E-Mail-/Historienbereinigung ausschließlich in dieser Kopie; Original-Repository, Worktrees und lokale Backups nicht umschreiben.
-4. Author-/Committer-Adressen sowie persönliche E-Mail-Vorkommen in aktuellen und historischen Dateiinhalten bereinigen. Zieladresse: **`5298128+JanWartenberg@users.noreply.github.com`**. Der letzte Readiness-Check fand persönliche Metadaten in fünf Commits und zwei historische Dateistände des Veröffentlichungstickets; den aktuellen Bestand erneut ermitteln. Andere Autoren und Drittanbieter-Copyrightangaben nicht pauschal ersetzen.
-5. Zugehörige Tags auf die bereinigte Historie übernehmen; vollständige erreichbare Historie und Tag-/Commit-Inhalte auf verbleibende private Adressen, Secrets und Datenbanken einschließlich Sidecars prüfen. Prüfergebnis und Commit-Zuordnung nachvollziehbar festhalten, ohne private Adressen neu in veröffentlichbaren Berichten zu dokumentieren.
-6. GitHub-Ziel und Remote-Konfiguration prüfen; Dry Run mit expliziten Referenzen durchführen. Den tatsächlichen öffentlichen Push erst nach ausdrücklichem Auftrag durchführen und danach Remote-Referenzen kontrollieren.
+1. Record the merged `main` commit; reconcile README/STATUS and the license inventory with changes from the merge. New functionality or dependencies require only the affected additions.
+2. Check tests, both builds, vet, vulnerability scanning, and CI configuration on that state. Reuse existing CI; check a real Actions run once a suitable GitHub test environment is available. Report native Windows acceptance separately from cross-builds.
+3. Create a separate publication copy from `main` and explicitly selected tags. Clean email/history only in this copy; do not rewrite the original repository, worktrees, or local backups.
+4. Clean author/committer addresses and personal email occurrences in current and historical file contents. Target address: **`5298128+JanWartenberg@users.noreply.github.com`**. The last readiness check found personal metadata in five commits and two historical versions of the publication ticket; determine the current inventory again. Do not blanket-replace other authors or third-party copyrights.
+5. Transfer selected tags to the cleaned history; check the complete reachable history and tag/commit contents for remaining private addresses, secrets, and databases including sidecars. Record results and commit mappings without repeating private addresses in publishable reports.
+6. Check the GitHub target and remote configuration; perform a dry run with explicit references. Perform the actual public push only after an explicit instruction, then verify remote references.
 
-## VERBINDLICH: Backup-Referenzen niemals veröffentlichen
+## REQUIRED: Never publish backup references
 
-**Nur `main` und ausdrücklich ausgewählte Tags veröffentlichen. `refs/original/refs/heads/main` und andere Backup-Referenzen dürfen NICHT auf GitHub gelangen. KEIN `git push --mirror`.**
+**Publish only `main` and explicitly selected tags. `refs/original/refs/heads/main` and other backup references must NOT reach GitHub. NEVER use `git push --mirror`.**
 
-- Ein sauberer Dateibaum oder `.gitignore` allein belegt keine saubere Historie; alle vorgesehenen Referenzen prüfen.
-- Die lokale Backup-Referenz darf bestehen bleiben. Eine Historienumschreibung des Originals oder Löschung seiner Backups ist nicht erforderlich; die E-Mail-Bereinigung erfolgt nur in der Veröffentlichungskopie.
-- Remote-Konfiguration auf Mirror-Modus und zusätzliche Push-Refspecs prüfen. Feature-Branches nicht automatisch veröffentlichen.
-- Neue Arbeit nach dem Übergang auf Basis der bereinigten Historie fortsetzen. Alte Worktrees nicht unkontrolliert in die neue Historie mergen; der Übergang muss dokumentiert sein.
-- Lokale Nutzerdatenbanken und ihre Backups nie übernehmen; Schema-Metadaten und ausdrücklich geprüfte synthetische Fixtures sind zulässig.
+- A clean working tree or `.gitignore` alone does not establish clean history; check every intended reference.
+- The local backup reference may remain. Rewriting the original history or deleting its backups is unnecessary; email cleanup happens only in the publication copy.
+- Check remote configuration for mirror mode and additional push refspecs. Do not publish feature branches automatically.
+- Continue new work on the cleaned history after the transition. Do not merge old worktrees into the new history without control; document the transition.
+- Never include local user databases or backups; schema metadata and explicitly verified synthetic fixtures are allowed.
 
-Beispiel für den Dry Run, wenn `origin` auf das geprüfte Ziel zeigt und beide historischen Tags zur Veröffentlichung ausgewählt sind:
+Example dry run if `origin` points to the verified target and both historical tags have been selected for publication:
 
 ```bash
 git push --dry-run origin main refs/tags/MVP refs/tags/Milestone1
 ```
 
-Nach Freigabe erfolgt der tatsächliche Push mit denselben expliziten Referenzen ohne `--dry-run`.
+After approval, use the same explicit references without `--dry-run` for the actual push.
 
-## Abnahme
+## Acceptance
 
-- [x] Ticket 01 abgeschlossen und vereinbarter Richtext-Merge enthalten; geprüfter Ausgangscommit `bd340c2` dokumentiert. Nachfolgende Doku-Korrekturen und Prüfergebnisse separat dokumentiert.
-- [x] Aktueller Funktionsumfang, README/STATUS und Dependency-Lizenzhinweise nach dem Merge abgeglichen.
-- [x] Lokale Tests, beide Builds, Vet, Schwachstellenprüfung und Workflow-Prüfung erfolgreich; verbleibende Plattformgrenzen dokumentiert.
-- [ ] Echter GitHub-Actions-Lauf für den vorgesehenen Veröffentlichungsstand erfolgreich.
-- [x] Zur Veröffentlichung ausschließlich `main` ausgewählt; keine Tags, Backup- oder lokalen T3-Prüfreferenzen. Original und bestehende Worktrees bleiben erhalten.
-- [x] Persönliche Adresse aus Author-/Committer-Metadaten, Commit-/Tag-Inhalten und historischer Dateihistorie entfernt; Zieladresse und künftige lokale Git-Identität des Veröffentlichungsrepositories geprüft.
-- [x] Secret-, Datenschutz- und DB-Historienprüfung der vorgesehenen Veröffentlichungshistorie ohne konkrete Findings; keine echten Nutzerdaten oder DB-Sidecars gefunden. Umfang und Grenzen unten dokumentiert.
-- [x] HTTPS-Remote konfiguriert, Mirror-/Push-Einstellungen geprüft und explizite Übertragung ausschließlich von `main` an lokalem Bare-Repository erprobt.
-- [ ] Remote-Ziel, Mirror-Einstellungen, Push-Refspecs und expliziter Dry Run geprüft; konkreter Veröffentlichungsstand zur Freigabe bereit.
-- [ ] Tatsächlicher öffentlicher Push ausdrücklich beauftragt, durchgeführt und Remote-Referenzen kontrolliert.
-- [x] Übergang auf die bereinigte Historie für weitere Arbeit dokumentiert; siehe Weiterarbeit und Prüfbericht unten.
+- [x] Ticket 01 complete and agreed rich-text merge included; verified starting commit `bd340c2` recorded. Subsequent documentation corrections and findings documented separately.
+- [x] Current features, README/STATUS, and dependency license notices reconciled after the merge.
+- [x] Local tests, both builds, vet, vulnerability scan, and workflow checks pass; remaining platform limitations documented.
+- [ ] Real GitHub Actions run succeeds for the intended publication state.
+- [x] Only `main` selected for publication; no tags, backup references, or local T3 checkpoint references. Original and existing worktrees preserved.
+- [x] Personal address removed from author/committer metadata, commit/tag contents, and historical files; target address and future local Git identity of the publication repository verified.
+- [x] Secret, privacy, and database-history checks of intended publication history without concrete findings; no real user data or database sidecars found. Scope and limits documented below.
+- [x] HTTPS remote configured, mirror/push settings checked, and explicit transfer of `main` alone rehearsed against a local bare repository.
+- [ ] Remote target, mirror settings, push refspecs, and explicit dry run verified; exact publication state ready for approval.
+- [ ] Actual public push explicitly requested, performed, and remote references checked.
+- [x] Transition to cleaned history documented; see continuation guidance and report below.
 
-## Grenzen
+## Boundaries
 
-Dieses Ticket zu aktualisieren erteilt keinen Auftrag, jetzt zu mergen, die Historie umzuschreiben, Remotes anzulegen oder zu veröffentlichen. Automatische Release-Binaries, ein produktives Start-Template und die Migration lokaler Tickets zu GitHub Issues sind keine Voraussetzung für die Quellcode-Erstveröffentlichung. Besondere macOS-Binary-Lizenzbedingungen müssen vor einem entsprechenden späteren Release separat erfüllt werden.
+Updating this ticket does not authorize a merge, history rewrite, remote creation, or publication. Automatic release binaries, a production starter template, and migrating local tickets to GitHub Issues are not prerequisites for the initial source publication. Specific macOS binary license conditions must be met separately before a later release of that kind.
 
-## Bisherige Evidenz
+## Existing evidence
 
-Die datierten Lizenz-, CI-, Secret- und Referenzprüfungen bleiben im [bisherigen Gesamtticket, jetzt Ticket 01](../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md#historische-befunde-des-bisherigen-gesamttickets). Die letzte erneute Prüfung des committed Stands `e77f00c` fand keine erreichbaren DB-Dateien oder Backup-Referenzen im frischen Veröffentlichungsklon; Secret- und Schwachstellenscan waren ohne Findings. Diese Ergebnisse ersetzen die Prüfung des später zusammengeführten und bereinigten Stands nicht.
+Dated license, CI, secret, and reference checks remain in the [former overall ticket, now Ticket 01](../../../.archive/2026-10-07/publish-to-github/issues/01-publish-to-github.md#historical-findings-from-the-former-overall-ticket). The last recheck of committed state `e77f00c` found no reachable database files or backup references in a fresh publication clone; secret and vulnerability scans had no findings. These results do not replace checks of the later merged and cleaned state.
 
 ## Comments
 
-### 2026-10-07 — Nach Richtext-Merge starten
+### 2026-10-07 — Start after the rich-text merge
 
-Jan beauftragt die Aufteilung des bisherigen Veröffentlichungstickets. Ticket 02 bündelt E-Mail-/Historienbereinigung, CI, Veröffentlichungskopie und Push-Prüfung nach dem vereinbarten Richtext-Worktree-Merge. Die GitHub-noreply-Adresse ist von Jan bestätigt. Keine operativen Veröffentlichungsschritte mit der Anlage dieses Tickets gestartet.
+Jan requests splitting the former publication ticket. Ticket 02 groups email/history cleanup, CI, publication copy, and push checks after the agreed rich-text worktree merge. Jan confirms the GitHub noreply address. Creating this ticket started no operational publication steps.
 
-### 2026-10-07 — Ticket 01 abgeschlossen
+### 2026-10-07 — Ticket 01 completed
 
-Lizenz und Dokumentation für den aktuellen Stand sind geprüft und Ticket 01 ist archiviert. Die allein verbleibende Startbedingung dieses Tickets ist der vereinbarte Richtext-Merge; anschließend dessen konkrete Doku-/Dependency-Änderungen abgleichen. Noch keine operative Veröffentlichung begonnen.
+License and documentation for the current state are verified and Ticket 01 is archived. The only remaining start condition is the agreed rich-text merge; then reconcile its specific documentation/dependency changes. No operational publication has started.
 
-### 2026-10-20 — Richtext-Integration und übernommene Folgeplanung
+### 2026-10-20 — Rich-text integration and inherited follow-up plan
 
-Die im Richtext-Worktree am 2026-10-19 festgehaltene Reihenfolge bleibt erhalten: URL-Copy-Komfort, Subtask-Abgleich, danach Veröffentlichung abschließen. AT-01–10 und der Richtext-Live-Roundtrip sind abgenommen; die separate allgemeine Tutorial-Abnahme bleibt teilweise offen. Die auf `main` bereits belegte DB-Kompatibilität ausschließlich mit Vikunja 2.7.0 und die abgeschlossene Lizenzprüfung werden durch ältere offene Checklisten im Featurebranch nicht zurückgesetzt. Das dort noch vorhandene Gesamtticket 01 wird beim Merge nicht wieder als offenes Ticket angelegt; dieses Ticket 02 führt die verbleibende Arbeit weiter. Kein öffentlicher Push oder Umschreiben der Originalhistorie ist damit beauftragt.
+The order recorded in the rich-text worktree on 2026-10-19 remains: URL-copy convenience, subtask reconciliation, then finish publication. AT-01–10 and the live rich-text round trip are accepted; separate general tutorial acceptance remains partly open. Database compatibility with Vikunja 2.7.0 only and the completed license review already established on `main` are not reset by older open checklists in the feature branch. The former overall Ticket 01 still present there must not be recreated as open during the merge; this Ticket 02 tracks remaining work. No public push or original history rewrite is authorized.
 
+### 2026-10-20 — Subtask cleanup: remaining work handed over
 
-### 2026-10-20 — Subtask-Cleanup: Restarbeit übergeben
+Technical ticket reconciliation is done; twelve completed tickets and two audit reports are archived. The [cleanup report](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md#reconciliation-result--2026-10-20) separates remaining manual acceptance (general tutorial from task 9, Comment `~`, latest punctuation fix) from already accepted rich text/layout. URL-copy work runs in parallel at Jan's request and remains owned there.
 
-Der technische Ticket-Abgleich ist erledigt; zwölf abgeschlossene Tickets und
-zwei Auditberichte sind archiviert. Der [Cleanup-Bericht](../../../.archive/2026-10-20/release-ticket-cleanup/issues/01-reconcile-open-subtasks-before-publication.md#reconciliation-result--2026-10-20)
-trennt verbleibende manuelle Abnahmen (allgemeines Tutorial ab Aufgabe 9,
-Comment-`~`, jüngster Satzzeichen-Fix) von bereits akzeptiertem Richtext/Layout.
-URL-Copy läuft auf Jans Auftrag parallel und bleibt dort zu bearbeiten.
+Publication work remains open: commit final working changes, select a starting commit, run release checks/CI, create the publication copy with metadata/history cleanup, scan secrets/databases, and perform an explicit push dry run. `e978e76` establishes the completed merge but does not identify the final publication state because subsequent local changes exist. Public push needs separate approval. This reconciliation does not blanket-check the release boxes above.
 
-Die Veröffentlichungsarbeit bleibt offen: finale Arbeitsänderungen committen,
-Ausgangscommit wählen, releasebezogene Prüfungen/CI, Veröffentlichungskopie mit
-Metadaten-/Historienbereinigung, Secret-/DB-Scan und expliziter Push-Dry-Run.
-`e978e76` belegt den abgeschlossenen Merge, ist wegen nachfolgender lokaler
-Änderungen noch keine Zusage für den finalen Veröffentlichungsstand. Ein
-öffentlicher Push bleibt separat freizugeben. Die obigen Release-Checkboxen
-werden durch diesen Ticket-Abgleich nicht pauschal als erledigt markiert.
+### 2026-10-20 — Subtask cleanup completed
 
-### 2026-10-20 — Subtask-Cleanup abgeschlossen
+Jan confirms all 20 remaining acceptance checks PASS: general tutorial 9–26, Comment `~` / `2~`, and literal punctuation. Cleanup, tutorial, and editor-motion tickets are completed and archived. The previous acceptance handover is resolved. The HTML summary export was broken; Jan's explicit chat response is the acceptance evidence. URL-copy and publication tasks above remain separate.
 
-Jan bestätigt alle 20 Restabnahme-Checks PASS: allgemeines Tutorial 9–26,
-Comment-`~` / `2~` und literale Satzzeichen. Cleanup, Tutorial- und
-Editor-Motion-Ticket sind abgeschlossen und archiviert. Die vorherige
-Restabnahme-Übergabe ist damit erledigt. Der HTML-Zusammenfassungsexport war
-defekt; Jans explizite Chat-Rückmeldung ist der Abnahmenachweis. URL-Copy und
-die oben aufgeführten Veröffentlichungsaufgaben bleiben separat.
-
-Der akzeptierte Satzzeichen-Fix ist als `393a2b0` committet. Der zugehörige
-Cleanup-Abschluss wird separat versioniert; ein finaler Veröffentlichungsstand
-ist damit noch nicht ausgewählt.
+The accepted punctuation fix is committed as `393a2b0`. The related cleanup completion is versioned separately; a final publication state has not yet been selected.
 
 ### 2026-10-21 — URL-Copy integration
 
@@ -118,50 +100,58 @@ Link destination; `Space+Y` remains an alias. URL-Copy implementation and
 Subtask-Cleanup are complete. Publication checks remain owned by this ticket;
 this merge does not perform or authorize a public push.
 
-### 2026-10-22 — Veröffentlichungsfokus und E-Mail-Bereinigung beauftragt
+### 2026-10-22 — Publication focus and email cleanup requested
 
-Jan stellt alle noch nicht begonnenen Backlog-Aufgaben zurück und priorisiert die Veröffentlichung. Die automatisierte Entfernung seiner privaten E-Mail aus der Historie ist ausdrücklich beauftragt. Umsetzung in einer separaten Veröffentlichungskopie mit der bestätigten GitHub-noreply-Adresse; Originalhistorie, Worktrees und lokale Backups bleiben erhalten. Zunächst nur `main`, keine Tags ohne ausdrückliche Auswahl und kein öffentlicher Push.
+Jan defers all backlog work not yet started and prioritizes publication. Automated removal of his private email from history is explicitly requested. Perform this in a separate publication copy with the confirmed GitHub noreply address; preserve original history, worktrees, and local backups. Initially `main` only, no tags without explicit selection, and no public push.
 
-#### Ergebnis der Historienbereinigung
+#### History cleanup result
 
-- Veröffentlichungskopie: `/workspace/vimkunja-publication`, eigenständiges Repository ohne Objekt-Alternates, Remotes oder Backup-Referenzen. Einzige Referenz: `refs/heads/main`; Tags weiterhin nicht ausgewählt.
-- Ausgangscommit: `57c94e46645c6d8639f78e682f7fc365a5d19b03`; bereinigter Commit: `af4a50fbdce1362066ec1ae982b62ec309b9f80c`.
-- Automatisiert mit `git-filter-repo` 2.47.0. Eine bestätigte private Identität ersetzt: Author-/Committer-Felder in fünf Commits und drei historische Blob-Versionen in den beiden früheren Pfaden von Veröffentlichungsticket 01. Commit-Nachrichten und Dateiinhalte wurden ebenfalls geprüft und bei Treffern ersetzt, einschließlich Groß-/Kleinschreibung und UTF-16. Andere Identitäten bleiben unverändert.
-- Alle 190 Commits und beide Merges erhalten. Jeder Commit wurde gegen das Original verglichen: Parent-Zuordnung, Nachrichten, Metadaten, Dateinamen, Modi und sämtliche historischen Inhalte stimmen bis auf die beauftragte E-Mail-Ersetzung und daraus folgende Objekt-IDs überein. Keine weiteren Inhaltsänderungen.
-- Alle 3.324 physisch vorhandenen Git-Objekte und die Rohdateien unter `.git` geprüft: kein Treffer der bestätigten privaten Adresse. Keine Datenbank-/Sidecar-Dateinamen oder SQLite-Dateisignaturen in erreichbaren Blobs gefunden. `git fsck --full` erfolgreich. Das ist kein vollständiger Secret-Scan oder allgemeiner Datenschutz-Audit.
-- Künftige lokale Identität der Kopie: `Jan Wartenberg <5298128+JanWartenberg@users.noreply.github.com>`. Kein Remote eingerichtet; `push.default=nothing` verhindert einen unbeabsichtigten Standard-Push.
-- Auf dem bereinigten Commit mit der lokal vorhandenen Go-1.27.1-Toolchain: `go test ./... ./.scratch/description-rendering/verification`, beide Builds und `go vet ./...` erfolgreich. Die Toolchain-Version allein belegt keine aktuelle Sicherheitsprüfung.
-- Original-`main`, lokale Backups, andere Worktrees, Nutzerdatenbanken und der unversionierte Task-Copy-Spec bleiben erhalten. Die alte Historie enthält lokal weiterhin die private Adresse und darf nicht veröffentlicht werden.
+- Publication copy: `/workspace/vimkunja-publication`, independent repository without object alternates, remotes, or backup references. Only reference: `refs/heads/main`; no tags selected.
+- Source commit: `57c94e46645c6d8639f78e682f7fc365a5d19b03`; cleaned commit: `af4a50fbdce1362066ec1ae982b62ec309b9f80c`.
+- Automated with `git-filter-repo` 2.47.0. One confirmed private identity replaced: author/committer fields in five commits and three historical blob versions at both former paths of publication Ticket 01. Commit messages and file contents were also checked and replaced on matches, including case variations and UTF-16. Other identities unchanged.
+- All 190 commits and both merges preserved. Every commit compared with the original: parent mapping, messages, metadata, filenames, modes, and all historical contents match except for the requested email replacement and resulting object IDs. No other content changes.
+- All 3,324 physically present Git objects and raw files under `.git` checked: no match for the confirmed private address. No database/sidecar filenames or SQLite signatures in reachable blobs. `git fsck --full` passed. This is not a full secret scan or general privacy audit.
+- Future local identity of the copy: `Jan Wartenberg <5298128+JanWartenberg@users.noreply.github.com>`. No remote configured; `push.default=nothing` prevents an unintended default push.
+- On the cleaned commit using the locally available Go 1.27.1 toolchain: `go test ./... ./.scratch/description-rendering/verification`, both builds, and `go vet ./...` passed. Toolchain version alone does not establish current security scanning.
+- Original `main`, local backups, other worktrees, user databases, and the unversioned Task-copy spec preserved. Old history still contains the private address locally and must not be published.
 
-Commit-Zuordnung: `/workspace/vimkunja-publication/.git/filter-repo/commit-map`.
-Maschinenlesbare Prüfergebnisse: `/workspace/vimkunja-publication/.git/filter-repo/privacy-verification.json`.
-Der geprüfte Ausgangscommit enthält die nachfolgenden Dokumentationsänderungen noch nicht. Der endgültige Veröffentlichungscommit ist nach Abschluss der Dokumentation festzuhalten und zu prüfen. Der sonstige Backlog ist zurückgestellt.
+Commit mapping: `/workspace/vimkunja-publication/.git/filter-repo/commit-map`.
+Machine-readable results: `/workspace/vimkunja-publication/.git/filter-repo/privacy-verification.json`.
+The verified starting commit does not yet include subsequent documentation changes. Record and check the final publication commit once documentation is complete. Other backlog work is deferred.
 
-**Nächste Release-Schritte:** Aktualisierten Dokumentationsstand als Ausgangspunkt der finalen Release-Prüfung festhalten; aktuellen Schwachstellen-/Secret-Scan, CI-Konfiguration und gegebenenfalls Plattformgrenzen prüfen; GitHub-Ziel und expliziten Push-Dry-Run prüfen. Ein echter Actions-Lauf benötigt einen geeigneten GitHub-Prüfstand. Öffentlicher Push weiterhin nur auf ausdrücklichen Auftrag.
+**Next release steps:** Record the updated documentation state as the basis for final release checks; check current vulnerability/secret scanning, CI configuration, and any platform limitations; verify GitHub target and explicit push dry run. A real Actions run needs a suitable GitHub test environment. Public push still requires an explicit instruction.
 
-**Weiterarbeit:** Veröffentlichungsarbeit in der bereinigten Kopie fortsetzen. Alte Branches und Worktrees nur als Referenz verwenden; ein Merge der alten Historie würde private Metadaten wieder eintragen. Spätere Änderungen gezielt übertragen. Die Dokumentation der Historienbereinigung ist bereits übertragen; der unversionierte Task-Copy-Spec wurde nicht in die Veröffentlichungskopie übernommen.
+**Continuation:** Continue publication work in the cleaned copy. Use old branches/worktrees only as references; merging old history would reintroduce private metadata. Transfer later changes selectively. History-cleanup documentation is already transferred; the unversioned Task-copy spec was not included in the publication copy.
 
-### 2026-10-22 — Unabhängige Projektkennzeichnung
+### 2026-10-22 — Independent project identification
 
-Jan beauftragt den README-Untertitel „An unofficial Vim-style terminal interface for Vikunja.“ und den Hinweis „Vimkunja is an independent project, not affiliated with or endorsed by Vikunja.“ Beide stehen direkt unter dem Projektnamen. Eine Zustimmung des Vikunja-Projekts zum Namen ist damit nicht dokumentiert. Die Veröffentlichungsnotizen sind auf den erreichten Bereinigungsstand abgeglichen; finale Prüfungen und öffentlicher Push bleiben offen.
+Jan requests the README subtitle “An unofficial Vim-style terminal interface for Vikunja.” and disclaimer “Vimkunja is an independent project, not affiliated with or endorsed by Vikunja.” Both appear directly below the project name. This does not document Vikunja's consent to the name. Publication notes reflect the achieved cleanup state; final checks and public push remain open.
 
-### 2026-10-22 — Lokale Veröffentlichungsvorbereitung geprüft
+### 2026-10-22 — Local publication preparation verified
 
-Jan beauftragt alle bereits möglichen Veröffentlichungsvorbereitungen. Geprüfter Quellcode-Ausgangspunkt: `bd340c216e4f60942bd43341e74e0e76c4669666` (`main`, 191 Commits). Die folgenden Dokumentationskorrekturen werden mit den lokalen Prüfergebnissen separat versioniert; es wurde nichts öffentlich gepusht.
+Jan requests all publication preparation already possible. Verified source starting point: `bd340c216e4f60942bd43341e74e0e76c4669666` (`main`, 191 commits). The following documentation corrections are versioned separately with local findings; nothing was publicly pushed.
 
-- **Dokumentation und Lizenzen:** 329 veröffentlichbare Dateien, davon 111 Markdown-Dateien, mit 10 lokalen Fragment-Verweisen geprüft. Einen veralteten Corpus-Anker im archivierten Richtext-Ticket 02 korrigiert; danach keine defekten lokalen Datei-/Fragment-Links. Alle 40 externen Dokumentationslinks antworten erfolgreich. Alle 30 kompilierten Drittanbieter-Modulversionen für beide Entrypoints unter Linux amd64, Windows amd64 und Darwin amd64/arm64 stimmen mit `THIRD_PARTY_NOTICES.txt` überein; Inventar-Lizenztexte gegen Modulquellen und Notices geprüft, einschließlich Go und beider APSL-Texte. Keine Dependency-Änderung nötig. README dokumentiert weiterhin ausschließlich Vikunja 2.7.0, sequenziellen DB-Zugriff und die Grenzen späterer Binary-Releases.
-- **Herkunfts-Nachprüfung:** 916 historische Go-Blobs von `main` mit den Backend-Go-Quellen des lokalen Vikunja-Upstreams (`82ee780161c6ed250cdb1fc4d2952b72464cb724`) verglichen. Keine identische Folge von acht nichttrivialen Zeilen nach der bestehenden Normalisierung gefunden. Das ist kein lückenloser Herkunftsnachweis und erkennt kurze oder umgeschriebene Übernahmen nicht.
-- **Tests und CI:** Mit Go 1.27.1 bestehen `go test ./... ./.scratch/description-rendering/verification`, beide Entrypoint-Builds und `go vet ./...`. `go mod verify` besteht ebenfalls. Beide CI-Fuzz-Ziele bestehen mit je fünf Sekunden Laufzeit. Actionlint prüft den vorhandenen Linux-/Windows-Workflow erfolgreich; beide referenzierten Action-Tags `v7` sind im jeweiligen Upstream vorhanden. Windows-amd64-Crossbuild beider Programme erfolgreich. Beide CLI-Hilfen, fehlender DB-Pfad ohne Dateineuanlage und Tutorial-Menü/Practice in Linux-PTY inklusive Ctrl+C und temporärer DB-Bereinigung geprüft. Keine produktive Nutzerdatenbank geöffnet.
-- **Schwachstellen:** Der erste Lauf mit dem lokalen Standard-Go 1.25.0 meldet drei erreichbare Standardbibliotheks-Findings (`GO-2025-4010`, `GO-2026-4341`, `GO-2026-4601`). Erneuter Scan mit dem vorhandenen Go 1.27.1: keine erreichbaren Findings. Der Scanner nennt zusätzlich eine Schwachstelle in importierten Packages und 13 in benötigten Modulen ohne nachgewiesenen Aufruf. Für Builds weiter eine aktuelle sicherheitsgepatchte Toolchain verwenden; die ungepatchte Systeminstallation wurde nicht verändert.
-- **Secrets und Datenschutz:** Gitleaks 8.30.1 über `main` (188 Commits mit ausgewerteten Änderungen) und den aktuellen veröffentlichbaren Dateibaum ohne Findings. Alle 3.350 physisch vorhandenen Git-Objekte zusätzlich exportiert und gescannt: vier Treffer, ausschließlich bestätigte `modernc.org/token`-Prüfsummen in historischen `go.sum`-Blobs. Keine echten Secrets gefunden. Alle Objektinhalte und aktuellen Dateien auf die zuvor bereinigte private Adresse einschließlich UTF-16 geprüft: null Treffer. Keine DB-/Sidecar-Pfade in der erreichbaren Historie und keine SQLite-Dateisignaturen in den Objektinhalten. Persönlicher Pfad-Kandidat in `help.go` ist nur der Tastaturhinweis `/Home/End,`. Synthetische Test-/Tutorial-Fixtures bleiben erhalten. Diese technischen Scans sind kein Beweis für das Fehlen jeder denkbaren sensiblen Information.
-- **Referenzen und Push-Probe:** `origin` zeigt per HTTPS auf `https://github.com/JanWartenberg/vimkunja.git`; kein Mirror-Modus, keine zusätzlichen Push-Refspecs, `push.default=nothing`. Die App hat inzwischen lokale `refs/t3/orchestration-v2/checkpoints/...` angelegt; diese bleiben lokal und werden nicht gelöscht. Expliziter Dry Run und anschließender Push in ein temporäres lokales Bare-Repository ergeben exakt `refs/heads/main` bei `bd340c2`, keine Tags oder weiteren Referenzen. `git fsck --full` erfolgreich. Keine Veröffentlichung auf GitHub erfolgt.
-- **GitHub-Blocker:** Anonyme Repository-API antwortet HTTP 404; daraus ist nicht unterscheidbar, ob das Ziel fehlt oder privat ist. GitHub-`ls-remote` und echter HTTPS-Push-Dry-Run scheitern mit `could not read Username for 'https://github.com': No such device or address`. In dieser Sitzung steht kein authentifizierter GitHub-Zugriff bereit. Repository-Zustand, Schreibrechte und echter GitHub-Dry-Run sind deshalb nicht bestätigt. Kein Repository auf Verdacht angelegt.
-- **Verbleibende Abnahmen:** Echter GitHub-Actions-Lauf erst mit geeignetem zugänglichem GitHub-Prüfstand. Windows-Crossbuild ersetzt keine native Terminal-/Clipboard-Abnahme; deren Grenzen bleiben ebenso wie der offene Live-CalDAV-Test dokumentiert. Automatische Release-Binaries, macOS-Binary-Freigabe und produktives Start-Template bleiben außerhalb der Quellcode-Erstveröffentlichung.
+- **Documentation and licenses:** 329 publishable files, including 111 Markdown files, checked with 10 local fragment references. Corrected an outdated corpus anchor in archived rich-text Ticket 02; no broken local file/fragment links afterward. All 40 external documentation links respond successfully. All 30 compiled third-party module versions for both entrypoints on Linux amd64, Windows amd64, and Darwin amd64/arm64 match `THIRD_PARTY_NOTICES.txt`; inventory license texts checked against module sources and notices, including Go and both APSL texts. No dependency change needed. README still documents Vikunja 2.7.0 only, sequential database access, and limitations of later binary releases.
+- **Provenance recheck:** 916 historical Go blobs on `main` compared with backend Go sources of the local Vikunja upstream (`82ee780161c6ed250cdb1fc4d2952b72464cb724`). No identical sequence of eight nontrivial lines after existing normalization. This is not complete provenance proof and cannot detect short or rewritten copies.
+- **Tests and CI:** Go 1.27.1 passes `go test ./... ./.scratch/description-rendering/verification`, both entrypoint builds, and `go vet ./...`. `go mod verify` also passes. Both CI fuzz targets pass with five seconds each. Actionlint successfully checks the existing Linux/Windows workflow; both referenced Action `v7` tags exist upstream. Windows amd64 cross-builds of both programs succeed. Both CLI help commands, missing database path without file creation, and tutorial menu/practice in Linux PTY including Ctrl+C and temporary database cleanup checked. No production user database opened.
+- **Vulnerabilities:** The first run with local default Go 1.25.0 reports three reachable standard-library findings (`GO-2025-4010`, `GO-2026-4341`, `GO-2026-4601`). Rescan with available Go 1.27.1: no reachable findings. The scanner additionally lists one vulnerability in imported packages and 13 in required modules without a demonstrated call. Continue building with a current security-patched toolchain; the unpatched system installation was not changed.
+- **Secrets and privacy:** Gitleaks 8.30.1 over `main` (188 commits with evaluated changes) and current publishable files without findings. All 3,350 physically present Git objects additionally exported/scanned: four findings, exclusively confirmed `modernc.org/token` checksums in historical `go.sum` blobs. No real secrets found. All object contents/current files checked for the previously cleaned private address including UTF-16: zero matches. No database/sidecar paths in reachable history or SQLite signatures in objects. The personal-path candidate in `help.go` is only the keyboard hint `/Home/End,`. Synthetic test/tutorial fixtures preserved. These technical scans cannot prove the absence of every possible kind of sensitive information.
+- **References and push rehearsal:** `origin` points via HTTPS to `https://github.com/JanWartenberg/vimkunja.git`; no mirror mode or additional push refspecs, `push.default=nothing`. The app has since created local `refs/t3/orchestration-v2/checkpoints/...`; these stay local and are not deleted. Explicit dry run then push into a temporary local bare repository produces exactly `refs/heads/main` at `bd340c2`, no tags/other references. `git fsck --full` passes. Nothing published on GitHub.
+- **GitHub blocker:** Anonymous repository API responds HTTP 404; this cannot distinguish a missing from a private target. GitHub `ls-remote` and actual HTTPS push dry run fail with `could not read Username for 'https://github.com': No such device or address`. This session has no authenticated GitHub access. Repository state, write permissions, and actual GitHub dry run are therefore unconfirmed. No repository created speculatively.
+- **Remaining acceptance:** Real GitHub Actions run requires a suitable accessible GitHub test environment. Windows cross-build does not replace native terminal/clipboard acceptance; those limits and the open live CalDAV test remain documented. Automatic release binaries, macOS binary approval, and a production starter template remain outside initial source publication.
 
-Lokale Rohberichte und Push-Probe: `/tmp/vimkunja-readiness-20261022/` (temporär, nicht Teil der Veröffentlichung). Der dokumentierte Übergang auf die bereinigte Historie bleibt verbindlich: hier weiterarbeiten und keine alten Branches samt privater Metadaten hineinmergen.
+Local raw reports and push rehearsal: `/tmp/vimkunja-readiness-20261022/` (temporary, not published). The documented transition to cleaned history remains mandatory: continue here and do not merge old branches containing private metadata.
 
-**Noch zu erledigen:** Jan richtet das GitHub-Repository und authentifizierten Zugriff ein; danach Ziel und echten Dry Run bestätigen; nach ausdrücklichem öffentlichen Push-Auftrag veröffentlichen, Remote-Referenzen und Actions prüfen. Das Ticket bleibt bis dahin `in-progress`.
+**Remaining work:** Jan sets up the GitHub repository and authenticated access; then verify target and actual dry run; publish after an explicit public-push instruction, and check remote references and Actions. This ticket remains `in-progress` until then.
 
-### 2026-10-22 — Prüfbericht committen, GitHub-Einrichtung durch Jan
+### 2026-10-22 — Commit report; GitHub setup owned by Jan
 
-Jan beauftragt den Commit der vier Dokumentationsänderungen und übernimmt die GitHub-Einrichtung. Erinnerung: `JanWartenberg/vimkunja` als leeres öffentliches Repository ohne automatisch angelegte README, Lizenz oder `.gitignore` anlegen (falls noch nicht vorhanden) und authentifizierten HTTPS-Push-Zugriff bereitstellen. Anschließend echten Dry Run prüfen; öffentlicher Push bleibt separat zu beauftragen.
+Jan requests committing the four documentation changes and takes ownership of GitHub setup. Reminder: create `JanWartenberg/vimkunja` as an empty public repository without automatically generated README, license, or `.gitignore` (if not already present), and provide authenticated HTTPS push access. Then check the real dry run; public push still needs a separate instruction.
+
+### 2026-10-23 — English publication documentation
+
+Jan confirms repository creation and a successful HTTPS dry run for `main`. Jan requests translating all repository documentation, comments, and docstrings into English. Translate current and archived prose and remaining German UI messages; preserve keybindings, Unicode test inputs, paths, source links, and authoritative third-party license texts. This does not authorize a public push or another history rewrite.
+
+Translation completed across 26 existing files: README, STATUS, agent instructions, archived/open tickets and specs, corpus notes, HTML prototypes/checklist, prototype sample data, and remaining German confirmation/fallback messages. Source comments and docstrings were already English; the repository language rule now makes this explicit. Multilingual Unicode fixtures, German-layout character bindings, historical filenames, and third-party copyright names remain intact. No license texts, dependency versions, database data, or Git history changed.
+
+Validation: `go test ./... ./.scratch/description-rendering/verification`, both entrypoint builds, and `go vet ./...` pass with Go 1.27.1; focused Description tests also pass after the final error-text adjustment. Gofmt reports no changes. Non-string Go token streams are identical, and HTML JavaScript structure is identical apart from string/template text. Nine English DOM screens initialize successfully; checklist navigation and prototype editor mode controls pass. Native browser preview is unavailable because host AppArmor blocks its sandbox, so no visual-browser acceptance is claimed. All local links and ten fragment references across 111 Markdown files resolve; source URL targets are preserved except the deliberately translated heading anchor. The final language scan has no remaining German prose candidates after excluding documented technical fixtures and false positives. Gitleaks finds no secrets in the translation diff. Jan requests committing the translation and verification record. No push performed.

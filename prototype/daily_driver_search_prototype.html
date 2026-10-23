@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Vimkunja – Daily-driver &amp; Suche Prototype</title>
+  <title>Vimkunja – daily-driver &amp; search prototype</title>
   <style>
     /* THROWAWAY UI PROTOTYPE.
        Three radically different Daily-driver/Search surfaces, switchable with
@@ -115,24 +115,24 @@
       { id: 'later', name: 'IDEAS', title: 'Later / ideas', count: 6 },
     ];
     const tasks = [
-      { id: 21, project: 'VIM', projectTitle: 'Vimkunja', title: 'All Tasks Overview spezifizieren', description: 'Eine flache Übersicht für offene Tasks aus allen Projects mit stabiler Projektkennung.', labels: ['daily-driver', 'tui'], due: 'Heute', priority: 3, bucket: 'To Do', done: false },
-      { id: 22, project: 'VIM', projectTitle: 'Vimkunja', title: 'Kanban View als Tasks Pane rendern', description: 'Buckets horizontal darstellen; hjkl bewegt die Auswahl im Board.', labels: ['daily-driver', 'kanban'], due: 'Morgen', priority: 3, bucket: 'Doing', done: false },
-      { id: 23, project: 'HOME', projectTitle: 'Personal', title: 'Zahnarzt anrufen', description: 'Termin für Kontrolle vereinbaren.', labels: ['health'], due: 'Überfällig', priority: 4, bucket: 'Inbox', done: false },
-      { id: 24, project: 'ACME', projectTitle: 'Acme client', title: 'Angebot gegenlesen', description: 'Feedback aus dem Vertragsentwurf einarbeiten und Rückfragen sammeln.', labels: ['client', 'review'], due: 'Fr, 26. Jul', priority: 2, bucket: 'Review', done: false },
-      { id: 25, project: 'HOME', projectTitle: 'Personal', title: 'Wocheneinkauf planen', description: 'Liste aus dem Wochenplan erstellen.', labels: ['routine'], due: 'Heute', priority: 1, bucket: 'To Do', done: false },
-      { id: 26, project: 'IDEAS', projectTitle: 'Later / ideas', title: 'Suche: Labels als Filterziel', description: 'Globale Suche soll Projects, Tasks und vorhandene Vikunja Labels finden.', labels: ['search', 'later'], due: '—', priority: 1, bucket: 'Backlog', done: false },
-      { id: 27, project: 'VIM', projectTitle: 'Vimkunja', title: 'Task löschen mit Bestätigung', description: 'Löschen muss ausdrücklich bestätigt werden und danach die View aktualisieren.', labels: ['daily-driver'], due: 'Morgen', priority: 2, bucket: 'To Do', done: false },
-      { id: 28, project: 'ACME', projectTitle: 'Acme client', title: 'Stundenzettel senden', description: 'Abrechnung für Juli abschließen.', labels: ['client'], due: 'Erledigt', priority: 2, bucket: 'Done', done: true },
+      { id: 21, project: 'VIM', projectTitle: 'Vimkunja', title: 'Specify All Tasks Overview', description: 'A flat overview of open Tasks across all Projects with stable Project identifiers.', labels: ['daily-driver', 'tui'], due: 'Today', priority: 3, bucket: 'To Do', done: false },
+      { id: 22, project: 'VIM', projectTitle: 'Vimkunja', title: 'Render Kanban View in Tasks Pane', description: 'Show Buckets horizontally; hjkl moves selection across the Board.', labels: ['daily-driver', 'kanban'], due: 'Tomorrow', priority: 3, bucket: 'Doing', done: false },
+      { id: 23, project: 'HOME', projectTitle: 'Personal', title: 'Call the dentist', description: 'Arrange a checkup appointment.', labels: ['health'], due: 'Overdue', priority: 4, bucket: 'Inbox', done: false },
+      { id: 24, project: 'ACME', projectTitle: 'Acme client', title: 'Review quotation', description: 'Incorporate draft-contract feedback and collect questions.', labels: ['client', 'review'], due: 'Fri, Jul 26', priority: 2, bucket: 'Review', done: false },
+      { id: 25, project: 'HOME', projectTitle: 'Personal', title: 'Plan weekly groceries', description: 'Create a list from the weekly plan.', labels: ['routine'], due: 'Today', priority: 1, bucket: 'To Do', done: false },
+      { id: 26, project: 'IDEAS', projectTitle: 'Later / ideas', title: 'Search: Labels as filter targets', description: 'Global Search should find Projects, Tasks, and existing Vikunja Labels.', labels: ['search', 'later'], due: '—', priority: 1, bucket: 'Backlog', done: false },
+      { id: 27, project: 'VIM', projectTitle: 'Vimkunja', title: 'Delete Task with confirmation', description: 'Deletion requires explicit confirmation and refreshes the View afterward.', labels: ['daily-driver'], due: 'Tomorrow', priority: 2, bucket: 'To Do', done: false },
+      { id: 28, project: 'ACME', projectTitle: 'Acme client', title: 'Send timesheet', description: 'Finish July billing.', labels: ['client'], due: 'Done', priority: 2, bucket: 'Done', done: true },
     ];
     const variants = [
-      ['A', 'A — Overview zuerst'],
-      ['B', 'B — Suche als Pane'],
+      ['A', 'A — Overview first'],
+      ['B', 'B — Search as a pane'],
       ['C', 'C — globale Command-Overlay'],
     ];
     const params = new URLSearchParams(location.search);
     const state = {
       variant: variants.some(([key]) => key === params.get('variant')) ? params.get('variant') : 'A',
-      query: '', scope: 'all', hideDone: true, selected: 0, selectedProject: 'all', lastAction: 'Prototype gestartet',
+      query: '', scope: 'all', hideDone: true, selected: 0, selectedProject: 'all', lastAction: 'Prototype started',
     };
 
     function visibleTasks() {
@@ -187,57 +187,57 @@
       const selected = state.selectedProject === project.name ? ' selected' : '';
       return `<button class="project-row${selected}" data-project="${project.name}"><span class="project-dot">›</span>${project.name}<span class="overview-count"> ${project.count}</span></button>`;
     }
-    function searchBar(label = 'Suche') {
-      return `<div class="toolbar"><span class="key">/</span><input id="search" class="search-input" autocomplete="off" placeholder="${label}: Tasks, Projects, Labels und Description …" value="${escapeHtml(state.query)}"><button class="chip ${state.hideDone ? 'active' : ''}" data-done>offen</button></div>`;
+    function searchBar(label = 'Search') {
+      return `<div class="toolbar"><span class="key">/</span><input id="search" class="search-input" autocomplete="off" placeholder="${label}: Tasks, Projects, Labels, and Description …" value="${escapeHtml(state.query)}"><button class="chip ${state.hideDone ? 'active' : ''}" data-done>open</button></div>`;
     }
     function preview(task) {
-      if (!task) return `<div class="preview"><div class="empty">Kein Treffer.<br>Suche ändern oder Scope wechseln.</div></div>`;
-      return `<div class="preview"><div class="hint">Task Detail Pane · Vorschau</div><h2>${highlight(task.title)}</h2><dl><dt>Project</dt><dd>${task.projectTitle} (${task.project})</dd><dt>Workflow</dt><dd>${task.bucket}</dd><dt>Due date</dt><dd>${task.due}</dd><dt>Priority</dt><dd class="p${task.priority}">${priority(task)}</dd></dl><p>${highlight(task.description)}</p><div>${task.labels.map(label => `<span class="tag">#${label}</span>`).join('')}</div></div>`;
+      if (!task) return `<div class="preview"><div class="empty">No match.<br>Change the search or scope.</div></div>`;
+      return `<div class="preview"><div class="hint">Task Detail Pane · preview</div><h2>${highlight(task.title)}</h2><dl><dt>Project</dt><dd>${task.projectTitle} (${task.project})</dd><dt>Workflow</dt><dd>${task.bucket}</dd><dt>Due date</dt><dd>${task.due}</dd><dt>Priority</dt><dd class="p${task.priority}">${priority(task)}</dd></dl><p>${highlight(task.description)}</p><div>${task.labels.map(label => `<span class="tag">#${label}</span>`).join('')}</div></div>`;
     }
     function listByDate(rows) {
-      if (!rows.length) return '<div class="empty">Keine passenden offenen Tasks.</div>';
-      const groups = [['Überfällig', rows.filter(t => t.due === 'Überfällig')], ['Heute', rows.filter(t => t.due === 'Heute')], ['Als Nächstes', rows.filter(t => !['Überfällig', 'Heute'].includes(t.due))]];
+      if (!rows.length) return '<div class="empty">No matching open Tasks.</div>';
+      const groups = [['Overdue', rows.filter(t => t.due === 'Overdue')], ['Today', rows.filter(t => t.due === 'Today')], ['Up next', rows.filter(t => !['Overdue', 'Today'].includes(t.due))]];
       let index = 0;
       return groups.filter(([, group]) => group.length).map(([name, group]) => `<div class="section-label">${name}</div>${group.map(task => taskRow(task, index++)).join('')}`).join('');
     }
     function variantA() {
       const rows = visibleTasks();
       const task = selectedTask();
-      const heading = state.query ? `Suche · ${resultItems().length} Treffer` : `Alle offenen Tasks · ${rows.length}`;
+      const heading = state.query ? `Search · ${resultItems().length} matches` : `All open Tasks · ${rows.length}`;
       let index = 0;
       const content = state.query ? resultItems().map(item => item.task ? taskRow(item.task, index++, true) : `<button class="result-row ${index++ === state.selected ? 'selected' : ''}" data-select="${index - 1}"><div class="row-main"><span class="result-kind">Project</span><span class="result-copy">${highlight(item.project.title)}<span class="result-sub">Project identifier: ${item.project.name}</span></span></div></button>`).join('') : listByDate(rows);
-      return `<div class="topbar"><span class="brand">VIMKUNJA</span><span class="question">Variante A: Die Overview ist dein Zuhause; <b>/</b> verwandelt sie kurzfristig in eine globale Suche.</span><span class="badge">Overview View</span></div><section class="overview-layout"><aside class="pane project-list"><div class="pane-title">Projects <small>Space+o</small></div><button class="project-row${state.selectedProject === 'all' ? ' selected' : ''}" data-project="all"><span class="project-dot">›</span>ALLE PROJECTS</button>${projects.map(projectRow).join('')}</aside><section class="pane"><div class="overview-title">${heading}<span>Due date → Priority → Project</span></div>${searchBar('Volltext durchsuchen')}${content}<div class="footer-command"><span class="key">/</span> suchen · <span class="key">n</span>/<span class="key">N</span> Treffer · <span class="key">Enter</span> Task Detail Pane</div></section><aside class="pane"><div class="pane-title">Task Detail Pane <small>Enter</small></div>${preview(task)}</aside></section>`;
+      return `<div class="topbar"><span class="brand">VIMKUNJA</span><span class="question">Variant A: Overview is home; <b>/</b> temporarily turns it into Global Search.</span><span class="badge">Overview View</span></div><section class="overview-layout"><aside class="pane project-list"><div class="pane-title">Projects <small>Space+o</small></div><button class="project-row${state.selectedProject === 'all' ? ' selected' : ''}" data-project="all"><span class="project-dot">›</span>ALL PROJECTS</button>${projects.map(projectRow).join('')}</aside><section class="pane"><div class="overview-title">${heading}<span>Due date → Priority → Project</span></div>${searchBar('Search full text')}${content}<div class="footer-command"><span class="key">/</span> search · <span class="key">n</span>/<span class="key">N</span> matches · <span class="key">Enter</span> Task Detail Pane</div></section><aside class="pane"><div class="pane-title">Task Detail Pane <small>Enter</small></div>${preview(task)}</aside></section>`;
     }
     function variantB() {
       const items = resultItems();
       const task = selectedTask();
       let index = 0;
-      const results = items.length ? items.map(item => item.task ? taskRow(item.task, index++, true) : `<button class="result-row ${index++ === state.selected ? 'selected' : ''}" data-select="${index - 1}"><div class="row-main"><span class="result-kind">Project</span><span class="result-copy">${highlight(item.project.title)}<span class="result-sub">${item.project.name} · ${item.project.count} offene Tasks</span></span></div></button>`).join('') : '<div class="empty">Keine Treffer im gewählten Scope.</div>';
-      return `<div class="topbar"><span class="brand">VIMKUNJA</span><span class="question">Variante B: Suche ist ein dauerhaftes Pane; leere Suche ist die All-Tasks-Übersicht.</span><span class="badge">Search Pane</span></div><section class="finder-layout"><aside class="pane"><div class="pane-title">Search scope</div><div class="scope-block"><div class="scope-heading">Durchsuche</div>${[['all','Alles: Tasks, Projects, Labels'], ['task','Tasks: Title + Description + Labels'], ['project','Projects'], ['label','Labels']].map(([key, name]) => `<button class="scope-option ${state.scope === key ? 'active' : ''}" data-scope="${key}">${name}</button>`).join('')}</div><div class="scope-block"><div class="scope-heading">Projects</div><button class="scope-option ${state.selectedProject === 'all' ? 'active' : ''}" data-project="all">Alle Projects</button>${projects.map(project => `<button class="scope-option ${state.selectedProject === project.name ? 'active' : ''}" data-project="${project.name}">${project.name} · ${project.title}</button>`).join('')}</div></aside><section class="pane">${searchBar('Suche bleibt sichtbar')}<div class="finder-status">${state.query ? `${items.length} Treffer` : `${items.length} offene Tasks · tippe los, um zu filtern`} <span class="hint">· n/N oder j/k navigieren</span></div>${results}</section><aside class="pane"><div class="pane-title">Preview <small>Enter öffnet</small></div>${preview(task)}</aside></section>`;
+      const results = items.length ? items.map(item => item.task ? taskRow(item.task, index++, true) : `<button class="result-row ${index++ === state.selected ? 'selected' : ''}" data-select="${index - 1}"><div class="row-main"><span class="result-kind">Project</span><span class="result-copy">${highlight(item.project.title)}<span class="result-sub">${item.project.name} · ${item.project.count} open Tasks</span></span></div></button>`).join('') : '<div class="empty">No matches in selected scope.</div>';
+      return `<div class="topbar"><span class="brand">VIMKUNJA</span><span class="question">Variant B: Search is a persistent pane; an empty query shows All Tasks Overview.</span><span class="badge">Search Pane</span></div><section class="finder-layout"><aside class="pane"><div class="pane-title">Search scope</div><div class="scope-block"><div class="scope-heading">Search in</div>${[['all','All: Tasks, Projects, Labels'], ['task','Tasks: Title + Description + Labels'], ['project','Projects'], ['label','Labels']].map(([key, name]) => `<button class="scope-option ${state.scope === key ? 'active' : ''}" data-scope="${key}">${name}</button>`).join('')}</div><div class="scope-block"><div class="scope-heading">Projects</div><button class="scope-option ${state.selectedProject === 'all' ? 'active' : ''}" data-project="all">All Projects</button>${projects.map(project => `<button class="scope-option ${state.selectedProject === project.name ? 'active' : ''}" data-project="${project.name}">${project.name} · ${project.title}</button>`).join('')}</div></aside><section class="pane">${searchBar('Search stays visible')}<div class="finder-status">${state.query ? `${items.length} matches` : `${items.length} open Tasks · start typing to filter`} <span class="hint">· n/N or j/k navigates</span></div>${results}</section><aside class="pane"><div class="pane-title">Preview <small>Enter opens</small></div>${preview(task)}</aside></section>`;
     }
     function variantC() {
       const items = resultItems();
       const task = selectedTask();
       let index = 0;
-      const results = items.length ? items.map(item => item.task ? taskRow(item.task, index++, true) : `<button class="result-row ${index++ === state.selected ? 'selected' : ''}" data-select="${index - 1}"><div class="row-main"><span class="result-kind">Project</span><span class="result-copy">${highlight(item.project.title)}<span class="result-sub">${item.project.name} · springe zur Project-Ansicht</span></span></div></button>`).join('') : '<div class="empty">Keine globalen Treffer.</div>';
+      const results = items.length ? items.map(item => item.task ? taskRow(item.task, index++, true) : `<button class="result-row ${index++ === state.selected ? 'selected' : ''}" data-select="${index - 1}"><div class="row-main"><span class="result-kind">Project</span><span class="result-copy">${highlight(item.project.title)}<span class="result-sub">${item.project.name} · jump to Project View</span></span></div></button>`).join('') : '<div class="empty">No global matches.</div>';
       const board = ['To Do', 'Doing', 'Done'].map(bucket => `<section class="board-column"><h3>${bucket}</h3>${tasks.filter(task => task.bucket === bucket).map(task => `<div class="board-card">${task.title}<br><span class="hint">${task.project}</span></div>`).join('')}</section>`).join('');
-      return `<div class="topbar"><span class="brand">VIMKUNJA</span><span class="question">Variante C: Suche ist ein globaler Vim-Befehl über der aktuellen Overview oder Kanban View.</span><span class="badge">Command Overlay</span></div><section class="command-stage"><div class="overlay-label">Aktive View im Hintergrund: Kanban · Vimkunja</div><div class="board-ghost">${board}</div><section class="command-overlay"><div class="command-top"><div class="hint">GLOBAL FIND</div>${searchBar('Über alle Projects suchen')}</div><div class="command-help"><span><span class="key">Esc</span> zurück zur View · <span class="key">Enter</span> öffnen</span><span><span class="key">n</span>/<span class="key">N</span> next/previous</span></div><div class="command-results">${results}</div></section></section><section class="pane" style="margin:10px 18px 0"><div class="pane-title">Ausgewähltes Ergebnis</div>${preview(task)}</section>`;
+      return `<div class="topbar"><span class="brand">VIMKUNJA</span><span class="question">Variant C: Search is a global Vim command above the current Overview or Kanban View.</span><span class="badge">Command Overlay</span></div><section class="command-stage"><div class="overlay-label">Active View behind overlay: Kanban · Vimkunja</div><div class="board-ghost">${board}</div><section class="command-overlay"><div class="command-top"><div class="hint">GLOBAL FIND</div>${searchBar('Search all Projects')}</div><div class="command-help"><span><span class="key">Esc</span> back to View · <span class="key">Enter</span> open</span><span><span class="key">n</span>/<span class="key">N</span> next/previous</span></div><div class="command-results">${results}</div></section></section><section class="pane" style="margin:10px 18px 0"><div class="pane-title">Selected result</div>${preview(task)}</section>`;
     }
     function stateDump() {
       const selection = selectedTask();
-      return `<details class="state"><summary>Prototype state (nach jeder Aktion aktualisiert)</summary><pre>${escapeHtml(JSON.stringify({ variant: state.variant, query: state.query, scope: state.scope, openOnly: state.hideDone, projectFilter: state.selectedProject, resultCount: resultItems().length, selected: selection ? { id: selection.id, title: selection.title } : null, lastAction: state.lastAction }, null, 2))}</pre></details>`;
+      return `<details class="state"><summary>Prototype state (updated after each action)</summary><pre>${escapeHtml(JSON.stringify({ variant: state.variant, query: state.query, scope: state.scope, openOnly: state.hideDone, projectFilter: state.selectedProject, resultCount: resultItems().length, selected: selection ? { id: selection.id, title: selection.title } : null, lastAction: state.lastAction }, null, 2))}</pre></details>`;
     }
     function render() {
       const view = state.variant === 'A' ? variantA() : state.variant === 'B' ? variantB() : variantC();
       document.getElementById('app').innerHTML = view + stateDump();
       document.getElementById('variant-label').textContent = variants.find(([key]) => key === state.variant)[1];
-      document.querySelectorAll('[data-select]').forEach(node => node.addEventListener('click', () => { state.selected = Number(node.dataset.select); state.lastAction = 'Treffer ausgewählt'; render(); }));
-      document.querySelectorAll('[data-project]').forEach(node => node.addEventListener('click', () => { state.selectedProject = node.dataset.project; state.selected = 0; state.lastAction = 'Project-Scope geändert'; render(); }));
-      document.querySelectorAll('[data-scope]').forEach(node => node.addEventListener('click', () => { state.scope = node.dataset.scope; state.selected = 0; state.lastAction = 'Volltext-Scope geändert'; render(); }));
+      document.querySelectorAll('[data-select]').forEach(node => node.addEventListener('click', () => { state.selected = Number(node.dataset.select); state.lastAction = 'Result selected'; render(); }));
+      document.querySelectorAll('[data-project]').forEach(node => node.addEventListener('click', () => { state.selectedProject = node.dataset.project; state.selected = 0; state.lastAction = 'Project scope changed'; render(); }));
+      document.querySelectorAll('[data-scope]').forEach(node => node.addEventListener('click', () => { state.scope = node.dataset.scope; state.selected = 0; state.lastAction = 'Full-text scope changed'; render(); }));
       const done = document.querySelector('[data-done]');
-      done?.addEventListener('click', () => { state.hideDone = !state.hideDone; state.selected = 0; state.lastAction = state.hideDone ? 'Erledigte Tasks ausgeblendet' : 'Erledigte Tasks eingeblendet'; render(); });
+      done?.addEventListener('click', () => { state.hideDone = !state.hideDone; state.selected = 0; state.lastAction = state.hideDone ? 'Donee Tasks ausgeblendet' : 'Donee Tasks eingeblendet'; render(); });
       const search = document.getElementById('search');
-      search?.addEventListener('input', event => { state.query = event.target.value; state.selected = 0; state.lastAction = 'Volltext-Abfrage geändert'; render(); const replacement = document.getElementById('search'); replacement?.focus(); replacement?.setSelectionRange(state.query.length, state.query.length); });
+      search?.addEventListener('input', event => { state.query = event.target.value; state.selected = 0; state.lastAction = 'Full-text query changed'; render(); const replacement = document.getElementById('search'); replacement?.focus(); replacement?.setSelectionRange(state.query.length, state.query.length); });
     }
     function cycle(direction) {
       const index = variants.findIndex(([key]) => key === state.variant);
@@ -255,9 +255,9 @@
       if (event.key === 'ArrowLeft') { event.preventDefault(); cycle(-1); }
       if (event.key === 'ArrowRight') { event.preventDefault(); cycle(1); }
       if (event.key === '/') { event.preventDefault(); document.getElementById('search')?.focus(); }
-      if (event.key === 'j' || event.key === 'n') { state.selected += 1; state.lastAction = 'Nächster Treffer'; selectedTask(); render(); }
-      if (event.key === 'k' || event.key === 'N') { state.selected -= 1; state.lastAction = 'Vorheriger Treffer'; selectedTask(); render(); }
-      if (event.key === 'Escape') { state.query = ''; state.lastAction = 'Suche geleert'; render(); }
+      if (event.key === 'j' || event.key === 'n') { state.selected += 1; state.lastAction = 'Next result'; selectedTask(); render(); }
+      if (event.key === 'k' || event.key === 'N') { state.selected -= 1; state.lastAction = 'Vorheriger matches'; selectedTask(); render(); }
+      if (event.key === 'Escape') { state.query = ''; state.lastAction = 'Search cleared'; render(); }
     });
     render();
   </script>

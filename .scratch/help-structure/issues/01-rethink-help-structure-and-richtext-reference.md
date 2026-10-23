@@ -1,6 +1,6 @@
-# 01 — Hilfe neu strukturieren und Richtext-Referenz separieren
+# 01 — Restructure help and separate the rich-text reference
 
-**Phase:** M3 — Bedienbarkeit der integrierten Hilfe
+**Phase:** M3 — built-in help usability
 
 **Category:** discovery / UX
 
@@ -8,69 +8,69 @@
 
 **Status:** needs-triage
 
-**Erfasst:** 2026-10-19
+**Recorded:** 2026-10-19
 
-## Auftrag und Problem
+## Request and problem
 
-Jan meldet anhand eines Screenshots: Die Hilfe ist nicht bündig eingerückt und schwer zu lesen. Die Hilfe soll strukturiert werden; mindestens Richtext Editing soll eine eigene Hilfeseite erhalten. Die neue Aufteilung muss vorher gründlich brainstormt und kritisch hinterfragt (»gegrillt«) werden. Dieses Ticket beauftragt die Konzeption, noch keine Produktimplementierung.
+Jan reports from a screenshot that help indentation is inconsistent and hard to read. Restructure help; at least rich-text editing needs a separate help page. Brainstorm and critically challenge the new grouping before implementation. This ticket authorizes design work, not product implementation yet.
 
-Der Screenshot zeigt im Pane `HELP` dicht aufeinanderfolgende Richtext-Zeilen: Textobjekte, Absatz-/Code-Verhalten, Visual Modes, Links, lokale Undo-/Redo-Regeln, Recovery-Commands, Listen, Quotes und Inline-Syntax. Beschreibungen beginnen uneinheitlich; mehrere Regeln und Ausnahmen stehen in einer Zeile. Teilweise fehlt der Kontext, in welchem Modus eine Taste gilt. Ein saubereres Spaltenraster allein löst diese Informationsdichte nicht.
+The `HELP` screenshot shows dense rich-text lines: text objects, paragraph/Code behavior, Visual modes, Links, local Undo/Redo, recovery commands, lists, quotes, and inline syntax. Descriptions start at inconsistent columns; multiple rules/exceptions share a line. Some entries omit the mode in which a key applies. A cleaner column grid alone will not resolve this information density.
 
-## Befund auf `main` vor Richtext-Integration
+## Findings on main before rich-text integration
 
-Historischer Ausgangsbefund: Richtext ist inzwischen integriert. Die folgende Bestandsaufnahme bleibt für den Vergleich erhalten; vor der Konzeption den zusammengeführten Stand inventarisieren.
+Historical starting point: rich text is now integrated. Preserve this inventory for comparison; inventory the merged state before designing.
 
-- `internal/tui/help.go` enthält eine einzige lange Liste manuell mit Leerzeichen ausgerichteter Strings. Schon vorhandene Einträge wie `count+motion`, `diw / daw` und benachbarte Zeilen haben unterschiedliche Beschreibungsanfänge.
-- `helpCommand` in `internal/tui/commands.go` öffnet stets dieselbe Liste. `infoPaneRows` in `internal/tui/panes.go` reicht sie an den allgemeinen Textumbruch weiter; es gibt dort kein semantisches Layout für Taste, Modus und Erklärung.
-- Die zusätzlichen Richtext-Zeilen des Screenshots stehen in diesem Checkout noch nicht in `help.go`. Ihre konkrete Implementierungsquelle und der Stand nach Integration der Richtext-Arbeit müssen vor Umsetzung geprüft werden. Keine vollständige Fehlerursache des Screenshots aus diesem Checkout ableiten.
-- `docs/keybindings.md` trennt implementierte und vereinbarte Bindings; automatische Ableitung der Hilfe ist bisher zurückgestellt. Die [Richtext-Spec](../../../.archive/2026-10-19/description-rendering/spec.md) verlangt außerdem dauerhaft dokumentierte Markup-Regeln und einen Tutorial-Abschnitt. Hilfe, vollständige Referenz und Tutorial haben unterschiedliche Zwecke.
+- `internal/tui/help.go` contains one long list of manually space-aligned strings. Existing `count+motion`, `diw / daw`, and neighboring entries already start descriptions at different columns.
+- `helpCommand` in `internal/tui/commands.go` always opens the same list. `infoPaneRows` in `internal/tui/panes.go` passes it to generic wrapping; no semantic key/mode/explanation layout exists there.
+- The screenshot's additional rich-text lines are not yet in this historical checkout's `help.go`. Check their implementation source and post-integration state before implementing. Do not infer the screenshot's full cause from this checkout.
+- `docs/keybindings.md` separates implemented/agreed bindings; automatic help derivation remains deferred. The [rich-text spec](../../../.archive/2026-10-19/description-rendering/spec.md) also requires durable markup rules and a tutorial section. Help, complete reference, and tutorial serve different purposes.
 
-## Vorgaben und offene Entscheidungen
+## Requirements and open decisions
 
-**Fest:** Bündige, gut lesbare Darstellung und mindestens eine separate Richtext-Hilfeseite. Reine Verschiebung derselben Textwand reicht nicht. Die Hilfe bleibt per Tastatur bedienbar und dokumentiert das Verhalten des jeweiligen Builds.
+**Fixed:** Aligned, readable layout and at least a separate rich-text help page. Moving the same wall of text is insufficient. Help remains keyboard-operated and documents the behavior of the current build.
 
-**Offen:** Weitere Seiten, Einstieg, Kontextbezug, Seitennavigation, genaue Gruppierung und Layout. Die folgenden Varianten und Seitennamen sind Diskussionsmaterial, keine beschlossenen Commands oder Architektur.
+**Open:** Additional pages, entry point, context, page navigation, exact grouping, and layout. Variants/page names below are discussion material, not agreed commands/architecture.
 
-## Brainstorming: mögliche Aufteilungen
+## Brainstorm: possible groupings
 
-1. **Kleiner Einstieg plus Richtext-Seite:** Allgemeine Hilfe behält die übrigen Themen, erhält klare Gruppen und einen sichtbaren Richtext-Verweis. Geringster Navigationsaufwand; die übrige Seite könnte trotzdem zu lang bleiben.
-2. **Themenindex mit wenigen Seiten:** Einstieg mit Grundlagen; weitere Themen für Navigation/Views, Tasks/Detail/Comments und Richtext. Kürzere Suchräume, aber mehr Wechsel und schwierige Zuordnung gemeinsam verwendeter Tasten.
-3. **Kontextbezogener Einstieg mit Gesamtindex:** Aus dem Editor direkt zur passenden Hilfe, von überall zum Index. Schnell bei akuten Fragen; kann überraschend sein und darf globale Commands oder andere Themen nicht verstecken.
+1. **Small introduction plus rich-text page:** General help keeps other topics, adds clear groups and a visible rich-text link. Least navigation; remaining page may still be too long.
+2. **Topic index with a few pages:** Start with basics, then navigation/Views, Tasks/Detail/Comments, and rich text. Smaller search spaces, but more switching and difficult placement of shared keys.
+3. **Contextual entry with complete index:** Editor opens matching help; index accessible everywhere. Fast for immediate questions, but potentially surprising; must not hide global commands/other topics.
 
-Als Ausgangspunkt für die separate Richtext-Seite prüfen: Orientierung und Moduswechsel; Navigation/Textauswahl; Textbearbeitung; Formatierung und Links; Listen/Quotes/Code; Speichern, lokale Undo-/Redo-Regeln und sichere Recovery. Kurze Beispiele statt langer, mit Semikola verketteter Regelsätze. Ob das Abschnitte einer Seite oder weitere Unterseiten werden, bleibt offen.
+For the separate rich-text page, consider orientation/mode switches, navigation/selection, editing, formatting/Links, lists/quotes/Code, saving, local Undo/Redo, and safe recovery. Prefer short examples to long semicolon-linked rules. Whether these become sections or more pages remains open.
 
-Gemeinsame Vim-Motions für Title, Plain-Text-Description und Comment Composer nicht ungeprüft als Richtext-exklusiv auslagern. Ebenso globale Task-Aktionen von lokalen Draft-Aktionen unterscheiden.
+Do not move shared Title/plain-text Description/Comment Composer motions into rich-text-only help without checking. Also distinguish global Task actions from local draft actions.
 
-## Grilling: Entscheidungen an konkreten Fragen prüfen
+## Critical review: test decisions with concrete questions
 
-- **Was sucht der Nutzer?** Soll man primär nach Aufgabe (»Link ändern«), Taste (`Space+l`) oder Modus suchen? Welche dieser Suchen muss ohne langes Scrollen funktionieren? Braucht V1 dafür Suche oder reicht ein guter Index?
-- **Ist die Trennung sinnvoll?** Welche Information fehlt in der allgemeinen Hilfe nach dem Auslagern? Wie findet ein neuer Nutzer Richtext überhaupt? Welche Hinweise müssen an beiden Stellen kurz erscheinen, ohne Regeln doppelt zu pflegen?
-- **Wie viel Navigation ist vertretbar?** Reicht Variante 1 bereits? Für jede zusätzliche Seite einen konkreten Suchvorgang nennen, der dadurch leichter wird. Nicht für jeden Pane automatisch eine Seite bauen.
-- **Wie startet Hilfe?** Bleibt `:h` ein stabiler Einstieg oder folgt es dem Fokus? Themenargumente wie `:help richtext`, auswählbare Indexeinträge und Kontextlinks vergleichen, noch keine Syntax festlegen. Completion, unbekannte Themen und Rückweg mitdenken.
-- **Wie kehrt man zurück?** Index, vorheriges Thema, erneutes Öffnen, Scrollposition und `:q` festlegen. Das Öffnen/Schließen aus laufenden Task-, Richtext- und Comment-Drafts muss Fokus und ungespeicherte Inhalte bewahren; das bestehende Pane-Verhalten dabei ausdrücklich prüfen.
-- **Welche Regeln brauchen Beispiele?** `dd` in Absatz versus Code, `Enter` versus `Shift+Enter`, Normal versus Visual/Block-Auswahl, Inline-Markup versus eingefügter Literaltext, lokales Undo versus persistierte Task-Aktion und Recovery aus geschütztem HTML. Nicht alle Ausnahmen in eine Tabellenzeile quetschen.
-- **Was bedeutet bündig bei wenig Platz?** Gemeinsamer Beginn der Beschreibungen, Fortsetzungszeilen mit klarer Zuordnung, lange Commands und breite Unicode-Zeichen berücksichtigen. Zweispaltige Darstellung bei genügend Breite gegen gestapelte Taste/Erklärung bei schmalem Pane vergleichen. Ein überlanges Command darf nicht die gesamte Seite unnötig einrücken.
-- **Wie bleibt die Seite lesbar?** Überschriften, Leerraum und klare Moduslabels auch ohne Farbe; mehrere Aliasse und Aktionen gegebenenfalls aufteilen. Bei geringer Höhe darf Orientierung nicht hinter großen Kopfbereichen verschwinden. Kontext und Position nach Scrollen/Resize erkennbar halten.
-- **Wie verhindert man Drift?** Zuständigkeit zwischen `help.go`, `docs/keybindings.md`, README und Tutorial festlegen. Gemeinsame strukturierte Einträge gegen manuelle Pflege abwägen; keinen Generator allein für diesen Layoutfehler einführen. Geplante Bindings nicht als verfügbar darstellen.
+- **What is the user looking for?** Primarily an action (“edit Link”), key (`Space+l`), or mode? Which searches must work without long scrolling? Does V1 need search or is a good index enough?
+- **Does separation work?** What disappears from general help? How does a new user discover rich text? Which short hints need to appear in both places without maintaining rules twice?
+- **How much navigation is acceptable?** Is variant 1 enough? Justify each extra page with a concrete lookup it simplifies. Do not automatically create a page per pane.
+- **How does help start?** Is `:h` stable or focus-dependent? Compare topic arguments such as `:help richtext`, selectable index entries, and contextual links without fixing syntax yet. Include completion, unknown topics, and return paths.
+- **How does the user return?** Define index, previous topic, reopening, scroll position, and `:q`. Opening/closing help from Task, rich-text, and Comment drafts must preserve focus and unsaved content; explicitly check existing pane behavior.
+- **Which rules need examples?** `dd` in paragraphs versus Code, `Enter` versus `Shift+Enter`, Normal versus Visual/block selection, inline markup versus pasted literal text, local Undo versus persisted Task actions, and protected-HTML recovery. Do not squeeze every exception into one table row.
+- **What does aligned mean in limited space?** Account for shared description starts, identifiable continuation lines, long commands, and wide Unicode. Compare two columns when wide with stacked key/explanation when narrow. One long command must not indent the whole page unnecessarily.
+- **How does the page stay readable?** Headings, whitespace, and clear mode labels without color; split aliases/actions as needed. Low heights must not hide orientation behind large headers. Keep context/position recognizable after scrolling/resizing.
+- **How do we prevent drift?** Assign ownership between `help.go`, `docs/keybindings.md`, README, and tutorial. Weigh shared structured entries against manual maintenance; do not introduce a generator just for this layout defect. Do not present planned bindings as available.
 
-## Vorgehen und Abschluss der Konzeption
+## Design process and completion
 
-- [ ] Aktuelle Hilfe nach Richtext-Integration inventarisieren: Einträge, Modi, Aliasse, Doppelungen, fehlende und noch nicht implementierte Regeln. Screenshot mit dem tatsächlichen Stand abgleichen.
-- [ ] Die drei Aufteilungsvarianten an denselben Suchaufgaben durchspielen: Task speichern, Kanban-Karte verschieben, Link bearbeiten, Code-Zeile löschen, blockiertes HTML behandeln und Hilfe wieder verlassen.
-- [ ] Mindestens zwei konkrete Text-/Layoutentwürfe vergleichen, einschließlich separater Richtext-Seite. Breiten/Höhen z. B. 120×40 und 80×24 sowie einen durch Pane-Splitting deutlich schmaleren Hilfebereich prüfen; verfügbare Inhaltsfläche statt nur Terminalgröße beachten.
-- [ ] Grilling-Fragen beantworten: Einwände, verworfene Alternativen und verbleibende Unsicherheiten im Ticket festhalten. Die einfachste ausreichende Aufteilung begründen.
-- [ ] Gewählte Inhaltszuordnung, Einstieg, Navigation/Rückweg, Umbruchregeln und Pflegeverantwortung festhalten. Offene Produktentscheidungen mit Jan klären, bevor das Ticket als implementierbar gilt.
-- [ ] Danach fokussierte Umsetzungstickets mit überprüfbaren Abnahmekriterien ableiten; kein vorschnelles `ready-for-agent`.
+- [ ] Inventory help after rich-text integration: entries, modes, aliases, duplicates, missing/unimplemented rules. Compare screenshot with actual state.
+- [ ] Exercise all three groupings with the same lookups: save Task, move Kanban card, edit Link, delete Code line, handle blocked HTML, and leave help.
+- [ ] Compare at least two concrete text/layout drafts, including a separate rich-text page. Check sizes such as 120×40 and 80×24 and a much narrower help pane after splitting; consider content area, not just terminal size.
+- [ ] Answer critical-review questions; record objections, rejected alternatives, and uncertainty. Justify the simplest sufficient grouping.
+- [ ] Record chosen content ownership, entry, navigation/return, wrapping rules, and maintenance responsibility. Resolve open product decisions with Jan before treating the ticket as implementable.
+- [ ] Derive focused implementation tickets with verifiable acceptance criteria afterward; do not prematurely mark `ready-for-agent`.
 
-## Erwartete Abnahme der späteren Umsetzung
+## Expected acceptance of later implementation
 
-- Richtext besitzt eine eigene, aus der allgemeinen Hilfe klar auffindbare Seite; gemeinsame Editor-Grundlagen bleiben für Title und Comments auffindbar.
-- Erklärungen beginnen im gewählten Layout bündig. Umbrüche, lange Tastenkombinationen und schmale/kurze Panes bleiben verständlich und schneiden keine Regeln ab.
-- Modus, Aktion und wichtige Einschränkungen lassen sich zuordnen; Richtext ist in erkennbare Gruppen gegliedert statt eine zweite unstrukturierte Befehlsliste zu bilden.
-- Repräsentative Suchaufgaben sind ohne vollständiges Durchscrollen der gesamten Hilfe lösbar; konkrete Wege und nötige Schritte im Entwurf dokumentieren und manuell bewerten.
-- Öffnen, Themenwechsel, Scrollen, Resize und Schließen funktionieren per Tastatur; Drafts, Fokus-Rückkehr und bestehende Pane-Navigation erhalten gezielte Regressionstests. Layouttests prüfen sichtbares Ergebnis statt nur vorhandene Textfragmente.
-- Hilfe und bestehender Keybinding-Vertrag stimmen für implementierte Funktionen überein. Keine Änderungen an Vikunja-API, SQLite-Schema oder Editor-Semantik zur Vereinfachung der Hilfetexte.
+- Rich text has a clearly discoverable separate page; shared editor basics remain discoverable for Title/Comments.
+- Explanations align in the chosen layout. Wrapping, long key sequences, and narrow/short panes remain understandable without clipping rules.
+- Mode, action, and key limitations are clear; rich text uses recognizable groups rather than another unstructured command list.
+- Representative lookups work without scrolling all help; document concrete paths/steps in the draft and evaluate manually.
+- Opening, topic changes, scrolling, resizing, and closing work by keyboard; targeted regressions protect drafts, focus return, and existing pane navigation. Layout tests verify visible results rather than just text presence.
+- Help agrees with the keybinding contract for implemented features. No Vikunja API, SQLite schema, or editor-semantics changes merely to simplify help text.
 
 ## Comments
 
-- 2026-10-19 — Jan: »die Hilfe ist nicht bündig eingerückt«, »schwierig zu lesen«; Scratch-Ticket zum Brainstormen, Grilling und einer neuen Aufteilung gewünscht, mindestens Richtext separieren.
+- 2026-10-19 — Jan: “help indentation is inconsistent,” “hard to read”; requests a scratch ticket for brainstorming, critical review, and new grouping, with at least separate rich-text help.
