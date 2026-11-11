@@ -300,6 +300,8 @@ func (m *model) updateCommentCommand(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		command := strings.TrimSpace(ui.commandInput)
 		ui.commandMode, ui.commandInput = false, ""
 		switch command {
+		case "h", "help":
+			return helpCommand(m, nil)
 		case "w", "write":
 			return m, m.saveTaskWithComment(false)
 		case "wq", "writequit":

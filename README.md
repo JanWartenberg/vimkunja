@@ -159,7 +159,7 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 - `:w`, `:wq`, `:wqa` – save
 - `:e!` / `:edit!` – discard unsaved changes to an existing Task and keep it open
 - `:q`, `:q!`, `:qa`, `:qa!` – close a pane or the application
-- `:h` – built-in help
+- `:h` / `:help` – help overview with topic pages; `Enter` opens a topic, `Ctrl+O/I` (Tab for forward) navigates history, and `-`/Backspace opens the parent. `:q` returns to the previous pane with drafts preserved.
 - `:errors` – session error log
 - `Space+o` – show or hide the Projects Pane
 - `:kanban` or `Space+v`, then `k` – open a single manual Kanban View or provision a standard one after confirmation

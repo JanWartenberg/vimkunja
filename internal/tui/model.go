@@ -171,6 +171,7 @@ type model struct {
 	// Detail and auxiliary panes
 	showDetail bool
 	helpPane   *infoPane
+	helpOrigin *helpOrigin
 	infoPane   *infoPane
 
 	currentProjectID          int64
@@ -507,10 +508,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.focus == paneDetail && m.editor != nil && m.editor.field == fieldDescription && m.editor.mode == editorInsert && m.editor.nativeLiteralTab && kLower != "ctrl+c" && kLower != "ctrl+w" {
 			return m.updateNativeInsert(key)
 		}
-		if m.editor != nil && m.editor.nativeLink != nil && kLower != "ctrl+c" {
+		if m.focus == paneDetail && m.helpPane == nil && m.editor != nil && m.editor.nativeLink != nil && kLower != "ctrl+c" {
 			return m.updateNativeLink(key)
 		}
-		if !m.searchOpen && kLower == "ctrl+o" && m.searchReturn != nil {
+		if !m.searchOpen && !m.commandMode && m.focus != paneHelp && kLower == "ctrl+o" && m.searchReturn != nil {
+			if m.helpPane != nil {
+				if m.helpHasDraft() {
+					m.recordError(errUnsavedNavigation)
+					return m, nil
+				}
+				m.leaveHelpForContext()
+			}
 			return m, m.restoreLastSearch()
 		}
 
@@ -538,7 +546,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.commentDeleteConfirm {
 			return m.updateCommentDeleteConfirmation(k)
 		}
-		if m.comments != nil {
+		if m.comments != nil && m.helpPane == nil {
 			return m.updateComments(key)
 		}
 		if m.labelUI != nil {
@@ -579,6 +587,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.leaderArmed {
 			m.leaderArmed = false
+			if m.helpPane != nil && m.helpHasDraft() && k != "o" {
+				m.recordError(errUnsavedNavigation)
+				return m, nil
+			}
+			if m.helpPane != nil && (k == "a" || k == "f" || k == "v") {
+				m.leaveHelpForContext()
+			}
 			if cmd, handled := m.textClipboardKey(k); handled {
 				return m, cmd
 			}
@@ -684,6 +699,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = typed.Width
 		m.height = typed.Height
 		m.viewportReceived = true
+		if m.helpPane != nil && m.helpPane.help != nil {
+			w, h := m.helpSize()
+			m.helpPane.help.layout(w, h)
+			m.helpPane.offset = m.helpPane.help.offset
+		}
 		m.normalizeDetailSelection()
 		return m, nil
 
@@ -1003,6 +1023,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.PasteMsg:
+		if m.helpPane != nil {
+			return m, nil
+		}
 		if m.editor != nil && m.editor.nativeLink != nil {
 			p := m.editor.nativeLink
 			p.insertText(typed.Content)
@@ -1012,7 +1035,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		text := normalizePastedText(typed.Content)
-		if m.comments != nil && m.comments.composer != nil && m.comments.composer.mode == editorInsert {
+		if m.helpPane == nil && m.comments != nil && m.comments.composer != nil && m.comments.composer.mode == editorInsert {
 			composer := m.comments.composer
 			composer.text = insertTextAtCursor(composer.text, &composer.cursor, text)
 			return m, nil
@@ -1023,6 +1046,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case clipboardPastedMsg:
+		if m.helpPane != nil {
+			return m, nil
+		}
 		if typed.link != nil {
 			if m.editor == typed.editor && m.editor != nil && m.editor.nativeLink == typed.link {
 				if typed.err != nil {
@@ -1456,10 +1482,10 @@ func (m *model) nextFocus() paneID {
 	if !m.projectsPaneCollapsed {
 		open = append([]paneID{paneProjects}, open...)
 	}
-	if m.showDetail {
-		open = append(open, paneDetail)
-	} else if m.helpPane != nil {
+	if m.helpPane != nil {
 		open = append(open, paneHelp)
+	} else if m.showDetail {
+		open = append(open, paneDetail)
 	} else if m.infoPane != nil {
 		open = append(open, paneInfo)
 	}
@@ -1503,11 +1529,11 @@ func (m *model) focusNeighborUpOrStay() paneID {
 
 func (m *model) focusNeighborDownOrStay() paneID {
 	if m.focus == paneProjects || m.focus == paneTasks {
-		if m.showDetail {
-			return paneDetail
-		}
 		if m.helpPane != nil {
 			return paneHelp
+		}
+		if m.showDetail {
+			return paneDetail
 		}
 		if m.infoPane != nil {
 			return paneInfo
@@ -1522,6 +1548,10 @@ func (m *model) focusNeighborDownOrStay() paneID {
 }
 
 func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.helpPane != nil && m.helpHasDraft() {
+		m.recordError(errUnsavedNavigation)
+		return m, nil
+	}
 	s := normalizeArrow(k.String())
 
 	if m.zArmed {
@@ -1674,6 +1704,13 @@ func (m *model) previewSelectedTask() tea.Cmd {
 }
 
 func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.helpPane != nil && m.helpHasDraft() {
+		if k.String() == "q" {
+			return quitAllCommand(m, nil)
+		}
+		m.recordError(errUnsavedNavigation)
+		return m, nil
+	}
 	if m.kanbanActive && !m.inOverview() {
 		return m.updateKanbanKeys(k)
 	}
@@ -1790,6 +1827,9 @@ func (m *model) updateTasksKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 // updateHelpKeys intentionally has no close shortcut. Help is a normal pane:
 // switch focus with Ctrl+W and close it explicitly with :q.
 func (m *model) updateHelpKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.helpPane != nil && m.helpPane.help != nil {
+		return m.updateHelpBrowser(k)
+	}
 	return m.updateInfoPaneScrollKeys(m.helpPane, k)
 }
 
@@ -2337,7 +2377,7 @@ func (m *model) renderContent() string {
 		Height(topH - 2)
 	var panes string
 	if m.projectsPaneCollapsed {
-		panes = rightStyle.Render(renderTasks(m, w-chromeX, topTextH))
+		panes = rightStyle.Render(lipgloss.NewStyle().MaxWidth(w - chromeX).Render(renderTasks(m, w-chromeX, topTextH)))
 	} else {
 		projectsOuter := 30
 		if projectsOuter > w/3 {
@@ -2356,8 +2396,8 @@ func (m *model) renderContent() string {
 			Padding(0, 1).
 			Height(topH - 2)
 		panes = lipgloss.JoinHorizontal(lipgloss.Top,
-			leftStyle.Render(renderProjects(m, projectsOuter-chromeX, topTextH)),
-			rightStyle.Render(renderTasks(m, tasksOuter-chromeX, topTextH)),
+			leftStyle.Render(lipgloss.NewStyle().MaxWidth(projectsOuter-chromeX).Render(renderProjects(m, projectsOuter-chromeX, topTextH))),
+			rightStyle.Render(lipgloss.NewStyle().MaxWidth(tasksOuter-chromeX).Render(renderTasks(m, tasksOuter-chromeX, topTextH))),
 		)
 	}
 
@@ -2365,10 +2405,14 @@ func (m *model) renderContent() string {
 	if m.showDetail || m.helpPane != nil || m.infoPane != nil {
 		var bottom string
 		switch {
+		case m.helpPane != nil:
+			if m.helpPane.help != nil {
+				bottom = renderHelpPane(m.helpPane, w-chromeX, detailH-chromeY)
+			} else {
+				bottom = renderInfoPane(m.helpPane, w-chromeX, detailH-chromeY, m.focus == paneHelp)
+			}
 		case m.showDetail:
 			bottom = renderTaskDetail(m, w-chromeX, detailH-chromeY)
-		case m.helpPane != nil:
-			bottom = renderInfoPane(m.helpPane, w-chromeX, detailH-chromeY, m.focus == paneHelp)
 		default:
 			bottom = renderInfoPane(m.infoPane, w-chromeX, detailH-chromeY, m.focus == paneInfo)
 		}
@@ -2396,7 +2440,7 @@ func (m *model) renderContent() string {
 	if m.labelUI != nil {
 		content = m.renderLabelOverlay(content, w)
 	}
-	if m.comments != nil {
+	if m.comments != nil && m.helpPane == nil {
 		content = m.renderCommentsOverlay(content, w)
 	}
 	if m.commentDeleteConfirm {
@@ -2423,7 +2467,7 @@ func (m *model) renderTextOnlyFallback(w, h int) string {
 			}
 		}
 	case paneHelp:
-		info, hint = "[Help]", "q/esc close"
+		info, hint = "[Help]", ":q close"
 	case paneInfo:
 		info, hint = "[Info]", "q/esc close"
 	}
@@ -2503,6 +2547,13 @@ func (m *model) focusedScrollPosition() (int, int, bool) {
 			return layout.start, limit, true
 		}
 	case paneHelp, paneInfo:
+		if m.focus == paneHelp && m.helpPane != nil && m.helpPane.help != nil {
+			width, height := m.helpSize()
+			b := m.helpPane.help
+			_, limit := b.layout(width, height)
+			m.helpPane.offset = b.offset
+			return b.offset, limit, limit > 0
+		}
 		pane := m.helpPane
 		if m.focus == paneInfo {
 			pane = m.infoPane
@@ -2612,7 +2663,7 @@ func (m *model) renderStatusBar(w int) string {
 
 	}
 	if m.focus == paneHelp {
-		hint = "Ctrl+W k tasks  •  :q close pane"
+		hint = helpHints()
 	}
 	if m.focus == paneInfo {
 		hint = "q/esc close pane"
@@ -2627,7 +2678,7 @@ func (m *model) renderStatusBar(w int) string {
 			hint += "  •  j/k navigate  •  i/a edit  •  :q / Esc close"
 		}
 	}
-	if m.comments != nil {
+	if m.comments != nil && m.helpPane == nil {
 		hint = "[COMMENTS] j/k select  •  gg/G jump  •  a/i/o append  •  Esc close"
 		if m.comments.saving {
 			hint = "[COMMENTS] Saving Task and Comment…"

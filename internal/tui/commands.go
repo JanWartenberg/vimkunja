@@ -86,6 +86,19 @@ func (r *CommandRegistry) Execute(m *model, input string) (tea.Model, tea.Cmd, e
 		return m, nil, fmt.Errorf("unknown command: %s", fields[0])
 	}
 
+	if m.helpPane != nil && m.helpHasDraft() {
+		switch command.canonical {
+		case "help", "quit", "quit!", "quitall", "quitall!", "writequitall", "write", "writequit":
+		default:
+			return m, nil, errUnsavedNavigation
+		}
+	}
+	if m.helpPane != nil {
+		switch command.canonical {
+		case "new", "overview", "list", "kanban", "search", "labels", "errors":
+			m.leaveHelpForContext()
+		}
+	}
 	updated, cmd := command.handler(m, fields[1:])
 	return updated, cmd, nil
 }
@@ -120,7 +133,7 @@ func (m *model) dispatchModalGlobalCommand(key tea.KeyMsg) (tea.Model, tea.Cmd, 
 	switch {
 	case m.searchOpen:
 		active, input = &m.searchCommandMode, &m.searchCommandInput
-	case m.comments != nil:
+	case m.comments != nil && m.helpPane == nil:
 		if m.comments.saving || m.commentDeleteConfirm {
 			return m, nil, false
 		}
@@ -265,8 +278,11 @@ func quitCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if m.helpPane != nil && m.focus == paneHelp {
-		m.helpPane = nil
-		m.focus = paneTasks
+		m.closeHelp()
+		return m, nil
+	}
+	if m.helpPane != nil && m.helpHasDraft() {
+		m.recordError(errUnsavedNavigation)
 		return m, nil
 	}
 	if m.infoPane != nil && m.focus == paneInfo {
@@ -343,7 +359,7 @@ func writeQuitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 	}
-	if m.showDetail && m.focus == paneDetail && m.editor != nil {
+	if m.editor != nil && ((m.showDetail && m.focus == paneDetail) || m.helpPane != nil) {
 		cmd := m.saveEditor(true)
 		if cmd != nil {
 			m.quitAfterSave = true
@@ -366,16 +382,19 @@ func forceQuitAllCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 }
 
 func helpCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
-	m.showDetail = false
-	m.infoPane = nil
-	m.helpPane = &infoPane{title: "HELP", lines: helpLines}
+	if m.helpPane == nil {
+		m.helpOrigin = &helpOrigin{focus: m.focus, editor: m.editor, info: m.infoPane}
+	}
+	m.helpPane = &infoPane{title: "HELP", help: newHelpBrowser()}
 	m.focus = paneHelp
 	return m, nil
 }
 
 func errorsCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+	if m.helpPane != nil {
+		m.closeHelp()
+	}
 	m.showDetail = false
-	m.helpPane = nil
 	m.infoPane = &infoPane{title: "ERRORS", lines: errorLogLines(), errorLog: true}
 	m.focus = paneInfo
 	return m, nil

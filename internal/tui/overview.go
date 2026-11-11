@@ -93,6 +93,9 @@ func (m *model) openLabelOverview(label vimkunja.Label) tea.Cmd {
 }
 
 func (m *model) openOverviewForLabel(label vimkunja.Label) tea.Cmd {
+	if !m.leaveHelpForNavigation() {
+		return nil
+	}
 	if m.editor != nil && m.editor.dirty() {
 		m.recordError(errUnsavedNavigation)
 		return nil
@@ -137,6 +140,9 @@ func (m *model) closeTaskDetail() {
 }
 
 func (m *model) openOverviewNewEditor() tea.Cmd {
+	if !m.leaveHelpForNavigation() {
+		return nil
+	}
 	draft := vimkunja.TaskDraft{}
 	m.editor = &taskEditor{
 		draft: draft, original: draft, field: fieldProject, nativeTabstop: m.codeConfig.Tabstop,

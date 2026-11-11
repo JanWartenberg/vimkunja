@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**As of:** 2026-10-23 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
+**As of:** 2026-11-11 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
 
 ## Current state
 
@@ -27,7 +27,7 @@ The MVP, **Milestone 1**, **Milestone 2**, and the initial GitHub source publica
 
 **Local consolidation accepted:** Jan moved the retired folders outside the workspace. The remaining `/workspace/vimkunja` checkout has the GitHub HTTPS remote and `main` upstream configured; Git lists no additional worktrees. The current database and its sidecars are ignored. Jan confirms `go run ./cmd/vimkunja` starts successfully from this isolated checkout on Windows. Backups were verified before consolidation; this update does not alter user data.
 
-**Ticket reconciliation:** All open issue files reviewed. Publication is completed and archived; other tickets remain `needs-triage`. Completed prerequisites and current clipboard bindings are reflected in their tickets, and the adopted Task-copy spec is included. First-run database initialization remains separate open M3 work; broader platform acceptance, live CalDAV, and binary releases are not claimed by publication closure.
+**Ticket reconciliation:** All open issue files reviewed. Publication is completed and archived; the help redesign was subsequently implemented and archived on 2026-11-10. Other open tickets remain `needs-triage`. Completed prerequisites and current clipboard bindings are reflected in their tickets, and the adopted Task-copy spec is included. First-run database initialization remains separate open M3 work; broader platform acceptance, live CalDAV, and binary releases are not claimed by publication closure.
 
 1. Select the next M3 ticket and resolve its open product decisions before implementation.
 2. Keep first-run database initialization separate from the accepted startup with an existing database.
@@ -63,7 +63,7 @@ Read-only HTML Description projection, scroll feedback, [additional keyboard sho
 23. [Specify separate histories for contextual command prompts](.scratch/contextual-command-histories/issues/01-specify-independent-command-prompt-histories.md) – follows M2 Ex history; separate session-local history per prompt without unifying command grammars.
 23a. [Specify workspace/data preferences](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – default Project/View, startup filters, and persisted navigation preferences; follows local TUI configuration.
 23b. [Reuse multiline layout in Comment Composer](.archive/2026-10-20/comment-composer-multiline-layout/issues/01-reuse-multiline-layout-in-comment-composer.md) – technically complete and archived; shared layout and Insert cursor with regressions for wrapping, blank lines, scrolling, and Unicode.
-23c. [Restructure help and separate rich text](.scratch/help-structure/issues/01-rethink-help-structure-and-richtext-reference.md) – inconsistent indentation and poor readability; brainstorm and critically review grouping, navigation, and layout, with at least a separate rich-text help page. Design remains open; implementation has not been requested.
+23c. [Restructure help and separate rich text](.archive/2026-11-10/help-structure/issues/01-rethink-help-structure-and-richtext-reference.md) – implemented and archived: topic overview, separate rich-text pages, readable wrapped entries, help-local history, and preserved focus/drafts. Automated layout/integration checks and a practice-terminal smoke check completed; no new native Windows acceptance claimed.
 23d. [Fresh database and default path](.scratch/first-run-database/issues/01-support-first-run-database-and-default-path.md) – allow a fresh installation to start without an existing database or `--db`, using compatible initialization or a validated starter template. Define the default path and minimum starter records; preserve existing databases. Specification pending.
 
 ### Milestone 4

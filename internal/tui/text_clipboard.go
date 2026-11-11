@@ -33,6 +33,9 @@ func cloneTextNormal(s textNormalState) textNormalState {
 	return s
 }
 func (m *model) textClipboardTarget() (textClipboardTarget, bool) {
+	if m.helpPane != nil {
+		return textClipboardTarget{}, false
+	}
 	if m.comments != nil {
 		ui := m.comments
 		c := ui.composer

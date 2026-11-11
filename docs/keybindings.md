@@ -2,7 +2,7 @@
 
 This is the durable, context-sorted contract for Vimkunja keybindings. It is an exchange format for discussing and comparing alternative interaction designs.
 
-`internal/tui/help.go` lists implemented bindings and marks deferred View entries explicitly. This contract remains the complete source for agreed and provisional bindings; its status column makes the distinction explicit.
+`internal/tui/help.go` groups implemented bindings into help topics and marks deferred View entries explicitly. This contract remains the complete source for agreed and provisional bindings; its status column makes the distinction explicit.
 
 This document is maintained manually for now. Generating or deriving `help.go` from it is deferred until the rich-text binding design has stabilized.
 
@@ -25,6 +25,22 @@ This document is maintained manually for now. Generating or deriving `help.go` f
 | `:labels` | Open the global Label Overview from any normal context | Implemented |
 | `u` / `Ctrl+R` | Undo / redo the latest persisted Task action in List, Overview, Kanban, or Task Detail Normal Mode. | Implemented (06); synthetic tests, practical terminal acceptance pending |
 | `:q`, `:qa`, and force variants | Close a Pane or quit Vimkunja | Implemented |
+
+## Help
+
+`:h` / `:help` always starts at the fixed overview. Rich text has separate Editing basics, Formatting, Links, Lists & Code, and Undo & recovery pages. Explanations stay visible. Shared Title/Comment editing is listed separately.
+
+| Binding | Action | Status |
+| --- | --- | --- |
+| `j/k`, Up/Down | Select topics or scroll a reference | Implemented |
+| `Enter` | Open selected topic | Implemented |
+| `gg/G`, Home/End, Ctrl+D/U, PageUp/PageDown | Move to bounds or by page; keep index selection visible | Implemented |
+| `Ctrl+O` / `Ctrl+I` (Tab) | Back / forward within the current help session; restore selection and reading position | Implemented |
+| `-` / Backspace | Open structural parent; no action at overview | Implemented |
+| `:q` | Close help and restore prior pane focus, preserving drafts and local undo | Implemented |
+| `Ctrl+W` directions / cycle | Move focus between help and the working panes | Implemented |
+
+Help history is session-local, capped at 100 locations; a new visit after going back drops forward history. Explicit `:h` resets it. Tab in the Ex prompt still completes commands. These history keys do not provide general application navigation history. Comment Normal mode also accepts `:h` / `:help`. Close help before editing a preserved draft; context changes while help covers unsaved Task/Comment drafts are rejected. Application-wide `:qa`, `:qa!`, and `:wqa` keep their protection, discard, and save semantics.
 
 ## Task context and View navigation
 

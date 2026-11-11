@@ -211,7 +211,7 @@ func (m *model) selectedKanbanTask() (vimkunja.Task, bool) {
 // Detail Pane. Navigation itself never opens Detail and never overwrites a
 // draft the user still needs to save or discard.
 func (m *model) syncOpenKanbanDetail() tea.Cmd {
-	if !m.showDetail || (m.editor != nil && m.editor.dirty()) {
+	if m.helpPane != nil || !m.showDetail || (m.editor != nil && m.editor.dirty()) {
 		return nil
 	}
 	focus := m.focus

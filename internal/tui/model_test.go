@@ -762,7 +762,7 @@ func TestFooterStaticStatePriorityMatrix(t *testing.T) {
 		{
 			name:  "help",
 			setup: func(m *model) { m.focus = paneHelp },
-			want:  []string{"Ctrl+W k tasks", ":q close pane"},
+			want:  []string{":q close", "Ctrl+O/I history"},
 		},
 		{
 			name:  "info",
@@ -4117,8 +4117,8 @@ func TestCommandQuitClosesHelpPane(t *testing.T) {
 	if cmd != nil {
 		t.Fatal(":q returned quit command while closing help pane")
 	}
-	if m.helpPane != nil || m.focus != paneTasks {
-		t.Fatalf("help pane = %#v, focus = %v; want closed task pane", m.helpPane, m.focus)
+	if m.helpPane != nil || m.focus != paneProjects {
+		t.Fatalf("help pane = %#v, focus = %v; want original Projects focus", m.helpPane, m.focus)
 	}
 }
 

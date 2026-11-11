@@ -94,6 +94,9 @@ type taskEditor struct {
 }
 
 func (m *model) openNewEditor() tea.Cmd {
+	if !m.leaveHelpForNavigation() {
+		return nil
+	}
 	draft := vimkunja.TaskDraft{ProjectID: m.currentProjectID}
 	field := fieldTitle
 	if draft.ProjectID == 0 {
@@ -116,6 +119,9 @@ func (m *model) openNewKanbanEditor(bucketID int64) tea.Cmd {
 }
 
 func (m *model) openExistingEditor(task vimkunja.Task) {
+	if !m.leaveHelpForNavigation() {
+		return
+	}
 	draft := vimkunja.TaskDraft{
 		ID: task.ID, ProjectID: task.ProjectID, Title: task.Title,
 		Description: task.Description, Priority: task.Priority, DueDate: task.DueDate, Done: task.Done,

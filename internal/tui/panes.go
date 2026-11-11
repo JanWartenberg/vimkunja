@@ -453,6 +453,7 @@ func duePresentation(task vimkunja.Task, value string, now time.Time) string {
 }
 
 type infoPane struct {
+	help     *helpBrowser
 	title    string
 	lines    []string
 	offset   int
