@@ -16,7 +16,7 @@ import (
 // seam: callers only arm it from the Tasks Pane, while confirmation, Store
 // persistence, error feedback, and refresh remain centralized here.
 func (m *model) beginTaskDeletion() {
-	task, ok := m.selectedTaskForDeletion()
+	task, ok := m.selectedTask()
 	if !ok {
 		return
 	}
@@ -39,7 +39,7 @@ func (m *model) beginTaskDeletion() {
 	m.confirmationGArmed = false
 }
 
-func (m *model) selectedTaskForDeletion() (vimkunja.Task, bool) {
+func (m *model) selectedTask() (vimkunja.Task, bool) {
 	if m.kanbanActive && !m.inOverview() {
 		return m.selectedKanbanTask()
 	}

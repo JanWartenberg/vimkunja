@@ -155,6 +155,7 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 - `Enter` – open Task Detail
 - `x` – toggle a Task into the Done or Default Bucket
 - `u` / `Ctrl+R` – undo or redo the last persisted Task action
+- `:copy` – copy the selected Task as readable plain text, including unsaved Detail edits and non-empty metadata; excludes Comments
 - `o` / `:new` – create a Task
 - `:w`, `:wq`, `:wqa` – save
 - `:e!` / `:edit!` – discard unsaved changes to an existing Task and keep it open

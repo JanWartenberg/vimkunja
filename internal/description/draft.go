@@ -97,6 +97,7 @@ type Draft struct {
 	undo, redo        []draftState
 	next              ID
 	baseline          string
+	plainBaseline     bool // NewTextDraft retains literal source lines until an edit.
 	savedNodes        []Node
 	savedRecovered    bool
 }
@@ -129,6 +130,7 @@ func NewTextDraft(source string) *Draft {
 		d.state.nodes = append(d.state.nodes, d.newNode(Node{Kind: Element, Tag: "p", Children: children}))
 	}
 	d.baseline = source
+	d.plainBaseline = true
 	d.savedNodes = cloneNodes(d.state.nodes)
 	d.state.cursor = d.first(d.state.nodes)
 	return d
@@ -328,6 +330,9 @@ func (d *Draft) AdoptSave(c SaveCandidate) error {
 	}
 	d.savedNodes = cloneNodes(*c.nodes)
 	d.savedRecovered = c.recovered
+	if c.HTML() != d.baseline {
+		d.plainBaseline = false
+	}
 	d.baseline = c.HTML()
 	return nil
 }

@@ -35,3 +35,8 @@
 !.archive/2026-11-10/
 .archive/2026-11-10/*
 !.archive/2026-11-10/help-structure/
+
+# Completed Task clipboard export specification and ticket
+!.archive/2026-11-11/
+.archive/2026-11-11/*
+!.archive/2026-11-11/task-clipboard-copy/

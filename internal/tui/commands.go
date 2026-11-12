@@ -247,6 +247,7 @@ func newDefaultCommandRegistry() *CommandRegistry {
 		{"descriptionrecover", nil, recoverDescriptionCommand},
 		{"descriptionreload", nil, reloadDescriptionCommand},
 		{"new", nil, newTaskCommand},
+		{"copy", nil, copyTaskCommand},
 		{"write", []string{"w"}, writeCommand},
 		{"writequit", []string{"wq"}, writeQuitCommand},
 		{"writequitall", []string{"wqa"}, writeQuitAllCommand},

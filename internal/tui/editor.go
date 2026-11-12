@@ -91,6 +91,7 @@ type taskEditor struct {
 	normal                  textNormalState
 	workflowStatus          vimkunja.WorkflowStatus
 	workflowStatusLoading   bool
+	workflowStatusErr       error
 }
 
 func (m *model) openNewEditor() tea.Cmd {

@@ -1090,6 +1090,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case workflowStatusLoadedMsg:
 		if m.editor != nil && ((typed.editor != nil && m.editor == typed.editor) || (typed.editor == nil && m.editor.id == typed.taskID)) {
 			m.editor.workflowStatusLoading = false
+			m.editor.workflowStatusErr = typed.err
 			if typed.err == nil {
 				m.editor.workflowStatus = typed.status
 				// A Kanban-created task already has an explicit target bucket;

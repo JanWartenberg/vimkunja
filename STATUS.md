@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**As of:** 2026-11-11 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
+**As of:** 2026-11-12 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
 
 ## Current state
 
@@ -27,7 +27,7 @@ The MVP, **Milestone 1**, **Milestone 2**, and the initial GitHub source publica
 
 **Local consolidation accepted:** Jan moved the retired folders outside the workspace. The remaining `/workspace/vimkunja` checkout has the GitHub HTTPS remote and `main` upstream configured; Git lists no additional worktrees. The current database and its sidecars are ignored. Jan confirms `go run ./cmd/vimkunja` starts successfully from this isolated checkout on Windows. Backups were verified before consolidation; this update does not alter user data.
 
-**Ticket reconciliation:** All open issue files reviewed. Publication is completed and archived; the help redesign was subsequently implemented and archived on 2026-11-10. Other open tickets remain `needs-triage`. Completed prerequisites and current clipboard bindings are reflected in their tickets, and the adopted Task-copy spec is included. First-run database initialization remains separate open M3 work; broader platform acceptance, live CalDAV, and binary releases are not claimed by publication closure.
+**Ticket reconciliation:** All open issue files reviewed. Publication is completed and archived; the help redesign was subsequently implemented and archived on 2026-11-10. Task clipboard copy was implemented, independently reviewed and archived on 2026-11-11. Other open tickets remain `needs-triage`. Completed prerequisites and current clipboard bindings are reflected in their tickets, and the adopted Task-copy spec is included. First-run database initialization remains separate open M3 work; broader platform acceptance, live CalDAV, and binary releases are not claimed by publication closure.
 
 1. Select the next M3 ticket and resolve its open product decisions before implementation.
 2. Keep first-run database initialization separate from the accepted startup with an existing database.
@@ -58,7 +58,7 @@ Read-only HTML Description projection, scroll feedback, [additional keyboard sho
 20. [Advanced Global Search queries and ranking](.scratch/global-search-filter/issues/02-add-advanced-global-search-query-and-ranking.md) – phrases, negation, fuzzy matching, and ranking deliberately deferred beyond V1.
 21. [Diagnose and repair malformed Project hierarchies](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – hierarchy reader completed; diagnostic feedback and safe repair still require specification.
 22. [Native rich-text Descriptions](.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md) – completed and archived; implementation 03–09 and integration/follow-up 10/11 verified. All ten manual acceptance points passed, including Windows/AltGr, clipboard, resize, and live Vikunja checks.
-22a. [Copy the selected Task to the clipboard](.scratch/task-clipboard-copy/issues/01-copy-selected-task-to-clipboard.md) – adopted [spec](.scratch/task-clipboard-copy/spec.md): `:copy` for exactly one Task; rich-text integration is complete, while metadata format and unsaved-change handling remain to specify.
+22a. [Copy the selected Task to the clipboard](.archive/2026-11-11/task-clipboard-copy/issues/01-copy-selected-task-to-clipboard.md) – implemented against the accepted [spec](.archive/2026-11-11/task-clipboard-copy/spec.md): `:copy` exports visible unsaved values, non-empty metadata and readable Description text; excludes Comments. Completed and archived; automated tests, both builds and vet pass, and the final independent review round had no findings. Jan verified real clipboard output with metadata, Unicode and Checkboxes on 2026-11-12, plus copying and discarding a new unsaved Task without creating it.
 22b. [More accessible URL-copy shortcut](.archive/2026-10-20/description-link-copy-shortcut/issues/01-choose-accessible-url-copy-shortcut.md) – completed and archived: `Space+e`, with `Space+Y` retained as an alias; palette and hints show `Space+e`.
 23. [Specify separate histories for contextual command prompts](.scratch/contextual-command-histories/issues/01-specify-independent-command-prompt-histories.md) – follows M2 Ex history; separate session-local history per prompt without unifying command grammars.
 23a. [Specify workspace/data preferences](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – default Project/View, startup filters, and persisted navigation preferences; follows local TUI configuration.

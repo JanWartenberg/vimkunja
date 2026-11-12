@@ -47,6 +47,7 @@ var helpPages = []helpPage{
 			{"Inline title", "Arrows/Home/End, Backspace/Delete; Enter save; Esc discard"},
 			{"Enter", "Open task detail editor"},
 			{"o", "Create a Task in the selected Project"},
+			{":copy", "Copy Task as plain text, including unsaved edits; no Comments"},
 			{"x", "Toggle task done"},
 			{"u / Ctrl+R", "Undo / redo latest persisted Task action"},
 			{"dd, then y", "Delete selected task; n/Esc cancel"},

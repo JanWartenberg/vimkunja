@@ -42,6 +42,12 @@ This document is maintained manually for now. Generating or deriving `help.go` f
 
 Help history is session-local, capped at 100 locations; a new visit after going back drops forward history. Explicit `:h` resets it. Tab in the Ex prompt still completes commands. These history keys do not provide general application navigation history. Comment Normal mode also accepts `:h` / `:help`. Close help before editing a preserved draft; context changes while help covers unsaved Task/Comment drafts are rejected. Application-wide `:qa`, `:qa!`, and `:wqa` keep their protection, discard, and save semantics.
 
+## Task clipboard export
+
+`:copy` copies one selected Task from List, Overview, Kanban, or Task Detail to the system clipboard. An open draft for that Task supplies unsaved values; copying never saves. Output is the Title, then non-empty Task identifier, Project, Status, Done, Priority, Due and Labels in that order, a blank line and the Description. Unset Priority and an empty Description are omitted. Comments and internal database IDs are excluded.
+
+Descriptions use readable plain text: paragraphs, nested lists, `[ ]`/`[x]` Checkboxes, Link text plus URL (without duplication), and Code source whitespace. Protected content uses safe previews; blocked Descriptions use an unreadable-content marker. Without a Task, in unsupported contexts, while metadata is loading, or after a read failure, copying reports an error and leaves the clipboard alone. Clipboard failures use the existing session error log. No arguments or additional Leader shortcut are supported; `:copy -c` is only a future possibility.
+
 ## Task context and View navigation
 
 A Task context consists of a Scope (`Overview` or the current Project) and a View (`List`, `Kanban`, later `Table` or `Gantt`). Overview is a Scope, not a Project View. Vimkunja remembers one last non-Overview View globally, plus the last Project and Task selection needed to return there.
