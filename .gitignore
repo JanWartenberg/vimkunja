@@ -40,3 +40,8 @@
 !.archive/2026-11-11/
 .archive/2026-11-11/*
 !.archive/2026-11-11/task-clipboard-copy/
+
+# Completed first-run database specification and ticket
+!.archive/2026-11-13/
+.archive/2026-11-13/*
+!.archive/2026-11-13/first-run-database/

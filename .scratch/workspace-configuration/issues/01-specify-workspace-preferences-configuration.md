@@ -19,7 +19,7 @@
 
 ## Explicit exclusions
 
-- Database selection (`--db`), which remains a separate operational concern tracked by the [first-run database ticket](../../first-run-database/issues/01-support-first-run-database-and-default-path.md).
+- Database selection (`--db`), which remains a separate operational concern tracked by the [first-run database ticket](../../../.archive/2026-11-13/first-run-database/issues/01-support-first-run-database-and-default-path.md).
 - Local TUI behavior such as key timing, which is covered by the user-configuration ticket.
 
 ## Further context

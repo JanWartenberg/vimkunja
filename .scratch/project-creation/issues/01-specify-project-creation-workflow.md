@@ -20,3 +20,5 @@
 ## Further context
 
 Projects are currently read from the local Vikunja SQLite database only. Creation is needed to make the Kanban-provisioning path reachable for Projects created within Vimkunja.
+
+The [first-run database work](../../../.archive/2026-11-13/first-run-database/issues/01-support-first-run-database-and-default-path.md) now provisions one upstream-generated Inbox in fresh installations. General Project creation, parent selection and ownership behavior remain outside that completed work and still require this specification.

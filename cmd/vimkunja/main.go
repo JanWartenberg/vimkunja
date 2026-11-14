@@ -19,13 +19,22 @@ func main() {
 }
 
 func run() error {
-	dbPathFlag := flag.String("db", "internal/db/vikunja.db", "Path to Vikunja SQLite database file")
+	dbPathFlag := flag.String("db", "", "Existing Vikunja 2.7.0 SQLite file (default: legacy internal/db/vikunja.db if present, otherwise create in the platform user-data directory)")
 	projectIDFlag := flag.Int64("project-id", 0, "Optional: start with this project")
 	viewIDFlag := flag.Int64("view-id", 0, "Optional: start with this view")
 	perPageFlag := flag.Int("per-page", 100, "Tasks per page for list view")
 	leaderTimeoutFlag := flag.String("leader-timeout", "", "Leader key timeout (positive Go duration, e.g. 500ms or 2s)")
 	ctrlWTimeoutFlag := flag.String("ctrl-w-timeout", "", "Ctrl-W key timeout (positive Go duration, e.g. 500ms or 2s)")
 	flag.Parse()
+	var explicitDB bool
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "db" {
+			explicitDB = true
+		}
+	})
+	if explicitDB && *dbPathFlag == "" {
+		return errors.New("--db must name an existing Vikunja 2.7.0 database")
+	}
 
 	overrides := tui.ConfigOverrides{
 		LeaderTimeout: *leaderTimeoutFlag,
@@ -47,10 +56,13 @@ func run() error {
 		fmt.Fprintln(os.Stderr, "Warning:", warning)
 	}
 
-	// SQLite-only: always use local database file
-	store, err := vimkunja.NewVerifiedSQLiteStore(*dbPathFlag)
+	store, dbPath, created, err := vimkunja.OpenStartupDatabase(*dbPathFlag)
 	if err != nil {
-		return fmt.Errorf("database %q: %w; use --db with a verified Vikunja 2.7.0 database, or run vimkunja-tutorial to try Vimkunja without one", *dbPathFlag, err)
+		return fmt.Errorf("database %q: %w; use --db with an existing verified Vikunja 2.7.0 database, or run vimkunja-tutorial to try Vimkunja", dbPath, err)
+	}
+	fmt.Fprintln(os.Stderr, "Database:", dbPath)
+	if created {
+		fmt.Fprintln(os.Stderr, "Created local database with Local User and an empty Inbox Project.")
 	}
 
 	config.Store = store

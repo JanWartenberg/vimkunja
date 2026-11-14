@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**As of:** 2026-11-12 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
+**As of:** 2026-11-13 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
 
 ## Current state
 
@@ -27,10 +27,10 @@ The MVP, **Milestone 1**, **Milestone 2**, and the initial GitHub source publica
 
 **Local consolidation accepted:** Jan moved the retired folders outside the workspace. The remaining `/workspace/vimkunja` checkout has the GitHub HTTPS remote and `main` upstream configured; Git lists no additional worktrees. The current database and its sidecars are ignored. Jan confirms `go run ./cmd/vimkunja` starts successfully from this isolated checkout on Windows. Backups were verified before consolidation; this update does not alter user data.
 
-**Ticket reconciliation:** All open issue files reviewed. Publication is completed and archived; the help redesign was subsequently implemented and archived on 2026-11-10. Task clipboard copy was implemented, independently reviewed and archived on 2026-11-11. Other open tickets remain `needs-triage`. Completed prerequisites and current clipboard bindings are reflected in their tickets, and the adopted Task-copy spec is included. First-run database initialization remains separate open M3 work; broader platform acceptance, live CalDAV, and binary releases are not claimed by publication closure.
+**Ticket reconciliation:** All open issue files reviewed. Publication is completed and archived; the help redesign was subsequently implemented and archived on 2026-11-10. Task clipboard copy was implemented, independently reviewed and archived on 2026-11-11. Other open tickets remain `needs-triage`. Completed prerequisites and current clipboard bindings are reflected in their tickets, and the adopted Task-copy spec is included. First-run database initialization was implemented and archived on 2026-11-13 after Jan accepted the startup policy. Broader platform acceptance, live CalDAV, and binary releases remain separate.
 
 1. Select the next M3 ticket and resolve its open product decisions before implementation.
-2. Keep first-run database initialization separate from the accepted startup with an existing database.
+2. Project creation remains separate from completed first-run Inbox provisioning.
 
 ## Current tickets
 
@@ -64,7 +64,7 @@ Read-only HTML Description projection, scroll feedback, [additional keyboard sho
 23a. [Specify workspace/data preferences](.scratch/workspace-configuration/issues/01-specify-workspace-preferences-configuration.md) – default Project/View, startup filters, and persisted navigation preferences; follows local TUI configuration.
 23b. [Reuse multiline layout in Comment Composer](.archive/2026-10-20/comment-composer-multiline-layout/issues/01-reuse-multiline-layout-in-comment-composer.md) – technically complete and archived; shared layout and Insert cursor with regressions for wrapping, blank lines, scrolling, and Unicode.
 23c. [Restructure help and separate rich text](.archive/2026-11-10/help-structure/issues/01-rethink-help-structure-and-richtext-reference.md) – implemented and archived: topic overview, separate rich-text pages, readable wrapped entries, help-local history, and preserved focus/drafts. Automated layout/integration checks and a practice-terminal smoke check completed; no new native Windows acceptance claimed.
-23d. [Fresh database and default path](.scratch/first-run-database/issues/01-support-first-run-database-and-default-path.md) – allow a fresh installation to start without an existing database or `--db`, using compatible initialization or a validated starter template. Define the default path and minimum starter records; preserve existing databases. Specification pending.
+23d. [Fresh database and default path](.archive/2026-11-13/first-run-database/issues/01-support-first-run-database-and-default-path.md) – completed and archived: automatic installation of a verified Vikunja 2.7.0 starter in the platform user-data directory, with Local User, empty Inbox and standard Views. Existing legacy defaults remain preferred; existing files are never replaced or migrated, and explicit missing paths fail. Atomic publication, focused race checks, full tests, builds, vet, Linux terminal smoke and a real VOA round trip pass. Windows cross-build passes; native Windows runtime acceptance remains pending.
 
 ### Milestone 4
 
