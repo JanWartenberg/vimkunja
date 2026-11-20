@@ -172,6 +172,8 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 - `Ctrl+W h/j/k/l` – change pane focus
 - In the Projects Pane: `h/l` collapse/expand the hierarchy or select the parent/child, `zo/zc/za` fold, `zM/zR` collapse/expand all
 - In the Projects Pane: `Shift+J/K` move a Project among its siblings
+- `:projectnew` or Projects-Pane `O` – create a Project; `:projectnewchild` preselects the marked Project as parent
+- `:projectdelete` – permanently delete the marked empty Project after confirmation (`y`; `n`/`Esc` cancels)
 - `Enter` – open Task Detail
 - `x` – toggle a Task into the Done or Default Bucket
 - `u` / `Ctrl+R` – undo or redo the last persisted Task action
@@ -185,6 +187,39 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 - `Space+o` – show or hide the Projects Pane
 - `:kanban` or `Space+v`, then `k` – open a single manual Kanban View or provision a standard one after confirmation
 - In the Kanban Board: `h/l` select Buckets, `j/k` select cards, `Shift+H/L` move to a neighboring Bucket, `m` choose a destination Bucket
+
+Project creation asks only for a Title and optional Parent. It defaults to no parent;
+the marked Project never becomes the parent implicitly. The dialog starts in Normal
+mode: `j/k` or `Tab`/`Shift+Tab` select Title/Parent, and `i` edits the field.
+Title uses the same Normal/Insert editing, selection and `Space+y/p` clipboard
+behavior as Task titles. Enter/Esc leave Insert without saving. `:w` (also `:wq`)
+creates the Project; `:q!` discards directly. `:q` closes an unchanged draft or
+asks before discarding changed input (`y` discards; `n`/Esc keeps editing).
+Esc in Normal leaves the dialog open. On Parent, `i` or Enter opens the picker;
+use `j/k`, arrows or `Ctrl+N/P` to move, `gg`/`G` for first/last, and
+`Ctrl+U/D` for half a visible page. Enter chooses. `/` starts a path/ID
+search; Enter or Esc returns to navigation with the filter retained.
+Archived Projects, descendants of archived Projects and malformed hierarchy entries
+cannot be parents. Titles must contain 1–250 Unicode characters after trimming.
+Vimkunja rejects new duplicate Titles globally (case-insensitive, including archived
+Projects), while retaining full read support for existing VOA duplicates. Creation
+requires exactly one local User and no unsaved Task/Comment draft. It atomically
+creates standard Views and Kanban Buckets, appends the Project after its siblings,
+and opens its List View. Errors retain the dialog input. Project description,
+color and identifier still require VOA; moving Projects between parents is separate.
+
+`:projectdelete` targets the Project marked in the Projects Pane. It requires one
+explicit `y` confirmation. Before offering deletion, the dialog checks the database
+and shows either "This has no Tasks or Subprojects" or the concrete blocker.
+While checking or blocked, deletion is unavailable; `r` repeats the check and
+`n`/Esc closes the dialog. Deletion rechecks the conditions atomically and
+permanently removes only empty leaf Projects with
+their Views, Buckets and metadata. Tasks in trash also prevent deletion, as do
+Subprojects, archived status, Time Entries and background files. These cases still
+require VOA. Unsaved Task/Comment drafts are protected. Successful deletion focuses
+the Projects Pane and selects a remaining Project; deleting the last Project leaves
+an empty workspace where `:projectnew` remains available. Recursive deletion and
+trash semantics are separate future work.
 
 Title, Description, and Comment drafts support `v/V` in Normal Mode for character/line selection (logical blocks in Description), `Space+y` to copy the selection or current line/paragraph to the system clipboard, and `Space+p` to paste at the cursor or replace the selection. Copy preserves the selection; Paste stays in Normal Mode. `Esc` clears the selection. `Space+e` copies a Link's destination URL. **Descriptions use one shared editor:** `gn`, `Enter` activates it even for empty or unformatted text. Selection, formatting, and typing immediately follow the same rules; no rich-text mode switch is needed. Opening and navigation do not change stored bytes. Only an actual edit creates rich text in the draft; `:w` saves and `:e!` discards. Clipboard paste does not interpret Markdown formatting.
 
@@ -229,7 +264,7 @@ go test ./...
 The opt-in integration tests run an official Vikunja 2.7.0 server against disposable databases, covering the Store workflow and the embedded starter. Supply a checksum-verified executable; server and Store access are sequential:
 
 ```bash
-VIMKUNJA_VOA_BINARY=/absolute/path/to/vikunja-v2.7.0-linux-amd64 go test -tags=integration ./internal/vimkunja -run '^Test(Vikunja270OriginalAppRoundtrip|StarterDatabaseOriginalAppRoundtrip)$' -v -count=1
+VIMKUNJA_VOA_BINARY=/absolute/path/to/vikunja-v2.7.0-linux-amd64 go test -tags=integration ./internal/vimkunja -run '^Test(Vikunja270OriginalAppRoundtrip|StarterDatabaseOriginalAppRoundtrip|ProjectCreationOriginalAppRoundtrip|ProjectDeletionOriginalAppRoundtrip)$' -v -count=1
 ```
 
 These tests skip when `VIMKUNJA_VOA_BINARY` is unset and are separate from the ordinary suite; CI does not currently run them. Template provenance, checksums and the explicit regeneration command are recorded in the [first-run specification](.archive/2026-11-13/first-run-database/spec.md).

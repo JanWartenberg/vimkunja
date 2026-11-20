@@ -2,6 +2,17 @@
 
 Vimkunja is a keyboard-first terminal interface for Vikunja projects and tasks. This glossary fixes the user-facing terms used by its TUI and rich-text descriptions.
 
+## Projects
+
+**Project**:
+A container for Tasks and their Views. A Project may have another Project as its parent in the Project hierarchy.
+
+**Top-level Project**:
+A Project with no parent Project.
+
+**Subproject**:
+A Project with a parent Project; it is the same kind of entity as a Top-level Project.
+
 ## TUI regions
 
 **Pane**:

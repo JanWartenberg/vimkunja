@@ -115,6 +115,8 @@ type model struct {
 	searchLoading        bool
 	searchOrigin         *searchOrigin
 	searchReturn         *searchReturn
+	projectCreation      *projectCreationUI
+	projectDeletion      *projectDeletionUI
 	labelUI              *labelUI
 	comments             *commentsUI
 	commentRequest       uint64
@@ -129,6 +131,7 @@ type model struct {
 	projectSelected      int
 	projectViewportStart int
 	projectLoading       bool
+	projectRequest       uint64
 
 	// Views (derived from selected project)
 	projectViews                []vimkunja.ProjectView
@@ -255,6 +258,7 @@ func max(a, b int) int {
 
 type (
 	projectsLoadedMsg struct {
+		request  uint64
 		projects []vimkunja.Project
 		err      error
 	}
@@ -280,14 +284,18 @@ type (
 		err       error
 	}
 	kanbanProvisionedMsg struct {
-		board vimkunja.KanbanBoard
-		err   error
+		projectID int64
+		request   uint64
+		board     vimkunja.KanbanBoard
+		err       error
 	}
 	kanbanTaskMovedMsg struct {
-		taskID   int64
-		bucketID int64
-		undo     *undoEntry
-		err      error
+		projectID int64
+		request   uint64
+		taskID    int64
+		bucketID  int64
+		undo      *undoEntry
+		err       error
 	}
 	taskToggledMsg struct {
 		undo *undoEntry
@@ -350,12 +358,14 @@ func (m *model) Init() tea.Cmd {
 }
 
 func (m *model) loadProjects() tea.Cmd {
+	m.projectRequest++
+	request := m.projectRequest
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 
 		items, err := m.store.ListProjects(ctx)
-		return projectsLoadedMsg{projects: items, err: err}
+		return projectsLoadedMsg{request: request, projects: items, err: err}
 	}
 }
 
@@ -425,6 +435,7 @@ func (m *model) loadKanbanBoard(projectID int64) tea.Cmd {
 }
 
 func (m *model) moveKanbanTask(taskID, bucketID int64) tea.Cmd {
+	projectID, request := m.currentProjectID, m.taskRequest
 	viewID := m.currentViewID
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
@@ -432,17 +443,18 @@ func (m *model) moveKanbanTask(taskID, bucketID int64) tea.Cmd {
 		undo, err := m.trackedTaskMutation(ctx, taskID, func() error {
 			return m.store.SetTaskWorkflowStatus(ctx, taskID, bucketID, viewID)
 		})
-		return kanbanTaskMovedMsg{taskID: taskID, bucketID: bucketID, undo: undo, err: err}
+		return kanbanTaskMovedMsg{projectID: projectID, request: request, taskID: taskID, bucketID: bucketID, undo: undo, err: err}
 	}
 }
 
 func (m *model) provisionStandardKanbanView(projectID int64) tea.Cmd {
+	request := m.taskRequest
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 
 		board, err := m.store.ProvisionStandardManualKanbanView(ctx, projectID)
-		return kanbanProvisionedMsg{board: board, err: err}
+		return kanbanProvisionedMsg{projectID: projectID, request: request, board: board, err: err}
 	}
 }
 
@@ -480,6 +492,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.textClipboardGeneration++
+		if m.projectDeletion != nil && strings.ToLower(key.String()) != "ctrl+c" {
+			return m.updateProjectDeletion(key.String())
+		}
+		if m.projectCreation != nil && strings.ToLower(key.String()) != "ctrl+c" {
+			return m.updateProjectCreation(key)
+		}
 		// Keep the save's editor and close/quit intent stable until completion.
 		// Ctrl-C remains the explicit application-wide emergency exit.
 		if m.savingEditor != nil && strings.ToLower(key.String()) != "ctrl+c" {
@@ -695,6 +713,45 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch typed := msg.(type) {
+	case projectDeletionCheckedMsg:
+		if m.projectDeletion == typed.ui {
+			typed.ui.loading = false
+			typed.ui.err = ""
+			if typed.err != nil {
+				typed.ui.err = typed.err.Error()
+			}
+		}
+		return m, nil
+	case projectDeletedMsg:
+		return m, m.projectDeletionResult(typed)
+	case projectCreatedMsg:
+		return m, m.projectCreationResult(typed)
+	case projectParentsLoadedMsg:
+		if m.projectCreation != typed.ui {
+			return m, nil
+		}
+		ui := m.projectCreation
+		ui.loading = false
+		if typed.err != nil {
+			ui.err = typed.err.Error()
+			return m, nil
+		}
+		ui.parents = typed.parents
+		if ui.requireParent {
+			valid := false
+			for _, p := range ui.parents {
+				if p.ID == ui.parentID {
+					valid = true
+				}
+			}
+			ui.requireParent = false
+			if !valid {
+				m.projectCreation = nil
+				m.recordError(fmt.Errorf("selected Project cannot be a Parent: archived or invalid hierarchy"))
+				return m, nil
+			}
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = typed.Width
 		m.height = typed.Height
@@ -708,6 +765,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case projectsLoadedMsg:
+		if typed.request != 0 && typed.request != m.projectRequest {
+			return m, nil
+		}
 		m.projectLoading = false
 		if typed.err != nil {
 			m.recordError(typed.err)
@@ -1023,6 +1083,28 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.PasteMsg:
+		if m.projectDeletion != nil {
+			return m, nil
+		}
+		if m.projectCreation != nil {
+			ui := m.projectCreation
+			if !ui.saving && !ui.discardConfirm {
+				text := sanitizeTerminalText(strings.ReplaceAll(strings.ReplaceAll(typed.Content, "\r", " "), "\n", " "))
+				if ui.commandMode {
+					ui.command = insertTextAtCursor(ui.command, &ui.commandCursor, text)
+				} else if ui.picker && ui.searching {
+					ui.query = insertTextAtCursor(ui.query, &ui.queryCursor, text)
+					ui.selected = 0
+				} else if !ui.picker && ui.field == 0 {
+					if ui.mode == editorInsert {
+						ui.title = insertTextAtCursor(ui.title, &ui.cursor, text)
+					} else {
+						ui.title, ui.cursor = pastePlainText(ui.title, ui.cursor, &ui.normal, text, false)
+					}
+				}
+			}
+			return m, nil
+		}
 		if m.helpPane != nil {
 			return m, nil
 		}
@@ -1258,6 +1340,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.syncOpenKanbanDetail()
 
 	case kanbanProvisionedMsg:
+		if typed.projectID != m.currentProjectID || typed.request != m.taskRequest {
+			if typed.err != nil {
+				m.recordError(typed.err)
+			}
+			return m, nil
+		}
 		m.taskLoading = false
 		if typed.err != nil {
 			m.recordError(typed.err)
@@ -1267,12 +1355,20 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.loadViews(m.currentProjectID), m.syncOpenKanbanDetail())
 
 	case kanbanTaskMovedMsg:
+		if typed.err == nil {
+			m.rememberUndo(typed.undo)
+		}
+		if typed.projectID != m.currentProjectID || typed.request != m.taskRequest || !m.kanbanActive {
+			if typed.err != nil {
+				m.recordError(typed.err)
+			}
+			return m, nil
+		}
 		if typed.err != nil {
 			m.taskLoading = false
 			m.recordError(typed.err)
 			return m, nil
 		}
-		m.rememberUndo(typed.undo)
 		m.pendingKanbanTaskID = typed.taskID
 		m.pendingKanbanBucketID = typed.bucketID
 		m.taskLoading = true
@@ -1609,6 +1705,8 @@ func (m *model) updateProjectsKeys(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.onProjectSelectionChanged()
 		}
 		return m, nil
+	case "O":
+		return m, m.openProjectCreation(false, nil)
 	case "o":
 		return m, m.openNewEditor()
 	case "-":
@@ -2037,7 +2135,7 @@ func (m *model) editorCursor() *tea.Cursor {
 	if m.renderedInputCursor != nil {
 		return m.renderedInputCursor
 	}
-	if m.commandMode || m.searchOpen || m.comments != nil {
+	if m.projectDeletion != nil || m.projectCreation != nil || m.commandMode || m.searchOpen || m.comments != nil {
 		return nil
 	}
 	if m.editor != nil && (m.editor.mode == editorInsert || m.editor.normal.selection != nil) {
@@ -2343,6 +2441,12 @@ func (m *model) Render() string {
 }
 
 func (m *model) renderContent() string {
+	if m.projectDeletion != nil {
+		return m.renderProjectDeletion()
+	}
+	if m.projectCreation != nil {
+		return m.renderProjectCreation()
+	}
 	w, h := m.viewportSize()
 	if w < modalFallbackWidth || h < modalFallbackHeight {
 		return m.renderTextOnlyFallback(w, h)
@@ -2600,7 +2704,7 @@ func (m *model) renderStatusBar(w int) string {
 	// complete segments from this ordered budget.
 	hint := "Ctrl+W cycles  •  Enter detail  •  j/k navigate  •  :h help  •  q quit  •  x toggle"
 	if m.focus == paneProjects {
-		hint = "j/k select  •  h/l fold/tree  •  :h help  •  z fold commands  •  Shift+J/K reorder  •  r reload"
+		hint = "O new project  •  j/k select  •  :h help  •  h/l fold/tree  •  z fold commands  •  Shift+J/K reorder  •  r reload"
 	}
 	if m.focus == paneTasks && m.kanbanActive && !m.inOverview() {
 		hint = "Shift+H/L move bucket  •  m choose bucket  •  j/k navigate  •  :h help  •  x toggle  •  Ctrl+W cycles"

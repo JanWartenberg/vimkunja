@@ -1,10 +1,10 @@
 # Vimkunja – Status
 
-**As of:** 2026-11-13 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
+**As of:** 2026-11-20 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
 
 ## Current state
 
-The MVP, **Milestone 1**, **Milestone 2**, and the initial GitHub source publication are complete. Everyday task management is practical without switching to the original application. Open M3 work remains in the backlog; publication no longer blocks it, and no new implementation priority has been selected.
+The MVP, **Milestone 1**, **Milestone 2**, and the initial GitHub source publication are complete. Everyday task management is practical without switching to the original application. Open M3 work remains in the backlog; publication no longer blocks it. Project creation is implemented, verified and archived; the next M3 priority has not been selected.
 
 - Local Vikunja SQLite database: Projects, List View, All Tasks Overview, Task Detail, Task Editor, and Task deletion
 - Hierarchical Projects Pane with indentation, session-local folding, defensive recovery entries, and persistent sibling ordering
@@ -27,10 +27,10 @@ The MVP, **Milestone 1**, **Milestone 2**, and the initial GitHub source publica
 
 **Local consolidation accepted:** Jan moved the retired folders outside the workspace. The remaining `/workspace/vimkunja` checkout has the GitHub HTTPS remote and `main` upstream configured; Git lists no additional worktrees. The current database and its sidecars are ignored. Jan confirms `go run ./cmd/vimkunja` starts successfully from this isolated checkout on Windows. Backups were verified before consolidation; this update does not alter user data.
 
-**Ticket reconciliation:** All open issue files reviewed. Publication is completed and archived; the help redesign was subsequently implemented and archived on 2026-11-10. Task clipboard copy was implemented, independently reviewed and archived on 2026-11-11. Other open tickets remain `needs-triage`. Completed prerequisites and current clipboard bindings are reflected in their tickets, and the adopted Task-copy spec is included. First-run database initialization was implemented and archived on 2026-11-13 after Jan accepted the startup policy. Broader platform acceptance, live CalDAV, and binary releases remain separate.
+**Ticket reconciliation:** All open issue files reviewed. Publication is completed and archived; the help redesign was subsequently implemented and archived on 2026-11-10. Task clipboard copy was implemented, independently reviewed and archived on 2026-11-11. Project creation was implemented, verified and archived on 2026-11-18; other open tickets remain `needs-triage`. Completed prerequisites and current clipboard bindings are reflected in their tickets, and the adopted Task-copy spec is included. First-run database initialization was implemented and archived on 2026-11-13 after Jan accepted the startup policy. Broader platform acceptance, live CalDAV, and binary releases remain separate.
 
-1. Select the next M3 ticket and resolve its open product decisions before implementation.
-2. Project creation remains separate from completed first-run Inbox provisioning.
+1. Select the next M3 ticket and specify its workflow before implementation.
+2. Jan confirmed Project creation, Parent selection, Subproject creation and empty-Project deletion on Windows. Jan accepted the final Normal/Insert dialog, :w/:q commands, Parent navigation and deletion-eligibility feedback on 2026-11-20; commit authorized.
 
 ## Current tickets
 
@@ -48,8 +48,8 @@ Read-only HTML Description projection, scroll feedback, [additional keyboard sho
 
 12. [Display Checkbox-list progress](.archive/2026-10-20/checkbox-list-progress-summary/issues/01-show-checkbox-list-progress-summary.md) – completed and archived; Native Checkbox edits update progress live, and empty lists are removed. Imported plain text stays literal in the shared editor.
 13. [Advanced Vim editor motions](.archive/2026-10-20/editor-motion-polish/issues/01-add-advanced-vim-editor-motions.md) – completed and archived; Jan accepted the final Comment `~` recheck. The old HTML write-protection test is superseded by rich-text acceptance; the original report is preserved.
-14. [Specify Project deletion semantics](.scratch/project-deletion/issues/01-specify-project-deletion-semantics.md)
-14a. [Specify Project creation](.scratch/project-creation/issues/01-specify-project-creation-workflow.md) – define entry point, hierarchy, initial View, and Vikunja-compatible persistence before implementation.
+14. [Empty Project deletion](.archive/2026-11-18/project-deletion/issues/01-specify-project-deletion-semantics.md) – implemented: `:projectdelete` checks and displays eligibility before offering one confirmation; Tasks (including trash) and Subprojects block deletion. [Recursive deletion and trash investigation](.scratch/project-deletion/issues/02-investigate-recursive-deletion-and-trash.md) remains `needs-triage`. Jan accepted the final creation and deletion workflows on Windows on 2026-11-20.
+14a. [Project creation](.archive/2026-11-18/project-creation/issues/01-specify-project-creation-workflow.md) – completed and archived against the accepted [specification](.archive/2026-11-18/project-creation/spec.md): `:projectnew`, Projects-Pane `O`, explicit `:projectnewchild`, searchable Parent selection, global new-Title uniqueness, standard Views and atomic persistence. Full tests, builds, vet, focused race tests, four official VOA round trips and Linux terminal smoke pass. Initial implementation passed two independent review rounds. Windows cross-build passes; Jan confirmed creation/Parent/child workflows on Windows. Jan accepted the final Task-style Normal/Insert dialog with :w creation, :q discard confirmation and :q! on Windows on 2026-11-20. Parent search now supports gg/G and Ctrl+U/D, including filtered choices and resize-aware half-page steps. Windows acceptance passed on 2026-11-20; commit authorized.
 15. [Render Table View](.scratch/table-view/issues/01-render-table-project-view.md)
 16. [Render Gantt View](.scratch/gantt-view/issues/01-render-gantt-project-view.md)
 17. [Evaluate independent Link text/URL editing](.scratch/link-label-and-url-editor/issues/01-evaluate-independent-link-label-url-editing.md)

@@ -8,6 +8,10 @@ import "context"
 // All pagination parameters are 1-based.
 type Store interface {
 	ListProjects(ctx context.Context) ([]Project, error)
+	CreateProject(ctx context.Context, draft ProjectDraft) (Project, error)
+	CheckProjectDeletion(ctx context.Context, projectID int64) error
+	DeleteEmptyProject(ctx context.Context, projectID int64) error
+	ProjectCreationParents(ctx context.Context) ([]ProjectParent, error)
 	MoveProjectAmongSiblings(ctx context.Context, projectID int64, direction ProjectMoveDirection) error
 	ListViews(ctx context.Context, projectID int64, page, perPage int) ([]ProjectView, int, error)
 	ListTasksInView(ctx context.Context, projectID, viewID int64, page, perPage int) ([]Task, int, error)

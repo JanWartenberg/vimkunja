@@ -93,6 +93,9 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 
 | Binding | Action | Status |
 | --- | --- | --- |
+| `O` (`Shift+O`) in the Projects Pane | Open the Project creation dialog with no parent selected. Lowercase `o` still creates a Task. | Implemented |
+| `:projectnew` / `:projectnewchild` | Open Project creation globally / preselect the Project marked in the Projects Pane as parent. | Implemented |
+| `:projectdelete` | Confirm permanent deletion of the marked empty leaf Project; `y` deletes, `n`/`Esc` cancels. | Implemented |
 | `j/k`, arrows | Select the next/previous visible Project. | Implemented |
 | `gg/G`, `Home/End` | Select the first/last visible Project. | Implemented |
 | `Ctrl+D` / `Ctrl+U` | Move by approximately half the visible Pane height. | Implemented |
@@ -102,6 +105,38 @@ The Projects Pane renders Vikunja's persisted parent/child hierarchy. Navigation
 | `zM` / `zR` | Close or open every branch. | Implemented |
 | `Shift+J` / `Shift+K` | Move the selected Project down/up among its persisted siblings. | Implemented |
 | `r` | Reload the complete active Project hierarchy. | Implemented |
+
+The creation dialog starts in Normal mode with Title selected. `j/k`, arrows or
+`Tab`/`Shift+Tab` select Title/Parent. `i` edits Title or opens the Parent picker;
+Title also supports the shared Normal text motions, `a/I/A`, `v/V` selection and
+`Space+y/p` clipboard controls. Enter/Esc leave Title Insert without saving.
+`:w`/`:wq` creates; `:q!` discards. `:q` closes an unchanged draft, otherwise asks
+for confirmation: `y` discards, `n`/Esc keeps the draft. Normal Esc stays in the
+form. The footer shows the current mode and controls; there are no action buttons.
+
+On Parent, Enter also opens its picker. Use `j/k`, arrows or `Ctrl+N/P` to move,
+`gg`/`G` (also Home/End) for first/last, and `Ctrl+U/D` for half a visible page.
+Navigation clamps to the filtered choices; paging also works during search input.
+Enter chooses, and Esc returns without applying the highlighted choice.
+`/` starts searching paths/IDs; Enter or Esc finishes search and returns to
+navigation with the filter retained. Select No parent Project for a Top-level
+Project. An invalid marked parent makes `:projectnewchild` fail explicitly.
+
+Titles are trimmed and limited to 1–250 Unicode characters. New duplicates are
+rejected globally, including archived Projects, ignoring case and outer whitespace;
+existing duplicates remain readable. Unsaved Task/Comment drafts must be saved or
+discarded first. Exactly one local User is required. Errors retain the creation
+input; successful creation selects the new Project's List View.
+
+Project deletion checks eligibility before offering `y delete`: the dialog shows
+that there are no Tasks/Subprojects, or gives the concrete blocker. While checking
+or blocked, `y` cannot delete; `r` rechecks and `n`/Esc closes. The heading is
+DELETE PROJECT and the target ID/Title remain visible at normal sizes.
+
+Project deletion requires no Tasks (including trash) and no Subprojects. Archived
+Projects, descendant-relationship inconsistencies, Time Entries and background
+files also block deletion. The Store rechecks these conditions atomically after
+confirmation. Recursive deletion and trash semantics remain deferred.
 
 ## Tasks Pane
 
@@ -261,7 +296,7 @@ label and three actionable segments fit; otherwise hints win.
 
 | Context | Primary | Navigation | Secondary |
 | --- | --- | --- | --- |
-| Projects | `j/k select` | `h/l fold/tree` | fold commands, reorder, reload, new Task |
+| Projects | `O new project` | `j/k select` | tree/fold commands, reorder, reload, new Task |
 | List / Overview | `j/k select`, `Enter detail` | Task navigation | new Task, sort, filter, return |
 | Kanban | move Bucket, choose Bucket | card navigation | Done, Pane cycling, new Task |
 | Task Detail normal | edit | field navigation | save, close, Pane switching |

@@ -33,6 +33,22 @@ func cloneTextNormal(s textNormalState) textNormalState {
 	return s
 }
 func (m *model) textClipboardTarget() (textClipboardTarget, bool) {
+	if ui := m.projectCreation; ui != nil {
+		if ui.saving || ui.commandMode || ui.discardConfirm || ui.picker || (ui.mode != editorNormal && ui.mode != editorInsert) || ui.field != 0 {
+			return textClipboardTarget{}, false
+		}
+		text, cursor, state := ui.title, ui.cursor, cloneTextNormal(ui.normal)
+		mode := ui.mode
+		return textClipboardTarget{
+			text: selectedPlainText(text, cursor, &state),
+			valid: func(m *model) bool {
+				return m.projectCreation == ui && !ui.saving && !ui.commandMode && !ui.discardConfirm && !ui.picker && ui.mode == mode && ui.field == 0 && ui.title == text && ui.cursor == cursor && reflect.DeepEqual(ui.normal, state)
+			},
+			paste: func(m *model, value string) {
+				ui.title, ui.cursor = pastePlainText(ui.title, ui.cursor, &ui.normal, value, false)
+			},
+		}, true
+	}
 	if m.helpPane != nil {
 		return textClipboardTarget{}, false
 	}
@@ -110,7 +126,7 @@ func (m *model) textClipboardKey(key string) (tea.Cmd, bool) {
 		return nil, false
 	}
 	if key == "e" || key == "Y" {
-		if m.comments == nil && m.editor.field == fieldDescription && m.editor.nativeDraft != nil {
+		if m.projectCreation == nil && m.comments == nil && m.editor != nil && m.editor.field == fieldDescription && m.editor.nativeDraft != nil {
 			return m.copyNativeLink(), true
 		}
 		return nil, false

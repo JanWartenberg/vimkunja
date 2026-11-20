@@ -104,6 +104,7 @@ CREATE TABLE users (
     name TEXT,
     username TEXT NOT NULL
 );
+CREATE TABLE project_ancestors (ancestor_id INTEGER NOT NULL, project_id INTEGER NOT NULL, depth INTEGER NOT NULL, PRIMARY KEY(ancestor_id,project_id));
 CREATE TABLE projects (
     id INTEGER PRIMARY KEY,
     identifier TEXT,
@@ -113,13 +114,15 @@ CREATE TABLE projects (
     position REAL,
     is_archived INTEGER DEFAULT 0,
     updated DATETIME DEFAULT CURRENT_TIMESTAMP,
-    owner_id INTEGER DEFAULT 1
+    owner_id INTEGER DEFAULT 1,
+    created DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE project_views (
     id INTEGER PRIMARY KEY,
     project_id INTEGER NOT NULL,
     title TEXT NOT NULL,
     view_kind INTEGER NOT NULL,
+    filter TEXT,
     position REAL,
     done_bucket_id INTEGER,
     default_bucket_id INTEGER,
@@ -208,6 +211,8 @@ INSERT INTO projects (id, identifier, title, description, parent_project_id, pos
     (1, 'LEARN', 'Learn Vimkunja', 'The guided workshop project.', 0, 100, 1),
     (2, 'HOME', 'Home', 'A second project for cross-project examples.', 0, 200, 1),
     (3, 'TRIP', 'Plan a Trip', 'This project intentionally starts without a Kanban View.', 0, 300, 1);
+
+INSERT INTO project_ancestors(ancestor_id,project_id,depth) VALUES(1,1,0),(2,2,0),(3,3,0);
 
 INSERT INTO project_views (id, project_id, title, view_kind, position, default_bucket_id, done_bucket_id, bucket_configuration_mode) VALUES
     (11, 1, 'List',   0, 100, NULL, NULL, 0),

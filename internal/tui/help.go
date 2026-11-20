@@ -12,11 +12,16 @@ var helpPages = []helpPage{
 			{"Ctrl+W Ctrl+W / w", "Cycle open panes"},
 		}},
 		{title: "PROJECTS PANE", entries: []helpEntry{
+			{"O (Shift+O)", "Create a Project; defaults to no parent. Only in the Projects Pane."},
+			{":projectnew / :projectnewchild", "Create a Top-level Project / preselect the marked Project as parent."},
 			{"h / l", "Close branch or select parent / open branch or first child"},
 			{"zo / zc / za", "Open / close / toggle selected branch"},
 			{"zM / zR", "Close / open all branches"},
 			{"Shift+J / Shift+K", "Move Project down / up among siblings"},
 			{"r", "Reload hierarchy"},
+			{"Creation dialog", "Normal: j/k or Tab selects Title/Parent; i edits. Title Enter/Esc returns to Normal. :w creates; :q asks before discarding changes; :q! discards directly. Picker: j/k moves, gg/G first/last, Ctrl+U/D half-page, / searches, Enter chooses, Esc returns."},
+			{":projectdelete", "Check the marked Project first, showing eligibility or the blocker. y deletes only after a successful check; r rechecks; n/Esc cancels. Tasks (including trash), Subprojects, archive status, Time Entries and background files block deletion."},
+			{"New Project Titles", "1–250 characters after trimming; new duplicates rejected globally, ignoring case, including archived Projects. Existing duplicates stay readable."},
 		}},
 		{title: "OVERVIEW NAVIGATION", entries: []helpEntry{
 			{"-", "Open Overview (never toggles)"},

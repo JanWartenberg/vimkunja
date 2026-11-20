@@ -45,3 +45,9 @@
 !.archive/2026-11-13/
 .archive/2026-11-13/*
 !.archive/2026-11-13/first-run-database/
+
+# Completed Project creation specification and tickets
+!.archive/2026-11-18/
+.archive/2026-11-18/*
+!.archive/2026-11-18/project-creation/
+!.archive/2026-11-18/project-deletion/

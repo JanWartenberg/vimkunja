@@ -76,6 +76,17 @@ type fakeStore struct {
 	restoreUndoErr       error
 }
 
+func (f *fakeStore) CreateProject(context.Context, vimkunja.ProjectDraft) (vimkunja.Project, error) {
+	return vimkunja.Project{}, errors.New("Project creation not configured")
+}
+func (f *fakeStore) ProjectCreationParents(context.Context) ([]vimkunja.ProjectParent, error) {
+	var out []vimkunja.ProjectParent
+	for _, p := range f.projects {
+		out = append(out, vimkunja.ProjectParent{ID: p.ID, Title: p.Title, Path: p.Title})
+	}
+	return out, nil
+}
+
 func (f *fakeStore) ListProjects(context.Context) ([]vimkunja.Project, error) {
 	return append([]vimkunja.Project(nil), f.projects...), nil
 }
@@ -6361,3 +6372,9 @@ func TestNavigationKeepsValidStateAtUnavailableBoundaries(t *testing.T) {
 		t.Fatalf("empty task selection = %d, want stable zero", m.taskSelected)
 	}
 }
+
+func (f *fakeStore) DeleteEmptyProject(context.Context, int64) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (f *fakeStore) CheckProjectDeletion(context.Context, int64) error { return nil }
