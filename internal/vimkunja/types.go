@@ -42,6 +42,7 @@ const (
 
 // ProjectView represents a view within a project (Kanban, List, Table, Gantt, etc.).
 type ProjectView struct {
+	Filtered                bool   `json:"-"`
 	ID                      int64  `json:"id"`
 	Title                   string `json:"title"`
 	ViewKind                string `json:"view_kind"`

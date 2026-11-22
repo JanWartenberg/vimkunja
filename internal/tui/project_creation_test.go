@@ -11,6 +11,143 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
+func TestProjectDiscardRequiresVisibleActions(t *testing.T) {
+	m := testModel()
+	m.Update(tea.WindowSizeMsg{Width: 20, Height: 3})
+	ui := &projectCreationUI{title: "Keep draft", discardConfirm: true}
+	m.projectCreation = ui
+	m = pressKey(m, tea.Key{Code: 'y', Text: "y"})
+	if m.projectCreation != ui || !strings.Contains(m.Render(), "Resize") {
+		t.Fatal("hidden confirmation discarded the Project draft")
+	}
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
+	if !strings.Contains(m.Render(), "y discard") {
+		t.Fatal("resized confirmation lacks its actions")
+	}
+	m = pressKey(m, tea.Key{Code: 'n', Text: "n"})
+	if ui.discardConfirm || ui.title != "Keep draft" {
+		t.Fatal("cancel lost the draft")
+	}
+}
+
+func TestProjectCreationHelpPreservesDraft(t *testing.T) {
+	m := testModel()
+	ui := &projectCreationUI{title: "Unsaved"}
+	m.projectCreation = ui
+	m, _ = typeCommand(t, m, "h")
+	if !strings.Contains(m.Render(), "PROJECT HELP") || ui.err != "" {
+		t.Fatalf("Project help missing: %s", m.Render())
+	}
+	m.Update(tea.PasteMsg{Content: "must not edit draft"})
+	m, _ = typeCommand(t, m, "quit")
+	if m.projectCreation != ui || ui.title != "Unsaved" || strings.Contains(m.Render(), "PROJECT HELP") {
+		t.Fatal("help changed or closed the draft")
+	}
+}
+
+func TestProjectHelpCanReachFinalExplanationInFallback(t *testing.T) {
+	m := testModel()
+	m.Update(tea.WindowSizeMsg{Width: 24, Height: 8})
+	m.projectCreation = &projectCreationUI{title: "Draft"}
+	m, _ = typeCommand(t, m, "h")
+	m = pressKey(m, tea.Key{Code: 'G', Text: "G"})
+	if !strings.Contains(m.Render(), "close.") {
+		t.Fatalf("last help explanation cannot be reached: %s", m.Render())
+	}
+}
+
+func TestProjectContextCommandsShowCommandMode(t *testing.T) {
+	for _, context := range []string{"help", "parent"} {
+		t.Run(context, func(t *testing.T) {
+			m := testModel()
+			ui := &projectCreationUI{title: "Draft"}
+			m.projectCreation = ui
+			if context == "help" {
+				m, _ = typeCommand(t, m, "h")
+			} else {
+				ui.picker = true
+			}
+			m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+			if !strings.Contains(m.Render(), "COMMAND") {
+				t.Fatalf("%s hides Command mode: %s", context, m.Render())
+			}
+		})
+	}
+}
+
+func TestManagementHelpCommandCursorSurvivesTinyResize(t *testing.T) {
+	for _, kind := range []string{"project", "board"} {
+		t.Run(kind, func(t *testing.T) {
+			m := testModel()
+			if kind == "project" {
+				m.projectCreation = &projectCreationUI{title: "Draft"}
+			} else {
+				m.boardManagement = &boardManagementUI{page: "create"}
+			}
+			m, _ = typeCommand(t, m, "h")
+			m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+			for _, size := range [][2]int{{32, 9}, {8, 2}, {1, 1}, {80, 24}} {
+				m.Update(tea.WindowSizeMsg{Width: size[0], Height: size[1]})
+				view := m.View()
+				if view.Cursor == nil || view.Cursor.X >= size[0] || view.Cursor.Y >= size[1] {
+					t.Fatalf("%v: help command cursor hidden: %#v", size, view.Cursor)
+				}
+			}
+		})
+	}
+}
+
+func TestParentPickerHelpReturnsToSelection(t *testing.T) {
+	m := testModel()
+	ui := &projectCreationUI{title: "Draft", picker: true, selected: 1, parents: []vimkunja.ProjectParent{{ID: 9, Path: "Parent"}}}
+	m.projectCreation = ui
+	m, _ = typeCommand(t, m, "h")
+	if !strings.Contains(m.Render(), "PROJECT HELP") {
+		t.Fatal("Parent picker does not offer help")
+	}
+	m = pressKey(m, tea.Key{Code: tea.KeyEsc})
+	if !ui.picker || ui.selected != 1 || ui.title != "Draft" {
+		t.Fatal("help lost the Parent picker selection")
+	}
+}
+
+func TestProjectCreationFooterIsFixedAndSeparated(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 30
+	m.projectCreation = &projectCreationUI{title: "Draft"}
+	lines := strings.Split(ansi.Strip(m.Render()), "\n")
+	bottom := -1
+	for i, line := range lines {
+		if strings.Contains(line, "┗") {
+			bottom = i
+		}
+	}
+	if bottom < 3 || !strings.Contains(lines[bottom-2], "──") || !strings.Contains(lines[bottom-1], ":h help") {
+		t.Fatalf("form footer is not fixed above the border: %s", m.Render())
+	}
+}
+
+func TestProjectCreationCommandAtBottomOfModal(t *testing.T) {
+	m := testModel()
+	m.width, m.height = 100, 30
+	_, cmd := typeCommand(t, m, "projectnew")
+	deliverProjectCommand(t, m, cmd)
+	m = pressKey(m, tea.Key{Code: ':', Text: ":"})
+	lines := strings.Split(ansi.Strip(m.Render()), "\n")
+	prompt, bottom := -1, -1
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(strings.Trim(line, "┃")), ":") || strings.Contains(line, "┃  :") {
+			prompt = i
+		}
+		if strings.Contains(line, "┗") {
+			bottom = i
+		}
+	}
+	if prompt < 0 || bottom-prompt != 1 {
+		t.Fatalf("command prompt must be above bottom modal border: %s", m.Render())
+	}
+}
+
 func TestProjectCreationCommandsAndPaneShortcut(t *testing.T) {
 	for _, command := range []string{"projectnew", "projectnewchild"} {
 		m := testModel()

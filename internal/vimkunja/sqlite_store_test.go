@@ -44,6 +44,7 @@ func setupTestDB(t *testing.T) (*SQLiteStore, func()) {
 			id INTEGER PRIMARY KEY,
 			project_id INTEGER,
 			title TEXT,
+            filter TEXT,
 			view_kind INTEGER,
 			position INTEGER,
 			done_bucket_id INTEGER,
@@ -897,7 +898,7 @@ func TestToggleTaskDone_MovesTaskToEachViewsDoneBucket(t *testing.T) {
 	}
 }
 
-func TestToggleTaskDone_ScopesBucketMoveToSelectedView(t *testing.T) {
+func TestToggleTaskDone_SelectedViewStillUpdatesGlobalCompletion(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
 
@@ -919,7 +920,7 @@ func TestToggleTaskDone_ScopesBucketMoveToSelectedView(t *testing.T) {
 	if err := store.ToggleTaskDone(context.Background(), 1, true, 1); err != nil {
 		t.Fatalf("toggle task done in selected view: %v", err)
 	}
-	for viewID, wantBucketID := range map[int64]int64{1: 99, 2: 20} {
+	for viewID, wantBucketID := range map[int64]int64{1: 99, 2: 199} {
 		var gotBucketID int64
 		if err := store.db.QueryRow(`SELECT bucket_id FROM task_buckets WHERE task_id = 1 AND project_view_id = ?`, viewID).Scan(&gotBucketID); err != nil {
 			t.Fatalf("query bucket for view %d: %v", viewID, err)

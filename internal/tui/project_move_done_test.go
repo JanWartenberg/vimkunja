@@ -19,7 +19,7 @@ func TestCompletedProjectMoveUsesDestinationDoneBucket(t *testing.T) {
                 CREATE TABLE task_comments(id INTEGER PRIMARY KEY,comment TEXT,author_id INTEGER,task_id INTEGER,created DATETIME,updated DATETIME);
                 INSERT INTO users VALUES(1,'Local','local');
                 INSERT INTO projects(id,identifier,owner_id) VALUES(2,'TARGET',1);
-                INSERT INTO project_views VALUES(10,1,3,1,100,101,1),(20,2,3,1,200,201,1);
+                INSERT INTO project_views(id,project_id,view_kind,bucket_configuration_mode,default_bucket_id,done_bucket_id,position) VALUES(10,1,3,1,100,101,1),(20,2,3,1,200,201,1);
                 INSERT INTO buckets(id,title,project_view_id,position) VALUES(100,'Source Todo',10,1),(101,'Source Done',10,2),(200,'Target Todo',20,1),(201,'Target Done',20,2);
                 INSERT INTO tasks(id,project_id,title,description,priority,done,done_at,"index") VALUES(1,1,'Completed','',0,1,?,1);
                 INSERT INTO task_buckets VALUES(1,10,101);

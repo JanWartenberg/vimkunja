@@ -185,8 +185,48 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 - `:h` / `:help` – help overview with topic pages; `Enter` opens a topic, `Ctrl+O/I` (Tab for forward) navigates history, and `-`/Backspace opens the parent. `:q` returns to the previous pane with drafts preserved.
 - `:errors` – session error log
 - `Space+o` – show or hide the Projects Pane
-- `:kanban` or `Space+v`, then `k` – open a single manual Kanban View or provision a standard one after confirmation
+- `:kanban` or `Space+v`, then `k` – open the last used supported Board for this Project in the session, or its first Board; offer name-first creation if absent
+- `:kanban switch` or `Space+v`, then `b` – choose a Board; Esc keeps the previous context
+- `:kanban manage` or `Space+v`, then `m` – open Board management; Enter opens, n creates, e configures, d previews deletion
 - In the Kanban Board: `h/l` select Buckets, `j/k` select cards, `Shift+H/L` move to a neighboring Bucket, `m` choose a destination Bucket
+
+Board management supports manual Kanban Views without View filters. Filtered
+Views remain intact and require VOA. `:kanban new` asks for a name, then creates
+To-Do / Doing / Done and opens their Bucket configuration. Use :w to save adjustments,
+then :q (or :wq) to open the Board. Existing Project Tasks initially appear in To-Do, retaining
+their Done state. With multiple Boards, a title identifies the active Board; a single Board needs no extra title line. The column placement belongs to each Board; a Task’s Done flag is global (shown
+by ✓). Reopening through a move out of one Board’s Done Bucket can leave the
+card in another Board’s Done column, matching VOA. Board selection is remembered
+per Project until exit; no workspace preference is written.
+
+In Board management and Project creation, `:h` / `:help` explains commands without
+losing the draft. Board-management help is specific to the current page. Scroll with j/k, gg/G, Home/End or Ctrl+D/U; q, Esc or :q returns to the unchanged draft.
+
+Board management and configuration use the usual Pane frame, with one cell of
+top/left spacing and a separated helper footer; configuration
+keeps Task Detail closed. Unsaved Task
+or Comment drafts block entry. Use j/k or Tab to select a field, i to edit, and
+Enter/Esc to return to Normal. `:w` saves configuration; `:wq` saves and closes;
+`:q` asks before discarding changes; `:q!` discards. `:e!` explicitly reloads after
+an external configuration conflict. View position controls Board ordering.
+For Buckets, o adds after the selected Bucket, O adds before it, J/K reorders, Space+d toggles Default, Space+x toggles Done,
+and dd, Space+D or `:bucketdelete` previews deletion. Limits use 0 for unlimited.
+Shared Normal selection and Space+y/p clipboard behavior apply to input fields.
+
+Errors appear separately from the command hints and clear on the next key.
+Helpers follow Normal, Insert and Command mode; command aliases match the main
+editor, with feedback for unavailable actions. Board titles identify the Project.
+A newly created Board explicitly remains saved when :q! discards later edits. Help aligns commands
+and explanations in columns, with a stacked layout on narrow terminals.
+
+Deletion uses a compact centered confirmation modal and requires explicit y; n/Esc cancels and j/k scrolls. Board
+deletion retains Tasks and other Boards. Bucket deletion is staged until :w and
+moves its Tasks to the surviving Default Bucket without changing their Done flags.
+Reassign Default/Done before deleting their Bucket; the last Bucket is protected.
+Capacity and external changes are rechecked transactionally. Management writes
+clear Task undo/redo history; configuration and deletion have no Undo. Narrow
+screens scroll the focused field; extremely small screens request resizing and
+block destructive confirmation. Ex commands remain available when menu hints clip.
 
 Project creation asks only for a Title and optional Parent. It defaults to no parent;
 the marked Project never becomes the parent implicitly. The dialog starts in Normal

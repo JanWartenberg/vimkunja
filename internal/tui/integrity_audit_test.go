@@ -28,7 +28,7 @@ func auditEditorModel(t *testing.T) (*model, *sql.DB) {
 			description TEXT, priority INTEGER, due_date DATETIME, done INTEGER, done_at DATETIME, deleted_at DATETIME,
 			"index" INTEGER, created DATETIME, updated DATETIME, created_by_id INTEGER);
 		CREATE TABLE project_views (id INTEGER PRIMARY KEY, project_id INTEGER,
-			view_kind INTEGER, bucket_configuration_mode INTEGER, default_bucket_id INTEGER);
+			view_kind INTEGER, bucket_configuration_mode INTEGER, default_bucket_id INTEGER, filter TEXT);
 		CREATE TABLE task_positions (task_id INTEGER, project_view_id INTEGER, position REAL);
 		CREATE TABLE task_buckets (task_id INTEGER, project_view_id INTEGER, bucket_id INTEGER);
 		CREATE TABLE label_tasks (task_id INTEGER, label_id INTEGER);

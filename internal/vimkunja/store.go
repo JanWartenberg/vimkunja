@@ -17,6 +17,10 @@ type Store interface {
 	ListTasksInView(ctx context.Context, projectID, viewID int64, page, perPage int) ([]Task, int, error)
 	LoadManualKanbanBoard(ctx context.Context, projectID int64, viewID ...int64) (KanbanBoard, error)
 	ProvisionStandardManualKanbanView(ctx context.Context, projectID int64) (KanbanBoard, error)
+	CreateKanbanView(ctx context.Context, projectID int64, title string) (KanbanConfiguration, error)
+	LoadKanbanConfiguration(ctx context.Context, projectID, viewID int64) (KanbanConfiguration, error)
+	SaveKanbanConfiguration(ctx context.Context, draft KanbanConfiguration) (KanbanConfiguration, error)
+	DeleteKanbanView(ctx context.Context, expected KanbanConfiguration) error
 	ListOverviewTasks(ctx context.Context, page, perPage int) ([]Task, int, error)
 	LoadSearchData(ctx context.Context) (SearchData, error)
 	ListTasksForLabel(ctx context.Context, labelID int64, page, perPage int) ([]Task, int, error)

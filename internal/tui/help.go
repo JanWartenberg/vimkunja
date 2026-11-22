@@ -32,7 +32,10 @@ var helpPages = []helpPage{
 		}},
 		{title: "PROJECT VIEWS", entries: []helpEntry{
 			{"Space+v, then l / k", "Select List / Kanban View"},
-			{":kanban", "Select or provision Project Kanban View"},
+			{":kanban", "Open the last used Board for this Project in the session, or its first supported Board; offer name-first creation if absent"},
+			{"Space+v b / :kanban switch", "Choose another Board; Esc keeps the current context"},
+			{"Space+v m / :kanban manage", "Standalone Board manager: Enter open, n new, e edit, d preview deletion, r reload"},
+			{":kanban new", "Name-first creation, then configuration of standard To-Do, Doing and Done Buckets"},
 		}},
 		{title: "KANBAN BOARD", entries: []helpEntry{
 			{"h / l", "Select previous / next Bucket"},
@@ -40,6 +43,10 @@ var helpPages = []helpPage{
 			{"Shift+H / Shift+L", "Move selected Task to adjacent Bucket"},
 			{"m", "Choose any target Bucket"},
 			{"Enter", "Open selected Task detail"},
+			{"Board management :h / :help", "Explain each command for the current page; q/Esc/:q returns to the unchanged draft."},
+			{"Board configuration", "No Task Detail is open. j/k select fields; i edits; Enter/Esc leave Insert. :w saves configuration, :wq saves/closes; :q asks before discard, :q! discards; :e! explicitly reloads."},
+			{"Bucket configuration", "o/O inserts a Bucket after/before the selected one; J/K reorders it; Space d toggles Default, Space x toggles Done, dd / Space D / :bucketdelete previews deletion. Set Limit to 0 for unlimited. Save staged changes with :w."},
+			{"Board/Bucket deletion", "y confirms; n/Esc cancels; j/k scrolls the preview. Tasks remain. The last Bucket is protected; reassign special roles before deletion. Configuration writes clear Task undo history."},
 		}},
 		{title: "DEFERRED PROJECT VIEWS", entries: []helpEntry{
 			{"Space+v, then t / g", "Select Table / Gantt View (deferred)"},

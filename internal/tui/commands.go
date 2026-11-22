@@ -417,7 +417,33 @@ func labelsCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 	return m, m.openGlobalLabelOverview()
 }
 
-func kanbanCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
+func kanbanCommand(m *model, args []string) (tea.Model, tea.Cmd) {
+	if len(args) > 0 {
+		if len(args) != 1 {
+			m.recordError(fmt.Errorf("use :kanban [switch|manage|new]"))
+			return m, nil
+		}
+		switch args[0] {
+		case "manage":
+			return m, m.openBoardManagement(false)
+		case "new":
+			return m, m.openBoardManagement(true)
+		case "switch":
+			if m.boardNavigationBlocked() {
+				return m, nil
+			}
+			if len(m.manualKanbanViewIndices()) > 1 {
+				return m, m.beginKanbanViewPicker()
+			}
+			return kanbanCommand(m, nil)
+		default:
+			m.recordError(fmt.Errorf("use :kanban [switch|manage|new]"))
+			return m, nil
+		}
+	}
+	if m.boardNavigationBlocked() {
+		return m, nil
+	}
 	m.projectViewPreference = projectViewKanban
 	if m.currentProjectID == 0 {
 		m.recordError(fmt.Errorf(":kanban requires a Project context"))
@@ -435,8 +461,9 @@ func kanbanCommand(m *model, _ []string) (tea.Model, tea.Cmd) {
 			return m, m.loadViews(m.currentProjectID)
 		}
 	}
-	if len(m.manualKanbanViewIndices()) > 1 {
-		return m, m.beginKanbanViewPicker()
+	if i := m.pickManualKanbanViewIndex(); i >= 0 {
+		m.viewSelected = i
+		m.currentViewID = m.projectViews[i].ID
 	}
 	m.taskLoading = true
 	return m, m.loadKanbanBoard(m.currentProjectID)

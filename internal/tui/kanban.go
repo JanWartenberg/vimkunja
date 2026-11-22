@@ -2,10 +2,12 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
+	"github.com/charmbracelet/x/ansi"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -20,8 +22,7 @@ func (m *model) updateKanbanProvisionConfirmation(key string) (tea.Model, tea.Cm
 	m.confirmationGArmed = false
 	switch key {
 	case "y":
-		m.taskLoading = true
-		return m, m.provisionStandardKanbanView(m.currentProjectID)
+		return m, m.openBoardManagement(true)
 	case "n", "esc":
 		return m, nil
 	default:
@@ -59,9 +60,14 @@ func (m *model) currentProjectTitle() string {
 }
 
 func (m *model) setKanbanBoard(board vimkunja.KanbanBoard) {
+	m.kanbanEmpty = false
 	m.kanbanActive = true
 	m.kanbanBoard = board
 	m.currentViewID = board.View.ID
+	if m.lastKanbanViews == nil {
+		m.lastKanbanViews = map[int64]int64{}
+	}
+	m.lastKanbanViews[m.currentProjectID] = board.View.ID
 	m.syncOpenDetailDoneState(board)
 
 	bucket := 0
@@ -140,9 +146,14 @@ func (m *model) beginKanbanViewPicker() tea.Cmd {
 		return nil
 	}
 	m.taskRequest++
-	m.kanbanActive = true
 	m.kanbanViewPicker = true
+	m.kanbanViewPickerG = false
 	m.kanbanViewPickerIndex = 0
+	for i, index := range indices {
+		if m.projectViews[index].ID == m.currentViewID {
+			m.kanbanViewPickerIndex = i
+		}
+	}
 	m.taskLoading = false
 	return nil
 }
@@ -156,24 +167,26 @@ func (m *model) updateKanbanViewPicker(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "esc":
 		m.kanbanViewPicker = false
-		m.kanbanActive = false
-		if listIndex := m.pickListViewIndex(); listIndex >= 0 && !m.inOverview() {
-			m.viewSelected = listIndex
-			m.currentViewID = m.projectViews[listIndex].ID
-			m.taskLoading = true
-			return m, m.loadTasks(m.currentProjectID, m.currentViewID)
-		}
-	case "j", "down":
-		m.kanbanViewPickerIndex = clamp(m.kanbanViewPickerIndex+1, 0, len(indices)-1)
-	case "k", "up":
-		m.kanbanViewPickerIndex = clamp(m.kanbanViewPickerIndex-1, 0, len(indices)-1)
+
 	case "enter":
+		if m.inOverview() {
+			m.taskScope = scopeProject
+			m.overviewPrompt = overviewPromptNone
+			m.showDetail = false
+			m.editor = nil
+			m.projectsPaneCollapsed = m.lastProjectPaneCollapsed
+			m.focus = paneTasks
+		}
 		viewIndex := indices[m.kanbanViewPickerIndex]
 		m.viewSelected = viewIndex
 		m.currentViewID = m.projectViews[viewIndex].ID
 		m.kanbanViewPicker = false
 		m.taskLoading = true
 		return m, m.loadKanbanBoard(m.currentProjectID)
+	default:
+		w, h := m.viewportSize()
+		_, innerH, _ := managementSize(w, h)
+		m.kanbanViewPickerIndex, _ = navigateManagement(key, &m.kanbanViewPickerG, m.kanbanViewPickerIndex, len(indices)-1, innerH-2)
 	}
 	return m, nil
 }
@@ -421,6 +434,16 @@ func (m *model) ensureKanbanBucketVisible() {
 	m.kanbanViewportStart = clamp(m.kanbanViewportStart, 0, max(0, len(m.kanbanBoard.Buckets)-visible))
 }
 
+func (m *model) hasMultipleKanbanBoards() bool {
+	count := 0
+	for _, view := range m.projectViews {
+		if view.ViewKind == "kanban" {
+			count++
+		}
+	}
+	return count > 1
+}
+
 // renderKanbanBoard is deliberately separate from the list renderer: a Board
 // owns a two-dimensional selection and horizontal viewport rather than a flat
 // Task slice.
@@ -434,7 +457,7 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 	if m.kanbanPicker {
 		return renderKanbanPicker(m, textW, textH)
 	}
-	showViewTitle := len(m.manualKanbanViewIndices()) > 1
+	showViewTitle := m.hasMultipleKanbanBoards()
 	boardHeight := textH
 	if showViewTitle {
 		boardHeight = max(1, textH-1)
@@ -467,7 +490,10 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 		} else {
 			header = lipgloss.NewStyle().Bold(true).Render(header)
 		}
-		lines := []string{header, ""}
+		lines := []string{header}
+		if boardHeight >= 5 {
+			lines = append(lines, "")
+		}
 		visibleTaskRows := max(1, boardHeight-4) // Bucket border, title, and separator.
 		startTask := 0
 		if index == m.kanbanBucketSelected {
@@ -530,4 +556,38 @@ func renderKanbanPicker(m *model, textW, textH int) string {
 	}
 	lines = append(lines, "", " j/k choose  •  Enter move  •  Esc cancel")
 	return fitBlock(lines, textW, textH)
+}
+
+// The picker owns the whole viewport, so shrinking the terminal never leaves
+// its selected Board hidden beneath a Task Detail Pane or fixed modal chrome.
+func (m *model) renderBoardViewPicker() string {
+	outerW, outerH := m.viewportSize()
+	w, h, framed := managementSize(outerW, outerH)
+	indices := m.manualKanbanViewIndices()
+	if h < 3 || w < 12 {
+		return fitBlock([]string{ansi.Truncate("BOARD SWITCH", w, ""), ansi.Truncate("Resize / Esc", w, "")}, w, h)
+	}
+	visible := max(1, h-2)
+	start := max(0, m.kanbanViewPickerIndex-visible+1)
+	rows := []string{"SWITCH BOARD · " + sanitizeTerminalText(m.currentProjectTitle())}
+	for i := start; i < min(len(indices), start+visible); i++ {
+		view := m.projectViews[indices[i]]
+		prefix := "  "
+		if i == m.kanbanViewPickerIndex {
+			prefix = "> "
+		}
+		current := ""
+		if view.ID == m.currentViewID {
+			current = " [active]"
+		}
+		rows = append(rows, fmt.Sprintf("%s%s (#%d)%s", prefix, sanitizeTerminalText(view.Title), view.ID, current))
+	}
+	for len(rows) < h-1 {
+		rows = append(rows, "")
+	}
+	rows = append(rows, managementHint("Enter open · Esc cancel · j/k select · gg/G jump · Ctrl+D/U page", w))
+	for i, row := range rows {
+		rows[i] = ansi.Truncate(row, w, "")
+	}
+	return frameManagement(fitBlock(rows, w, h), w, framed)
 }

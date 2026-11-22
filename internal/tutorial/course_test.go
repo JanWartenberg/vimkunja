@@ -148,7 +148,16 @@ func TestAllBasicsTasksThroughRealApplication(t *testing.T) {
 		func(s *practiceSession) { s.keys("s", "p", "f", "a") },
 		func(s *practiceSession) { s.keys("space", "o") },
 		func(s *practiceSession) { s.command("kanban"); s.keys("L") },
-		func(s *practiceSession) { s.command("kanban"); s.keys("n"); s.command("kanban"); s.keys("y") },
+		func(s *practiceSession) {
+			s.command("kanban")
+			s.keys("n")
+			s.command("kanban")
+			s.keys("y", "i")
+			s.text("Travel Board")
+			s.keys("esc")
+			s.command("w")
+			s.command("q")
+		},
 		func(s *practiceSession) { s.command("help"); s.keys("enter", "ctrl+d") },
 		func(s *practiceSession) { s.command("bogus"); s.command("errors") },
 		func(s *practiceSession) { s.keys("g", "l", "enter", "esc", "q") },

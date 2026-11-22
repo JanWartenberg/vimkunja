@@ -16,7 +16,10 @@ type modalLayout struct {
 	width, height               int
 	contentWidth, contentHeight int
 	fallback                    bool
+	bottomInput                 bool
 }
+
+func confirmationUsable(width, height int) bool { return width >= 12 && height >= 5 }
 
 // modalBounds centralizes the shallow geometry shared by overlays. Terminals
 // below the usable threshold trade chrome for a text-only full-pane fallback.
@@ -56,10 +59,13 @@ func renderModalFrame(rows []string, layout modalLayout) string {
 	if layout.fallback {
 		return lipgloss.NewStyle().Width(layout.width).Height(layout.height).Render(body)
 	}
-	return lipgloss.NewStyle().
+	style := lipgloss.NewStyle().Padding(1, 2)
+	if layout.bottomInput {
+		style = style.Padding(1, 2, 0, 2)
+	}
+	return style.
 		Border(lipgloss.ThickBorder()).
 		BorderForeground(lipgloss.Color(paneBorderColor(true))).
-		Padding(1, 2).
 		Width(layout.width).
 		Height(layout.contentHeight).
 		Render(body)
@@ -125,7 +131,11 @@ func fitConfirmationActions(actions string, width int) string {
 	if lipgloss.Width(actions) <= width {
 		return actions
 	}
-	for _, compact := range []string{"y confirm  •  n / Esc", "y / n", "y/n"} {
+	verb := "y confirm"
+	if fields := strings.Fields(actions); len(fields) >= 2 && fields[0] == "y" {
+		verb = strings.Join(fields[:2], " ")
+	}
+	for _, compact := range []string{verb + " · n/Esc", verb + " / n", "y / n", "y/n"} {
 		if lipgloss.Width(compact) <= width {
 			return compact
 		}

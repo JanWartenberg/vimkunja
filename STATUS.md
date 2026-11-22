@@ -1,10 +1,10 @@
 # Vimkunja – Status
 
-**As of:** 2026-11-20 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
+**As of:** 2026-11-22 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
 
 ## Current state
 
-The MVP, **Milestone 1**, **Milestone 2**, and the initial GitHub source publication are complete. Everyday task management is practical without switching to the original application. Open M3 work remains in the backlog; publication no longer blocks it. Project creation is implemented, verified and archived; the next M3 priority has not been selected.
+The MVP, **Milestone 1**, **Milestone 2**, and the initial GitHub source publication are complete. Everyday task management is practical without switching to the original application. Open M3 work remains in the backlog; publication no longer blocks it. Project creation is implemented, verified and archived. Manual Kanban View/Bucket management is implemented, verified, manually accepted by Jan and archived.
 
 - Local Vikunja SQLite database: Projects, List View, All Tasks Overview, Task Detail, Task Editor, and Task deletion
 - Hierarchical Projects Pane with indentation, session-local folding, defensive recovery entries, and persistent sibling ordering
@@ -29,7 +29,7 @@ The MVP, **Milestone 1**, **Milestone 2**, and the initial GitHub source publica
 
 **Ticket reconciliation:** All open issue files reviewed. Publication is completed and archived; the help redesign was subsequently implemented and archived on 2026-11-10. Task clipboard copy was implemented, independently reviewed and archived on 2026-11-11. Project creation was implemented, verified and archived on 2026-11-18; other open tickets remain `needs-triage`. Completed prerequisites and current clipboard bindings are reflected in their tickets, and the adopted Task-copy spec is included. First-run database initialization was implemented and archived on 2026-11-13 after Jan accepted the startup policy. Broader platform acceptance, live CalDAV, and binary releases remain separate.
 
-1. Select the next M3 ticket and specify its workflow before implementation.
+1. Jan accepted [Kanban View/Bucket management](.archive/2026-11-22/kanban-bucket-management/issues/01-manage-manual-kanban-buckets.md) after manual use on 2026-11-22 and requested commit and closure. No further findings on the next inspection; small usability improvements will be handled only when needed as separate follow-ups.
 2. Jan confirmed Project creation, Parent selection, Subproject creation and empty-Project deletion on Windows. Jan accepted the final Normal/Insert dialog, :w/:q commands, Parent navigation and deletion-eligibility feedback on 2026-11-20; commit authorized.
 
 ## Current tickets
@@ -53,7 +53,7 @@ Read-only HTML Description projection, scroll feedback, [additional keyboard sho
 15. [Render Table View](.scratch/table-view/issues/01-render-table-project-view.md)
 16. [Render Gantt View](.scratch/gantt-view/issues/01-render-gantt-project-view.md)
 17. [Evaluate independent Link text/URL editing](.scratch/link-label-and-url-editor/issues/01-evaluate-independent-link-label-url-editing.md)
-18. [Manage manual Kanban Buckets](.scratch/kanban-bucket-management/issues/01-manage-manual-kanban-buckets.md)
+18. [Kanban View and Bucket management](.archive/2026-11-22/kanban-bucket-management/issues/01-manage-manual-kanban-buckets.md) — completed and archived against the accepted [specification](.archive/2026-11-22/kanban-bucket-management/spec.md): immediate :kanban, session-local Board memory, guided switching/management, Board/Bucket CRUD, separate configuration drafts and safe confirmed deletion. Task/Comment drafts are protected; filtered Boards remain a separate backlog. Full tests, builds, vet, Windows cross-build, official VOA 2.7.0 round trips and independent reviews pass. Jan accepted the result after manual use on 2026-11-22; further small usability optimizations only as needed. [Research and verification](.archive/2026-11-22/kanban-bucket-management/research.md).
 19. [Local search in the focused pane](.scratch/local-search/issues/01-search-within-focused-pane.md) – `/` and `n`/`N` agreed; pane semantics remain open.
 20. [Advanced Global Search queries and ranking](.scratch/global-search-filter/issues/02-add-advanced-global-search-query-and-ranking.md) – phrases, negation, fuzzy matching, and ranking deliberately deferred beyond V1.
 21. [Diagnose and repair malformed Project hierarchies](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – hierarchy reader completed; diagnostic feedback and safe repair still require specification.
@@ -74,6 +74,7 @@ Read-only HTML Description projection, scroll feedback, [additional keyboard sho
 
 ### Backlog — milestone not assigned
 
+- [Filtered Kanban Views](.scratch/filtered-kanban/issues/01-specify-filtered-kanban-views.md) — View-level filters and filter-generated Buckets deferred until after manual Board management; `needs-triage`.
 - [Delete empty Labels](.scratch/label-deletion/issues/01-add-delete-empty-labels-command.md) – specify command, confirmation, and failure reporting; remains `needs-triage`.
 
 ## Publication

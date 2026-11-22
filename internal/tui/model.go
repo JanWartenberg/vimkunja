@@ -13,6 +13,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 type paneID int
@@ -115,6 +116,8 @@ type model struct {
 	searchLoading        bool
 	searchOrigin         *searchOrigin
 	searchReturn         *searchReturn
+	boardManagement      *boardManagementUI
+	lastKanbanViews      map[int64]int64
 	projectCreation      *projectCreationUI
 	projectDeletion      *projectDeletionUI
 	labelUI              *labelUI
@@ -141,6 +144,7 @@ type model struct {
 	currentViewID               int64
 	projectViewPreference       projectViewPreference
 	kanbanActive                bool
+	kanbanEmpty                 bool
 	kanbanBoard                 vimkunja.KanbanBoard
 	kanbanBucketSelected        int
 	kanbanTaskSelected          int
@@ -150,6 +154,7 @@ type model struct {
 	kanbanPickerIndex           int
 	kanbanViewPicker            bool
 	kanbanViewPickerIndex       int
+	kanbanViewPickerG           bool
 	kanbanProvisionConfirm      bool
 	pendingKanbanTaskID         int64
 	pendingKanbanBucketID       int64
@@ -377,6 +382,21 @@ func (m *model) moveProject(projectID int64, direction vimkunja.ProjectMoveDirec
 	}
 }
 
+// Navigation and management must resolve the same complete set of Views.
+func loadAllProjectViews(ctx context.Context, store vimkunja.Store, projectID int64) ([]vimkunja.ProjectView, error) {
+	var views []vimkunja.ProjectView
+	for page := 1; ; page++ {
+		items, pages, err := store.ListViews(ctx, projectID, page, 200)
+		if err != nil {
+			return nil, err
+		}
+		views = append(views, items...)
+		if page >= pages {
+			return views, nil
+		}
+	}
+}
+
 func (m *model) loadViews(projectID int64) tea.Cmd {
 	m.viewRequest++
 	request := m.viewRequest
@@ -389,7 +409,7 @@ func (m *model) loadViews(projectID int64) tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 
-		items, _, err := m.store.ListViews(ctx, projectID, 1, 200)
+		items, err := loadAllProjectViews(ctx, m.store, projectID)
 		return viewsLoadedMsg{request: request, projectID: projectID, views: items, err: err}
 	}
 }
@@ -478,7 +498,7 @@ func (m *model) canShowQuitHint() bool {
 	return (m.focus == paneProjects || m.focus == paneTasks) &&
 		m.editor == nil && m.inlineTitle == nil && m.labelUI == nil && m.comments == nil &&
 		!m.searchOpen && !m.commandMode && !m.deleteArmed && !m.deleteConfirm &&
-		!m.kanbanPicker && !m.kanbanProvisionConfirm && !m.leaderArmed &&
+		!m.kanbanViewPicker && !m.kanbanPicker && !m.kanbanProvisionConfirm && !m.leaderArmed &&
 		!m.viewSwitchArmed && !m.ctrlWArmed && !m.gArmed && !m.zArmed &&
 		m.overviewPrompt == overviewPromptNone && m.helpPane == nil && m.infoPane == nil
 }
@@ -492,6 +512,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.textClipboardGeneration++
+		if m.boardManagement != nil && strings.ToLower(key.String()) != "ctrl+c" {
+			return m.updateBoardManagement(key)
+		}
 		if m.projectDeletion != nil && strings.ToLower(key.String()) != "ctrl+c" {
 			return m.updateProjectDeletion(key.String())
 		}
@@ -589,6 +612,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return listCommand(m, nil)
 			case "k":
 				return kanbanCommand(m, nil)
+			case "b":
+				return kanbanCommand(m, []string{"switch"})
+			case "m":
+				return kanbanCommand(m, []string{"manage"})
 			case "t", "g":
 				return notYetImplementedCommand(m, nil)
 			}
@@ -713,6 +740,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch typed := msg.(type) {
+	case boardManagementMsg:
+		return m, m.applyBoardManagement(typed)
 	case projectDeletionCheckedMsg:
 		if m.projectDeletion == typed.ui {
 			typed.ui.loading = false
@@ -848,9 +877,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Overview reloads project metadata after a save, but must not activate
 		// a project Board: its selection would replace the open Overview Task.
 		if !m.inOverview() && m.projectViewPreference == projectViewKanban {
-			if len(m.manualKanbanViewIndices()) > 1 {
-				return m, m.beginKanbanViewPicker()
-			}
 			if kanbanView := m.pickManualKanbanViewIndex(); kanbanView >= 0 {
 				m.viewSelected = kanbanView
 				m.currentViewID = m.projectViews[kanbanView].ID
@@ -860,9 +886,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.viewSelected = m.pickListViewIndex()
 		if m.viewSelected < 0 {
-			m.lastErr = "No 'list' views found for the selected project."
+			if !m.inOverview() && m.projectViewPreference == projectViewKanban {
+				m.currentViewID = 0
+				m.taskLoading = false
+				m.tasks = nil
+				m.projectTasks = nil
+				m.taskSelected = 0
+				m.kanbanActive = false
+				m.kanbanBoard = vimkunja.KanbanBoard{}
+				m.kanbanEmpty = true
+				m.lastErr = ""
+			} else {
+				m.lastErr = "No 'list' views found for the selected project."
+			}
 			return m, nil
 		}
+		m.kanbanEmpty = false
 		m.currentViewID = m.projectViews[m.viewSelected].ID
 		if m.inOverview() {
 			return m, nil
@@ -1083,12 +1122,16 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.PasteMsg:
+		if m.boardManagement != nil {
+			m.pasteBoardManagement(typed.Content)
+			return m, nil
+		}
 		if m.projectDeletion != nil {
 			return m, nil
 		}
 		if m.projectCreation != nil {
 			ui := m.projectCreation
-			if !ui.saving && !ui.discardConfirm {
+			if !ui.saving && !ui.discardConfirm && (!ui.helpOpen || ui.commandMode) {
 				text := sanitizeTerminalText(strings.ReplaceAll(strings.ReplaceAll(typed.Content, "\r", " "), "\n", " "))
 				if ui.commandMode {
 					ui.command = insertTextAtCursor(ui.command, &ui.commandCursor, text)
@@ -2037,6 +2080,7 @@ func (m *model) findVisibleProjectIndex(id int64) int {
 }
 
 func (m *model) onProjectSelectionChanged() tea.Cmd {
+	m.kanbanEmpty = false
 	m.kanbanActive = false
 	m.kanbanBoard = vimkunja.KanbanBoard{}
 	selected, ok := m.selectedProject()
@@ -2065,7 +2109,7 @@ func (m *model) findProjectIndex(id int64) int {
 
 func (m *model) currentKanbanViewID() int64 {
 	for _, view := range m.projectViews {
-		if view.ID == m.currentViewID && view.ViewKind == "kanban" && view.BucketConfigurationMode == "manual" {
+		if view.ID == m.currentViewID && view.ViewKind == "kanban" && view.BucketConfigurationMode == "manual" && !view.Filtered {
 			return view.ID
 		}
 	}
@@ -2075,7 +2119,7 @@ func (m *model) currentKanbanViewID() int64 {
 func (m *model) manualKanbanViewIndices() []int {
 	indices := make([]int, 0)
 	for i, view := range m.projectViews {
-		if view.ViewKind == "kanban" && view.BucketConfigurationMode == "manual" {
+		if view.ViewKind == "kanban" && view.BucketConfigurationMode == "manual" && !view.Filtered {
 			indices = append(indices, i)
 		}
 	}
@@ -2086,6 +2130,11 @@ func (m *model) pickManualKanbanViewIndex() int {
 	indices := m.manualKanbanViewIndices()
 	if len(indices) == 0 {
 		return -1
+	}
+	for _, i := range indices {
+		if m.projectViews[i].ID == m.lastKanbanViews[m.currentProjectID] {
+			return i
+		}
 	}
 	return indices[0]
 }
@@ -2441,6 +2490,12 @@ func (m *model) Render() string {
 }
 
 func (m *model) renderContent() string {
+	if m.boardManagement != nil {
+		return m.renderBoardManagement()
+	}
+	if m.kanbanViewPicker {
+		return m.renderBoardViewPicker()
+	}
 	if m.projectDeletion != nil {
 		return m.renderProjectDeletion()
 	}
@@ -2577,7 +2632,21 @@ func (m *model) renderTextOnlyFallback(w, h int) string {
 		info, hint = "[Info]", "q/esc close"
 	}
 	footer := renderFooterHints(w, info, strings.Split(hint, "  •  "), false)
-	lines := []string{"Vimkunja"}
+	heading := "Vimkunja"
+	if m.kanbanActive && !m.inOverview() {
+		heading = "Kanban"
+		if m.hasMultipleKanbanBoards() {
+			heading += ": " + sanitizeTerminalText(m.kanbanBoard.View.Title)
+		}
+	}
+	if m.viewSwitchArmed {
+		footer = "b switch · m manage · k open"
+	}
+	if m.commandMode {
+		footer = fitInputCursor(":"+insertCursorText(m.commandInput, m.commandCursor), w)
+	}
+	lines := []string{ansi.Truncate(heading, w, "")}
+	footer = ansi.Truncate(footer, w, "")
 	for len(lines) < max(0, h-1) {
 		lines = append(lines, "")
 	}
@@ -2707,7 +2776,7 @@ func (m *model) renderStatusBar(w int) string {
 		hint = "O new project  •  j/k select  •  :h help  •  h/l fold/tree  •  z fold commands  •  Shift+J/K reorder  •  r reload"
 	}
 	if m.focus == paneTasks && m.kanbanActive && !m.inOverview() {
-		hint = "Shift+H/L move bucket  •  m choose bucket  •  j/k navigate  •  :h help  •  x toggle  •  Ctrl+W cycles"
+		hint = "Shift+H/L move bucket  •  m choose bucket  •  j/k navigate  •  :h help  •  Space v m manage  •  x toggle  •  Ctrl+W cycles"
 	}
 	if m.focus == paneTasks && m.inOverview() {
 		hint = "j/k select  •  Enter detail  •  :h help  •  o new task  •  s sort  •  f filter  •  Space+a return"
@@ -2817,7 +2886,7 @@ func (m *model) renderStatusBar(w int) string {
 		}
 	}
 	if m.viewSwitchArmed {
-		hint = "[VIEWS] l list  •  k Kanban  •  t table  •  g Gantt"
+		hint = "[VIEWS] k Kanban · b switch Board · m manage Boards · l list · t table · g Gantt"
 	}
 	if m.kanbanViewPicker {
 		hint = "[KANBAN VIEWS] j/k choose  •  Enter open  •  Esc cancel"

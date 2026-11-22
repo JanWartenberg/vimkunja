@@ -60,12 +60,12 @@ A Task context consists of a Scope (`Overview` or the current Project) and a Vie
 | `s`, then `d/u/p/t` | Choose Overview sort: Due ↓ / Due ↑ / Priority ↓ / Title. | Implemented |
 | `f`, then `o/a/v/t` | Choose Overview filter: open / all / overdue / due today. | Implemented |
 | `Space+v`, then `l` | Select List View for the current Project. | Implemented |
-| `Space+v`, then `k` | Select or provision the single manual Kanban View for the current Project. | Implemented |
+| `Space+v`, then `k` | Open the last used supported manual Board for the current Project in this session, or the first; offer named creation if absent. | Implemented |
 | `Space+v`, then `t` | Select Table View for the current Project. | Agreed; View deferred |
 | `Space+v`, then `g` | Select Gantt View for the current Project. | Agreed; View deferred |
 | `:overview` | Open Overview. | Implemented |
 | `:list` | Select List View for the current Project context; from Overview, restore the last Project context first. | Implemented |
-| `:kanban` | Select or provision the single manual Kanban View for the current Project context; from Overview, restore the last Project context first. | Implemented |
+| `:kanban` | Open the remembered or first supported manual Board for the current Project; from Overview restore the last Project context first. | Implemented |
 | `:table` | Select Table View for the current Project context. | Agreed; View deferred |
 | `:gantt` | Select Gantt View for the current Project context. | Agreed; View deferred |
 
@@ -113,6 +113,8 @@ Title also supports the shared Normal text motions, `a/I/A`, `v/V` selection and
 `:w`/`:wq` creates; `:q!` discards. `:q` closes an unchanged draft, otherwise asks
 for confirmation: `y` discards, `n`/Esc keeps the draft. Normal Esc stays in the
 form. The footer shows the current mode and controls; there are no action buttons.
+
+Project creation supports local :h/:help, preserving both Title and Parent selection; q/Esc/:q returns from help. Its separated bottom footer and Insert/Command cursor follow the normal UI. Management command aliases resolve through the main editor registry; unsupported local actions report feedback. Confirmations retain visible action rows and require resizing before confirmation if necessary.
 
 On Parent, Enter also opens its picker. Use `j/k`, arrows or `Ctrl+N/P` to move,
 `gg`/`G` (also Home/End) for first/last, and `Ctrl+U/D` for half a visible page.
@@ -162,6 +164,26 @@ confirmation. Recursive deletion and trash semantics remain deferred.
 | `Shift+H` / `Shift+L` | Move the selected Task to the adjacent Bucket. | Implemented |
 | `m`, then `j/k`, `Enter` | Select and confirm any target Bucket; `Esc` cancels. | Implemented |
 | `Enter` | Open the selected Task in the Task Detail Pane. | Implemented |
+
+### Board management and configuration
+
+| Binding | Action |
+| --- | --- |
+| `Space+v b` / `:kanban switch` | Choose a Board; j/k, gg/G, Home/End and Ctrl+D/U navigate; Enter opens, Esc preserves the previous context. |
+| `Space+v m` / `:kanban manage` | Open standalone Board management; Enter opens, n/o creates, e edits, d previews deletion, r reloads. |
+| `:h` / `:help` in Board management | Explain commands for the current page; j/k, gg/G, Home/End or Ctrl+D/U scroll, q/Esc/:q return without changing the draft. |
+| `:kanban new` | Name-first standard Board creation; i edits, Esc leaves Insert, :w creates and opens Bucket configuration; :q or :wq then opens the Board. |
+| Configuration `j/k`, Tab / Shift+Tab | Select Name, View position, Bucket title or limit. Task Detail is closed. |
+| Configuration `i/a/I/A`, Enter / Esc | Edit the selected field / leave Insert. Shared Normal selection and Space+y/p clipboard apply. |
+| Configuration `o/O`, `J/K` | Insert a Bucket after/before the selected Bucket / move the selected Bucket down or up in the draft. |
+| Configuration `Space+d`, `Space+x` | Toggle the selected Bucket as Default / Done. No explicit Default uses the first Bucket; no Done role disables automatic completion destination. |
+| Configuration `dd` / `Space+D` / `:bucketdelete` | Preview deletion of the selected Bucket; y stages it, n/Esc cancels. Reassign special roles first; the last Bucket is protected. |
+| Configuration `:w`, `:wq`, `:q`, `:q!`, `:e!` | Save, save/close, close with dirty confirmation, discard, explicitly reload a conflicted configuration. |
+| Deletion preview `j/k`, `y`, `n/Esc` | Scroll consequences, confirm, cancel. Board deletion retains Tasks; staged Bucket deletion relocates assignments on :w. |
+
+Configuration saves and structural writes clear Task undo/redo history. Filtered
+Boards require VOA. Extremely small terminals retain input and cancellation but
+block deletion confirmation until resized.
 
 ## Task Detail Pane
 

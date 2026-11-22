@@ -18,6 +18,7 @@ import (
 )
 
 type fakeStore struct {
+	vimkunja.Store       // Unused Store boundary operations fail loudly unless a test supplies them.
 	projects             []vimkunja.Project
 	projectMoveErr       error
 	movedProjectID       int64
@@ -793,7 +794,7 @@ func TestFooterStaticStatePriorityMatrix(t *testing.T) {
 		{
 			name:  "views",
 			setup: func(m *model) { m.viewSwitchArmed = true },
-			want:  []string{"[VIEWS] l list", "k Kanban", "t table", "g Gantt"},
+			want:  []string{"[VIEWS] k Kanban", "k Kanban", "t table", "g Gantt"},
 		},
 		{
 			name:  "sort",
@@ -1457,9 +1458,9 @@ func TestKanbanBucketsHaveDimBordersAndBlankHeaderRow(t *testing.T) {
 		ID: 1, Title: "To-Do", Tasks: []vimkunja.Task{{ID: 7, Title: "Open"}},
 	}}}
 
-	view := renderKanbanBoard(m, 25, 5)
+	view := renderKanbanBoard(m, 25, 6)
 	lines := strings.Split(ansi.Strip(view), "\n")
-	if !strings.Contains(lines[0], "┌") || !strings.Contains(lines[4], "└") {
+	if !strings.Contains(lines[0], "┌") || !strings.Contains(lines[5], "└") {
 		t.Fatalf("Kanban bucket lacks border: %q", view)
 	}
 	if !strings.Contains(lines[1], "To-Do") || strings.Contains(lines[2], "Open") || !strings.Contains(lines[3], "Open") {
@@ -1495,7 +1496,7 @@ func TestKanbanBoardUsesAvailableWidthWhenAllBucketsFit(t *testing.T) {
 		{ID: 2, Title: "Doing"},
 	}}
 
-	header := strings.Split(ansi.Strip(renderKanbanBoard(m, 80, 4)), "\n")[1]
+	header := strings.Split(ansi.Strip(renderKanbanBoard(m, 80, 5)), "\n")[1]
 	if columnStart := strings.Index(header, "Doing"); columnStart < 40 {
 		t.Fatalf("second Bucket starts at column %d, want a wide layout using the 80-column pane: %q", columnStart, header)
 	}
@@ -1526,39 +1527,31 @@ func TestKanbanCommandOpensAvailableManualBoard(t *testing.T) {
 	}
 }
 
-func TestKanbanCommandProvisionsAfterExplicitConfirmation(t *testing.T) {
-	store := &fakeStore{
-		kanbanBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardUnavailable},
-		provisionedBoard: vimkunja.KanbanBoard{
-			Availability: vimkunja.KanbanBoardAvailable,
-			View:         vimkunja.ProjectView{ID: 10, Title: "Kanban", ViewKind: "kanban", BucketConfigurationMode: "manual"},
-			Buckets:      []vimkunja.KanbanBucket{{ID: 100, Title: "To-Do"}},
-		},
-	}
+func TestKanbanCommandOffersNamedCreationAfterConfirmation(t *testing.T) {
+	store := &kanbanManagementStore{fakeStore: &fakeStore{kanbanBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardUnavailable}}, cfg: vimkunja.KanbanConfiguration{ViewID: 10}}
 	m := testModel()
 	m.store = store
 	m.currentProjectID = 1
-	m.projects = []vimkunja.Project{{ID: 1, Title: "Home"}}
 	m.focus = paneTasks
-
 	m, cmd := typeCommand(t, m, "kanban")
-	updated, _ := m.Update(cmd())
-	m = updated.(*model)
-	if view := ansi.Strip(m.Render()); !strings.Contains(view, "CREATE KANBAN VIEW") || !strings.Contains(view, "Create standard Kanban View for Home?") {
-		t.Fatalf("kanban confirmation = %q", view)
+	m.Update(cmd())
+	if !strings.Contains(m.Render(), "CREATE KANBAN VIEW") {
+		t.Fatal("missing creation offer")
 	}
-	if strings.Contains(m.renderStatusBar(100), "Create standard Kanban") {
-		t.Fatalf("kanban confirmation leaked into footer = %q", m.renderStatusBar(100))
+	m = pressKey(m, tea.Key{Code: 'y', Text: "y"})
+	if !strings.Contains(m.Render(), "NEW BOARD") {
+		t.Fatal("name-first creation not opened")
 	}
-	updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
-	m = updated.(*model)
+	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+	m.Update(tea.PasteMsg{Content: "Test Board"})
+	m = pressKey(m, tea.Key{Code: tea.KeyEsc})
+	m, cmd = typeCommand(t, m, "w")
 	if cmd == nil {
-		t.Fatal("confirmation returned no provisioning command")
+		t.Fatal("creation not submitted")
 	}
-	updated, _ = m.Update(cmd())
-	m = updated.(*model)
-	if m.currentViewID != 10 || !strings.Contains(m.Render(), "To-Do") {
-		t.Fatalf("provisioned board was not opened: view:%d render:%q", m.currentViewID, m.Render())
+	m.Update(cmd())
+	if store.cfg.Title != "Test Board" || m.boardManagement == nil || m.boardManagement.page != "config" || m.lastKanbanViews[1] != 10 {
+		t.Fatalf("named Board not created: %#v", store.cfg)
 	}
 }
 
@@ -1578,26 +1571,26 @@ func TestKanbanProvisionCanCancelAndAmbiguousBoardIsNotSelected(t *testing.T) {
 		}
 	})
 	t.Run("failure", func(t *testing.T) {
-		store := &fakeStore{
-			kanbanBoard:  vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardUnavailable},
-			provisionErr: errors.New("database is locked"),
-		}
+		store := &kanbanManagementStore{fakeStore: &fakeStore{}, err: errors.New("database is locked")}
 		m := testModel()
 		m.store = store
 		m.currentProjectID = 1
 		m.currentViewID = 5
 		m.focus = paneTasks
-		m, cmd := typeCommand(t, m, "kanban")
-		updated, _ := m.Update(cmd())
-		m = updated.(*model)
-		updated, cmd = m.Update(tea.KeyPressMsg(tea.Key{Code: 'y', Text: "y"}))
-		m = updated.(*model)
-		updated, _ = m.Update(cmd())
-		m = updated.(*model)
-		if store.provisionCalls != 1 || m.currentViewID != 5 || !strings.Contains(m.lastErr, "database is locked") {
-			t.Fatalf("failed provision = calls:%d view:%d err:%q", store.provisionCalls, m.currentViewID, m.lastErr)
+		m, cmd := typeCommand(t, m, "kanban new")
+		if cmd != nil {
+			t.Fatal("new form wrote prematurely")
+		}
+		m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
+		m.Update(tea.PasteMsg{Content: "Retain this"})
+		m = pressKey(m, tea.Key{Code: tea.KeyEsc})
+		m, cmd = typeCommand(t, m, "w")
+		m.Update(cmd())
+		if m.boardManagement == nil || m.boardManagement.draft.Title != "Retain this" || !strings.Contains(m.Render(), "database is locked") || m.currentViewID != 5 {
+			t.Fatal("failed creation lost draft or context")
 		}
 	})
+
 	t.Run("ambiguous", func(t *testing.T) {
 		store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardAmbiguous}}
 		m := testModel()
@@ -2078,7 +2071,7 @@ func TestKanbanFooterPrioritizesMoveActions(t *testing.T) {
 	m.kanbanActive = true
 
 	footer := ansi.Strip(m.renderStatusBar(120))
-	for _, want := range []string{"Shift+H/L move bucket", "m choose bucket"} {
+	for _, want := range []string{"Shift+H/L move bucket", "m choose bucket", "Space v m manage"} {
 		if !strings.Contains(footer, want) {
 			t.Fatalf("Kanban footer = %q, want %q", footer, want)
 		}

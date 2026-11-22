@@ -291,7 +291,7 @@ func (s *SQLiteStore) ListViews(ctx context.Context, projectID int64, page, perP
 		totalPages = (total + perPage - 1) / perPage
 	}
 
-	q := `SELECT id, title, view_kind, bucket_configuration_mode FROM project_views
+	q := `SELECT id, title, view_kind, bucket_configuration_mode, filter FROM project_views
 		WHERE project_id = ?
 		ORDER BY position ASC, id ASC
 		LIMIT ? OFFSET ?`
@@ -305,9 +305,11 @@ func (s *SQLiteStore) ListViews(ctx context.Context, projectID int64, page, perP
 	for rows.Next() {
 		var v ProjectView
 		var viewKindInt, bucketConfigurationMode int
-		if err := rows.Scan(&v.ID, &v.Title, &viewKindInt, &bucketConfigurationMode); err != nil {
+		var filter sql.NullString
+		if err := rows.Scan(&v.ID, &v.Title, &viewKindInt, &bucketConfigurationMode, &filter); err != nil {
 			return nil, 0, fmt.Errorf("scan view: %w", err)
 		}
+		v.Filtered = kanbanFilterPresent(filter.String)
 		v.ViewKind = viewKindToString(viewKindInt)
 		v.BucketConfigurationMode = bucketConfigurationModeToString(bucketConfigurationMode)
 		out = append(out, v)
@@ -1062,7 +1064,7 @@ func (s *SQLiteStore) ProvisionStandardManualKanbanView(ctx context.Context, pro
 // view ID it retains the legacy single-view/ambiguous behavior.
 func (s *SQLiteStore) LoadManualKanbanBoard(ctx context.Context, projectID int64, requestedViewID ...int64) (KanbanBoard, error) {
 	query := `
-		SELECT id, title, default_bucket_id, done_bucket_id
+		SELECT id, title, default_bucket_id, done_bucket_id, filter
 		FROM project_views
 		WHERE project_id = ? AND view_kind = ? AND bucket_configuration_mode = ?`
 	args := []any{projectID, viewKindKanban, bucketConfigurationManual}
@@ -1081,8 +1083,15 @@ func (s *SQLiteStore) LoadManualKanbanBoard(ctx context.Context, projectID int64
 	for rows.Next() {
 		var view ProjectView
 		var defaultBucketID, doneBucketID sql.NullInt64
-		if err := rows.Scan(&view.ID, &view.Title, &defaultBucketID, &doneBucketID); err != nil {
+		var filter sql.NullString
+		if err := rows.Scan(&view.ID, &view.Title, &defaultBucketID, &doneBucketID, &filter); err != nil {
 			return KanbanBoard{}, fmt.Errorf("scan manual kanban view: %w", err)
+		}
+		if kanbanFilterPresent(filter.String) {
+			if len(requestedViewID) > 0 && requestedViewID[0] != 0 {
+				return KanbanBoard{}, fmt.Errorf("filtered Kanban Views are not supported; open this Board in VOA")
+			}
+			continue
 		}
 		view.ViewKind = "kanban"
 		view.BucketConfigurationMode = "manual"
@@ -1181,7 +1190,7 @@ func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, task
 		// The editor also previews a destination Project before persisting a move.
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id
+		SELECT id, filter
 		FROM project_views
 		WHERE project_id = ? AND view_kind = ? AND bucket_configuration_mode = ?
 		ORDER BY position ASC, id ASC
@@ -1194,10 +1203,13 @@ func (s *SQLiteStore) GetTaskWorkflowStatus(ctx context.Context, projectID, task
 	var viewIDs []int64
 	for rows.Next() {
 		var viewID int64
-		if err := rows.Scan(&viewID); err != nil {
+		var filter sql.NullString
+		if err := rows.Scan(&viewID, &filter); err != nil {
 			return WorkflowStatus{}, fmt.Errorf("scan manual kanban view: %w", err)
 		}
-		viewIDs = append(viewIDs, viewID)
+		if !kanbanFilterPresent(filter.String) {
+			viewIDs = append(viewIDs, viewID)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return WorkflowStatus{}, fmt.Errorf("iterate manual kanban views: %w", err)
@@ -1288,7 +1300,7 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 		return err
 	}
 	rows, err := tx.QueryContext(ctx, `
-		SELECT id, done_bucket_id
+		SELECT id, done_bucket_id, filter
 		FROM project_views
 		WHERE project_id = ? AND view_kind = ? AND bucket_configuration_mode = ?
 		ORDER BY position ASC, id ASC
@@ -1305,10 +1317,13 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 	var views []workflowView
 	for rows.Next() {
 		var view workflowView
-		if err := rows.Scan(&view.id, &view.doneBucketID); err != nil {
+		var filter sql.NullString
+		if err := rows.Scan(&view.id, &view.doneBucketID, &filter); err != nil {
 			return fmt.Errorf("scan manual kanban view for workflow status: %w", err)
 		}
-		views = append(views, view)
+		if !kanbanFilterPresent(filter.String) {
+			views = append(views, view)
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("iterate manual kanban views for workflow status: %w", err)
@@ -1356,7 +1371,22 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 		return err
 	}
 
-	done := view.doneBucketID.Valid && view.doneBucketID.Int64 == bucketID
+	var oldDone bool
+	var oldBucket sql.NullInt64
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(done,0) FROM tasks WHERE id=?`, taskID).Scan(&oldDone); err != nil {
+		return err
+	}
+	if err := tx.QueryRowContext(ctx, `SELECT MAX(bucket_id) FROM task_buckets WHERE task_id=? AND project_view_id=?`, taskID, view.id).Scan(&oldBucket); err != nil {
+		return err
+	}
+	done := oldDone
+	if view.doneBucketID.Valid && view.doneBucketID.Int64 > 0 {
+		if bucketID == view.doneBucketID.Int64 {
+			done = true
+		} else if oldBucket.Valid && oldBucket.Int64 == view.doneBucketID.Int64 {
+			done = false
+		}
+	}
 	if err := rejectRecurringCompletion(ctx, tx, taskID, done); err != nil {
 		return err
 	}
@@ -1380,10 +1410,13 @@ func setTaskWorkflowStatus(ctx context.Context, tx *sql.Tx, taskID, projectID, b
 			return fmt.Errorf("insert task workflow bucket: %w", err)
 		}
 	}
+	if done && !oldDone {
+		return syncTaskBucketsForDoneState(ctx, tx, taskID, true)
+	}
 	return nil
 }
 
-func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool, selectedViewID ...int64) error {
+func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool) error {
 	rows, err := tx.QueryContext(ctx, `
 		SELECT pv.id,
 			CASE WHEN ? THEN pv.done_bucket_id ELSE pv.default_bucket_id END
@@ -1404,9 +1437,6 @@ func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, 
 		if err := rows.Scan(&viewID, &configured); err != nil {
 			return fmt.Errorf("scan configured workflow bucket: %w", err)
 		}
-		if len(selectedViewID) > 0 && selectedViewID[0] != 0 && selectedViewID[0] != viewID {
-			continue
-		}
 		bucketID := int64(0)
 		if done {
 			// No configured Done Bucket means completion does not move the card.
@@ -1415,6 +1445,13 @@ func syncTaskBucketsForDoneState(ctx context.Context, tx *sql.Tx, taskID int64, 
 			}
 			bucketID = configured.Int64
 		} else {
+			var inDone bool
+			if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM task_buckets tb JOIN project_views pv ON pv.id=tb.project_view_id WHERE tb.task_id=? AND tb.project_view_id=? AND tb.bucket_id=pv.done_bucket_id)`, taskID, viewID).Scan(&inDone); err != nil {
+				return err
+			}
+			if !inDone {
+				continue
+			}
 			var err error
 			bucketID, err = resolveDefaultBucket(ctx, tx, viewID, configured)
 			if err != nil {
@@ -1487,14 +1524,21 @@ func setTaskDoneState(ctx context.Context, tx *sql.Tx, taskID int64, done bool, 
 			return fmt.Errorf("toggle task: view does not belong to the task project")
 		}
 	}
+	var oldDone bool
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(done,0) FROM tasks WHERE id=?`, taskID).Scan(&oldDone); err != nil {
+		return err
+	}
 	var doneAt any
 	if done {
 		doneAt = utcTimestampNow()
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done = ?, done_at = CASE WHEN COALESCE(done, 0) = ? THEN done_at ELSE ? END, updated = ? WHERE id = ?`, boolToInt(done), boolToInt(done), doneAt, utcTimestampNow(), taskID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE tasks SET done=?,done_at=CASE WHEN COALESCE(done,0)=? THEN done_at ELSE ? END,updated=? WHERE id=?`, boolToInt(done), boolToInt(done), doneAt, utcTimestampNow(), taskID); err != nil {
 		return fmt.Errorf("set task done state: %w", err)
 	}
-	if err := syncTaskBucketsForDoneState(ctx, tx, taskID, done, viewID...); err != nil {
+	if oldDone == done {
+		return nil
+	}
+	if err := syncTaskBucketsForDoneState(ctx, tx, taskID, done); err != nil {
 		return err
 	}
 	return nil

@@ -195,6 +195,9 @@ func renderProjects(m *model, textW, textH int) string {
 }
 
 func renderTasks(m *model, textW, textH int) string {
+	if m.kanbanEmpty && !m.inOverview() {
+		return fitBlock([]string{truncatePlain("No supported Kanban Boards", textW), truncatePlain(":kanban new to create a Board", textW)}, textW, textH)
+	}
 	if m.kanbanActive && !m.inOverview() {
 		return renderKanbanBoard(m, textW, textH)
 	}

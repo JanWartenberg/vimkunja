@@ -33,6 +33,20 @@ func cloneTextNormal(s textNormalState) textNormalState {
 	return s
 }
 func (m *model) textClipboardTarget() (textClipboardTarget, bool) {
+	if ui := m.boardManagement; ui != nil {
+		if ui.loading || ui.saving || ui.confirm != "" || ui.commandMode || ui.page == "manager" {
+			return textClipboardTarget{}, false
+		}
+		text, cursor, state := ui.fieldValue(), ui.cursor, cloneTextNormal(ui.normal)
+		field, mode := ui.field, ui.mode
+		return textClipboardTarget{text: selectedPlainText(text, cursor, &state), valid: func(m *model) bool {
+			return m.boardManagement == ui && !ui.loading && !ui.saving && ui.confirm == "" && !ui.commandMode && ui.field == field && ui.mode == mode && ui.fieldValue() == text && ui.cursor == cursor && reflect.DeepEqual(ui.normal, state)
+		}, paste: func(m *model, value string) {
+			value, cursor := pastePlainText(ui.fieldValue(), ui.cursor, &ui.normal, value, false)
+			ui.setFieldValue(value)
+			ui.cursor = cursor
+		}}, true
+	}
 	if ui := m.projectCreation; ui != nil {
 		if ui.saving || ui.commandMode || ui.discardConfirm || ui.picker || (ui.mode != editorNormal && ui.mode != editorInsert) || ui.field != 0 {
 			return textClipboardTarget{}, false

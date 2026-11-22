@@ -117,8 +117,8 @@ func TestBucketConfigurationFallbackAcrossSaveAndReadPaths(t *testing.T) {
 			if err := store.ToggleTaskDone(ctx, task.ID, false); err != nil {
 				t.Fatal(err)
 			}
-			if got := bucketInt(t, store, `SELECT bucket_id FROM task_buckets WHERE task_id=?`, task.ID); got != 104 {
-				t.Fatalf("reopening assignment = %d", got)
+			if got := bucketInt(t, store, `SELECT bucket_id FROM task_buckets WHERE task_id=?`, task.ID); got != 105 {
+				t.Fatalf("reopening without a Done Bucket must preserve the assignment = %d", got)
 			}
 			if got := bucketInt(t, store, `SELECT COUNT(*) FROM project_views WHERE COALESCE(default_bucket_id,0)=0 AND COALESCE(done_bucket_id,0)=0`); got != 2 {
 				t.Fatal("fallback rewrote View configuration")
@@ -142,11 +142,13 @@ func TestBucketConfigurationNoBucketsAndSelectedView(t *testing.T) {
 	if err := store.ToggleTaskDone(ctx, 1, false, 10); err != nil {
 		t.Fatal(err)
 	}
-	if got := bucketInt(t, store, `SELECT bucket_id FROM task_buckets WHERE task_id=1 AND project_view_id=10`); got != 100 {
-		t.Fatalf("selected View fallback = %d", got)
+	if got := bucketInt(t, store, `SELECT bucket_id FROM task_buckets WHERE task_id=1 AND project_view_id=10`); got != 101 {
+		t.Fatalf("reopening without a Done Bucket must preserve the assignment = %d", got)
 	}
-	if err := store.ToggleTaskDone(ctx, 1, true, 10); err != nil {
-		t.Fatal("unselected invalid Done configuration blocked scoped save:", err)
+	// Completion is global even when invoked from one Board. An invalid Done
+	// destination in another View rejects the transaction instead of partially updating it.
+	if err := store.ToggleTaskDone(ctx, 1, true, 10); err == nil {
+		t.Fatal("global completion ignored an invalid destination in another View")
 	}
 	if got := bucketInt(t, store, `SELECT bucket_id FROM task_buckets WHERE task_id=1 AND project_view_id=11`); got != 110 {
 		t.Fatalf("unselected View assignment = %d", got)
@@ -180,6 +182,9 @@ func TestBucketConfigurationInvalidWritesRollBack(t *testing.T) {
 				ctx := context.Background()
 				bucketExec(t, store, `UPDATE project_views SET default_bucket_id=?,done_bucket_id=? WHERE id=10`, target, target)
 				bucketExec(t, store, `UPDATE tasks SET done=1,done_at='2026-09-01T10:00:00Z' WHERE id=1`)
+				if operation == "reopen" {
+					bucketExec(t, store, `UPDATE project_views SET done_bucket_id=100 WHERE id=10`)
+				}
 				if operation == "complete" {
 					bucketExec(t, store, `UPDATE tasks SET done=0,done_at=NULL WHERE id=1`)
 				}
@@ -255,8 +260,8 @@ func TestBucketConfigurationCombinedSaveAndLateFailure(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got := bucketInt(t, store, `SELECT bucket_id FROM task_buckets WHERE task_id=1`); got != 100 {
-					t.Fatalf("combined reopening default = %d", got)
+				if got := bucketInt(t, store, `SELECT bucket_id FROM task_buckets WHERE task_id=1`); got != 101 {
+					t.Fatalf("combined reopening without Done Bucket changed assignment = %d", got)
 				}
 				if got := bucketInt(t, store, `SELECT done FROM tasks WHERE id=1`); got != 0 {
 					t.Fatal("combined save did not reopen Task")
