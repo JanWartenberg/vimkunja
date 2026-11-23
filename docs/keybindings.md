@@ -84,8 +84,15 @@ The Project View switcher is visible above the Tasks Pane only outside Overview 
 | Search Normal Mode: `Esc` / `:q` | Close global Search and restore its pre-search context. | Implemented |
 | Search Normal Mode: `:qa` | Quit Vimkunja completely. | Implemented |
 | `Ctrl+O` | Return from an activated global result to the latest session-local Search snapshot. | Implemented |
-| `/` | Search within the focused Pane; local-search implementation is deferred. | Agreed |
-| `n` / `N` | Repeat the next/previous local-search match; deferred with local search. | Agreed |
+| `/` / `?` | Search forward/backward in the focused Projects, Tasks or Task Detail Pane in Normal Mode, with live preview. | Implemented |
+| Local Search: `Enter` / `Esc` | Accept / restore the original context, cursor, scroll positions, folds and previous search pattern. | Implemented |
+| Local Search: Up/Down | Recall a separate shared search history (100 entries, session only); empty Enter repeats the previous pattern. | Implemented |
+| `n` / `N`, counts such as `3n` | Follow / reverse the last search direction through individual occurrences; wrap in either direction with feedback. | Implemented |
+| `Space h` / `:nohlsearch` (`:noh`) | Hide search highlights; `n`/`N` shows them again. | Implemented |
+
+Local Search navigates without filtering. Projects search names, including folded descendants; matching branches open. Tasks search full titles and currently displayed metadata in the filtered List/Overview or current manual Kanban Board, including off-screen Tasks. Kanban traverses columns left-to-right, then cards top-to-bottom. Task Detail searches the current draft's readable fields and full Description, excluding HTML tags, hidden Link URLs and Comments. Live Project/Task matches preview their content while focus remains in the searching Pane. Dirty drafts block searches that would change Task/Project context; searching the current draft is allowed. Help, Information, Comments, dialogs, pickers and Visual Mode are initially excluded.
+
+Patterns follow Vim's **default-magic subset**, not Go/PCRE syntax: `.`, `*`, `^`, `$`, simple character classes such as `[a-z]`/`[^0-9]`, `\<`/`\>`, `\(`/`\)`, `\|`, `\+`, `\?`/`\=`, `\{n}`, `\{n,m}`, `\{n,}`/`\{,m}`, `\d`/`\D`, `\s`/`\S`, `\w`/`\W`, `\t` and `\n`. Unescaped `+`, `?`, parentheses and braces are literal. Matching uses `ignorecase smartcase`; `\c` and `\C` override it. Word boundaries include Unicode letters, numbers, combining marks and underscore. Unsupported escapes, backreferences, lookarounds, magic-mode switches and complex/POSIX character classes are rejected. Patterns cannot span separate fields or Description logical lines; `^`/`$` refer to those lines, independent of terminal wrapping. Each input pattern is limited to 4096 bytes. Valid patterns with no matches may be accepted; invalid patterns remain editable.
 
 ## Projects Pane
 

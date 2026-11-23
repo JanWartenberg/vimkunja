@@ -1,6 +1,6 @@
 # Vimkunja – Status
 
-**As of:** 2026-11-22 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
+**As of:** 2026-11-23 | **Branch:** main | **MVP:** completed and archived | **Current milestone:** Milestone 3
 
 ## Current state
 
@@ -54,7 +54,7 @@ Read-only HTML Description projection, scroll feedback, [additional keyboard sho
 16. [Render Gantt View](.scratch/gantt-view/issues/01-render-gantt-project-view.md)
 17. [Evaluate independent Link text/URL editing](.scratch/link-label-and-url-editor/issues/01-evaluate-independent-link-label-url-editing.md)
 18. [Kanban View and Bucket management](.archive/2026-11-22/kanban-bucket-management/issues/01-manage-manual-kanban-buckets.md) — completed and archived against the accepted [specification](.archive/2026-11-22/kanban-bucket-management/spec.md): immediate :kanban, session-local Board memory, guided switching/management, Board/Bucket CRUD, separate configuration drafts and safe confirmed deletion. Task/Comment drafts are protected; filtered Boards remain a separate backlog. Full tests, builds, vet, Windows cross-build, official VOA 2.7.0 round trips and independent reviews pass. Jan accepted the result after manual use on 2026-11-22; further small usability optimizations only as needed. [Research and verification](.archive/2026-11-22/kanban-bucket-management/research.md).
-19. [Local search in the focused pane](.scratch/local-search/issues/01-search-within-focused-pane.md) – `/` and `n`/`N` agreed; pane semantics remain open.
+19. [Local search in the focused pane](.archive/2026-11-23/local-search/issues/01-search-within-focused-pane.md) – implemented against the [accepted contract](.archive/2026-11-23/local-search/spec.md): `/`/`?`, `n`/`N`, Vim pattern subset, live preview/restoration, shared session history and `Space h`/`:nohlsearch`. Completed and archived after Jan accepted the final result on 2026-11-23; self-review, regression tests and automated verification are recorded in the ticket. [Searchable Help](.scratch/help-search/issues/01-search-help-pane.md) is a required follow-up; its cross-topic scope still needs specification.
 20. [Advanced Global Search queries and ranking](.scratch/global-search-filter/issues/02-add-advanced-global-search-query-and-ranking.md) – phrases, negation, fuzzy matching, and ranking deliberately deferred beyond V1.
 21. [Diagnose and repair malformed Project hierarchies](.scratch/project-hierarchy/issues/02-diagnose-and-repair-malformed-project-hierarchies.md) – hierarchy reader completed; diagnostic feedback and safe repair still require specification.
 22. [Native rich-text Descriptions](.archive/2026-10-19/description-rendering/issues/10-verify-native-rich-text-compatibility-and-documentation.md) – completed and archived; implementation 03–09 and integration/follow-up 10/11 verified. All ten manual acceptance points passed, including Windows/AltGr, clipboard, resize, and live Vikunja checks.

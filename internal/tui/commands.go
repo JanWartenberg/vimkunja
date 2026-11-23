@@ -260,6 +260,7 @@ func newDefaultCommandRegistry() *CommandRegistry {
 		{"list", nil, listCommand},
 		{"kanban", nil, kanbanCommand},
 		{"search", nil, searchCommand},
+		{"nohlsearch", []string{"noh"}, noHighlightCommand},
 		{"labels", nil, labelsCommand},
 		{"table", nil, notYetImplementedCommand},
 		{"gantt", nil, notYetImplementedCommand},

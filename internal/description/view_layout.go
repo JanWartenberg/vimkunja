@@ -152,7 +152,13 @@ func (v *View) Layout(width int, focused bool) Frame {
 			f.points = append(f.points, point{target: g.target, row: len(f.Rows), col: col, sourceCol: contentCol, cellWidth: w, block: bi, word: g.word, line: logicalLine, link: g.link})
 		}
 		begin(false)
+		searchOrdinals := map[Target]int{}
 		for gi, g := range gs {
+			if len(v.searchPaint) > 0 && searchableGlyph(g) {
+				key := searchGlyph{bi, g.target, searchOrdinals[g.target]}
+				g.style |= v.searchPaint[key]
+				searchOrdinals[g.target]++
+			}
 			if g.hard {
 				// Insert needs the boundary before a Code newline for append.
 				if g.nav && (!b.code || fresh || v.inserting) {

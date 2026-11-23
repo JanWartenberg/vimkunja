@@ -170,6 +170,9 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 
 - `hjkl`, `gg` / `G`, `Ctrl+D` / `Ctrl+U` – navigation
 - `Ctrl+W h/j/k/l` – change pane focus
+- `/` / `?` – live forward/backward search in the focused Projects, Tasks or Task Detail Pane (Normal Mode); `Enter` accepts, `Esc` restores the original context
+- `n` / `N`, including counts such as `3n` – repeat the last search direction / its reverse, wrapping through occurrences
+- `Space h` / `:nohlsearch` – hide search highlights; `n`/`N` shows them again
 - In the Projects Pane: `h/l` collapse/expand the hierarchy or select the parent/child, `zo/zc/za` fold, `zM/zR` collapse/expand all
 - In the Projects Pane: `Shift+J/K` move a Project among its siblings
 - `:projectnew` or Projects-Pane `O` – create a Project; `:projectnewchild` preselects the marked Project as parent
@@ -198,6 +201,17 @@ their Done state. With multiple Boards, a title identifies the active Board; a s
 by ✓). Reopening through a move out of one Board’s Done Bucket can leave the
 card in another Board’s Done column, matching VOA. Board selection is remembered
 per Project until exit; no workspace preference is written.
+
+Local Search keeps all content and current filters. Project names include folded
+descendants; Tasks include off-screen titles and displayed metadata; Task Detail
+includes readable Description text and unsaved values. Matches preview the selected
+Project/Task without changing focus. Search has one shared session pattern and a
+separate 100-entry history (Up/Down); empty Enter repeats the last pattern. It uses
+an explicit Vim default-magic pattern subset with `ignorecase smartcase` and
+`\c`/`\C` overrides; see [the keybinding reference](docs/keybindings.md#search)
+for syntax and limits. Unsaved drafts block cross-Task/Project search navigation.
+Help search is a planned follow-up; Comments, dialogs, pickers, Insert and Visual
+Mode are outside the initial scope.
 
 In Board management and Project creation, `:h` / `:help` explains commands without
 losing the draft. Board-management help is specific to the current page. Scroll with j/k, gg/G, Home/End or Ctrl+D/U; q, Esc or :q returns to the unchanged draft.

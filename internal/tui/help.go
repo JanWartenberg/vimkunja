@@ -132,6 +132,13 @@ var helpPages = []helpPage{
 	}},
 	{title: "Rich text", parent: -1, children: []int{6, 7, 8, 9, 10}, sections: []helpSection{}},
 	{title: "Search & filters", parent: -1, sections: []helpSection{
+		{title: "LOCAL SEARCH", entries: []helpEntry{
+			{"/ / ?", "Search forward / backward within the focused Projects, Tasks or Task Detail Pane in Normal mode. Live preview; Enter accepts, Esc restores context, cursor, scroll and folds."},
+			{"n / N; 3n", "Next / opposite-direction occurrence, with counts and wrap feedback. One shared session pattern; current Pane and filters determine scope."},
+			{"Space h / :nohlsearch", "Hide match highlights; n/N shows them again. Current occurrence is emphasized; the footer shows its index and total."},
+			{"Search input", "Empty Enter repeats the last pattern; Up/Down recalls a separate 100-entry session search history. Insert/Visual modes, dialogs, Comments, Help and Information are excluded."},
+			{"Vim patterns", `Default-magic subset: . * ^ $ [a-z], \< \>, \( \), \|, \+ \? \=, \{n,m}, \d \D \s \S \w \W \t \n. Lowercase ignores case; uppercase requires exact case; \c/\C overrides. Unsupported patterns report an error.`},
+		}},
 		{title: "GLOBAL SEARCH", entries: []helpEntry{
 			{"Space+f / :search", "Open Global Search in Insert mode"},
 			{"", "Search Insert: Esc Normal; arrows/Ctrl+N/P select; Enter open"},

@@ -45,7 +45,7 @@ A Kanban View with Vikunja's `bucket_configuration_mode=manual`. Its persisted B
 A cross-data query that returns typed matches from the locally browsable database. It is distinct from a Local Search and can activate a Task, Project, or Label-filtered Overview.
 
 **Local Search**:
-A future query constrained to the currently focused Pane or its content. _Avoid_: Global Search.
+A query constrained to the currently focused Pane or its content that navigates and highlights matches while preserving the full content. _Avoid_: Global Search, filter.
 
 **Label-filtered Overview**:
 An Overview scope limited to Tasks assigned one Label. Its Label constraint composes with the Overview status filter. _Avoid_: Label View.

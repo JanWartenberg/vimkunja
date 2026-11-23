@@ -40,6 +40,7 @@ func (m *model) SessionSnapshot() SessionSnapshot {
 		UndoDepth: len(m.undoHistory), RedoDepth: len(m.redoHistory), LastError: m.lastErr,
 	}
 	s.Normal = !m.commandMode && m.savingEditor == nil && !m.searchOpen && m.comments == nil && m.labelUI == nil && m.inlineTitle == nil && !m.deleteConfirm && !m.kanbanPicker && !m.kanbanViewPicker && !m.kanbanProvisionConfirm && m.overviewPrompt == overviewPromptNone
+	s.Normal = s.Normal && m.localSearch.input == nil
 	if m.inOverview() {
 		s.View = "Overview"
 		s.Filter = m.overviewFilterLabel()

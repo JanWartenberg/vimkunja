@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/JanWartenberg/vimkunja/internal/description"
+	"github.com/JanWartenberg/vimkunja/internal/searchpattern"
 	"github.com/JanWartenberg/vimkunja/internal/vimkunja"
 
 	tea "charm.land/bubbletea/v2"
@@ -42,27 +43,29 @@ const (
 )
 
 type taskEditor struct {
-	id                  int64
-	taskIndex           int64
-	original            vimkunja.TaskDraft
-	draft               vimkunja.TaskDraft
-	field               editorField
-	mode                editorMode
-	cursor              int // rune offset in the active text field
-	nativeLink          *nativeLinkPrompt
-	nativeDescription   *description.View
-	nativeDraft         *description.Draft
-	nativePending       *description.Action
-	nativePendingInsert bool
-	nativeRegister      string
-	nativeFocused       bool
-	nativePrefix        string
-	nativeCount         int
-	nativeOperatorCount int
-	nativeTrigger       bool
-	nativeCodeEscape    bool
-	nativeLiteralTab    bool
-	nativeTabstop       int
+	id                                   int64
+	taskIndex                            int64
+	original                             vimkunja.TaskDraft
+	draft                                vimkunja.TaskDraft
+	field                                editorField
+	mode                                 editorMode
+	cursor                               int // rune offset in the active text field
+	nativeLink                           *nativeLinkPrompt
+	nativeDescription                    *description.View
+	nativeDraft                          *description.Draft
+	nativePending                        *description.Action
+	nativePendingInsert                  bool
+	nativeRegister                       string
+	nativeFocused                        bool
+	nativePrefix                         string
+	nativeCount                          int
+	nativeOperatorCount                  int
+	nativeTrigger                        bool
+	nativeCodeEscape                     bool
+	nativeLiteralTab                     bool
+	nativeTabstop                        int
+	localPattern                         *searchpattern.Pattern
+	localCurrentLine, localCurrentOffset int
 
 	projectFilter           string
 	fieldViewportStart      int

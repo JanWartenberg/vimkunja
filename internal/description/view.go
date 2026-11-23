@@ -28,6 +28,8 @@ const (
 	Summary
 	SelectedStyle
 	TabStyle
+	SearchStyle
+	CurrentSearchStyle
 )
 
 type Span struct {
@@ -95,6 +97,7 @@ type View struct {
 	goalSource     bool
 	width          int
 	horizontal     map[ID]int
+	searchPaint    map[searchGlyph]Style
 }
 
 func NewView(doc *Document, options ...ViewOptions) *View {

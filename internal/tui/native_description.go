@@ -44,6 +44,12 @@ func nativeSpanStyle(role description.Style) lipgloss.Style {
 			style = style.Foreground(lipgloss.Color(format.foreground))
 		}
 	}
+	if role&description.SearchStyle != 0 {
+		style = style.Reverse(true)
+	}
+	if role&description.CurrentSearchStyle != 0 {
+		style = style.Bold(true).Underline(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent))
+	}
 	return style
 }
 func renderNativeDescriptionFrame(e *taskEditor, f description.Frame, width int) []descriptionLine {
@@ -97,6 +103,7 @@ func renderNativeDescriptionFrame(e *taskEditor, f description.Frame, width int)
 }
 func (e *taskEditor) nativeDescriptionLayout(width, height int) multilineTextLayout {
 	view := e.descriptionView()
+	view.SearchHighlight(e.localPattern, e.localCurrentLine, e.localCurrentOffset)
 	focused := e.field == fieldDescription && e.descriptionActive
 	frame := view.Viewport(width, max(1, height), focused)
 	if e.nativeDraft != nil {

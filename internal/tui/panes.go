@@ -79,6 +79,14 @@ func (m *model) editorFieldViewport(field editorField, value string, width int) 
 	start := 0
 	if lipgloss.Width(value) > width {
 		end := min(len(runes), cursor+3)
+		if pattern, current, visible := m.localPattern(); visible && pattern != nil && m.focus == paneDetail && current.id == m.editor.id && current.field == field {
+			for _, match := range pattern.FindAll(value) {
+				if match.Start == current.offset {
+					end = max(end, len([]rune(value[:match.End])))
+					break
+				}
+			}
+		}
 		for start < cursor && lipgloss.Width("…"+string(runes[start:end])) > width {
 			start++
 		}
@@ -177,11 +185,16 @@ func renderProjects(m *model, textW, textH int) string {
 		if label == "" {
 			label = fmt.Sprintf("%d", row.Project.ID)
 		}
+		pattern, _, visible := m.localPattern()
+		if visible && pattern != nil && m.focus == paneProjects && len(pattern.FindAll(row.Project.Title)) > 0 {
+			label = row.Project.Title
+			label = m.localTitle(paneProjects, row.Project.ID, fieldProject, label, max(1, contentWidth-row.Depth*2-6))
+		}
 		if sel {
 			label = "> " + label + " <"
 		}
 		line := strings.Repeat("  ", row.Depth) + marker + label
-		line = truncatePlain(line, contentWidth)
+		line = ansi.Truncate(line, contentWidth, "")
 		if sel && focus {
 			line = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(line)
 		}
@@ -330,6 +343,10 @@ func renderTasks(m *model, textW, textH int) string {
 			titleTruncated = false
 		}
 		title := rend(titleContent)
+		if pattern, _, visible := m.localPattern(); visible && pattern != nil && m.focus == paneTasks && !inlineEditing {
+			title = m.localTitle(paneTasks, t.ID, fieldTitle, rend(titleText), layout.titleWidth)
+			titleContent, titleTruncated = title, false
+		}
 		ellipsisWidth := 0
 		if titleTruncated {
 			title += lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.muted)).Faint(true).Render("…")
@@ -337,20 +354,22 @@ func renderTasks(m *model, textW, textH int) string {
 		}
 		title += rend(strings.Repeat(" ", max(0, layout.titleWidth-lipgloss.Width(titleContent)-ellipsisWidth)))
 
-		segments := []string{rend(done)}
+		segments := []string{m.highlightLocalValue(paneTasks, t.ID, fieldDone, rend(done))}
 		if layout.showPriority {
-			segments = append(segments, prioSeg)
+			segments = append(segments, m.highlightLocalValue(paneTasks, t.ID, fieldPriority, prioSeg))
 		}
 		if layout.showProject && project != "" {
-			segments = append(segments, project)
+			segments = append(segments, m.highlightLocalValue(paneTasks, t.ID, fieldProject, project))
 		}
 		segments = append(segments, title)
 		if layout.showDue {
-			segments = append(segments, dueSeg)
+			segments = append(segments, m.highlightLocalValue(paneTasks, t.ID, fieldDueDate, dueSeg))
 		}
 		line := strings.Join(segments, " ")
 		if t.Done {
-			line = completedTaskStyle().Render(ansi.Strip(line))
+			if pattern, _, visible := m.localPattern(); !visible || pattern == nil || m.focus != paneTasks {
+				line = completedTaskStyle().Render(ansi.Strip(line))
+			}
 			if sel && focus {
 				chevron := lipgloss.NewStyle().Foreground(lipgloss.Color(tuiTheme.selectionAccent))
 				line = chevron.Render("> ") + line + chevron.Render(" <")
@@ -499,6 +518,15 @@ func renderInfoPane(pane *infoPane, textW, textH int, focused bool) string {
 
 func renderTaskDetail(m *model, textW, textH int) string {
 	if m.editor != nil {
+		pattern, current, visible := m.localPattern()
+		m.editor.localPattern = nil
+		m.editor.localCurrentLine, m.editor.localCurrentOffset = -1, -1
+		if visible && m.focus == paneDetail {
+			m.editor.localPattern = pattern
+			if current.pane == paneDetail && current.id == m.editor.id && current.field == fieldDescription {
+				m.editor.localCurrentLine, m.editor.localCurrentOffset = current.line, current.offset
+			}
+		}
 		m.editor.nativeFocused = m.editorInputFocused() && m.editor.field == fieldDescription
 	}
 	if m.editor == nil {
@@ -548,6 +576,7 @@ func renderTaskDetail(m *model, textW, textH int) string {
 		priority = priorityName(e.draft.Priority)
 	}
 	renderField := func(field editorField, label, value string) string {
+		value = m.highlightLocalDetailField(field, value)
 		active := detailFocused && e.field == field
 		if field == fieldDueDate && e.dueDatePickerActive() && e.dueDatePickerSelected != 0 {
 			active = false
@@ -901,6 +930,7 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 	lines := []string{" " + renderHeading(header) + " ", ""}
 	detailFocused := m.focus == paneDetail
 	renderField := func(field editorField, label, value string) string {
+		value = m.highlightLocalDetailField(field, value)
 		active := detailFocused && e.field == field
 		if field == fieldDueDate && e.dueDatePickerActive() && e.dueDatePickerSelected != 0 {
 			active = false
@@ -949,9 +979,13 @@ func renderCompactTaskDetail(m *model, textW, textH int) string {
 		}
 		return value
 	}
+	title := m.editorText(fieldTitle, e.draft.Title)
+	if pattern, _, visible := m.localPattern(); visible && pattern != nil && m.focus == paneDetail {
+		title = m.editorFieldViewport(fieldTitle, e.draft.Title, max(1, textW-lipgloss.Width("▸ Title:    ")-2))
+	}
 	values := map[editorField]struct{ label, value string }{
 		fieldProject:        {"Project:  ", projectName},
-		fieldTitle:          {"Title:    ", renderMetadata(fieldTitle, m.editorText(fieldTitle, e.draft.Title))},
+		fieldTitle:          {"Title:    ", renderMetadata(fieldTitle, title)},
 		fieldPriority:       {"Priority: ", renderMetadata(fieldPriority, priority)},
 		fieldDueDate:        {"Due Date: ", renderMetadata(fieldDueDate, m.editorText(fieldDueDate, due))},
 		fieldLabels:         {"Labels:   ", renderMetadata(fieldLabels, labels)},

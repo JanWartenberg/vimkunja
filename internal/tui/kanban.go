@@ -508,7 +508,16 @@ func renderKanbanBoard(m *model, textW, textH int) string {
 		}
 		endTask := min(len(bucket.Tasks), startTask+visibleTaskRows)
 		for taskIndex, task := range bucket.Tasks[startTask:endTask] {
-			lines = append(lines, renderKanbanTaskLine(task, index == m.kanbanBucketSelected && startTask+taskIndex == m.kanbanTaskSelected, contentWidth))
+			selected := index == m.kanbanBucketSelected && startTask+taskIndex == m.kanbanTaskSelected
+			line := renderKanbanTaskLine(task, selected, contentWidth)
+			if pattern, _, visible := m.localPattern(); visible && pattern != nil && m.focus == paneTasks {
+				prefix := " "
+				if task.Done {
+					prefix = "✓ "
+				}
+				line = prefix + m.localTitle(paneTasks, task.ID, fieldTitle, styleKanbanTaskTitle(task.Title, selected), max(1, contentWidth-ansi.StringWidth(prefix)))
+			}
+			lines = append(lines, line)
 		}
 		content := fitBlock(lines, contentWidth, max(1, boardHeight-2))
 		bucketFocused := m.focus == paneTasks && index == m.kanbanBucketSelected
@@ -537,10 +546,14 @@ func renderKanbanTaskLine(task vimkunja.Task, selected bool, contentWidth int) s
 		prefix = "✓ "
 	}
 	title := truncatePlain(task.Title, max(1, contentWidth-lipgloss.Width(prefix)))
+	return prefix + styleKanbanTaskTitle(title, selected)
+}
+
+func styleKanbanTaskTitle(title string, selected bool) string {
 	if selected {
 		title = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color(tuiTheme.selectionAccent)).Render(title)
 	}
-	return prefix + title
+	return title
 }
 
 func renderKanbanPicker(m *model, textW, textH int) string {

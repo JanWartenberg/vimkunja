@@ -51,7 +51,7 @@ func resolveInputCursor(content string, disabled, visible bool) (string, *tea.Cu
 }
 
 func (m *model) editorInputFocused() bool {
-	return m.focus == paneDetail && m.editor != nil && !m.commandMode && !m.searchOpen && m.comments == nil && m.labelUI == nil && m.editor.nativeLink == nil
+	return m.focus == paneDetail && m.editor != nil && !m.commandMode && !m.searchOpen && m.localSearch.input == nil && m.comments == nil && m.labelUI == nil && m.editor.nativeLink == nil
 }
 
 // Keep the caret, rather than only the end of the value, in clipped prompts.

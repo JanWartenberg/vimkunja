@@ -102,6 +102,7 @@ type model struct {
 	commands                  *CommandRegistry
 
 	searchOpen           bool
+	localSearch          localSearchState
 	searchMode           searchInputMode
 	searchCommandMode    bool
 	searchCommandInput   string
@@ -486,8 +487,17 @@ func (m *model) loadTasks(projectID, viewID int64) tea.Cmd {
 		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Second)
 		defer cancel()
 
-		items, _, err := m.store.ListTasksInView(ctx, projectID, viewID, 1, perPage)
-		return tasksLoadedMsg{request: request, projectID: projectID, tasks: items, err: err}
+		var all []vimkunja.Task
+		for page := 1; ; page++ {
+			items, pages, err := m.store.ListTasksInView(ctx, projectID, viewID, page, perPage)
+			if err != nil {
+				return tasksLoadedMsg{request: request, projectID: projectID, err: err}
+			}
+			all = append(all, items...)
+			if pages == 0 || page >= pages {
+				return tasksLoadedMsg{request: request, projectID: projectID, tasks: all}
+			}
+		}
 	}
 }
 
@@ -504,6 +514,9 @@ func (m *model) canShowQuitHint() bool {
 }
 
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if cmd, handled := m.localSearchLoadError(msg); handled {
+		return m, cmd
+	}
 	// Vim-split style focus switching
 	if key, ok := msg.(tea.KeyMsg); ok {
 		// Windows input can report a key release after its press. Releases must
@@ -536,6 +549,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.lastWarning = ""
 		m.toast = ""
 		m.quitHint = false
+		// Once the user acts on an accepted preview, ordinary navigation owns
+		// its context. A delayed load failure must not restore over new drafts.
+		if m.localSearch.input == nil {
+			m.localSearch.pending = nil
+		}
+		if m.localSearch.input != nil && strings.ToLower(key.String()) != "ctrl+c" {
+			return m.updateLocalSearch(key)
+		}
 
 		k := key.String()
 		kLower := strings.ToLower(k)
@@ -642,6 +663,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if cmd, handled := m.textClipboardKey(k); handled {
 				return m, cmd
 			}
+			if k == "h" {
+				return noHighlightCommand(m, nil)
+			}
 			if m.nativePaletteKey(k) {
 				return m, nil
 			}
@@ -669,6 +693,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.leaderEligible() && isSpaceKey(key) {
+			m.localSearch.count = 0
 			m.leaderArmed = true
 			m.nativePaletteVisible = m.nativePalette() != ""
 			return m, tea.Tick(m.leaderTimeout, func(time.Time) tea.Msg { return leaderTimeoutMsg{} })
@@ -708,11 +733,15 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if kLower == "ctrl+w" {
+			m.localSearch.count = 0
 			m.ctrlWArmed = true
 			m.gArmed = false
 			return m, tea.Tick(m.ctrlWTimeout, func(time.Time) tea.Msg { return ctrlWTimeoutMsg{} })
 		}
 
+		if cmd, handled := m.localSearchKey(key); handled {
+			return m, cmd
+		}
 		// In editor Insert/Picker modes ':' is field input. In Detail Normal-mode
 		// it still opens the shared Ex command line.
 		if m.focus == paneDetail && m.editor != nil && (m.editor.mode != editorNormal || k != ":") {
@@ -1043,7 +1072,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.editor.draft.LabelIDsSet = false
 		m.editor.original.LabelIDs = append([]int64(nil), m.editor.draft.LabelIDs...)
 		m.editor.original.LabelIDsSet = false
-		return m, nil
+		return m, m.refreshLocalSearchMetadata()
 
 	case taskLabelsSavedMsg:
 		if m.labelUI != nil {
@@ -1122,6 +1151,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.PasteMsg:
+		if ui := m.localSearch.input; ui != nil {
+			text := sanitizeTerminalText(strings.NewReplacer("\r", " ", "\n", " ").Replace(typed.Content))
+			ui.query = insertTextAtCursor(ui.query, &ui.cursor, text)
+			ui.historyIndex = -1
+			return m, m.previewLocalSearch()
+		}
 		if m.boardManagement != nil {
 			m.pasteBoardManagement(typed.Content)
 			return m, nil
@@ -1229,7 +1264,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if typed.err != nil {
 			m.recordError(typed.err)
 		}
-		return m, nil
+		return m, m.refreshLocalSearchMetadata()
 
 	case inlineTitleSavedMsg:
 		m.applyInlineTitleSave(typed)
@@ -2184,7 +2219,7 @@ func (m *model) editorCursor() *tea.Cursor {
 	if m.renderedInputCursor != nil {
 		return m.renderedInputCursor
 	}
-	if m.projectDeletion != nil || m.projectCreation != nil || m.commandMode || m.searchOpen || m.comments != nil {
+	if m.projectDeletion != nil || m.projectCreation != nil || m.commandMode || m.searchOpen || m.localSearch.input != nil || m.comments != nil {
 		return nil
 	}
 	if m.editor != nil && (m.editor.mode == editorInsert || m.editor.normal.selection != nil) {
@@ -2645,6 +2680,9 @@ func (m *model) renderTextOnlyFallback(w, h int) string {
 	if m.commandMode {
 		footer = fitInputCursor(":"+insertCursorText(m.commandInput, m.commandCursor), w)
 	}
+	if m.localSearch.input != nil {
+		footer = m.localSearchFooter(w)
+	}
 	lines := []string{ansi.Truncate(heading, w, "")}
 	footer = ansi.Truncate(footer, w, "")
 	for len(lines) < max(0, h-1) {
@@ -2901,7 +2939,10 @@ func (m *model) renderStatusBar(w int) string {
 		ctrlWHint := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tuiTheme.ctrlWHint)).Render("Ctrl-W")
 		hint = ctrlWHint + " h/j/k/l change pane  •  Ctrl-W/w cycle"
 	}
-	statusActive := m.commandMode || (m.comments != nil && m.comments.commandMode) || m.leaderArmed || m.viewSwitchArmed || m.kanbanViewPicker || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed
+	if summary := m.localSearchFooter(w - 4); m.localSearch.input == nil && summary != "" {
+		hint = summary
+	}
+	statusActive := m.localSearch.input != nil || m.commandMode || (m.comments != nil && m.comments.commandMode) || m.leaderArmed || m.viewSwitchArmed || m.kanbanViewPicker || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed
 	statusStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(paneBorderColor(statusActive))).
@@ -2939,6 +2980,8 @@ func (m *model) renderStatusBar(w int) string {
 		if m.commandCompletionFeedback != "" && footerFits(contentWidth, info, []string{input, m.commandCompletionFeedback}) {
 			status = composeFooter(info, []string{input, m.commandCompletionFeedback})
 		}
+	case m.localSearch.input != nil:
+		status = m.localSearchFooter(contentWidth)
 	case m.searchOpen:
 		if m.searchMode == searchNormalMode && !m.searchCommandMode {
 			width := contentWidth
