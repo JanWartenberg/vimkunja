@@ -96,7 +96,7 @@ func (m *model) undoKeyAllowed() bool {
 		return false
 	}
 	if m.searchOpen || m.commandMode || m.labelUI != nil || m.comments != nil || m.inlineTitle != nil ||
-		m.deleteConfirm || m.kanbanPicker || m.kanbanViewPicker || m.kanbanProvisionConfirm ||
+		m.deleteConfirm || m.kanbanPicker || m.kanbanViewPicker ||
 		m.overviewPrompt != overviewPromptNone {
 		return false
 	}

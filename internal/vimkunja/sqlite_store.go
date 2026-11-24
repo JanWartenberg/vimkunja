@@ -948,14 +948,16 @@ func replaceTaskLabels(ctx context.Context, tx *sql.Tx, taskID int64, labelIDs [
 }
 
 // ProvisionStandardManualKanbanView creates Vimkunja's upstream-compatible
-// manual Kanban template. Existing completed Tasks deliberately start in Done;
-// open Tasks start in To-Do so the global Done state remains consistent.
+// manual Kanban template. Existing Tasks start in To-Do, retaining Done state.
 func (s *SQLiteStore) ProvisionStandardManualKanbanView(ctx context.Context, projectID int64) (KanbanBoard, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return KanbanBoard{}, fmt.Errorf("begin provision kanban view: %w", err)
 	}
 	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, `UPDATE projects SET id=id WHERE 0`); err != nil {
+		return KanbanBoard{}, err
+	}
 	if err := writableProject(ctx, tx, projectID); err != nil {
 		return KanbanBoard{}, err
 	}
@@ -967,12 +969,12 @@ func (s *SQLiteStore) ProvisionStandardManualKanbanView(ctx context.Context, pro
 		}
 		return KanbanBoard{}, fmt.Errorf("get project owner for kanban view: %w", err)
 	}
-	var manualViewCount int
-	if err := tx.QueryRowContext(ctx, `SELECT COUNT(1) FROM project_views WHERE project_id = ? AND view_kind = ? AND bucket_configuration_mode = ?`, projectID, viewKindKanban, bucketConfigurationManual).Scan(&manualViewCount); err != nil {
-		return KanbanBoard{}, fmt.Errorf("count manual kanban views: %w", err)
+	var viewCount int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(1) FROM project_views WHERE project_id = ? AND view_kind = ?`, projectID, viewKindKanban).Scan(&viewCount); err != nil {
+		return KanbanBoard{}, fmt.Errorf("count kanban views: %w", err)
 	}
-	if manualViewCount != 0 {
-		return KanbanBoard{}, fmt.Errorf("project already has %d manual kanban views", manualViewCount)
+	if viewCount != 0 {
+		return KanbanBoard{}, fmt.Errorf("project already has a Kanban Board; reload or manage filtered Boards in VOA")
 	}
 
 	now := utcTimestampNow()
@@ -1013,18 +1015,17 @@ func (s *SQLiteStore) ProvisionStandardManualKanbanView(ctx context.Context, pro
 		return KanbanBoard{}, fmt.Errorf("configure manual kanban view: %w", err)
 	}
 
-	taskRows, err := tx.QueryContext(ctx, `SELECT id, done FROM tasks WHERE project_id = ? AND deleted_at IS NULL ORDER BY id ASC`, projectID)
+	taskRows, err := tx.QueryContext(ctx, `SELECT id FROM tasks WHERE project_id = ? AND deleted_at IS NULL ORDER BY id ASC`, projectID)
 	if err != nil {
 		return KanbanBoard{}, fmt.Errorf("list tasks for kanban view: %w", err)
 	}
-	type taskDoneState struct {
-		id   int64
-		done bool
+	type taskID struct {
+		id int64
 	}
-	var tasks []taskDoneState
+	var tasks []taskID
 	for taskRows.Next() {
-		var task taskDoneState
-		if err := taskRows.Scan(&task.id, &task.done); err != nil {
+		var task taskID
+		if err := taskRows.Scan(&task.id); err != nil {
 			return KanbanBoard{}, fmt.Errorf("scan task for kanban view: %w", err)
 		}
 		tasks = append(tasks, task)
@@ -1037,11 +1038,7 @@ func (s *SQLiteStore) ProvisionStandardManualKanbanView(ctx context.Context, pro
 		return KanbanBoard{}, fmt.Errorf("close tasks for kanban view: %w", err)
 	}
 	for i, task := range tasks {
-		bucketID := toDoBucketID
-		if task.done {
-			bucketID = doneBucketID
-		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (?, ?, ?)`, task.id, bucketID, viewID); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO task_buckets (task_id, bucket_id, project_view_id) VALUES (?, ?, ?)`, task.id, toDoBucketID, viewID); err != nil {
 			return KanbanBoard{}, fmt.Errorf("assign task to provisioned bucket: %w", err)
 		}
 		position := math.Pow(2, 32) / float64(len(tasks)) * float64(i+1)

@@ -70,15 +70,15 @@ func startNavigationLoad(m *model, kind string, project int) tea.Cmd {
 }
 
 type navigationState struct {
-	tasks, projectTasks, overviewTasks                       []vimkunja.Task
-	views                                                    []vimkunja.ProjectView
-	board                                                    vimkunja.KanbanBoard
-	projectID, viewID, pendingTaskID, pendingKanbanTaskID    int64
-	taskSelected, bucketSelected, cardSelected               int
-	taskLoading, viewLoading, kanbanActive, provisionConfirm bool
-	lastErr                                                  string
-	editor                                                   *taskEditor
-	draft                                                    vimkunja.TaskDraft
+	tasks, projectTasks, overviewTasks                    []vimkunja.Task
+	views                                                 []vimkunja.ProjectView
+	board                                                 vimkunja.KanbanBoard
+	projectID, viewID, pendingTaskID, pendingKanbanTaskID int64
+	taskSelected, bucketSelected, cardSelected            int
+	taskLoading, viewLoading, kanbanActive                bool
+	lastErr                                               string
+	editor                                                *taskEditor
+	draft                                                 vimkunja.TaskDraft
 }
 
 func navigationSnapshot(m *model) navigationState {
@@ -87,7 +87,7 @@ func navigationSnapshot(m *model) navigationState {
 		views: m.projectViews, board: m.kanbanBoard,
 		projectID: m.currentProjectID, viewID: m.currentViewID, pendingTaskID: m.pendingTaskID, pendingKanbanTaskID: m.pendingKanbanTaskID,
 		taskSelected: m.taskSelected, bucketSelected: m.kanbanBucketSelected, cardSelected: m.kanbanTaskSelected,
-		taskLoading: m.taskLoading, viewLoading: m.viewLoading, kanbanActive: m.kanbanActive, provisionConfirm: m.kanbanProvisionConfirm,
+		taskLoading: m.taskLoading, viewLoading: m.viewLoading, kanbanActive: m.kanbanActive,
 		lastErr: m.lastErr, editor: m.editor,
 	}
 	if m.editor != nil {

@@ -90,7 +90,6 @@ func (m *model) openBoardManagement(create bool) tea.Cmd {
 	m.leaderArmed = false
 	m.viewSwitchArmed = false
 	m.kanbanViewPicker = false
-	m.kanbanProvisionConfirm = false
 	m.ctrlWArmed = false
 	m.commandMode = false
 	m.focus = paneTasks

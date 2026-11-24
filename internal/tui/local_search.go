@@ -78,7 +78,7 @@ type localProjectPreview struct {
 }
 
 func (m *model) localSearchEligible() bool {
-	if m.helpPane != nil || m.infoPane != nil || m.searchOpen || m.commandMode || m.comments != nil || m.labelUI != nil || m.inlineTitle != nil || m.deleteConfirm || m.deleteArmed || m.kanbanPicker || m.kanbanViewPicker || m.kanbanProvisionConfirm || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed || m.gArmed || m.zArmed || m.leaderArmed || m.viewSwitchArmed {
+	if m.helpPane != nil || m.infoPane != nil || m.searchOpen || m.commandMode || m.comments != nil || m.labelUI != nil || m.inlineTitle != nil || m.deleteConfirm || m.deleteArmed || m.kanbanPicker || m.kanbanViewPicker || m.overviewPrompt != overviewPromptNone || m.ctrlWArmed || m.gArmed || m.zArmed || m.leaderArmed || m.viewSwitchArmed {
 		return false
 	}
 	if m.focus == paneProjects || m.focus == paneTasks {

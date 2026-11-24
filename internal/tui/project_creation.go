@@ -415,7 +415,6 @@ func (m *model) projectCreationResult(msg projectCreatedMsg) tea.Cmd {
 	m.kanbanBoard = vimkunja.KanbanBoard{}
 	m.kanbanPicker = false
 	m.kanbanViewPicker = false
-	m.kanbanProvisionConfirm = false
 	m.searchOpen = false
 	m.searchOrigin = nil
 	m.searchReturn = nil

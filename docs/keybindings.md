@@ -60,7 +60,7 @@ A Task context consists of a Scope (`Overview` or the current Project) and a Vie
 | `s`, then `d/u/p/t` | Choose Overview sort: Due ↓ / Due ↑ / Priority ↓ / Title. | Implemented |
 | `f`, then `o/a/v/t` | Choose Overview filter: open / all / overdue / due today. | Implemented |
 | `Space+v`, then `l` | Select List View for the current Project. | Implemented |
-| `Space+v`, then `k` | Open the last used supported manual Board for the current Project in this session, or the first; offer named creation if absent. | Implemented |
+| `Space+v`, then `k` | Open the last used supported manual Board for the current Project in this session, or the first; create and open a standard Board if none exists. | Implemented |
 | `Space+v`, then `t` | Select Table View for the current Project. | Agreed; View deferred |
 | `Space+v`, then `g` | Select Gantt View for the current Project. | Agreed; View deferred |
 | `:overview` | Open Overview. | Implemented |

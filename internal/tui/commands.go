@@ -459,7 +459,13 @@ func kanbanCommand(m *model, args []string) (tea.Model, tea.Cmd) {
 		m.focus = paneTasks
 		if m.currentViewID == 0 {
 			m.viewLoading = true
-			return m, m.loadViews(m.currentProjectID)
+			load := m.loadViews(m.currentProjectID)
+			request := m.taskRequest
+			return m, func() tea.Msg {
+				msg := load().(viewsLoadedMsg)
+				msg.openKanban, msg.taskRequest = true, request
+				return msg
+			}
 		}
 	}
 	if i := m.pickManualKanbanViewIndex(); i >= 0 {

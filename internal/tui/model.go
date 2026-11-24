@@ -156,7 +156,6 @@ type model struct {
 	kanbanViewPicker            bool
 	kanbanViewPickerIndex       int
 	kanbanViewPickerG           bool
-	kanbanProvisionConfirm      bool
 	pendingKanbanTaskID         int64
 	pendingKanbanBucketID       int64
 	pendingKanbanEmptySelection bool
@@ -272,10 +271,12 @@ type (
 		err error
 	}
 	viewsLoadedMsg struct {
-		request   uint64
-		projectID int64
-		views     []vimkunja.ProjectView
-		err       error
+		request     uint64
+		projectID   int64
+		views       []vimkunja.ProjectView
+		openKanban  bool
+		taskRequest uint64
+		err         error
 	}
 	tasksLoadedMsg struct {
 		request   uint64
@@ -508,7 +509,7 @@ func (m *model) canShowQuitHint() bool {
 	return (m.focus == paneProjects || m.focus == paneTasks) &&
 		m.editor == nil && m.inlineTitle == nil && m.labelUI == nil && m.comments == nil &&
 		!m.searchOpen && !m.commandMode && !m.deleteArmed && !m.deleteConfirm &&
-		!m.kanbanViewPicker && !m.kanbanPicker && !m.kanbanProvisionConfirm && !m.leaderArmed &&
+		!m.kanbanViewPicker && !m.kanbanPicker && !m.leaderArmed &&
 		!m.viewSwitchArmed && !m.ctrlWArmed && !m.gArmed && !m.zArmed &&
 		m.overviewPrompt == overviewPromptNone && m.helpPane == nil && m.infoPane == nil
 }
@@ -619,9 +620,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.deleteConfirm {
 			return m.updateDeleteConfirmation(k)
-		}
-		if m.kanbanProvisionConfirm {
-			return m.updateKanbanProvisionConfirmation(k)
 		}
 		if m.kanbanViewPicker {
 			return m.updateKanbanViewPicker(k)
@@ -890,11 +888,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.viewLoading = false
+		if typed.openKanban && (typed.taskRequest != m.taskRequest || m.inOverview() || m.projectViewPreference != projectViewKanban) {
+			return m, nil
+		}
 		if typed.err != nil {
 			m.recordError(typed.err)
 			return m, nil
 		}
 		m.projectViews = typed.views
+		if typed.openKanban {
+			if i := m.pickManualKanbanViewIndex(); i >= 0 {
+				m.viewSelected = i
+				m.currentViewID = m.projectViews[i].ID
+			}
+			m.taskLoading = true
+			return m, m.loadKanbanBoard(m.currentProjectID)
+		}
 		if m.kanbanActive {
 			for i, view := range m.projectViews {
 				if view.ID == m.currentViewID {
@@ -1404,10 +1413,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if typed.board.Availability == vimkunja.KanbanBoardUnavailable {
 			m.kanbanActive = false
-			m.kanbanProvisionConfirm = true
-			m.confirmationScroll = 0
-			m.confirmationGArmed = false
-			return m, nil
+			m.taskLoading = true
+			return m, m.provisionStandardKanbanView(typed.projectID)
 		}
 		if typed.board.Availability == vimkunja.KanbanBoardAmbiguous {
 			m.kanbanActive = false
@@ -2625,9 +2632,6 @@ func (m *model) renderContent() string {
 
 	if m.deleteConfirm {
 		content = m.renderDeleteConfirmationModal(content, w)
-	}
-	if m.kanbanProvisionConfirm {
-		content = m.renderKanbanProvisionConfirmationModal(content, w)
 	}
 	if m.searchOpen {
 		content = m.renderSearchOverlay(content, w)

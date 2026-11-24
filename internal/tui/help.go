@@ -32,7 +32,7 @@ var helpPages = []helpPage{
 		}},
 		{title: "PROJECT VIEWS", entries: []helpEntry{
 			{"Space+v, then l / k", "Select List / Kanban View"},
-			{":kanban", "Open the last used Board for this Project in the session, or its first supported Board; offer name-first creation if absent"},
+			{":kanban", "Open the last used Board for this Project in the session, or its first supported Board; create and open a standard Board if none exists"},
 			{"Space+v b / :kanban switch", "Choose another Board; Esc keeps the current context"},
 			{"Space+v m / :kanban manage", "Standalone Board manager: Enter open, n new, e edit, d preview deletion, r reload"},
 			{":kanban new", "Name-first creation, then configuration of standard To-Do, Doing and Done Buckets"},

@@ -116,7 +116,7 @@ func (m *model) projectDeletionResult(msg projectDeletedMsg) tea.Cmd {
 	m.currentViewID, m.initialViewID = 0, 0
 	m.kanbanActive = false
 	m.kanbanBoard = vimkunja.KanbanBoard{}
-	m.kanbanPicker, m.kanbanViewPicker, m.kanbanProvisionConfirm = false, false, false
+	m.kanbanPicker, m.kanbanViewPicker = false, false
 	m.searchOpen = false
 	m.searchOrigin, m.searchReturn = nil, nil
 	m.closeHelp()

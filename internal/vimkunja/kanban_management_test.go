@@ -259,3 +259,22 @@ func TestFilteredKanbanCannotSupplyWorkflowChoices(t *testing.T) {
 		t.Fatal("filtered Board card move accepted")
 	}
 }
+
+func TestAutomaticKanbanProvisionPreservesExistingFilteredBoards(t *testing.T) {
+	for _, setup := range []string{
+		`UPDATE project_views SET filter='{"filter":"priority = 3"}' WHERE id=11`,
+		`UPDATE project_views SET bucket_configuration_mode=2 WHERE id=11`,
+	} {
+		t.Run(setup, func(t *testing.T) {
+			s := setupVikunja270(t)
+			compatExec(t, s, setup)
+			if _, err := s.ProvisionStandardManualKanbanView(context.Background(), 1); err == nil {
+				t.Fatal("created board alongside existing filtered board")
+			}
+			var count int
+			if err := s.db.QueryRow(`SELECT COUNT(*) FROM project_views WHERE project_id=1 AND view_kind=3`).Scan(&count); err != nil || count != 1 {
+				t.Fatalf("kanban views = %d, err = %v", count, err)
+			}
+		})
+	}
+}

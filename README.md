@@ -188,7 +188,7 @@ A missing file is normal. Invalid TOML, unreadable files, unknown sections/setti
 - `:h` / `:help` – help overview with topic pages; `Enter` opens a topic, `Ctrl+O/I` (Tab for forward) navigates history, and `-`/Backspace opens the parent. `:q` returns to the previous pane with drafts preserved.
 - `:errors` – session error log
 - `Space+o` – show or hide the Projects Pane
-- `:kanban` or `Space+v`, then `k` – open the last used supported Board for this Project in the session, or its first Board; offer name-first creation if absent
+- `:kanban` or `Space+v`, then `k` – open the last used supported Board for this Project in the session, or its first Board; create and open a standard Board if none exists
 - `:kanban switch` or `Space+v`, then `b` – choose a Board; Esc keeps the previous context
 - `:kanban manage` or `Space+v`, then `m` – open Board management; Enter opens, n creates, e configures, d previews deletion
 - In the Kanban Board: `h/l` select Buckets, `j/k` select cards, `Shift+H/L` move to a neighboring Bucket, `m` choose a destination Bucket

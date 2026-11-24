@@ -899,7 +899,6 @@ func TestNarrowModalFallbacksReplacePaneWithoutOverflow(t *testing.T) {
 		render func() string
 	}{
 		{"task deletion", func() string { return m.renderDeleteConfirmationModal(background, width) }},
-		{"kanban provisioning", func() string { return m.renderKanbanProvisionConfirmationModal(background, width) }},
 		{"global search", func() string { return m.renderSearchOverlay(background, width) }},
 		{"labels", func() string { return m.renderLabelOverlay(background, width) }},
 	}
@@ -1527,49 +1526,46 @@ func TestKanbanCommandOpensAvailableManualBoard(t *testing.T) {
 	}
 }
 
-func TestKanbanCommandOffersNamedCreationAfterConfirmation(t *testing.T) {
-	store := &kanbanManagementStore{fakeStore: &fakeStore{kanbanBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardUnavailable}}, cfg: vimkunja.KanbanConfiguration{ViewID: 10}}
+func TestKanbanFromOverviewCreatesMissingBoardAfterViewsLoad(t *testing.T) {
+	store := &fakeStore{
+		viewsByProject:   map[int64][]vimkunja.ProjectView{1: {{ID: 5, ViewKind: "list"}}},
+		kanbanBoard:      vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardUnavailable},
+		provisionedBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardAvailable, View: vimkunja.ProjectView{ID: 10}, Buckets: []vimkunja.KanbanBucket{{Title: "To-Do"}, {Title: "Doing"}, {Title: "Done"}}},
+	}
+	m := testModel()
+	m.store, m.currentProjectID, m.taskScope, m.focus = store, 1, scopeOverview, paneTasks
+	m.currentViewID = 0
+	m, cmd := typeCommand(t, m, "kanban")
+	for i := 0; i < 3 && cmd != nil; i++ {
+		var updated tea.Model
+		updated, cmd = m.Update(cmd())
+		m = updated.(*model)
+	}
+	if !m.kanbanActive || m.currentViewID != 10 || store.provisionCalls != 1 {
+		t.Fatalf("Kanban = %v view %d creation calls %d", m.kanbanActive, m.currentViewID, store.provisionCalls)
+	}
+}
+
+func TestKanbanCommandCreatesMissingBoard(t *testing.T) {
+	store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardUnavailable}, provisionedBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardAvailable, View: vimkunja.ProjectView{ID: 10}, Buckets: []vimkunja.KanbanBucket{{Title: "To-Do"}, {Title: "Doing"}, {Title: "Done"}}}}
 	m := testModel()
 	m.store = store
 	m.currentProjectID = 1
 	m.focus = paneTasks
 	m, cmd := typeCommand(t, m, "kanban")
-	m.Update(cmd())
-	if !strings.Contains(m.Render(), "CREATE KANBAN VIEW") {
-		t.Fatal("missing creation offer")
-	}
-	m = pressKey(m, tea.Key{Code: 'y', Text: "y"})
-	if !strings.Contains(m.Render(), "NEW BOARD") {
-		t.Fatal("name-first creation not opened")
-	}
-	m = pressKey(m, tea.Key{Code: 'i', Text: "i"})
-	m.Update(tea.PasteMsg{Content: "Test Board"})
-	m = pressKey(m, tea.Key{Code: tea.KeyEsc})
-	m, cmd = typeCommand(t, m, "w")
+	updated, cmd := m.Update(cmd())
+	m = updated.(*model)
 	if cmd == nil {
-		t.Fatal("creation not submitted")
+		t.Fatal("missing automatic creation")
 	}
-	m.Update(cmd())
-	if store.cfg.Title != "Test Board" || m.boardManagement == nil || m.boardManagement.page != "config" || m.lastKanbanViews[1] != 10 {
-		t.Fatalf("named Board not created: %#v", store.cfg)
+	updated, _ = m.Update(cmd())
+	m = updated.(*model)
+	if store.provisionCalls != 1 || !m.kanbanActive || m.currentViewID != 10 || len(m.kanbanBoard.Buckets) != 3 || m.kanbanBoard.Buckets[2].Title != "Done" {
+		t.Fatalf("standard board not opened: calls=%d active=%v view=%d board=%#v", store.provisionCalls, m.kanbanActive, m.currentViewID, m.kanbanBoard)
 	}
 }
 
 func TestKanbanProvisionCanCancelAndAmbiguousBoardIsNotSelected(t *testing.T) {
-	t.Run("cancel", func(t *testing.T) {
-		store := &fakeStore{kanbanBoard: vimkunja.KanbanBoard{Availability: vimkunja.KanbanBoardUnavailable}}
-		m := testModel()
-		m.store = store
-		m.currentProjectID = 1
-		m.focus = paneTasks
-		m, cmd := typeCommand(t, m, "kanban")
-		updated, _ := m.Update(cmd())
-		m = updated.(*model)
-		m = pressKey(m, tea.Key{Code: tea.KeyEsc})
-		if store.provisionCalls != 0 || m.kanbanProvisionConfirm {
-			t.Fatalf("cancelled provision = calls:%d prompt:%v", store.provisionCalls, m.kanbanProvisionConfirm)
-		}
-	})
 	t.Run("failure", func(t *testing.T) {
 		store := &kanbanManagementStore{fakeStore: &fakeStore{}, err: errors.New("database is locked")}
 		m := testModel()
@@ -1600,8 +1596,8 @@ func TestKanbanProvisionCanCancelAndAmbiguousBoardIsNotSelected(t *testing.T) {
 		m, cmd := typeCommand(t, m, "kanban")
 		updated, _ := m.Update(cmd())
 		m = updated.(*model)
-		if m.kanbanActive || m.kanbanProvisionConfirm || !strings.Contains(m.lastErr, "multiple manual Kanban Views") {
-			t.Fatalf("ambiguous board = active:%v prompt:%v err:%q", m.kanbanActive, m.kanbanProvisionConfirm, m.lastErr)
+		if m.kanbanActive || !strings.Contains(m.lastErr, "multiple manual Kanban Views") {
+			t.Fatalf("ambiguous board = active:%v err:%q", m.kanbanActive, m.lastErr)
 		}
 	})
 }

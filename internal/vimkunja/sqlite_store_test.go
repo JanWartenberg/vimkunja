@@ -520,7 +520,7 @@ func TestCreateLabelUsesTheOnlyDatabaseUser(t *testing.T) {
 	}
 }
 
-func TestProvisionStandardManualKanbanView_AssignsTasksByDoneState(t *testing.T) {
+func TestProvisionStandardManualKanbanView_PreservesDoneState(t *testing.T) {
 	store, cleanup := setupTestDB(t)
 	defer cleanup()
 
@@ -543,11 +543,8 @@ func TestProvisionStandardManualKanbanView_AssignsTasksByDoneState(t *testing.T)
 	if got, want := []string{board.Buckets[0].Title, board.Buckets[1].Title, board.Buckets[2].Title}, []string{"To-Do", "Doing", "Done"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("bucket titles = %#v, want %#v", got, want)
 	}
-	if got, want := []int64{board.Buckets[0].Tasks[0].ID}, []int64{1}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("To-Do tasks = %#v, want %#v", got, want)
-	}
-	if got, want := []int64{board.Buckets[2].Tasks[0].ID}, []int64{2}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("Done tasks = %#v, want %#v", got, want)
+	if len(board.Buckets[0].Tasks) != 2 || board.Buckets[0].Tasks[0].ID != 1 || board.Buckets[0].Tasks[1].ID != 2 || !board.Buckets[0].Tasks[1].Done || len(board.Buckets[2].Tasks) != 0 {
+		t.Fatalf("existing tasks and Done state not preserved in To-Do: %#v", board.Buckets)
 	}
 
 	var viewPosition, defaultBucketID, doneBucketID int64

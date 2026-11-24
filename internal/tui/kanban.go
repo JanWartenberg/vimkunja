@@ -13,43 +13,6 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-func (m *model) updateKanbanProvisionConfirmation(key string) (tea.Model, tea.Cmd) {
-	if m.updateConfirmationScroll(key, m.kanbanProvisionConfirmationScrollLimit()) {
-		return m, nil
-	}
-	m.kanbanProvisionConfirm = false
-	m.confirmationScroll = 0
-	m.confirmationGArmed = false
-	switch key {
-	case "y":
-		return m, m.openBoardManagement(true)
-	case "n", "esc":
-		return m, nil
-	default:
-		return m, nil
-	}
-}
-
-func (m *model) kanbanProvisionConfirmationScrollLimit() int {
-	width, _ := m.viewportSize()
-	layout := modalBounds(width, m.modalContentHeight(), 50, 9)
-	_, limit := confirmationBody("", "Create standard Kanban View for "+m.currentProjectTitle()+"?", "", layout, 0)
-	return limit
-}
-
-func (m *model) renderKanbanProvisionConfirmationModal(background string, width int) string {
-	viewportHeight := len(strings.Split(background, "\n"))
-	layout := modalBounds(width, viewportHeight, 50, 9)
-	body, _ := confirmationBody(
-		lipgloss.NewStyle().Bold(true).Render("CREATE KANBAN VIEW"),
-		"Create standard Kanban View for "+m.currentProjectTitle()+"?",
-		"y create  •  n / Esc cancel",
-		layout,
-		m.confirmationScroll,
-	)
-	return overlayModalLayout(background, renderModalFrame(body, layout), width, layout.fallback)
-}
-
 func (m *model) currentProjectTitle() string {
 	for _, project := range m.projects {
 		if project.ID == m.currentProjectID {
